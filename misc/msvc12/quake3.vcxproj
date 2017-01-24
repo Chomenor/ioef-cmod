@@ -461,6 +461,24 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release TA|Win32'">true</BrowseInformation>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_cache.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_crosshair.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_gameparse.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_iteration.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_main.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_md4.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_misc.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_os.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_pk3.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_shader.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_commands.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_download.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_fileio.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_filelist.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_lookup.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_main.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_misc.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_reference.c" />
     <ClCompile Include="..\..\code\opus-1.1\celt\bands.c" />
     <ClCompile Include="..\..\code\opus-1.1\celt\celt.c" />
     <ClCompile Include="..\..\code\opus-1.1\celt\celt_decoder.c" />
@@ -937,6 +955,9 @@
     <ClInclude Include="..\..\code\client\qal.h" />
     <ClInclude Include="..\..\code\client\snd_local.h" />
     <ClInclude Include="..\..\code\client\snd_public.h" />
+    <ClInclude Include="..\..\code\filesystem\fscore\fscore.h" />
+    <ClInclude Include="..\..\code\filesystem\fslocal.h" />
+    <ClInclude Include="..\..\code\filesystem\fspublic.h" />
     <ClInclude Include="..\..\code\game\bg_public.h" />
     <ClInclude Include="..\..\code\game\g_public.h" />
     <ClInclude Include="..\..\code\libspeex\config.h" />

@@ -25,6 +25,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../qcommon/cm_public.h"
 
+#ifdef NEW_FILESYSTEM
+#include "../filesystem/fspublic.h"
+#endif
+
 //Ignore __attribute__ on non-gcc platforms
 #ifndef __GNUC__
 #ifndef __attribute__
@@ -577,6 +581,7 @@ extern	int			cvar_modifiedFlags;
 // etc, variables have been modified since the last check.  The bit
 // can then be cleared to allow another change detection.
 
+#ifndef NEW_FILESYSTEM
 /*
 ==============================================================
 
@@ -740,6 +745,7 @@ void	FS_FilenameCompletion( const char *dir, const char *ext,
 
 const char *FS_GetCurrentGameDir(void);
 qboolean FS_Which(const char *filename, void *searchPath);
+#endif
 
 /*
 ==============================================================

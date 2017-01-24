@@ -569,6 +569,60 @@
     <ClCompile Include="..\..\code\zlib\zutil.c">
       <Filter>zlib</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_commands.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_download.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_fileio.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_filelist.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_lookup.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_main.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_misc.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_reference.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_main.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_md4.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_misc.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_os.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_pk3.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_shader.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_cache.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_crosshair.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_gameparse.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_iteration.c">
+      <Filter>filesystem\fscore</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\code\cgame\cg_public.h" />
@@ -677,6 +731,15 @@
     <ClInclude Include="..\..\code\botlib\l_struct.h">
       <Filter>botlib</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\code\filesystem\fslocal.h">
+      <Filter>filesystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\code\filesystem\fspublic.h">
+      <Filter>filesystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\code\filesystem\fscore\fscore.h">
+      <Filter>filesystem\fscore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\code\asm\ftola.asm" />
@@ -703,6 +766,12 @@
     </Filter>
     <Filter Include="zlib">
       <UniqueIdentifier>{896eb09e-4521-4061-8cba-7dbd49166a36}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="filesystem">
+      <UniqueIdentifier>{a6a5b2db-37ce-47a7-b39c-49027258c37b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="filesystem\fscore">
+      <UniqueIdentifier>{c982234a-2656-4cb5-9ab7-607c8fba7772}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

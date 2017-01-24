@@ -327,7 +327,9 @@ void CL_ParseSnapshot( msg_t *msg ) {
 
 //=====================================================================
 
+#ifndef NEW_FILESYSTEM
 int cl_connectedToPureServer;
+#endif
 int cl_connectedToCheatServer;
 
 /*
@@ -383,7 +385,11 @@ void CL_SystemInfoChanged( void ) {
 
 	s = Info_ValueForKey( systemInfo, "sv_referencedPaks" );
 	t = Info_ValueForKey( systemInfo, "sv_referencedPakNames" );
+#ifdef NEW_FILESYSTEM
+	fs_register_download_list(s, t);
+#else
 	FS_PureServerSetReferencedPaks( s, t );
+#endif
 
 	gameSet = qfalse;
 	// scan through all the variables in the systeminfo and locally set cvars to match
@@ -399,11 +405,13 @@ void CL_SystemInfoChanged( void ) {
 		// ehw!
 		if (!Q_stricmp(key, "fs_game"))
 		{
+#ifndef NEW_FILESYSTEM
 			if(FS_CheckDirTraversal(value))
 			{
 				Com_Printf(S_COLOR_YELLOW "WARNING: Server sent invalid fs_game value %s\n", value);
 				continue;
 			}
+#endif
 				
 			gameSet = qtrue;
 		}
@@ -432,7 +440,11 @@ void CL_SystemInfoChanged( void ) {
 	if ( !gameSet && *Cvar_VariableString("fs_game") ) {
 		Cvar_Set( "fs_game", "" );
 	}
+#ifdef NEW_FILESYSTEM
+	fs_set_pure_connected_state(Cvar_VariableIntegerValue("sv_pure") ? qtrue : qfalse);
+#else
 	cl_connectedToPureServer = Cvar_VariableValue( "sv_pure" );
+#endif
 }
 
 /*
@@ -635,7 +647,11 @@ void CL_ParseDownload ( msg_t *msg ) {
 			clc.download = 0;
 
 			// rename the file
+#ifdef NEW_FILESYSTEM
+			fs_finalize_download();
+#else
 			FS_SV_Rename ( clc.downloadTempName, clc.downloadName, qfalse );
+#endif
 		}
 
 		// send intentions now

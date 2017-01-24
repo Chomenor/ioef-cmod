@@ -266,10 +266,12 @@ Cmd_Exec_f
 */
 void Cmd_Exec_f( void ) {
 	qboolean quiet;
+#ifndef NEW_FILESYSTEM
 	union {
 		char	*c;
 		void	*v;
 	} f;
+#endif
 	char	filename[MAX_QPATH];
 
 	quiet = !Q_stricmp(Cmd_Argv(0), "execq");
@@ -282,6 +284,9 @@ void Cmd_Exec_f( void ) {
 
 	Q_strncpyz( filename, Cmd_Argv(1), sizeof( filename ) );
 	COM_DefaultExtension( filename, sizeof( filename ), ".cfg" );
+#ifdef NEW_FILESYSTEM
+	fs_execute_config_file(filename, FS_CONFIGTYPE_NONE, EXEC_INSERT, quiet);
+#else
 	FS_ReadFile( filename, &f.v);
 	if (!f.c) {
 		Com_Printf ("couldn't exec %s\n", filename);
@@ -293,6 +298,7 @@ void Cmd_Exec_f( void ) {
 	Cbuf_InsertText (f.c);
 
 	FS_FreeFile (f.v);
+#endif
 }
 
 

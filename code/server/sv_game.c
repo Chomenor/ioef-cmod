@@ -323,19 +323,35 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return 0;
 
 	case G_FS_FOPEN_FILE:
+#ifdef NEW_FILESYSTEM
+		return FS_FOpenFileByModeVM( VMA(1), VMA(2), args[3], 4 );
+#else
 		return FS_FOpenFileByMode( VMA(1), VMA(2), args[3] );
+#endif
 	case G_FS_READ:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[3]) != 4) return 0;
+#endif
 		FS_Read2( VMA(1), args[2], args[3] );
 		return 0;
 	case G_FS_WRITE:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[3]) != 4) return 0;
+#endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 	case G_FS_FCLOSE_FILE:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[1]) != 4) return 0;
+#endif
 		FS_FCloseFile( args[1] );
 		return 0;
 	case G_FS_GETFILELIST:
 		return FS_GetFileList( VMA(1), VMA(2), VMA(3), args[4] );
 	case G_FS_SEEK:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[1]) != 4) return 0;
+#endif
 		return FS_Seek( args[1], args[2], args[3] );
 
 	case G_LOCATE_GAME_DATA:

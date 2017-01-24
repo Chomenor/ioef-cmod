@@ -438,17 +438,33 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		Cmd_ArgsBuffer( VMA(1), args[2] );
 		return 0;
 	case CG_FS_FOPENFILE:
+#ifdef NEW_FILESYSTEM
+		return FS_FOpenFileByModeVM( VMA(1), VMA(2), args[3], 1 );
+#else
 		return FS_FOpenFileByMode( VMA(1), VMA(2), args[3] );
+#endif
 	case CG_FS_READ:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[3]) != 1) return 0;
+#endif
 		FS_Read2( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_FS_WRITE:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[3]) != 1) return 0;
+#endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_FS_FCLOSEFILE:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[1]) != 1) return 0;
+#endif
 		FS_FCloseFile( args[1] );
 		return 0;
 	case CG_FS_SEEK:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[1]) != 1) return 0;
+#endif
 		return FS_Seek( args[1], args[2], args[3] );
 	case CG_SENDCONSOLECOMMAND:
 		Cbuf_AddText( VMA(1) );
@@ -724,14 +740,22 @@ void CL_InitCGame( void ) {
 	mapname = Info_ValueForKey( info, "mapname" );
 	Com_sprintf( cl.mapname, sizeof( cl.mapname ), "maps/%s.bsp", mapname );
 
+#ifdef NEW_FILESYSTEM
+	// Give the map pk3 slightly higher precedence in the filesystem to help
+	// load the correct textures and such
+	fs_register_current_map(cl.mapname);
+#endif
+
 	// load the dll or bytecode
 	interpret = Cvar_VariableValue("vm_cgame");
+#ifndef NEW_FILESYSTEM
 	if(cl_connectedToPureServer)
 	{
 		// if sv_pure is set we only allow qvms to be loaded
 		if(interpret != VMI_COMPILED && interpret != VMI_BYTECODE)
 			interpret = VMI_COMPILED;
 	}
+#endif
 
 	cgvm = VM_Create( "cgame", CL_CgameSystemCalls, interpret );
 	if ( !cgvm ) {

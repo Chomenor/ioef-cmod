@@ -169,10 +169,16 @@ Sys_PIDFileName
 */
 static char *Sys_PIDFileName( const char *gamedir )
 {
+#ifdef NEW_FILESYSTEM
+	char buffer[FS_MAX_PATH];
+	if(fs_generate_path_writedir(gamedir, PID_FILENAME, FS_CREATE_DIRECTORIES, 0,
+			buffer, sizeof(buffer), qfalse)) return va("%s", buffer);
+#else
 	const char *homePath = Cvar_VariableString( "fs_homepath" );
 
 	if( *homePath != '\0' )
 		return va( "%s/%s/%s", homePath, gamedir, PID_FILENAME );
+#endif
 
 	return NULL;
 }
@@ -225,9 +231,11 @@ static qboolean Sys_WritePIDFile( const char *gamedir )
 			stale = qtrue;
 	}
 
+#ifndef NEW_FILESYSTEM
 	if( FS_CreatePath( pidFile ) ) {
 		return 0;
 	}
+#endif
 
 	if( ( f = fopen( pidFile, "w" ) ) != NULL )
 	{
@@ -283,7 +291,11 @@ static __attribute__ ((noreturn)) void Sys_Exit( int exitCode )
 	if( exitCode < 2 && com_fullyInitialized )
 	{
 		// Normal exit
+#ifdef NEW_FILESYSTEM
+		Sys_RemovePIDFile( fs_pid_file_directory() );
+#else
 		Sys_RemovePIDFile( FS_GetCurrentGameDir() );
+#endif
 	}
 
 	NET_Shutdown( );

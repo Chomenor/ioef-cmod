@@ -52,7 +52,11 @@ void LAN_LoadCachedServers( void ) {
 	fileHandle_t fileIn;
 	cls.numglobalservers = cls.numfavoriteservers = 0;
 	cls.numGlobalServerAddresses = 0;
+#ifdef NEW_FILESYSTEM
+	if (FS_SV_FOpenFileRead("servercache.dat", &fileIn) > 0) {
+#else
 	if (FS_SV_FOpenFileRead("servercache.dat", &fileIn)) {
+#endif
 		FS_Read(&cls.numglobalservers, sizeof(int), fileIn);
 		FS_Read(&cls.numfavoriteservers, sizeof(int), fileIn);
 		FS_Read(&size, sizeof(int), fileIn);
@@ -777,17 +781,30 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_FS_FOPENFILE:
+#ifdef NEW_FILESYSTEM
+		return FS_FOpenFileByModeVM( VMA(1), VMA(2), args[3], 2 );
+#else
 		return FS_FOpenFileByMode( VMA(1), VMA(2), args[3] );
+#endif
 
 	case UI_FS_READ:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[3]) != 2) return 0;
+#endif
 		FS_Read2( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_WRITE:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[3]) != 2) return 0;
+#endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_FCLOSEFILE:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[1]) != 2) return 0;
+#endif
 		FS_FCloseFile( args[1] );
 		return 0;
 
@@ -795,6 +812,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return FS_GetFileList( VMA(1), VMA(2), VMA(3), args[4] );
 
 	case UI_FS_SEEK:
+#ifdef NEW_FILESYSTEM
+		if(fs_handle_get_vm_owner(args[1]) != 2) return 0;
+#endif
 		return FS_Seek( args[1], args[2], args[3] );
 	
 	case UI_R_REGISTERMODEL:
@@ -1099,12 +1119,14 @@ void CL_InitUI( void ) {
 
 	// load the dll or bytecode
 	interpret = Cvar_VariableValue("vm_ui");
+#ifndef NEW_FILESYSTEM
 	if(cl_connectedToPureServer)
 	{
 		// if sv_pure is set we only allow qvms to be loaded
 		if(interpret != VMI_COMPILED && interpret != VMI_BYTECODE)
 			interpret = VMI_COMPILED;
 	}
+#endif
 
 	uivm = VM_Create( "ui", CL_UISystemCalls, interpret );
 	if ( !uivm ) {

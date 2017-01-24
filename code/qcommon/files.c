@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *****************************************************************************/
 
 
+#ifndef NEW_FILESYSTEM
 #include "q_shared.h"
 #include "qcommon.h"
 #include "unzip.h"
@@ -4169,3 +4170,5 @@ const char *FS_GetCurrentGameDir(void)
 
 	return com_basegame->string;
 }
+
+#endif	// NEW_FILESYSTEM

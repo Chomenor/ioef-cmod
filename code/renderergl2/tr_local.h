@@ -1467,6 +1467,10 @@ typedef struct {
 typedef struct {
 	qboolean				registered;		// cleared at shutdown, set at beginRegistration
 
+#ifdef NEW_FILESYSTEM
+	qboolean				new_filesystem;		// use new filesystem calls
+#endif
+
 	int						visIndex;
 	int						visClusters[MAX_VISCOUNTS];
 	int						visCounts[MAX_VISCOUNTS];	// incremented every time a new vis cluster is entered

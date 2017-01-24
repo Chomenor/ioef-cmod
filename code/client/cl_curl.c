@@ -256,8 +256,12 @@ void CL_cURL_BeginDownload( const char *localName, const char *remoteURL )
 	CL_cURL_Cleanup();
 	Q_strncpyz(clc.downloadURL, remoteURL, sizeof(clc.downloadURL));
 	Q_strncpyz(clc.downloadName, localName, sizeof(clc.downloadName));
+#ifdef NEW_FILESYSTEM
+	Com_sprintf(clc.downloadTempName, sizeof(clc.downloadTempName), "download.temp");
+#else
 	Com_sprintf(clc.downloadTempName, sizeof(clc.downloadTempName),
 		"%s.tmp", localName);
+#endif
 
 	// Set so UI gets access to it
 	Cvar_Set("cl_downloadName", localName);
@@ -345,8 +349,15 @@ void CL_cURL_PerformDownload(void)
 		return;
 	}
 	FS_FCloseFile(clc.download);
+#ifdef NEW_FILESYSTEM
+	clc.download = 0;
+#endif
 	if(msg->msg == CURLMSG_DONE && msg->data.result == CURLE_OK) {
+#ifdef NEW_FILESYSTEM
+		fs_finalize_download();
+#else
 		FS_SV_Rename(clc.downloadTempName, clc.downloadName, qfalse);
+#endif
 		clc.downloadRestart = qtrue;
 	}
 	else {
@@ -354,9 +365,14 @@ void CL_cURL_PerformDownload(void)
 
 		qcurl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE,
 			&code);	
+#ifdef NEW_FILESYSTEM
+		Com_Printf("Download Error: %s Code: %ld URL: %s\n",
+			qcurl_easy_strerror(msg->data.result), code, clc.downloadURL);
+#else
 		Com_Error(ERR_DROP, "Download Error: %s Code: %ld URL: %s",
 			qcurl_easy_strerror(msg->data.result),
 			code, clc.downloadURL);
+#endif
 	}
 
 	CL_NextDownload();

@@ -257,6 +257,8 @@ VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.4
 OPUSDIR=$(MOUNT_DIR)/opus-1.1
 OPUSFILEDIR=$(MOUNT_DIR)/opusfile-0.5
 ZDIR=$(MOUNT_DIR)/zlib
+FSDIR=$(MOUNT_DIR)/filesystem
+FSDIR_FSCORE=$(MOUNT_DIR)/filesystem/fscore
 Q3ASMDIR=$(MOUNT_DIR)/tools/asm
 LBURGDIR=$(MOUNT_DIR)/tools/lcc/lburg
 Q3CPPDIR=$(MOUNT_DIR)/tools/lcc/cpp
@@ -970,6 +972,10 @@ ifneq ($(BUILD_GAME_QVM),0)
   endif
 endif
 
+ifeq ($(NEW_FILESYSTEM),1)
+  BASE_CFLAGS += -DNEW_FILESYSTEM
+endif
+
 ifeq ($(USE_OPENAL),1)
   CLIENT_CFLAGS += -DUSE_OPENAL
   ifeq ($(USE_OPENAL_DLOPEN),1)
@@ -1647,7 +1653,26 @@ Q3OBJ = \
   $(B)/client/sdl_snd.o \
   \
   $(B)/client/con_log.o \
-  $(B)/client/sys_main.o
+  $(B)/client/sys_main.o \
+  \
+  $(B)/client/fsc_cache.o \
+  $(B)/client/fsc_crosshair.o \
+  $(B)/client/fsc_gameparse.o \
+  $(B)/client/fsc_iteration.o \
+  $(B)/client/fsc_main.o \
+  $(B)/client/fsc_md4.o \
+  $(B)/client/fsc_misc.o \
+  $(B)/client/fsc_os.o \
+  $(B)/client/fsc_pk3.o \
+  $(B)/client/fsc_shader.o \
+  $(B)/client/fs_commands.o \
+  $(B)/client/fs_download.o \
+  $(B)/client/fs_fileio.o \
+  $(B)/client/fs_filelist.o \
+  $(B)/client/fs_lookup.o \
+  $(B)/client/fs_main.o \
+  $(B)/client/fs_misc.o \
+  $(B)/client/fs_reference.o
 
 ifdef MINGW
   Q3OBJ += \
@@ -2180,7 +2205,26 @@ Q3DOBJ = \
   $(B)/ded/null_snddma.o \
   \
   $(B)/ded/con_log.o \
-  $(B)/ded/sys_main.o
+  $(B)/ded/sys_main.o \
+  \
+  $(B)/ded/fsc_cache.o \
+  $(B)/ded/fsc_crosshair.o \
+  $(B)/ded/fsc_gameparse.o \
+  $(B)/ded/fsc_iteration.o \
+  $(B)/ded/fsc_main.o \
+  $(B)/ded/fsc_md4.o \
+  $(B)/ded/fsc_misc.o \
+  $(B)/ded/fsc_os.o \
+  $(B)/ded/fsc_pk3.o \
+  $(B)/ded/fsc_shader.o \
+  $(B)/ded/fs_commands.o \
+  $(B)/ded/fs_download.o \
+  $(B)/ded/fs_fileio.o \
+  $(B)/ded/fs_filelist.o \
+  $(B)/ded/fs_lookup.o \
+  $(B)/ded/fs_main.o \
+  $(B)/ded/fs_misc.o \
+  $(B)/ded/fs_reference.o
 
 ifeq ($(ARCH),x86)
   Q3DOBJ += \
@@ -2571,6 +2615,11 @@ $(B)/client/%.o: $(OPUSFILEDIR)/src/%.c
 $(B)/client/%.o: $(ZDIR)/%.c
 	$(DO_CC)
 
+$(B)/client/%.o: $(FSDIR)/%.c
+	$(DO_CC)
+$(B)/client/%.o: $(FSDIR_FSCORE)/%.c
+	$(DO_CC)
+
 $(B)/client/%.o: $(SDLDIR)/%.c
 	$(DO_CC)
 
@@ -2626,6 +2675,11 @@ $(B)/ded/%.o: $(CMDIR)/%.c
 	$(DO_DED_CC)
 
 $(B)/ded/%.o: $(ZDIR)/%.c
+	$(DO_DED_CC)
+
+$(B)/ded/%.o: $(FSDIR)/%.c
+	$(DO_DED_CC)
+$(B)/ded/%.o: $(FSDIR_FSCORE)/%.c
 	$(DO_DED_CC)
 
 $(B)/ded/%.o: $(BLIBDIR)/%.c

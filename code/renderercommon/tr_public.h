@@ -22,6 +22,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __TR_PUBLIC_H
 #define __TR_PUBLIC_H
 
+#ifdef NEW_FILESYSTEM
+typedef struct fsc_file_s fsc_file_t;
+typedef struct fsc_shader_s fsc_shader_t;
+#endif
+
 #include "tr_types.h"
 
 #define	REF_API_VERSION		8
@@ -180,6 +185,12 @@ typedef struct {
 	void	(*Sys_GLimpSafeInit)( void );
 	void	(*Sys_GLimpInit)( void );
 	qboolean (*Sys_LowPhysicalMemory)( void );
+#ifdef NEW_FILESYSTEM
+	const fsc_file_t *(*fs_image_lookup)(const char *name, int flags, qboolean debug);
+	const fsc_shader_t *(*fs_shader_lookup)(const char *name, int flags, qboolean debug);
+	char *(*fs_read_shader)(const fsc_shader_t *shader);
+	char *(*fs_file_extension)(const fsc_file_t *file);
+#endif
 } refimport_t;
 
 

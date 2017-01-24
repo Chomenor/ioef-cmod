@@ -368,6 +368,9 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	int					dataLength;
 	int					i;
 	char				filename[MAX_QPATH];
+#ifdef NEW_FILESYSTEM
+	const fsc_file_t	*qvm_file;
+#endif
 	union {
 		vmHeader_t	*h;
 		void				*v;
@@ -377,7 +380,13 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	Com_sprintf( filename, sizeof(filename), "vm/%s.qvm", vm->name );
 	Com_Printf( "Loading vm file %s...\n", filename );
 
+#ifdef NEW_FILESYSTEM
+	qvm_file = fs_general_lookup(filename, qtrue, qfalse, qfalse);
+	if(qvm_file) header.v = fs_read_data(qvm_file, 0, 0);
+	else header.v = 0;
+#else
 	FS_ReadFileDir(filename, vm->searchPath, unpure, &header.v);
+#endif
 
 	if ( !header.h ) {
 		Com_Printf( "Failed.\n" );
@@ -389,7 +398,11 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	}
 
 	// show where the qvm was loaded from
+#ifdef NEW_FILESYSTEM
+	fs_print_file_location(qvm_file);
+#else
 	FS_Which(filename, vm->searchPath);
+#endif
 
 	if( LittleLong( header.h->vmMagic ) == VM_MAGIC_VER2 ) {
 		Com_Printf( "...which has vmMagic VM_MAGIC_VER2\n" );
@@ -575,9 +588,14 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 				vmInterpret_t interpret ) {
 	vm_t		*vm;
 	vmHeader_t	*header;
+#ifdef NEW_FILESYSTEM
+	int i;
+	int remaining;
+#else
 	int			i, remaining, retval;
 	char filename[MAX_OSPATH];
 	void *startSearch = NULL;
+#endif
 
 	if ( !module || !module[0] || !systemCalls ) {
 		Com_Error( ERR_FATAL, "VM_Create: bad parms" );
@@ -608,6 +626,16 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 
 	Q_strncpyz(vm->name, module, sizeof(vm->name));
 
+#ifdef NEW_FILESYSTEM
+	if(interpret == VMI_NATIVE) {
+		vm->dllHandle = fs_load_game_dll(module, &vm->entryPoint, VM_DllSyscall);
+		if(vm->dllHandle) {
+			vm->systemCall = systemCalls;
+			return vm; } }
+
+	header = VM_LoadQVM(vm, qtrue, qfalse);
+	if(!header) return 0;
+#else
 	do
 	{
 		retval = FS_FindVM(&startSearch, filename, sizeof(filename), module, (interpret == VMI_NATIVE));
@@ -639,6 +667,7 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 	
 	if(retval < 0)
 		return NULL;
+#endif
 
 	vm->systemCall = systemCalls;
 

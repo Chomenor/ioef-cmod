@@ -202,6 +202,9 @@ typedef struct {
 	qboolean	cURLEnabled;
 	qboolean	cURLUsed;
 	qboolean	cURLDisconnected;
+#ifdef NEW_FILESYSTEM
+	qboolean	cURLReconnecting;
+#endif
 	char		downloadURL[MAX_OSPATH];
 	CURL		*downloadCURL;
 	CURLM		*downloadCURLM;
@@ -212,7 +215,9 @@ typedef struct {
 	int			downloadBlock;	// block we are waiting for
 	int			downloadCount;	// how many bytes we got
 	int			downloadSize;	// how many bytes we got
+#ifndef NEW_FILESYSTEM
 	char		downloadList[MAX_INFO_STRING]; // list of paks we need to download
+#endif
 	qboolean	downloadRestart;	// if true, we need to do another FS_Restart because we downloaded a pak
 
 	// demo information
@@ -514,7 +519,9 @@ char *Key_KeynumToString (int keynum);
 //
 // cl_parse.c
 //
+#ifndef NEW_FILESYSTEM
 extern int cl_connectedToPureServer;
+#endif
 extern int cl_connectedToCheatServer;
 
 #ifdef USE_VOIP

@@ -2503,6 +2503,10 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	char		strippedName[MAX_QPATH];
 	int			hash;
 	char		*shaderText;
+#ifdef NEW_FILESYSTEM
+	const fsc_shader_t *fsShader;
+	char		*shaderTextToFree = 0;
+#endif
 	image_t		*image;
 	shader_t	*sh;
 
@@ -2550,6 +2554,12 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	//
 	// attempt to define shader from an explicit parameter file
 	//
+#ifdef NEW_FILESYSTEM
+	if(tr.new_filesystem) {
+		fsShader = ri.fs_shader_lookup(strippedName, 0, qfalse);
+		shaderText = shaderTextToFree = fsShader ? ri.fs_read_shader(fsShader) : 0; }
+	else
+#endif
 	shaderText = FindShaderInShaderText( strippedName );
 	if ( shaderText ) {
 		// enable this when building a pak file to get a global list
@@ -2563,6 +2573,9 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 			shader.defaultShader = qtrue;
 		}
 		sh = FinishShader();
+#ifdef NEW_FILESYSTEM
+		if(tr.new_filesystem) ri.Free(shaderTextToFree);
+#endif
 		return sh;
 	}
 
@@ -3139,6 +3152,9 @@ void R_InitShaders( void ) {
 
 	CreateInternalShaders();
 
+#ifdef NEW_FILESYSTEM
+	if(!tr.new_filesystem)
+#endif
 	ScanAndLoadShaderFiles();
 
 	CreateExternalShaders();
