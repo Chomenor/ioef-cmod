@@ -16,7 +16,11 @@ Author: Noah Metzger <chomenor@gmail.com>
 
 # Compiling
 
-Should be very similar to regular ioquake3. For make builds, run "make NEW_FILESYSTEM=1". For visual studio, set "NEW_FILESYSTEM" in the preprocessor definitions before building.
+Should be very similar to regular ioquake3.
+
+- For make builds, run "make NEW_FILESYSTEM=1".
+- If you are using one of the build scripts instead of calling make directly, add the line "NEW_FILESYSTEM=1" to "Makefile.local"
+- For visual studio, set "NEW_FILESYSTEM" in the preprocessor definitions for both the main game and renderer dlls.
 
 There are some changes to the renderer dlls in the new filesystem. If you mix a renderer dll and main application that have different filesystem versions, the game should still run, but this isn't recommended or well tested.
 
@@ -103,7 +107,7 @@ Once you run one of the above commands, you can use the "compare" command to fin
 
 - Little to no testing has been done on less common platforms and build environments, or on big endian systems. Fortunately most of the issues that could come up should be limited to a few places like fsc_os.c.
 
-- Only the makefile and msvc12 project files are updated to use the new filesystem. Some of the other project files like the older visual studio and xcode projects and the mac build scripts aren't updated yet. I figure somebody with more experience with those components would be better suited to make the changes.
+- Only the makefile and msvc12 project files are updated to use the new filesystem. Some of the other project files and build scripts aren't updated yet. I figure somebody with more experience with those components would be better suited to make the changes.
 
 - The code conventions used for the filesystem are a bit different from the main ioq3 codebase in terms of stuff like function capitilization and brace placement.
 
