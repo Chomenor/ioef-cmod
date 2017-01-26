@@ -151,7 +151,7 @@ void fs_set_mod_dir(const char *value, qboolean move_pid) {
 	else fs_mod_settings->flags = CVAR_ARCHIVE;
 
 	// Move pid file to new mod dir if necessary
-	if(move_pid && fs_mod_settings->integer && Q_stricmp(old_pid_dir, fs_pid_file_directory())) {
+	if(move_pid && strcmp(old_pid_dir, fs_pid_file_directory())) {
 		Sys_RemovePIDFile(old_pid_dir);
 		Sys_InitPIDFile(fs_pid_file_directory()); }
 
