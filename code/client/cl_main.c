@@ -2170,7 +2170,11 @@ void CL_DownloadsComplete( void ) {
 	// this will also (re)load the UI
 	// if this is a local client then only the client part of the hunk
 	// will be cleared, note that this is done after the hunk mark has been set
+#ifdef NEW_FILESYSTEM
+	if(!FS_ConditionalRestart(clc.checksumFeed, qfalse)) CL_FlushMemory();
+#else
 	CL_FlushMemory();
+#endif
 
 	// initialize the CGame
 	cls.cgameStarted = qtrue;
