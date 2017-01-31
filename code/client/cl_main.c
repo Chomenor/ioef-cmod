@@ -2115,31 +2115,29 @@ void CL_DownloadsComplete( void ) {
 		clc.cURLUsed = qfalse;
 		CL_cURL_Shutdown();
 		if( clc.cURLDisconnected ) {
-			if(clc.downloadRestart) {
 #ifdef NEW_FILESYSTEM
-				fs_refresh(qfalse);
+			clc.downloadRestart = qfalse;
+			clc.cURLReconnecting = qtrue;	// Don't reset attempted downloads
 #else
+			if(clc.downloadRestart) {
 				FS_Restart(clc.checksumFeed);
-#endif
 				clc.downloadRestart = qfalse;
 			}
-			clc.cURLDisconnected = qfalse;
-#ifdef NEW_FILESYSTEM
-			clc.cURLReconnecting = qtrue;	// Don't reset attempted downloads
 #endif
+			clc.cURLDisconnected = qfalse;
 			CL_Reconnect_f();
 			return;
 		}
 	}
 #endif
 
+#ifndef NEW_FILESYSTEM
 	// if we downloaded files we need to restart the file system
+#endif
 	if (clc.downloadRestart) {
 		clc.downloadRestart = qfalse;
 
-#ifdef NEW_FILESYSTEM
-		fs_refresh(qfalse);
-#else
+#ifndef NEW_FILESYSTEM
 		FS_Restart(clc.checksumFeed); // We possibly downloaded a pak, restart the file system to load it
 #endif
 
@@ -2242,42 +2240,30 @@ void CL_NextDownload(void)
 
 	while(1) {
 		char *remoteName, *localName;
-		qboolean useCURL = qfalse;
-		int attempt_status = fs_get_current_download_attempt_status();
+		qboolean curl_already_attempted = qfalse;
 
-		if(attempt_status == 1 && !clc.cURLDisconnected) {
-			// Last download appears to be unsuccessful, but only in cURL mode, so don't advance and
-			// retry current download as UDP download
-			fs_register_current_download_attempt(qfalse);
-		} else {
-			// Advance to next download
-			fs_advance_next_needed_download();
-			attempt_status = fs_get_current_download_attempt_status(); }
-
-		if(!fs_get_current_download_names(&localName, &remoteName)) {
+		// Get next potential download
+		fs_advance_next_needed_download(clc.cURLDisconnected);
+		if(!fs_get_current_download_info(&localName, &remoteName, &curl_already_attempted)) {
 			CL_DownloadsComplete();
 			return; }
 
-		if(attempt_status == 2) {
-			// Last download was unsuccessful, so don't try again because it could lead to a loop
-			Com_Printf("WARNING: Ignoring download %s because a download with the same hash has already been"
-				" attempted in this session.\n", localName);
-			continue; }
-
+		// Check some skip conditions
 		if(!(cl_allowDownload->integer & DLF_ENABLE)) {
 			Com_Printf("WARNING: Skipping download '%s' because all downloads are disabled "
 				"on your client (cl_allowDownload is %d)\n", localName, cl_allowDownload->integer);
+			fs_advance_download();
 			continue; }
 		if(!Q_stricmp(clc.servername, "localhost")) {
 			// Don't do any downloads when connected to a local game
 			// Otherwise the game could try to download from itself under certain circumstances
 			Com_Printf("WARNING: Skipping download '%s' because the game appears to be local.\n", localName);
+			fs_advance_download();
 			continue; }
 
 #ifdef USE_CURL
-		if(attempt_status == 1) {
-			// cURL download already attempted
-			if(clc.cURLDisconnected) continue;	// Wait for the reconnect to make UDP attempt
+		// Attempt cURL download
+		if(curl_already_attempted) {
 			Com_Printf("NOTE: Attempting UDP download for '%s' because a cURL download appears"
 				" to have been unsuccessful.\n", localName); }
 
@@ -2294,7 +2280,8 @@ void CL_NextDownload(void)
 				// Begin cURL Download
 				fs_register_current_download_attempt(qtrue);
 				CL_cURL_BeginDownload(localName, va("%s/%s", clc.sv_dlURL, remoteName));
-				useCURL = qtrue; } }
+				if(!clc.cURLDisconnected) clc.downloadRestart = qtrue;
+				return; } }
 
 		else if(!(clc.sv_allowDownload & DLF_NO_REDIRECT) && *clc.sv_dlURL) {
 			// cURL download not enabled in client, but enabled on server
@@ -2302,26 +2289,26 @@ void CL_NextDownload(void)
 				" (cl_allowDownload is %d)\n", cl_allowDownload->integer); }
 #endif
 
-		if(!useCURL) {
-			if((cl_allowDownload->integer & DLF_NO_UDP)) {
-				Com_Printf("WARNING: Skipping download '%s' because UDP downloads are disabled"
-					" on your client (cl_allowDownload is %d)\n",
-					localName, cl_allowDownload->integer);
-				continue; }
-			else if(!(clc.sv_allowDownload & DLF_ENABLE) || (clc.sv_allowDownload & DLF_NO_UDP)) {
-				Com_Printf("WARNING: Skipping download '%s' because UDP downloads appear to be disabled"
-					" on the server (sv_allowDownload is %d)\n",
-					localName, clc.sv_allowDownload);
-				continue; }
-			else {
-				// Begin UDP Download
-				Com_Printf("Starting UDP download for '%s'\n", localName);
-				fs_register_current_download_attempt(qfalse);
-				CL_BeginDownload( localName, remoteName ); } }
-
-		// Download has been started
-		clc.downloadRestart = qtrue;
-		return; }
+		// Attempt UDP download
+		if((cl_allowDownload->integer & DLF_NO_UDP)) {
+			Com_Printf("WARNING: Skipping download '%s' because UDP downloads are disabled"
+				" on your client (cl_allowDownload is %d)\n",
+				localName, cl_allowDownload->integer);
+			fs_advance_download();
+			continue; }
+		else if(!(clc.sv_allowDownload & DLF_ENABLE) || (clc.sv_allowDownload & DLF_NO_UDP)) {
+			Com_Printf("WARNING: Skipping download '%s' because UDP downloads appear to be disabled"
+				" on the server (sv_allowDownload is %d)\n",
+				localName, clc.sv_allowDownload);
+			fs_advance_download();
+			continue; }
+		else {
+			// Begin UDP Download
+			Com_Printf("Starting UDP download for '%s'\n", localName);
+			fs_register_current_download_attempt(qfalse);
+			CL_BeginDownload( localName, remoteName );
+			clc.downloadRestart = qtrue;
+			return; } }
 #else
 	char *s;
 	char *remoteName, *localName;

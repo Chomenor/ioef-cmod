@@ -310,17 +310,18 @@ void fs_register_commands(void);
 // Download
 /* ******************************************************************************** */
 
-// Download List Creation
+// Download List Handling
+void fs_advance_download(void);
 void fs_register_download_list(const char *hash_list, const char *name_list);
-
-// Download List Advancement
-void fs_advance_next_needed_download(void);
-qboolean fs_get_current_download_names(char **local_name_out, char **remote_name_out);
 
 // Attempted Download Tracking
 void fs_register_current_download_attempt(qboolean http);
 void fs_clear_attempted_downloads(void);
-int fs_get_current_download_attempt_status(void);
+
+// Download List Advancement
+void fs_advance_next_needed_download(qboolean curl_disconnected);
+qboolean fs_get_current_download_info(char **local_name_out, char **remote_name_out,
+		qboolean *curl_already_attempted_out);
 
 // Download Completion
 void fs_finalize_download(void);

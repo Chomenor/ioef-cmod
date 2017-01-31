@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "fslocal.h"
 
 /* ******************************************************************************** */
-// Download List Creation
+// Download List Handling
 /* ******************************************************************************** */
 
 #define MAX_DOWNLOAD_NAME 64	// Max length of the pk3 filename
@@ -49,7 +49,7 @@ static void fs_free_download_entry(download_entry_t *entry) {
 	Z_Free(entry->mod_dir);
 	Z_Free(entry); }
 
-static void fs_advance_download(void) {
+void fs_advance_download(void) {
 	// Frees any existing current_download, and moves download from next_download to current_download
 	if(current_download) fs_free_download_entry(current_download);
 	current_download = next_download;
@@ -117,6 +117,33 @@ void fs_register_download_list(const char *hash_list, const char *name_list) {
 	} }
 
 /* ******************************************************************************** */
+// Attempted Download Tracking
+/* ******************************************************************************** */
+
+// This section is used to prevent trying to unsuccessfully download the same file over
+// and over again in the same session.
+
+pk3_list_t attempted_downloads_http;
+pk3_list_t attempted_downloads;
+
+static void register_attempted_download(unsigned int hash, qboolean http) {
+	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
+	if(!target->ht.bucket_count) pk3_list_initialize(target, 20);
+	pk3_list_insert(target, hash); }
+
+static qboolean check_attempted_download(unsigned int hash, qboolean http) {
+	// Returns qtrue if download already attempted
+	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
+	return pk3_list_lookup(target, hash, qfalse) ? qtrue : qfalse; }
+
+void fs_register_current_download_attempt(qboolean http) {
+	register_attempted_download(current_download->hash, http); }
+
+void fs_clear_attempted_downloads(void) {
+	pk3_list_free(&attempted_downloads_http);
+	pk3_list_free(&attempted_downloads); }
+
+/* ******************************************************************************** */
 // Download List Advancement
 /* ******************************************************************************** */
 
@@ -129,7 +156,7 @@ static qboolean fs_is_download_id_pak(download_entry_t *entry) {
 	#endif
 	return qfalse; }
 
-static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int recheck_hash) {
+static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int recheck_hash, qboolean curl_disconnected) {
 	// Returns qtrue if file should be downloaded, qfalse otherwise.
 	// recheck_hash can be set to retest a file that was downloaded and has an unexpected hash
 	unsigned int hash = recheck_hash ? recheck_hash : entry->hash;
@@ -165,6 +192,15 @@ static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int reche
 				" Download not saved.\n", current_download->local_name); }
 		return qfalse; }
 
+	if(!recheck_hash) {
+		if(check_attempted_download(hash, qfalse)) {
+			Com_Printf("WARNING: Ignoring download %s because a download with the same hash has already been"
+				" attempted in this session.\n", entry->local_name);
+			return qfalse; }
+		if(curl_disconnected && check_attempted_download(hash, qtrue)) {
+			// Wait for the reconnect to attempt this as a UDP download
+			return qfalse; } }
+
 	// NOTE: Consider using hash-based check instead of the old filename check?
 	if(fs_is_download_id_pak(entry)) {
 		Com_Printf("WARNING: Ignoring download %s as possible system pak.\n", entry->local_name);
@@ -180,53 +216,23 @@ static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int reche
 
 	return qtrue; }
 
-void fs_advance_next_needed_download(void) {
-	// Advances current download to the next file that is needed and valid to download
-	fs_advance_download();
+void fs_advance_next_needed_download(qboolean curl_disconnected) {
+	// Advances through download queue until the current download is either null
+	//    or valid to download (from the filesystem perspectiveat at least; CL_NextDownload
+	//    may skip downloads for other reasons by calling fs_advance_download)
+	if(!current_download) fs_advance_download();
 	while(current_download) {
-		if(fs_is_valid_download(current_download, 0)) break;
+		if(fs_is_valid_download(current_download, 0, curl_disconnected)) break;
 		fs_advance_download(); } }
 
-qboolean fs_get_current_download_names(char **local_name_out, char **remote_name_out) {
-	// Returns qtrue and writes names if current_download is available, qfalse otherwise
+qboolean fs_get_current_download_info(char **local_name_out, char **remote_name_out,
+			qboolean *curl_already_attempted_out) {
+	// Returns qtrue and writes info if current_download is available, qfalse if it's null
 	if(!current_download) return qfalse;
 	*local_name_out = current_download->local_name;
 	*remote_name_out = current_download->remote_name;
+	*curl_already_attempted_out = check_attempted_download(current_download->hash, qtrue);
 	return qtrue; }
-
-/* ******************************************************************************** */
-// Attempted Download Tracking
-/* ******************************************************************************** */
-
-// This section is used to prevent trying to unsuccessfully download the same file over
-// and over again in the same session.
-
-pk3_list_t attempted_downloads_http;
-pk3_list_t attempted_downloads;
-
-static void register_attempted_download(unsigned int hash, qboolean http) {
-	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
-	if(!target->ht.bucket_count) pk3_list_initialize(target, 20);
-	pk3_list_insert(target, hash); }
-
-static qboolean check_attempted_download(unsigned int hash, qboolean http) {
-	// Returns qtrue if download already attempted
-	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
-	return pk3_list_lookup(target, hash, qfalse) ? qtrue : qfalse; }
-
-void fs_register_current_download_attempt(qboolean http) {
-	register_attempted_download(current_download->hash, http); }
-
-void fs_clear_attempted_downloads(void) {
-	pk3_list_free(&attempted_downloads_http);
-	pk3_list_free(&attempted_downloads); }
-
-int fs_get_current_download_attempt_status(void) {
-	// Returns 1 if only http download attempted, 2 if UDP download attempted
-	if(!current_download) return 0;
-	if(check_attempted_download(current_download->hash, qfalse)) return 2;
-	if(check_attempted_download(current_download->hash, qtrue)) return 1;
-	return 0; }
 
 /* ******************************************************************************** */
 // Download Completion
@@ -267,7 +273,8 @@ void fs_finalize_download(void) {
 		// Wrong hash - this could be a malicious attempt to spoof a system pak or maybe a corrupt
 		//    download, but probably is just a server configuration issue mixing up pak versions.
 		//    Run the file needed check with the new hash to see if it still passes.
-		if(!fs_is_valid_download(current_download, actual_hash)) {
+		if(!fs_is_valid_download(current_download, actual_hash, qfalse)) {
+			// Error should already be printed
 			return; }
 		else {
 			Com_Printf("WARNING: Downloaded pk3 %s has unexpected hash.\n", current_download->local_name); } }
@@ -288,8 +295,7 @@ void fs_finalize_download(void) {
 		Com_Printf("ERROR: There was a problem moving downloaded pk3 %s from temporary file to target"
 				" location. Download may not be saved.\n", current_download->local_name); }
 	else {
-		// Download appears successful, so it should be logged as fully attempted
-		// Otherwise it could be treated as an unsuccessful cURL download and be eligible for a non-cURL retry
-		register_attempted_download(actual_hash, qfalse); } }
+		// Download appears successful; refresh filesystem to make sure it is properly registered
+		fs_refresh(qtrue); } }
 
 #endif	// NEW_FILESYSTEM
