@@ -69,14 +69,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->flags |= RESFLAG_CASE_MISMATCH; }
 
 	// Handle default.cfg query
-	#ifdef FS_SYSTEM_PAKS
 	if(query->config_query == FS_CONFIGTYPE_DEFAULT) {
-		if(!resource->system_pak_priority && !resource->server_pak_position && resource->mod_dir_match < 2) {
-			resource->disabled = "default config file can only be loaded from system paks,"
-				" paks on the server pak list, or from the current mod dir"; } }
-	#else
-	#pragma message("WARNING: FS_SYSTEM_PAKS not set. Will load default.cfg from any available source.")
-	#endif
+		if(resource->file->sourcetype != FSC_SOURCETYPE_PK3 && resource->mod_dir_match < 2) {
+			resource->disabled = "default config file must be either in a pk3 or in a mod directory"; } }
 
 	// Handle settings (e.g. q3config.cfg or autoexec.cfg) query
 	if(query->config_query == FS_CONFIGTYPE_SETTINGS) {
