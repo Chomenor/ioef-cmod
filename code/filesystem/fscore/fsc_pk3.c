@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define STACKPTRL(pointer) ( fsc_stack_retrieve(stack, pointer) )	// stack is a local parameter
 
 // Somewhat arbitrary limit to avoid overflow issues
-#define FSC_MAX_PK3_SIZE 4240000000
+#define FSC_MAX_PK3_SIZE 4240000000u
 
 /* ******************************************************************************** */
 // PK3 File Processing
