@@ -68,11 +68,6 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 			|| (!Q_stricmp(resource_mod_dir, com_basegame->string) && strcmp(resource_mod_dir, com_basegame->string))) {
 		resource->flags |= RESFLAG_CASE_MISMATCH; }
 
-	// Handle default.cfg query
-	if(query->config_query == FS_CONFIGTYPE_DEFAULT) {
-		if(resource->file->sourcetype != FSC_SOURCETYPE_PK3 && resource->mod_dir_match < 2) {
-			resource->disabled = "default config file must be either in a pk3 or in a mod directory"; } }
-
 	// Handle settings (e.g. q3config.cfg or autoexec.cfg) query
 	if(query->config_query == FS_CONFIGTYPE_SETTINGS) {
 		if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
