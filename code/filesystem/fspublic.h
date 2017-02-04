@@ -159,7 +159,7 @@ extern cvar_t *fs_dirs;
 extern fsc_filesystem_t fs;
 
 extern cvar_t *fs_game;
-extern char lastValidGame[FSC_MAX_MODDIR];
+extern char current_mod_dir[FSC_MAX_MODDIR];
 extern const fsc_file_direct_t *current_map_pk3;
 extern int checksum_feed;
 

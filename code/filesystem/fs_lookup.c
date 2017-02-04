@@ -59,9 +59,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		if(query->use_current_map && source_pk3 == current_map_pk3) resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; }
 
 	// Determine mod dir match level
-	if(!Q_stricmp(fs_game->string, resource_mod_dir)) resource->mod_dir_match = 3;
-	else if(!Q_stricmp("basemod", resource_mod_dir)) resource->mod_dir_match = 2;
-	else if(!Q_stricmp(com_basegame->string, resource_mod_dir)) resource->mod_dir_match = 1;
+	if(*current_mod_dir && !Q_stricmp(resource_mod_dir, current_mod_dir)) resource->mod_dir_match = 3;
+	else if(!Q_stricmp(resource_mod_dir, "basemod")) resource->mod_dir_match = 2;
+	else if(!Q_stricmp(resource_mod_dir, com_basegame->string)) resource->mod_dir_match = 1;
 
 	// Check mod dir for case mismatched current or basegame directory
 	if((!Q_stricmp(resource_mod_dir, FS_GetCurrentGameDir()) && strcmp(resource_mod_dir, FS_GetCurrentGameDir()))

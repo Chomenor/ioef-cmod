@@ -159,7 +159,7 @@ static unsigned int server_pak_precedence(const fsc_file_t *file) {
 
 static unsigned int mod_dir_precedence(const fsc_file_t *file) {
 	const char *mod_dir = fsc_get_mod_dir(file, &fs);
-	if(!Q_stricmp(mod_dir, fs_game->string)) return 2;
+	if(*current_mod_dir && !Q_stricmp(mod_dir, current_mod_dir)) return 2;
 	if(!Q_stricmp(mod_dir, "basemod")) return 1;
 	return 0; }
 

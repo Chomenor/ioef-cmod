@@ -364,12 +364,12 @@ void fs_update_download_paks(void) {
 		while((entry = fs_hashtable_next(&it))) {
 			add_download_pak(entry->pak); } }
 
-	// Add all paks from current fs_game directory
-	if(*fs_game->string) {
+	// Add all paks from current mod directory
+	if(*current_mod_dir) {
 		int i;
 		fsc_hashtable_iterator_t hti;
 		fsc_pk3_hash_map_entry_t *hash_entry;
-		fsc_stackptr_t mod_ptr = fsc_string_repository_getstring(fs_game->string, 0, &fs.string_repository, &fs.general_stack);
+		fsc_stackptr_t mod_ptr = fsc_string_repository_getstring(current_mod_dir, 0, &fs.string_repository, &fs.general_stack);
 
 		if(mod_ptr) for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
