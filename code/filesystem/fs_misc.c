@@ -355,6 +355,39 @@ void *fs_load_game_dll(const char *name, intptr_t (QDECL **entryPoint)(int, ...)
 	fsc_free(dll_path_string);
 	return dll_handle; }
 
+int fs_valid_md3_lods(int max_lods, const char *name, const char *extension) {
+	// Returns number of valid md3 lods to attempt loading
+	// Ensures all lods are from the same location/pk3 to avoid inconsistencies
+	char namebuf[FSC_MAX_QPATH];
+	const fsc_file_t *base_file;
+	int lod;
+
+	for(lod=0; lod<max_lods; ++lod) {
+		// Get current_file
+		const fsc_file_t *current_file;
+		if(lod) Com_sprintf(namebuf, sizeof(namebuf), "%s_%d.%s", name, lod, extension);
+		else Com_sprintf(namebuf, sizeof(namebuf), "%s.%s", name, extension);
+		current_file = fs_general_lookup(namebuf, qtrue, qtrue, qfalse);
+		if(!current_file) return lod;
+
+		// If it's lod 0 save it as base file
+		if(!lod) base_file = current_file;
+
+		// Otherwise make sure it's compatible with base file
+		else {
+			if(current_file->sourcetype != base_file->sourcetype) {
+				if(com_developer->integer || fs_debug_lookup->integer)
+					Com_Printf("WARNING: Skipping md3 lod from different sourcetypes for %s\n", name);
+				return lod; }
+			if(current_file->sourcetype == FSC_SOURCETYPE_PK3 &&
+					((fsc_file_frompk3_t *)current_file)->source_pk3 !=
+					((fsc_file_frompk3_t *)base_file)->source_pk3) {
+				if(com_developer->integer || fs_debug_lookup->integer)
+					Com_Printf("WARNING: Skipping md3 lod from different paks for %s\n", name);
+				return lod; } } }
+
+	return max_lods; }
+
 void FS_GetModDescription(const char *modDir, char *description, int descriptionLen) {
 	char *descPath = va("%s/description.txt", modDir);
 	fileHandle_t descHandle;

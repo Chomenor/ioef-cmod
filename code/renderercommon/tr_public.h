@@ -190,6 +190,7 @@ typedef struct {
 	const fsc_shader_t *(*fs_shader_lookup)(const char *name, int flags, qboolean debug);
 	char *(*fs_read_shader)(const fsc_shader_t *shader);
 	char *(*fs_file_extension)(const fsc_file_t *file);
+	int (*fs_valid_md3_lods)(int max_lods, const char *name, const char *extension);
 #endif
 } refimport_t;
 
