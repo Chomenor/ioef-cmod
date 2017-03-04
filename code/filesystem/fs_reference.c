@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Copyright (C) 1999-2005 Id Software, Inc.
-              2017 Noah Metzger (chomenor@gmail.com)
+Copyright (C) 2017 Noah Metzger (chomenor@gmail.com)
 
 This file is part of Quake III Arena source code.
 
