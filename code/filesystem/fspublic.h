@@ -224,12 +224,12 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 
 // Path Handling
 #ifdef FSLOCAL
-int fs_generate_path(const char *path1, const char *path2, const char *path3,
-		int path1_flags, int path2_flags, int path3_flags,
-		char *target, int target_size, qboolean allow_truncation);
 int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
 		int path1_flags, int path2_flags, char *target, int target_size, qboolean allow_truncation);
 #endif
+int fs_generate_path(const char *path1, const char *path2, const char *path3,
+		int path1_flags, int path2_flags, int path3_flags,
+		char *target, int target_size, qboolean allow_truncation);
 int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
 		char *target, int target_size, qboolean allow_truncation);
 

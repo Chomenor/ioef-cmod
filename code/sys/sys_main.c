@@ -510,6 +510,31 @@ from executable path, then fs_basepath.
 
 void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 {
+#ifdef NEW_FILESYSTEM
+	void *dllhandle = 0;
+	char path[FS_MAX_PATH];
+
+	if(useSystemLib) {
+		Com_Printf("Trying to load \"%s\"...\n", name);
+		if(fs_generate_path(name, 0, 0, FS_ALLOW_DLL, 0, 0, path, sizeof(path), qfalse))
+			dllhandle = Sys_LoadLibrary(path); }
+
+	if(!dllhandle) {
+		const char *topDir = Sys_BinaryPath();
+		if(!*topDir) topDir = ".";
+		Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, topDir);
+		if(fs_generate_path(topDir, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path), qfalse))
+			dllhandle = Sys_LoadLibrary(path); }
+
+	if(!dllhandle) {
+		const char *basePath = Cvar_VariableString("fs_basepath");
+		if(!basePath || !*basePath) basePath = ".";
+		Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, basePath);
+		if(fs_generate_path(basePath, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path), qfalse))
+			dllhandle = Sys_LoadLibrary(path); }
+
+	if(!dllhandle) Com_Printf("Loading \"%s\" failed\n", name);
+#else
 	void *dllhandle;
 	
 	// Don't load any DLLs that end with the pk3 extension
@@ -553,6 +578,7 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 				Com_Printf("Loading \"%s\" failed\n", name);
 		}
 	}
+#endif
 	
 	return dllhandle;
 }
