@@ -111,4 +111,4 @@ Once you run one of the above commands, you can use the "compare" command to fin
 
 - The code conventions used for the filesystem are a bit different from the main ioq3 codebase in terms of stuff like function capitilization and brace placement.
 
-- The server-side pure validation routine is no longer supported, since it has no security value in modern conditions.
+- The server-side pure verification function SV_VerifyPaks_f is no longer supported, since it has no security value in modern conditions. All other pure server functionality is supported and cross-compatible with existing clients and servers.
