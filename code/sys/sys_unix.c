@@ -538,7 +538,7 @@ void Sys_ErrorDialog( const char *error )
 	char ospath[FS_MAX_PATH];
 	char *fileName = ospath;
 
-	fs_generate_path_writedir("crashlog.txt", 0, 0, 0, ospath, sizeof(ospath), qfalse);
+	fs_generate_path_writedir("crashlog.txt", 0, 0, 0, ospath, sizeof(ospath));
 #else
 	const char *homepath = Cvar_VariableString( "fs_homepath" );
 	const char *gamedir = Cvar_VariableString( "fs_game" );

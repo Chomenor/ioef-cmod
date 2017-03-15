@@ -114,7 +114,7 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 
 int fs_generate_path(const char *path1, const char *path2, const char *path3,
 		int path1_flags, int path2_flags, int path3_flags,
-		char *target, int target_size, qboolean allow_truncation) {
+		char *target, int target_size) {
 	// Concatenates paths, adding '/' character as seperator, with sanitization
 	//    and directory creation based on flags
 	// Returns output length on success, 0 on error (overflow or sanitize fail)
@@ -132,22 +132,23 @@ int fs_generate_path(const char *path1, const char *path2, const char *path3,
 		if(path1 || path2) fsc_stream_append_string(&stream, "/");
 		if(!fs_generate_subpath(&stream, path3, path3_flags)) return 0; }
 
-	if(stream.overflowed && !allow_truncation) return 0;
+	if(!stream.position || stream.overflowed) {
+		*target = 0;
+		return 0; }
 	return stream.position; }
 
 int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
-		int path1_flags, int path2_flags, char *target, int target_size, qboolean allow_truncation) {
+		int path1_flags, int path2_flags, char *target, int target_size) {
 	// Generates path prefixed by source directory
 	if(!sourcedirs[source_dir_id].active_rank) return 0;
 	return fs_generate_path(sourcedirs[source_dir_id].path_cvar->string, path1, path2, FS_NO_SANITIZE,
-				path1_flags, path2_flags, target, target_size, allow_truncation); }
+				path1_flags, path2_flags, target, target_size); }
 
 int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
-		char *target, int target_size, qboolean allow_truncation) {
+		char *target, int target_size) {
 	// Generates path prefixed by write directory
 	if(!sourcedirs[0].writable) return 0;
-	return fs_generate_path_sourcedir(0, path1, path2, path1_flags, path2_flags,
-			target, target_size, allow_truncation); }
+	return fs_generate_path_sourcedir(0, path1, path2, path1_flags, path2_flags, target, target_size); }
 
 /* ******************************************************************************** */
 // Direct file access functions
@@ -177,7 +178,7 @@ void fs_delete_file(const char *path) {
 void FS_HomeRemove( const char *homePath ) {
 	char path[FS_MAX_PATH];
 	if(!fs_generate_path_writedir(FS_GetCurrentGameDir(), homePath, 0, FS_ALLOW_SLASH,
-				path, sizeof(path), qfalse)) {
+				path, sizeof(path))) {
 		Com_Printf("WARNING: FS_HomeRemove on %s failed due to invalid path\n", homePath);
 		return; }
 
@@ -193,7 +194,7 @@ qboolean FS_FileInPathExists(const char *testpath) {
 qboolean FS_FileExists(const char *file) {
 	char path[FS_MAX_PATH];
 	if(!fs_generate_path_sourcedir(0, FS_GetCurrentGameDir(), file, 0, FS_ALLOW_SLASH,
-			path, sizeof(path), qfalse)) return qfalse;
+			path, sizeof(path))) return qfalse;
 	return FS_FileInPathExists(path); }
 
 /* ******************************************************************************** */
@@ -820,7 +821,7 @@ fileHandle_t FS_FCreateOpenPipeFile(const char *filename) {
 	fs_pipe_handle_t *handle_entry;
 
 	if(fs_generate_path_writedir(FS_GetCurrentGameDir(), filename,
-			0, FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE, path, sizeof(path), qfalse)) {
+			0, FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE, path, sizeof(path))) {
 		fifo = Sys_Mkfifo(path); }
 
 	if(!fifo) {
@@ -988,7 +989,7 @@ fileHandle_t fs_open_settings_file_write(const char *filename) {
 		mod_dir = com_basegame->string; }
 
 	if(!fs_generate_path_writedir(mod_dir, filename, FS_CREATE_DIRECTORIES, FS_ALLOW_SPECIAL_CFG,
-			path, sizeof(path), qfalse)) return 0;
+			path, sizeof(path))) return 0;
 	return fs_write_handle_open(path, qfalse, qfalse); }
 
 /* ******************************************************************************** */
@@ -1017,7 +1018,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	*fp = 0;
 
 	for(i=0; i<FS_SOURCEDIR_COUNT; ++i) {
-		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_SLASH, 0, path, sizeof(path), qfalse)) {
+		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_SLASH, 0, path, sizeof(path))) {
 			*fp = fs_cache_read_handle_open(0, path, &size);
 			if(*fp) break; } }
 
@@ -1031,7 +1032,7 @@ static fileHandle_t open_write_handle_with_mod_dir(const char *mod_dir, const ch
 	char full_path[FS_MAX_PATH];
 
 	if(!fs_generate_path_writedir(mod_dir, path, FS_CREATE_DIRECTORIES,
-			FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE|flags, full_path, sizeof(full_path), qfalse)) return 0;
+			FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE|flags, full_path, sizeof(full_path))) return 0;
 
 	return fs_write_handle_open(full_path, append, sync); }
 
@@ -1060,7 +1061,7 @@ int FS_FOpenFileByModeVM(const char *qpath, fileHandle_t *f, fsMode_t mode, int 
 			// files that haven't been indexed yet
 			char path[FS_MAX_PATH];
 			if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_SLASH,
-					path, sizeof(path), qfalse)) {
+					path, sizeof(path))) {
 				*f = fs_direct_read_handle_open(0, path, (unsigned int *)&size); } }
 		if(!*f) size = FS_FOpenFileRead(qpath, f, 0); }
 	else if(mode == FS_WRITE) {

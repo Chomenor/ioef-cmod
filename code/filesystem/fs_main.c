@@ -128,7 +128,9 @@ void fs_disconnect_cleanup(void) {
 static void convert_mod_dir(const char *source, char *target) {
 	// Sanitizes mod dir, and replaces com_basegame with empty string
 	// Target should be size FSC_MAX_MODDIR
-	if(!fs_generate_path(source, 0, 0, 0, 0, 0, target, FSC_MAX_MODDIR, qtrue)) *target = 0;
+	char buffer[FSC_MAX_MODDIR];
+	Q_strncpyz(buffer, source, sizeof(buffer));
+	if(!fs_generate_path(buffer, 0, 0, 0, 0, 0, target, FSC_MAX_MODDIR)) *target = 0;
 	else if(!Q_stricmp(target, "basemod")) *target = 0;
 	else if(!Q_stricmp(target, com_basegame->string)) *target = 0; }
 
@@ -193,7 +195,7 @@ static qboolean prepare_writable_directory(char *directory) {
 	void *fp;
 
 	if(!fs_generate_path(directory, "writetest.dat", 0, FS_CREATE_DIRECTORIES|FS_NO_SANITIZE,
-			0, 0, path, sizeof(path), qfalse)) return qfalse;
+			0, 0, path, sizeof(path))) return qfalse;
 	fp = fs_open_file(path, "wb");
 	if(!fp) return qfalse;
 	fsc_fclose(fp);
@@ -352,7 +354,7 @@ void fs_auto_refresh(void) {
 
 static void *get_fscache_path(void) {
 	char path[FS_MAX_PATH];
-	if(!fs_generate_path_sourcedir(0, "fscache.dat", 0, 0, 0, path, sizeof(path), qfalse)) return 0;
+	if(!fs_generate_path_sourcedir(0, "fscache.dat", 0, 0, 0, path, sizeof(path))) return 0;
 	return fsc_string_to_os_path(path); }
 
 void fs_indexcache_write(void) {

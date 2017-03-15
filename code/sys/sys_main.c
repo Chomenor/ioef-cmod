@@ -172,7 +172,7 @@ static char *Sys_PIDFileName( const char *gamedir )
 #ifdef NEW_FILESYSTEM
 	char buffer[FS_MAX_PATH];
 	if(fs_generate_path_writedir(gamedir, PID_FILENAME, FS_CREATE_DIRECTORIES, 0,
-			buffer, sizeof(buffer), qfalse)) return va("%s", buffer);
+			buffer, sizeof(buffer))) return va("%s", buffer);
 #else
 	const char *homePath = Cvar_VariableString( "fs_homepath" );
 
@@ -516,21 +516,21 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 
 	if(useSystemLib) {
 		Com_Printf("Trying to load \"%s\"...\n", name);
-		if(fs_generate_path(name, 0, 0, FS_ALLOW_DLL, 0, 0, path, sizeof(path), qfalse))
+		if(fs_generate_path(name, 0, 0, FS_ALLOW_DLL, 0, 0, path, sizeof(path)))
 			dllhandle = Sys_LoadLibrary(path); }
 
 	if(!dllhandle) {
 		const char *topDir = Sys_BinaryPath();
 		if(!*topDir) topDir = ".";
 		Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, topDir);
-		if(fs_generate_path(topDir, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path), qfalse))
+		if(fs_generate_path(topDir, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path)))
 			dllhandle = Sys_LoadLibrary(path); }
 
 	if(!dllhandle) {
 		const char *basePath = Cvar_VariableString("fs_basepath");
 		if(!basePath || !*basePath) basePath = ".";
 		Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, basePath);
-		if(fs_generate_path(basePath, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path), qfalse))
+		if(fs_generate_path(basePath, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path)))
 			dllhandle = Sys_LoadLibrary(path); }
 
 	if(!dllhandle) Com_Printf("Loading \"%s\" failed\n", name);

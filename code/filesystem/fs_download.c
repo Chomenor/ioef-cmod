@@ -74,8 +74,8 @@ static download_entry_t *create_download_entry(char *name) {
 	// Generate mod_dir and filename
 	if(!fsc_process_mod_dir(name, temp_mod_dir, &temp_filename)) return 0;
 	if(!temp_filename) return 0;
-	if(!fs_generate_path(temp_mod_dir, 0, 0, 0, 0, 0, mod_dir, sizeof(mod_dir), qfalse)) return 0;
-	if(!fs_generate_path(temp_filename, 0, 0, 0, 0, 0, filename, sizeof(filename), qfalse)) return 0;
+	if(!fs_generate_path(temp_mod_dir, 0, 0, 0, 0, 0, mod_dir, sizeof(mod_dir))) return 0;
+	if(!fs_generate_path(temp_filename, 0, 0, 0, 0, 0, filename, sizeof(filename))) return 0;
 
 	// Patch mod dir capitalization
 	if(!Q_stricmp(mod_dir, com_basegame->string)) Q_strncpyz(mod_dir, com_basegame->string, sizeof(mod_dir));
@@ -255,11 +255,11 @@ void fs_finalize_download(void) {
 	char target_path[FS_MAX_PATH];
 	unsigned int actual_hash;
 
-	if(!fs_generate_path_writedir("download.temp", 0, 0, 0, tempfile_path, sizeof(tempfile_path), qfalse)) {
+	if(!fs_generate_path_writedir("download.temp", 0, 0, 0, tempfile_path, sizeof(tempfile_path))) {
 		Com_Printf("ERROR: Failed to get tempfile path for download\n");
 		return; }
 	if(!fs_generate_path_writedir(current_download->local_name, 0, FS_ALLOW_PK3|FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE,
-				0, target_path, sizeof(target_path), qfalse)) {
+				0, target_path, sizeof(target_path))) {
 		Com_Printf("ERROR: Failed to get target path for download\n");
 		return; }
 
@@ -284,7 +284,7 @@ void fs_finalize_download(void) {
 				current_download->filename, actual_hash);
 		Com_Printf("WARNING: Downloaded pk3 %s conflicts with existing file. Using name %s instead.\n",
 				current_download->local_name, new_name);
-		if(!fs_generate_path_writedir(new_name, 0, FS_ALLOW_SLASH|FS_ALLOW_PK3, 0, target_path, sizeof(target_path), qfalse)) {
+		if(!fs_generate_path_writedir(new_name, 0, FS_ALLOW_SLASH|FS_ALLOW_PK3, 0, target_path, sizeof(target_path))) {
 			Com_Printf("ERROR: Failed to get nonconflicted target path for download\n");
 			return; }
 
