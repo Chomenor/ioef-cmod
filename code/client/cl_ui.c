@@ -791,7 +791,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 #ifdef NEW_FILESYSTEM
 		if(fs_handle_get_vm_owner(args[3]) != 2) return 0;
 #endif
-		FS_Read2( VMA(1), args[2], args[3] );
+		FS_Read( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_WRITE:
