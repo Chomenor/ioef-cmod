@@ -442,7 +442,7 @@ static void get_loaded_paks(reference_list_t *reference_list) {
 			fsc_file_direct_t *pk3 = STACKPTR(hash_entry->pk3);
 			if(!fsc_is_file_enabled((fsc_file_t *)pk3, &fs)) continue;
 			if(fs_inactive_mod_file_disabled((fsc_file_t *)pk3, fs_search_inactive_mods->integer)) continue;
-			reference_set_add(&loaded_paks, (fsc_file_t *)pk3); } }
+			reference_set_add(&loaded_paks, pk3); } }
 
 	reference_set_to_reference_list(&loaded_paks, reference_list);
 	sort_reference_list(reference_list, qfalse);
