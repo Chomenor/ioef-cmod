@@ -260,9 +260,13 @@ qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 		if(!Q_stricmp(file_mod_dir, com_basegame->string)) return qfalse;
 		if(*current_mod_dir && !Q_stricmp(file_mod_dir, current_mod_dir)) return qfalse;
 		if(!Q_stricmp(file_mod_dir, "basemod")) return qfalse;
-		if(level == 1 && file->sourcetype == FSC_SOURCETYPE_PK3) {
+		if(level == 1) {
 			// Also look for pure list or system pak match
-			unsigned int hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
+			unsigned int hash = 0;
+			if(file->sourcetype == FSC_SOURCETYPE_PK3)
+				hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
+			if(file->sourcetype == FSC_SOURCETYPE_DIRECT) hash = ((fsc_file_direct_t *)file)->pk3_hash;
+			if(!hash) return qfalse;
 			if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
 			if(system_pk3_position(hash)) return qfalse; }
 		return qtrue; }
