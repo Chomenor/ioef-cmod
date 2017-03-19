@@ -33,6 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 cvar_t *fs_mod_settings;
 cvar_t *fs_index_cache;
+cvar_t *fs_search_inactive_mods;
 cvar_t *fs_reference_inactive_mods;
 cvar_t *fs_redownload_across_mods;
 cvar_t *fs_full_pure_validation;
@@ -405,6 +406,7 @@ void fs_startup(void) {
 
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_ARCHIVE);
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
+	fs_search_inactive_mods = Cvar_Get("fs_search_inactive_mods", "2", CVAR_ARCHIVE);
 	fs_reference_inactive_mods = Cvar_Get("fs_reference_inactive_mods", "0", CVAR_ARCHIVE);
 	fs_redownload_across_mods = Cvar_Get("fs_redownload_across_mods", "1", CVAR_ARCHIVE);
 	fs_full_pure_validation = Cvar_Get("fs_full_pure_validation", "0", CVAR_ARCHIVE);

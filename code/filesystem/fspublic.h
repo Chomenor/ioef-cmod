@@ -139,6 +139,7 @@ typedef struct {
 #ifdef FSLOCAL
 extern cvar_t *fs_mod_settings;
 extern cvar_t *fs_index_cache;
+extern cvar_t *fs_search_inactive_mods;
 extern cvar_t *fs_reference_inactive_mods;
 extern cvar_t *fs_redownload_across_mods;
 extern cvar_t *fs_full_pure_validation;
@@ -374,6 +375,7 @@ int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2);
 #define FS_FILE_BUFFER_SIZE 512
 int fs_get_source_dir_id(const fsc_file_t *file);
 char *fs_get_source_dir_string(const fsc_file_t *file);
+qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level);
 void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size);
 void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,

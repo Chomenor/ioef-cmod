@@ -32,6 +32,7 @@ typedef struct {
 	int extension_length;
 	const char *filter;
 	qboolean use_pure_list;
+	int search_inactive_mods;
 } filelist_query_t;
 
 /* ******************************************************************************** */
@@ -131,6 +132,7 @@ static qboolean check_file_enabled(const fsc_file_t *file, const filelist_query_
 	// Returns qtrue if file is valid to use, qfalse otherwise
 	if(!fsc_is_file_enabled(file, &fs)) return qfalse;
 	if(connected_server_pure_mode && query->use_pure_list && !file_in_server_pak_list(file)) return qfalse;
+	if(fs_inactive_mod_file_disabled(file, query->search_inactive_mods)) return qfalse;
 	return qtrue; }
 
 static void temp_file_set_populate(const fsc_directory_t *base, const filelist_query_t *query,
@@ -352,7 +354,7 @@ static char **FS_ListFilteredFiles2(const char *path, int *numfiles_out, filelis
 char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
 		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
 	filelist_query_t query = {extension, extension ? strlen(extension) : 0, filter,
-			!allowNonPureFilesOnDisk};
+			!allowNonPureFilesOnDisk, fs_search_inactive_mods->integer};
 	return FS_ListFilteredFiles2(path, numfiles_out, &query); }
 
 /* ******************************************************************************** */
