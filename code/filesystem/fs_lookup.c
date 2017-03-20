@@ -519,7 +519,11 @@ static void debug_lookup(const lookup_query_t *queries, int query_count) {
 		resource_to_stream(&debug_selection.resources[i], &stream);
 		Com_Printf("   Element %i: %s\n\n", i+1, stream.data); }
 
-	if(!debug_selection.resource_count) Com_Printf("No matching resources found.\n"); }
+	if(!debug_selection.resource_count) {
+		Com_Printf("No matching resources found.\n"); }
+	else if(debug_selection.resources[0].disabled) {
+		Com_Printf("No resource was selected because element 1 is disabled: %s\n",
+				debug_selection.resources[0].disabled); } }
 
 /* ******************************************************************************** */
 // Debug Resource Comparison
