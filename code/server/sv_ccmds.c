@@ -169,9 +169,9 @@ static void SV_Map_f( void ) {
 	// Refresh in case a map was just manually added
 	fs_auto_refresh();
 
-	// Perform the check without respect to current pure list
-	// If we go forward loading the map, the pure list should get cleared before any further access
-	// to the bsp, via SV_SpawnServer->CL_MapLoading->CL_Disconnect->fs_disconnect_cleanup
+	// Perform the check without respect to current connected pure list
+	// If we go forward loading the map, the pure list will be cleared in SV_SpawnServer
+	// before further access to the bsp
 	if(!fs_general_lookup(expanded, qfalse, qfalse, qfalse)) {
 #else
 	if ( FS_ReadFile (expanded, NULL) == -1 ) {
