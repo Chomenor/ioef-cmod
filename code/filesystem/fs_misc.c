@@ -266,9 +266,9 @@ qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 			if(file->sourcetype == FSC_SOURCETYPE_PK3)
 				hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
 			if(file->sourcetype == FSC_SOURCETYPE_DIRECT) hash = ((fsc_file_direct_t *)file)->pk3_hash;
-			if(!hash) return qfalse;
-			if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
-			if(system_pk3_position(hash)) return qfalse; }
+			if(hash) {
+				if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
+				if(system_pk3_position(hash)) return qfalse; } }
 		return qtrue; }
 	return qfalse; }
 
