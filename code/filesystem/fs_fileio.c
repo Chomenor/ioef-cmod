@@ -557,8 +557,8 @@ typedef enum {
 
 typedef struct {
 	fs_handle_type_t type;
+	fs_handle_owner_t owner;
 	char *debug_path;
-	int vm_owner;
 } fs_handle_t;
 
 typedef struct {
@@ -608,7 +608,7 @@ static fileHandle_t fs_allocate_handle(fs_handle_type_t type) {
 	// Allocate
 	handles[index] = Z_Malloc(size);
 	handles[index]->type = type;
-	handles[index]->vm_owner = 0;
+	handles[index]->owner = FS_HANDLEOWNER_SYSTEM;
 	return index + 1; }
 
 static void fs_free_handle(fileHandle_t handle) {
@@ -874,7 +874,7 @@ void fs_close_all_handles(void) {
 	// Can be used when the whole program is terminating, just to be safe
 	int i;
 	for(i=0; i<MAX_HANDLES; ++i) {
-		if(handles[i]) fs_handle_close(i); } }
+		if(handles[i]) fs_handle_close(i+1); } }
 
 static unsigned int fs_handle_read(char *buffer, unsigned int length, fileHandle_t handle) {
 	// Get handle entry
@@ -913,15 +913,15 @@ static unsigned int fs_handle_ftell(fileHandle_t handle) {
 		default: Com_Error(ERR_DROP, "fs_handle_ftell invalid handle type"); }
 	return 0; }
 
-static void fs_handle_set_vm_owner(fileHandle_t handle, int vm_owner) {
+static void fs_handle_set_owner(fileHandle_t handle, fs_handle_owner_t owner) {
 	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) Com_Error(ERR_DROP, "fs_handle_set_vm_owner on invalid handle");
-	handle_entry->vm_owner = vm_owner; }
+	if(!handle_entry) Com_Error(ERR_DROP, "fs_handle_set_owner on invalid handle");
+	handle_entry->owner = owner; }
 
-int fs_handle_get_vm_owner(fileHandle_t handle) {
+fs_handle_owner_t fs_handle_get_owner(fileHandle_t handle) {
 	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
 	if(!handle_entry) return 0;
-	return handle_entry->vm_owner; }
+	return handle_entry->owner; }
 
 static char *identify_handle_type(fs_handle_type_t type) {
 	if(type == FS_HANDLE_CACHE_READ) return "cache read";
@@ -930,11 +930,30 @@ static char *identify_handle_type(fs_handle_type_t type) {
 	if(type == FS_HANDLE_PIPE) return "pipe";
 	return "unknown"; }
 
+static char *identify_handle_owner(fs_handle_owner_t owner) {
+	if(owner == FS_HANDLEOWNER_SYSTEM) return "system";
+	if(owner == FS_HANDLEOWNER_CGAME) return "cgame";
+	if(owner == FS_HANDLEOWNER_UI) return "ui";
+	if(owner == FS_HANDLEOWNER_QAGAME) return "qagame";
+	return "unknown"; }
+
 void fs_print_handle_list(void) {
 	int i;
 	for(i=0; i<MAX_HANDLES; ++i) {
 		if(!handles[i]) continue;
-		Com_Printf("handle %i: %s handle - %s\n", i+1, identify_handle_type(handles[i]->type), handles[i]->debug_path); } }
+		Com_Printf("********** handle %i **********\ntype: %s\nowner: %s\npath: %s\n",
+				i+1, identify_handle_type(handles[i]->type), identify_handle_owner(handles[i]->owner),
+				handles[i]->debug_path); } }
+
+void fs_close_owner_handles(fs_handle_owner_t owner) {
+	// Can be called when a VM is shutting down to avoid leaked handles
+	int i;
+	for(i=0; i<MAX_HANDLES; ++i) {
+		if(handles[i] && handles[i]->owner == owner) {
+			Com_Printf("^1*****************\nWARNING: Auto-closing possible leaked handle\n"
+					"type: %s\nowner: %s\npath: %s\n*****************\n", identify_handle_type(handles[i]->type),
+					identify_handle_owner(handles[i]->owner), handles[i]->debug_path);
+			fs_handle_close(i+1); } } }
 
 /* ******************************************************************************** */
 // Journal Data File Functions
@@ -1045,7 +1064,7 @@ fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
 fileHandle_t FS_FOpenFileAppend(const char *filename) {
 	return open_write_handle_with_mod_dir(FS_GetCurrentGameDir(), filename, qtrue, qfalse, 0); }
 
-int FS_FOpenFileByModeVM(const char *qpath, fileHandle_t *f, fsMode_t mode, int vm_owner) {
+int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
 	// This can be called with a null filehandle for a size/existance check
 	int size;
 
@@ -1056,9 +1075,9 @@ int FS_FOpenFileByModeVM(const char *qpath, fileHandle_t *f, fsMode_t mode, int 
 
 	if(mode == FS_READ) {
 		*f = 0;
-		if(vm_owner) {
+		if(owner != FS_HANDLEOWNER_SYSTEM) {
 			// Try to read directly from disk first, because mods sometimes try to read
-			// files that haven't been indexed yet
+			// files that haven't been indexed yet or do weird stuff that doesn't work with cache handles
 			char path[FS_MAX_PATH];
 			if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_SLASH,
 					path, sizeof(path))) {
@@ -1074,13 +1093,13 @@ int FS_FOpenFileByModeVM(const char *qpath, fileHandle_t *f, fsMode_t mode, int 
 		Com_Error(ERR_FATAL, "FS_FOpenFileByMode: bad mode"); }
 
 	if(*f) {
-		if(vm_owner) fs_handle_set_vm_owner(*f, vm_owner);
+		fs_handle_set_owner(*f, owner);
 		if(mode != FS_READ) size = 0;
 		return size; }
 	return -1; }
 
 int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
-	return FS_FOpenFileByModeVM(qpath, f, mode, 0); }
+	return FS_FOpenFileByModeOwner(qpath, f, mode, FS_HANDLEOWNER_SYSTEM); }
 
 void FS_FCloseFile(fileHandle_t f) {
 	if(!f) {

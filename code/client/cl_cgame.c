@@ -390,6 +390,9 @@ void CL_ShutdownCGame( void ) {
 		return;
 	}
 	VM_Call( cgvm, CG_SHUTDOWN );
+#ifdef NEW_FILESYSTEM
+	fs_close_owner_handles(FS_HANDLEOWNER_CGAME);
+#endif
 	VM_Free( cgvm );
 	cgvm = NULL;
 }
@@ -439,31 +442,31 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return 0;
 	case CG_FS_FOPENFILE:
 #ifdef NEW_FILESYSTEM
-		return FS_FOpenFileByModeVM( VMA(1), VMA(2), args[3], 1 );
+		return FS_FOpenFileByModeOwner( VMA(1), VMA(2), args[3], FS_HANDLEOWNER_CGAME );
 #else
 		return FS_FOpenFileByMode( VMA(1), VMA(2), args[3] );
 #endif
 	case CG_FS_READ:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[3]) != 1) return 0;
+		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_CGAME) return 0;
 #endif
 		FS_Read( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_FS_WRITE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[3]) != 1) return 0;
+		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_CGAME) return 0;
 #endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_FS_FCLOSEFILE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[1]) != 1) return 0;
+		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_CGAME) return 0;
 #endif
 		FS_FCloseFile( args[1] );
 		return 0;
 	case CG_FS_SEEK:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[1]) != 1) return 0;
+		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_CGAME) return 0;
 #endif
 		return FS_Seek( args[1], args[2], args[3] );
 	case CG_SENDCONSOLECOMMAND:

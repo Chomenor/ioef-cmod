@@ -782,28 +782,28 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 
 	case UI_FS_FOPENFILE:
 #ifdef NEW_FILESYSTEM
-		return FS_FOpenFileByModeVM( VMA(1), VMA(2), args[3], 2 );
+		return FS_FOpenFileByModeOwner( VMA(1), VMA(2), args[3], FS_HANDLEOWNER_UI );
 #else
 		return FS_FOpenFileByMode( VMA(1), VMA(2), args[3] );
 #endif
 
 	case UI_FS_READ:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[3]) != 2) return 0;
+		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_UI) return 0;
 #endif
 		FS_Read( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_WRITE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[3]) != 2) return 0;
+		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_UI) return 0;
 #endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_FCLOSEFILE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[1]) != 2) return 0;
+		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_UI) return 0;
 #endif
 		FS_FCloseFile( args[1] );
 		return 0;
@@ -813,7 +813,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 
 	case UI_FS_SEEK:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_vm_owner(args[1]) != 2) return 0;
+		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_UI) return 0;
 #endif
 		return FS_Seek( args[1], args[2], args[3] );
 	
@@ -1102,6 +1102,9 @@ void CL_ShutdownUI( void ) {
 		return;
 	}
 	VM_Call( uivm, UI_SHUTDOWN );
+#ifdef NEW_FILESYSTEM
+	fs_close_owner_handles(FS_HANDLEOWNER_UI);
+#endif
 	VM_Free( uivm );
 	uivm = NULL;
 }

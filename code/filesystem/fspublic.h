@@ -70,6 +70,13 @@ typedef enum {
 	FS_CONFIGTYPE_SETTINGS
 } fs_config_type_t;
 
+typedef enum {
+	FS_HANDLEOWNER_SYSTEM,
+	FS_HANDLEOWNER_CGAME,
+	FS_HANDLEOWNER_UI,
+	FS_HANDLEOWNER_QAGAME
+} fs_handle_owner_t;
+
 #ifdef FSLOCAL
 typedef struct {
 	char *name;
@@ -268,7 +275,8 @@ void fs_print_handle_list(void);
 #endif
 void fs_handle_close(fileHandle_t handle);
 void fs_close_all_handles(void);
-int fs_handle_get_vm_owner(fileHandle_t handle);
+fs_handle_owner_t fs_handle_get_owner(fileHandle_t handle);
+void fs_close_owner_handles(fs_handle_owner_t owner);
 
 // Journal Data File Functions
 #ifdef FSLOCAL
@@ -287,7 +295,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp);
 fileHandle_t FS_FOpenFileWrite(const char *filename);
 fileHandle_t FS_SV_FOpenFileWrite(const char *filename);
 fileHandle_t FS_FOpenFileAppend(const char *filename);
-int FS_FOpenFileByModeVM(const char *qpath, fileHandle_t *f, fsMode_t mode, int vm_owner);
+int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner);
 int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode);
 void FS_FCloseFile(fileHandle_t f);
 int FS_Read(void *buffer, int len, fileHandle_t f);
