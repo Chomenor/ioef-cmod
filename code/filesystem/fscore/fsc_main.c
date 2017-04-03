@@ -234,8 +234,10 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 
 		unindexed_file = new_file = 1; }
 
-	// Update source dir
+	// Update source dir and download folder flag
 	file->source_dir_id = source_dir_id;
+	if(filename_contents & FSC_CONTENTS_DLPK3) file->f.flags |= FSC_FILEFLAG_DLPK3;
+	else file->f.flags &= ~FSC_FILEFLAG_DLPK3;
 
 	// Save os path. This happens on loading a new file, and also when first activating an entry that was loaded from cache.
 	if(!file->os_path_ptr) {
@@ -250,7 +252,6 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 
 		if(filename_contents & (FSC_CONTENTS_PK3|FSC_CONTENTS_DLPK3)) {
 			fsc_load_pk3(STACKPTR(file->os_path_ptr), fs, file_ptr, eh, 0, 0); }
-		if(filename_contents & FSC_CONTENTS_DLPK3) file->f.flags |= FSC_FILEFLAG_DLPK3;
 		if(filename_contents & FSC_CONTENTS_SHADER) {
 			file->shader_file_count = 1;
 			file->shader_count = index_shader_file(fs, file_ptr, eh); }
