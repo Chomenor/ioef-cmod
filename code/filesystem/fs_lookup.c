@@ -580,7 +580,7 @@ void debug_resource_comparison(int resource1_position, int resource2_position) {
 	fsc_stream_t stream = {data, 0, sizeof(data), 0};
 
 	if(!have_debug_selection) {
-		Com_Printf("This command must be preceded by a 'shader' or 'file' command.\n");
+		Com_Printf("This command must be preceded by a 'find_file', 'find_shader', 'find_sound', or 'find_vm' command.\n");
 		return; }
 
 	if(resource1_position == resource2_position || resource1_position < 1 || resource2_position < 1 ||

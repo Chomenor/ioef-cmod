@@ -58,8 +58,8 @@ static void cmd_find_vm(void) {
 
 static void cmd_compare(void) {
 	if(Cmd_Argc() != 3) {
-		Com_Printf("Usage: compare <resource #> <resource #>\n\nRun this command following a 'findfile', 'findshader', "
-				"'findsound', or 'findvm' command and specify the resource numbers you wish to compare.\n");
+		Com_Printf("Usage: compare <resource #> <resource #>\n\nRun this command following a 'find_file', 'find_shader', "
+				"'find_sound', or 'find_vm' command and specify the resource numbers you wish to compare.\n");
 		return; }
 
 	debug_resource_comparison(atoi(Cmd_Argv(1)), atoi(Cmd_Argv(2))); }
