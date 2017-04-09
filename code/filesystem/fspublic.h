@@ -160,7 +160,7 @@ extern cvar_t *fs_debug_lookup;
 extern cvar_t *fs_debug_references;
 extern cvar_t *fs_debug_filelist;
 
-#define FS_SOURCEDIR_COUNT 3
+#define FS_SOURCEDIR_COUNT 4
 extern fs_source_directory_t sourcedirs[FS_SOURCEDIR_COUNT];
 extern cvar_t *fs_dirs;
 

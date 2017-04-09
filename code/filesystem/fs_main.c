@@ -242,8 +242,10 @@ void fs_initialize_sourcedirs(void) {
 	sourcedirs[1].path_cvar = Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED);
 	sourcedirs[2].name = "steampath";
 	sourcedirs[2].path_cvar = Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED);
+	sourcedirs[3].name = "gogpath";
+	sourcedirs[3].path_cvar = Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED);
 
-	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath", CVAR_INIT|CVAR_PROTECTED);
+	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
 
 	fs_dirs_ptr = fs_dirs->string;
 	while(1) {
