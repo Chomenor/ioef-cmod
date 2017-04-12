@@ -453,21 +453,23 @@ const char *FS_LoadedPakChecksums( void ) {
 	// Servers with sv_pure set will get this string and pass it to clients.
 	// Returns NULL if list overflowed.
 	static char buffer[BIG_INFO_STRING];
+	qboolean overflow = qfalse;
 	reference_list_t reference_list;
 	get_loaded_paks(&reference_list);
-	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_hash_string)) return 0;
+	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_hash_string)) overflow = qtrue;
 	free_reference_list(&reference_list);
-	return buffer; }
+	return overflow ? 0 : buffer; }
 
 const char *FS_LoadedPakNames( void ) {
 	// Returns a space separated string containing the names of all loaded pk3 files.
 	// Servers with sv_pure set will get this string and pass it to clients.
 	// Returns NULL if list overflowed.
 	static char buffer[BIG_INFO_STRING];
+	qboolean overflow = qfalse;
 	reference_list_t reference_list;
 	get_loaded_paks(&reference_list);
-	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_name_string)) return 0;
+	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_name_string)) overflow = qtrue;
 	free_reference_list(&reference_list);
-	return buffer; }
+	return overflow ? 0 : buffer; }
 
 #endif	// NEW_FILESYSTEM
