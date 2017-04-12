@@ -345,7 +345,7 @@ void fs_register_reference(const fsc_file_t *file);
 void FS_ClearPakReferences( int flags );
 const char *FS_ReferencedPakNames( void );
 const char *FS_ReferencedPakPureChecksums( void );
-void fs_update_download_paks(void);
+void fs_set_download_list(void);
 fileHandle_t fs_open_download_pak(const char *path, unsigned int *size_out);
 const char *FS_LoadedPakChecksums( void );
 const char *FS_LoadedPakNames( void );

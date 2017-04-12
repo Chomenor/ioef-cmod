@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fslocal.h"
 
-#define MAX_REFERENCE_SET_ENTRIES 512
+#define MAX_REFERENCE_SET_ENTRIES 2048
 #define MAX_PURE_CHECKSUM_CACHE 256
 
 /* ******************************************************************************** */
@@ -129,14 +129,14 @@ static void reference_list_to_stream(reference_list_t *reference_list, fsc_strea
 
 static qboolean reference_list_to_buffer(reference_list_t *reference_list, char *output, int output_size,
 			void (data_function)(fsc_file_direct_t *pak, fsc_stream_t *stream)) {
-	// Returns qfalse on success, qtrue on overflow
+	// Returns qtrue on success, qfalse on overflow
 	fsc_stream_t stream = {output, 0, output_size, 0};
 	*output = 0;	// In case there are 0 references
 	reference_list_to_stream(reference_list, &stream, data_function);
 	if(stream.overflowed) {
 		*output = 0;
-		return qtrue; }
-	return qfalse; }
+		return qfalse; }
+	return qtrue; }
 
 /* ******************************************************************************** */
 // Pure Checksum Determination
@@ -349,7 +349,7 @@ static void add_download_pak(fsc_file_direct_t *pak) {
 	if(!is_pak_downloadable(pak)) return;
 	reference_set_add(&download_paks, pak); }
 
-void fs_update_download_paks(void) {
+void fs_set_download_list(void) {
 	// Called by server to set "sv_referencedPaks" and "sv_referencedPakNames"
 	// Also updates the download_paks structure above which is used to match
 	//    path string from the client to the actual pk3 path
@@ -452,20 +452,21 @@ const char *FS_LoadedPakChecksums( void ) {
 	// Returns a space separated string containing the checksums of all loaded pk3 files.
 	// Servers with sv_pure set will get this string and pass it to clients.
 	// Returns NULL if list overflowed.
-	static char buffer[1000];
+	static char buffer[BIG_INFO_STRING];
 	reference_list_t reference_list;
 	get_loaded_paks(&reference_list);
-	reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_hash_string);
+	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_hash_string)) return 0;
 	free_reference_list(&reference_list);
 	return buffer; }
 
 const char *FS_LoadedPakNames( void ) {
 	// Returns a space separated string containing the names of all loaded pk3 files.
 	// Servers with sv_pure set will get this string and pass it to clients.
-	static char buffer[1000];
+	// Returns NULL if list overflowed.
+	static char buffer[BIG_INFO_STRING];
 	reference_list_t reference_list;
 	get_loaded_paks(&reference_list);
-	reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_name_string);
+	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_name_string)) return 0;
 	free_reference_list(&reference_list);
 	return buffer; }
 

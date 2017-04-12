@@ -392,6 +392,52 @@ static void SV_TouchCGame(void) {
 }
 #endif
 
+#ifdef NEW_FILESYSTEM
+/*
+================
+SV_SetPureList
+
+Sets sv_paks and sv_pakNames, and resets sv_pure to 0 if there was an overflow.
+================
+*/
+#define SYSTEMINFO_RESERVED_SIZE 256
+static void SV_SetPureList(void) {
+	const char *paks = FS_LoadedPakChecksums();
+	const char *pakNames = FS_LoadedPakNames();
+	int systeminfo_base_length;
+
+	Cvar_Set("sv_paks", "");
+	Cvar_Set("sv_pakNames", "");
+
+	if(!sv_pure->integer) return;
+
+	if(!paks || !*paks) {
+		if(!paks) Com_Printf("WARNING: Setting sv_pure to 0 due to pk3 list overflow."
+			" Remove some pk3s from the server if you want to use sv_pure.\n");
+		else Com_Printf("WARNING: Setting sv_pure to 0 due to empty loaded pk3 list.\n");
+		Cvar_Set("sv_pure", "0");
+		return;
+	}
+
+	systeminfo_base_length = strlen(Cvar_InfoString_Big(CVAR_SYSTEMINFO));
+	if(systeminfo_base_length + strlen(paks) + SYSTEMINFO_RESERVED_SIZE >= BIG_INFO_STRING) {
+		Com_Printf("WARNING: Setting sv_pure to 0 due to systeminfo overflow."
+			" Remove some pk3s from the server if you want to use sv_pure.\n");
+		Cvar_Set("sv_pure", "0");
+		return;
+	}
+
+	Cvar_Set("sv_paks", paks);
+
+	// It should be fine to leave sv_pakNames empty if it overflowed since it is normally
+	// only used for informational purposes anyway
+	if(pakNames && systeminfo_base_length + strlen(paks) + strlen(pakNames) +
+			SYSTEMINFO_RESERVED_SIZE < BIG_INFO_STRING) {
+		Cvar_Set("sv_pakNames", pakNames);
+	}
+}
+#endif
+
 /*
 ================
 SV_SpawnServer
@@ -406,7 +452,9 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	int			checksum;
 	qboolean	isBot;
 	char		systemInfo[16384];
+#ifndef NEW_FILESYSTEM
 	const char	*p;
+#endif
 
 	// shut down the existing game if it is running
 	SV_ShutdownGameProgs();
@@ -573,22 +621,17 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	sv.time += 100;
 	svs.time += 100;
 
+#ifdef NEW_FILESYSTEM
+	// Set sv_referencedPaks and sv_referencedPakNames (download list)
+	fs_set_download_list();
+
+	// Set sv_paks and sv_pakNames (pure list)
+	SV_SetPureList();
+#else
 	if ( sv_pure->integer ) {
 		// the server sends these to the clients so they will only
 		// load pk3s also loaded at the server
 		p = FS_LoadedPakChecksums();
-#ifdef NEW_FILESYSTEM
-		if(!*p) {
-			Com_Printf("WARNING: Setting sv_pure to 0 due to invalid loaded pak list.\n"
-					"This is usually caused by having too many pk3s installed.\n");
-			Cvar_Set("sv_pure", "0");
-			Cvar_Set("sv_paks", "");
-			Cvar_Set("sv_pakNames", ""); }
-		else {
-			Cvar_Set( "sv_paks", p );
-			p = FS_LoadedPakNames();
-			Cvar_Set( "sv_pakNames", p ); }
-#else
 		Cvar_Set( "sv_paks", p );
 		if (strlen(p) == 0) {
 			Com_Printf( "WARNING: sv_pure set but no PK3 files loaded\n" );
@@ -601,7 +644,6 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 		if ( com_dedicated->integer ) {
 			SV_TouchCGame();
 		}
-#endif
 	}
 	else {
 		Cvar_Set( "sv_paks", "" );
@@ -609,9 +651,6 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	}
 	// the server sends these to the clients so they can figure
 	// out which pk3s should be auto-downloaded
-#ifdef NEW_FILESYSTEM
-	fs_update_download_paks();
-#else
 	p = FS_ReferencedPakChecksums();
 	Cvar_Set( "sv_referencedPaks", p );
 	p = FS_ReferencedPakNames();
