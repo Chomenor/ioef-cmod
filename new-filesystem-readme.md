@@ -81,6 +81,12 @@ To start with an example, suppose you have a shader called "textures/myshader", 
 
 Now suppose you were to name the updated shader file "scripts/myshaders2.shader". Both the old and new shader files will get loaded, since they have different names, leading to behavior that can be confusing and inconsistent across different versions of Quake 3. In the original filesystem the shader precedence tends to be the opposite of the filesystem precedence, so the shader from pak0.pk3 will usually take precedence over the one from pak1.pk3. But in the new filesystem, shaders are taken from the higher precedence pk3, regardless of the .shader filename. This is a much more robust approach in general, but it means that in rare cases mods that actually depend on the old backwards precedence behavior could break. Mods doing shader replacements should apply the .shader override technique if they want consistent behavior on both the original and new filesystems.
 
+# Semi-Pure Server
+
+This option causes clients to prioritize data from paks on the server like a normal pure server, but also allows loading content from other paks when it is not available from the pure list paks. For example, it lets clients use custom models that are not on the server. To enable, set sv_pure to 2 on the server. This setting only affects clients using the new filesystem; clients using the original filesystem will function the same as if sv_pure is 1.
+
+In theory this option will work with servers running any filesystem version, but it is recommended to use with the new filesystem if possible.
+
 # Debugging Cvars
 
 There are some new cvars that can be set to 1 to enable debug prints.

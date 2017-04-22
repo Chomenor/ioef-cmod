@@ -171,7 +171,7 @@ extern char current_mod_dir[FSC_MAX_MODDIR];
 extern const fsc_file_direct_t *current_map_pk3;
 extern int checksum_feed;
 
-extern qboolean connected_server_pure_mode;
+extern int connected_server_sv_pure;
 extern pk3_list_t connected_server_pk3_list;
 #endif
 
@@ -179,10 +179,13 @@ extern pk3_list_t connected_server_pk3_list;
 const char *FS_GetCurrentGameDir(void);
 const char *fs_pid_file_directory(void);
 qboolean FS_Initialized( void );
+#ifdef FSLOCAL
+int fs_connected_server_pure_state(void);
+#endif
 
 // State Modifiers
 void fs_register_current_map(const char *name);
-void fs_set_pure_connected_state(qboolean pure);
+void fs_set_connected_server_sv_pure_value(int sv_pure);
 void FS_PureServerSetLoadedPaks(const char *hash_list, const char *name_list);
 void fs_disconnect_cleanup(void);
 void fs_set_mod_dir(const char *value, qboolean move_pid);

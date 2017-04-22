@@ -89,7 +89,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->disabled = "blocking restricted file type in downloads folder due to fs_restrict_dlfolder setting"; }
 
 	// Disable files not on server pak list if connected to a pure server
-	if(query->use_pure_settings && connected_server_pure_mode && !resource->server_pak_position) {
+	if(query->use_pure_settings && fs_connected_server_pure_state() == 1 && !resource->server_pak_position) {
 		resource->disabled = "connected to pure server and file is not on server pak list"; }
 
 	// Disable files from inactive mods based on fs_search_inactive_mods setting

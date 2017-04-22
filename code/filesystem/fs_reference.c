@@ -256,7 +256,7 @@ static void build_pure_validation_string(char *output, int output_size, fs_hasht
 	Com_sprintf(buffer, sizeof(buffer), "%i %i @", cgame_checksum, ui_checksum);
 	fsc_stream_append_string(&stream, buffer);
 
-	if(fs_full_pure_validation->integer) {
+	if(fs_full_pure_validation->integer && connected_server_sv_pure != 2) {
 		add_referenced_pure_pk3s(&stream, referenced_paks); }
 	else {
 		Com_sprintf(buffer, sizeof(buffer), " %i %i ", cgame_checksum, checksum_feed ^ cgame_checksum ^ 1);

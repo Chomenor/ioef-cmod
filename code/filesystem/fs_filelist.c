@@ -131,7 +131,7 @@ static qboolean file_in_server_pak_list(const fsc_file_t *file) {
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_query_t *query) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
 	if(!fsc_is_file_enabled(file, &fs)) return qfalse;
-	if(connected_server_pure_mode && query->use_pure_list && !file_in_server_pak_list(file)) return qfalse;
+	if(query->use_pure_list && fs_connected_server_pure_state() == 1 && !file_in_server_pak_list(file)) return qfalse;
 	if(fs_inactive_mod_file_disabled(file, query->search_inactive_mods)) return qfalse;
 	return qtrue; }
 

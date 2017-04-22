@@ -58,7 +58,9 @@ char current_mod_dir[FSC_MAX_MODDIR];	// Matched to fs_game when fs_set_mod_dir 
 const fsc_file_direct_t *current_map_pk3;
 int checksum_feed;
 
-qboolean connected_server_pure_mode;
+// Store connected server's sv_pure value here instead of relying on the cvar,
+// because the cvar can be changed in console after connecting
+int connected_server_sv_pure;
 pk3_list_t connected_server_pk3_list;
 
 /* ******************************************************************************** */
@@ -81,6 +83,12 @@ qboolean FS_Initialized( void ) {
 	//    function, or at least most of the calls to it, to reduce complexity.
 	return fs_initialized; }
 
+int fs_connected_server_pure_state(void) {
+	// Returns 2 if semi-pure, 1 if pure, 0 if non-pure
+	if(!connected_server_pk3_list.ht.element_count) return 0;
+	if(connected_server_sv_pure == 2) return 2;
+	return 1; }
+
 /* ******************************************************************************** */
 // Filesystem State Modifiers
 /* ******************************************************************************** */
@@ -97,11 +105,10 @@ void fs_register_current_map(const char *name) {
 		else Q_strncpyz(buffer, "<none>", sizeof(buffer));
 		Com_Printf("fs_state: current_map_pk3 set to '%s'\n", buffer); } }
 
-void fs_set_pure_connected_state(qboolean pure) {
-	connected_server_pure_mode = pure;
+void fs_set_connected_server_sv_pure_value(int sv_pure) {
+	connected_server_sv_pure = sv_pure;
 	if(fs_debug_state->integer) {
-		Com_Printf("fs_state: connected_server_pure_mode set to %s\n",
-				connected_server_pure_mode ? "true" : "false"); } }
+		Com_Printf("fs_state: connected_server_sv_pure set to %i\n", sv_pure); } }
 
 void FS_PureServerSetLoadedPaks(const char *hash_list, const char *name_list) {
 	int i;
@@ -121,10 +128,10 @@ void FS_PureServerSetLoadedPaks(const char *hash_list, const char *name_list) {
 
 void fs_disconnect_cleanup(void) {
 	current_map_pk3 = 0;
-	connected_server_pure_mode = qfalse;
+	connected_server_sv_pure = 0;
 	pk3_list_free(&connected_server_pk3_list);
 	if(fs_debug_state->integer) Com_Printf("fs_state: disconnect cleanup\n   > current_map_pk3 cleared"
-		"\n   > connected_server_pure_mode set to false\n   > connected_server_pk3_list cleared\n"); }
+		"\n   > connected_server_sv_pure set to 0\n   > connected_server_pk3_list cleared\n"); }
 
 static void convert_mod_dir(const char *source, char *target) {
 	// Sanitizes mod dir, and replaces com_basegame with empty string

@@ -416,6 +416,13 @@ void CL_SystemInfoChanged( void ) {
 			gameSet = qtrue;
 		}
 
+#ifdef NEW_FILESYSTEM
+		if (!Q_stricmp(key, "sv_pure"))
+		{
+			fs_set_connected_server_sv_pure_value(atoi(value));
+		}
+#endif
+
 		if((cvar_flags = Cvar_Flags(key)) == CVAR_NONEXISTENT)
 			Cvar_Get(key, value, CVAR_SERVER_CREATED | CVAR_ROM);
 		else
@@ -440,9 +447,7 @@ void CL_SystemInfoChanged( void ) {
 	if ( !gameSet && *Cvar_VariableString("fs_game") ) {
 		Cvar_Set( "fs_game", "" );
 	}
-#ifdef NEW_FILESYSTEM
-	fs_set_pure_connected_state(Cvar_VariableIntegerValue("sv_pure") ? qtrue : qfalse);
-#else
+#ifndef NEW_FILESYSTEM
 	cl_connectedToPureServer = Cvar_VariableValue( "sv_pure" );
 #endif
 }
