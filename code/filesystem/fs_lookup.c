@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Lookup Resource Construction
 /* ******************************************************************************** */
 
-#define RESFLAG_IN_DOWNLOAD_FOLDER 1
+#define RESFLAG_IN_DOWNLOAD_PK3 1
 #define RESFLAG_IN_CURRENT_MAP_PAK 2
 #define RESFLAG_FROM_DLL_QUERY 4
 #define RESFLAG_CASE_MISMATCH 8
@@ -55,7 +55,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		const fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)(resource->file))->source_pk3);
 		resource->system_pak_priority = system_pk3_position(source_pk3->pk3_hash);
 		resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
-		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_FOLDER;
+		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 		if(query->use_current_map && source_pk3 == current_map_pk3) resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; }
 
 	// Determine mod dir match level
@@ -84,7 +84,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->flags |= RESFLAG_FROM_DLL_QUERY; }
 
 	// Disable restricted files from download folder
-	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_FOLDER) && (query->config_query ||
+	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3) && (query->config_query ||
 			(resource->file->qp_ext_ptr && !Q_stricmp(STACKPTR(resource->file->qp_ext_ptr), "qvm")))) {
 		resource->disabled = "blocking restricted file type in downloads folder due to fs_restrict_dlfolder setting"; }
 
@@ -277,12 +277,12 @@ PC_DEBUG(server_pak_position) {
 		ADD_STRING(va("Resource %i was selected because it has a lower server pak position (%i) than resource %i (%i).",
 				high_num, high->server_pak_position, low_num, low->server_pak_position)); } }
 
-PC_COMPARE(mod_dirs) {
-	if(r1->mod_dir_match >= 2 && r1->mod_dir_match > r2->mod_dir_match) return -1;
-	if(r2->mod_dir_match >= 2 && r2->mod_dir_match > r1->mod_dir_match) return 1;
+PC_COMPARE(basemod_or_current_mod_dir) {
+	if(r1->mod_dir_match >= 2 && r2->mod_dir_match < 2) return -1;
+	if(r2->mod_dir_match >= 2 && r1->mod_dir_match < 2) return 1;
 	return 0; }
 
-PC_DEBUG(mod_dirs) {
+PC_DEBUG(basemod_or_current_mod_dir) {
 	ADD_STRING(va("Resource %i was selected because it is from ", high_num));
 	if(high->mod_dir_match == 3) {
 		ADD_STRING(va("the current mod directory (%s)", fsc_get_mod_dir(high->file, &fs))); }
@@ -291,8 +291,10 @@ PC_DEBUG(mod_dirs) {
 	ADD_STRING(va(" and resource %i is not. ", low_num)); }
 
 PC_COMPARE(dll_over_qvm) {
-	if((r1->flags & RESFLAG_FROM_DLL_QUERY) && !(r2->flags & RESFLAG_FROM_DLL_QUERY)) return -1;
-	if((r2->flags & RESFLAG_FROM_DLL_QUERY) && !(r1->flags & RESFLAG_FROM_DLL_QUERY)) return 1;
+	// Dlls in inactive mod directories are exempt from this rule
+	#define QUALIFYING_DLL(resource) ((resource->flags & RESFLAG_FROM_DLL_QUERY) && resource->mod_dir_match)
+	if(QUALIFYING_DLL(r1) && !QUALIFYING_DLL(r2)) return -1;
+	if(QUALIFYING_DLL(r2) && !QUALIFYING_DLL(r1)) return 1;
 	return 0; }
 
 PC_DEBUG(dll_over_qvm) {
@@ -314,6 +316,24 @@ PC_COMPARE(current_map_pak) {
 PC_DEBUG(current_map_pak) {
 	ADD_STRING(va("Resource %i was selected because it is from the same pk3 as the current map and %i is not.", high_num, low_num)); }
 
+PC_COMPARE(inactive_mod_dir) {
+	if(r1->mod_dir_match && !r2->mod_dir_match) return -1;
+	if(r2->mod_dir_match && !r1->mod_dir_match) return 1;
+	return 0; }
+
+PC_DEBUG(inactive_mod_dir) {
+	ADD_STRING(va("Resource %i was selected because resource %i is from an inactive mod directory "
+			"(not basegame, basemod, or current mod).", high_num, low_num)); }
+
+PC_COMPARE(downloads_folder) {
+	if(!(r1->flags & RESFLAG_IN_DOWNLOAD_PK3) && (r2->flags & RESFLAG_IN_DOWNLOAD_PK3)) return -1;
+	if(!(r2->flags & RESFLAG_IN_DOWNLOAD_PK3) && (r1->flags & RESFLAG_IN_DOWNLOAD_PK3)) return 1;
+	return 0; }
+
+PC_DEBUG(downloads_folder) {
+	ADD_STRING(va("Resource %i was selected because resource %i is in the downloads folder and resource %i is not.",
+			high_num, low_num, high_num)); }
+
 PC_COMPARE(shader_over_image) {
 	if(r1->shader && !r2->shader) return -1;
 	if(r2->shader && !r1->shader) return 1;
@@ -321,15 +341,6 @@ PC_COMPARE(shader_over_image) {
 
 PC_DEBUG(shader_over_image) {
 	ADD_STRING(va("Resource %i was selected because it is a shader and resource %i is not a shader.", high_num, low_num)); }
-
-PC_COMPARE(basegame_dir) {
-	if(r1->mod_dir_match == 1 && !r2->mod_dir_match) return -1;
-	if(r2->mod_dir_match == 1 && !r1->mod_dir_match) return 1;
-	return 0; }
-
-PC_DEBUG(basegame_dir) {
-	ADD_STRING(va("Resource %i was selected because it is from the com_basegame directory and resource %i is not.",
-			high_num, low_num)); }
 
 PC_COMPARE(direct_over_pk3) {
 	if(r1->file->sourcetype == FSC_SOURCETYPE_DIRECT && r2->file->sourcetype != FSC_SOURCETYPE_DIRECT) return -1;
@@ -339,15 +350,6 @@ PC_COMPARE(direct_over_pk3) {
 PC_DEBUG(direct_over_pk3) {
 	ADD_STRING(va("Resource %i was selected because it is a file directly on the disk, while resource %i is inside a pk3.",
 			high_num, low_num)); }
-
-PC_COMPARE(downloads_folder) {
-	if(!(r1->flags & RESFLAG_IN_DOWNLOAD_FOLDER) && (r2->flags & RESFLAG_IN_DOWNLOAD_FOLDER)) return -1;
-	if(!(r2->flags & RESFLAG_IN_DOWNLOAD_FOLDER) && (r1->flags & RESFLAG_IN_DOWNLOAD_FOLDER)) return 1;
-	return 0; }
-
-PC_DEBUG(downloads_folder) {
-	ADD_STRING(va("Resource %i was selected because resource %i is in the downloads folder and resource %i is not.",
-			high_num, low_num, high_num)); }
 
 PC_COMPARE(pk3_name_precedence) {
 	if(r1->file->sourcetype != FSC_SOURCETYPE_PK3 || r2->file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
@@ -400,12 +402,12 @@ PC_DEBUG(intra_shaderfile_position) {
 	ADD_STRING(va("Resource %i was selected because it has an earlier position within the shader file than resource %i.",
 			high_num, low_num)); }
 
-PC_COMPARE(case_mismatch) {
+PC_COMPARE(case_match) {
 	if(!(r1->flags & RESFLAG_CASE_MISMATCH) && (r2->flags & RESFLAG_CASE_MISMATCH)) return -1;
 	if(!(r2->flags & RESFLAG_CASE_MISMATCH) && (r1->flags & RESFLAG_CASE_MISMATCH)) return 1;
 	return 0; }
 
-PC_DEBUG(case_mismatch) {
+PC_DEBUG(case_match) {
 	ADD_STRING(va("Resource %i was selected because resource %i has a case discrepancy from the query and resource %i does not.",
 			high_num, low_num, high_num)); }
 
@@ -423,20 +425,20 @@ static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(resource_disabled),
 	ADD_CHECK(special_shaders),
 	ADD_CHECK(server_pak_position),
-	ADD_CHECK(mod_dirs),
+	ADD_CHECK(basemod_or_current_mod_dir),
 	ADD_CHECK(dll_over_qvm),
 	ADD_CHECK(system_paks),
 	ADD_CHECK(current_map_pak),
-	ADD_CHECK(shader_over_image),
-	ADD_CHECK(basegame_dir),
-	ADD_CHECK(direct_over_pk3),
+	ADD_CHECK(inactive_mod_dir),
 	ADD_CHECK(downloads_folder),
+	ADD_CHECK(shader_over_image),
+	ADD_CHECK(direct_over_pk3),
 	ADD_CHECK(pk3_name_precedence),
 	ADD_CHECK(extension_precedence),
 	ADD_CHECK(source_dir_precedence),
 	ADD_CHECK(intra_pk3_position),
 	ADD_CHECK(intra_shaderfile_position),
-	ADD_CHECK(case_mismatch) };
+	ADD_CHECK(case_match) };
 
 static int precedence_comparator(const lookup_resource_t *resource1, const lookup_resource_t *resource2) {
 	int i;
@@ -691,7 +693,15 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
-	char *exts[] = {"wav", "mp3"};
+	char *exts[] = {
+		"wav",
+#ifdef USE_CODEC_VORBIS
+		"ogg",
+#endif
+#ifdef USE_CODEC_OPUS
+		"opus",
+#endif
+	};
 	lookup_result_t lookup_result;
 
 	// For compatibility purposes, support dropping one leading slash from qpath
