@@ -470,6 +470,7 @@
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_misc.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_os.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_pk3.c" />
+    <ClCompile Include="..\..\code\filesystem\fscore\fsc_sha256.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_shader.c" />
     <ClCompile Include="..\..\code\filesystem\fs_commands.c" />
     <ClCompile Include="..\..\code\filesystem\fs_download.c" />

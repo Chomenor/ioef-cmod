@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define FSC_CONTENTS_CROSSHAIR 8
 
 /* ******************************************************************************** */
-// Misc
+// Misc (fsc_misc.c)
 /* ******************************************************************************** */
 
 typedef struct fsc_filesystem_s fsc_filesystem_t;
@@ -154,7 +154,7 @@ void fsc_initialize_errorhandler(fsc_errorhandler_t *errorhandler,
 void fsc_report_error(fsc_errorhandler_t *errorhandler, int id, char *msg, void *current_element);
 
 /* ******************************************************************************** */
-// Game Parsing Support
+// Game Parsing Support (fsc_gameparse.c)
 /* ******************************************************************************** */
 
 void fsc_SkipRestOfLine ( char **data );
@@ -162,13 +162,14 @@ char *fsc_COM_ParseExt( char *com_token, char **data_p, int allowLineBreaks );
 int fsc_SkipBracedSection(char **program, int depth);
 
 /* ******************************************************************************** */
-// MD4 Checksum Calculation Support
+// Hash Calculation (fsc_md4.c / fsc_sha256.c)
 /* ******************************************************************************** */
 
 unsigned int fsc_block_checksum(const void *buffer, int length);
+void fsc_calculate_sha256(const unsigned char *data, unsigned int size, unsigned char *output);
 
 /* ******************************************************************************** */
-// OS Library Interface
+// OS Library Interface (fsc_os.c)
 /* ******************************************************************************** */
 
 typedef struct {
@@ -215,7 +216,7 @@ void *fsc_calloc(unsigned int size);
 void fsc_free(void *allocation);
 
 /* ******************************************************************************** */
-// Main Filesystem
+// Main Filesystem (fsc_main.c)
 /* ******************************************************************************** */
 
 // ***** Core Filesystem Structures *****
@@ -349,7 +350,7 @@ void fsc_filesystem_reset(fsc_filesystem_t *fs);
 void fsc_load_directory(fsc_filesystem_t *fs, void *os_path, int source_dir_id, fsc_errorhandler_t *eh);
 
 /* ******************************************************************************** */
-// PK3 Handling
+// PK3 Handling (fsc_pk3.c)
 /* ******************************************************************************** */
 
 // receive_hash_data is used for calculating pure checksums for legacy servers,
@@ -360,7 +361,7 @@ void register_pk3_hash_lookup_entry(fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t
 extern fsc_sourcetype_t pk3_sourcetype;
 
 /* ******************************************************************************** */
-// Shader Lookup
+// Shader Lookup (fsc_shader.c)
 /* ******************************************************************************** */
 
 typedef struct fsc_shader_s {
@@ -378,7 +379,7 @@ int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_
 int is_shader_enabled(fsc_filesystem_t *fs, fsc_shader_t *shader);
 
 /* ******************************************************************************** */
-// Crosshair Lookup
+// Crosshair Lookup (fsc_crosshair.c)
 /* ******************************************************************************** */
 
 typedef struct {
@@ -393,7 +394,7 @@ int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_er
 int is_crosshair_enabled(fsc_filesystem_t *fs, fsc_crosshair_t *crosshair);
 
 /* ******************************************************************************** */
-// Iteration
+// Iteration (fsc_iteration.c)
 /* ******************************************************************************** */
 
 typedef struct {
@@ -409,7 +410,7 @@ typedef struct {
 void fsc_iteration_register_file(fsc_stackptr_t file_ptr, fsc_hashtable_t *directories, fsc_hashtable_t *string_repository, fsc_stack_t *stack);
 
 /* ******************************************************************************** */
-// Index Cache
+// Index Cache (fsc_index.c)
 /* ******************************************************************************** */
 
 int fsc_cache_export_file(fsc_filesystem_t *source_fs, void *os_path, fsc_errorhandler_t *eh);

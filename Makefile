@@ -1670,6 +1670,7 @@ Q3OBJ = \
   $(B)/client/fsc_misc.o \
   $(B)/client/fsc_os.o \
   $(B)/client/fsc_pk3.o \
+  $(B)/client/fsc_sha256.o \
   $(B)/client/fsc_shader.o \
   $(B)/client/fs_commands.o \
   $(B)/client/fs_download.o \
@@ -2225,6 +2226,7 @@ Q3DOBJ = \
   $(B)/ded/fsc_misc.o \
   $(B)/ded/fsc_os.o \
   $(B)/ded/fsc_pk3.o \
+  $(B)/ded/fsc_sha256.o \
   $(B)/ded/fsc_shader.o \
   $(B)/ded/fs_commands.o \
   $(B)/ded/fs_download.o \
