@@ -207,7 +207,6 @@ void fs_startup(void);
 
 #ifdef FSLOCAL
 void debug_resource_comparison(int resource1_position, int resource2_position);
-const fsc_file_t *fs_gamedll_lookup(const char *name, qboolean debug);
 const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug);
 #endif
 
@@ -215,6 +214,7 @@ const fsc_file_t *fs_general_lookup(const char *name, qboolean use_pure_list, qb
 const fsc_shader_t *fs_shader_lookup(const char *name, int flags, qboolean debug);
 const fsc_file_t *fs_image_lookup(const char *name, int flags, qboolean debug);
 const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug);
+const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out);
 
 /* ******************************************************************************** */
 // File Listing
@@ -397,8 +397,8 @@ void fs_print_file_location(const fsc_file_t *file);
 
 // Misc Functions
 void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbufExec_t exec_type, qboolean quiet);
-void *fs_load_game_dll(const char *name, intptr_t (QDECL **entryPoint)(int, ...),
-		intptr_t (QDECL *systemcalls)(intptr_t, ...));
+void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)(int, ...),
+			intptr_t (QDECL *systemcalls)(intptr_t, ...));
 int fs_valid_md3_lods(int max_lods, const char *name, const char *extension);
 void FS_GetModDescription(const char *modDir, char *description, int descriptionLen);
 void FS_FilenameCompletion( const char *dir, const char *ext,
@@ -406,8 +406,14 @@ void FS_FilenameCompletion( const char *dir, const char *ext,
 qboolean FS_FilenameCompare( const char *s1, const char *s2 );
 void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
 
-// ID Pak Verification
 #ifdef FSLOCAL
+// QVM Hash Verification
+qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output);
+qboolean fs_check_trusted_vm_hash(unsigned char *hash);
+qboolean fs_check_trusted_vm_file(const fsc_file_t *file);
+void sha256_to_stream(unsigned char *sha, fsc_stream_t *output);
+
+// ID Pak Verification
 qboolean FS_idPak(char *pak, char *base, int numPaks);
 void FS_CheckPak0( void );
 #endif

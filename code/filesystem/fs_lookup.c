@@ -24,6 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fslocal.h"
 
+#define ADD_STRING(string) fsc_stream_append_string(stream, string)
+#define ADD_STRINGL(string) fsc_stream_append_string(&stream, string)
+
 /* ******************************************************************************** */
 // Lookup Resource Construction
 /* ******************************************************************************** */
@@ -83,10 +86,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 			resource->disabled = "dll files can only be loaded directly from disk"; }
 		resource->flags |= RESFLAG_FROM_DLL_QUERY; }
 
-	// Disable restricted files from download folder
-	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3) && (query->config_query ||
-			(resource->file->qp_ext_ptr && !Q_stricmp(STACKPTR(resource->file->qp_ext_ptr), "qvm")))) {
-		resource->disabled = "blocking restricted file type in downloads folder due to fs_restrict_dlfolder setting"; }
+	// Disable config files from download folder (qvm file restrictions are handled in perform_lookup)
+	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3) && (query->config_query)) {
+		resource->disabled = "blocking config file in downloaded pk3 due to fs_restrict_dlfolder setting"; }
 
 	// Disable files not on server pak list if connected to a pure server
 	if(query->use_pure_settings && fs_connected_server_pure_state() == 1 && !resource->server_pak_position) {
@@ -222,8 +224,6 @@ void perform_selection(const lookup_query_t *query, selection_output_t *output) 
 /* ******************************************************************************** */
 
 /* *** Support Functions *** */
-
-#define ADD_STRING(string) fsc_stream_append_string(stream, string)
 
 static void resource_to_stream(const lookup_resource_t *resource, fsc_stream_t *stream) {
 	fs_file_to_stream(resource->file, stream, qtrue, qtrue, qtrue, resource->shader ? qfalse : qtrue);
@@ -411,7 +411,7 @@ PC_DEBUG(case_match) {
 	ADD_STRING(va("Resource %i was selected because resource %i has a case discrepancy from the query and resource %i does not.",
 			high_num, low_num, high_num)); }
 
-/* *** Precedence List & Comparator *** */
+/* *** Precedence List & Sorting *** */
 
 typedef struct {
 	char *identifier;
@@ -449,17 +449,25 @@ static int precedence_comparator(const lookup_resource_t *resource1, const looku
 	// Use memory address as comparison of last resort
 	return resource1 < resource2 ? -1 : 1; }
 
+static int precedence_comparator_qsort(const void *e1, const void *e2) {
+	return precedence_comparator(e1, e2); }
+
+static void selection_sort(selection_output_t *selection_output) {
+	qsort(selection_output->resources, selection_output->resource_count, sizeof(*selection_output->resources),
+			precedence_comparator_qsort); }
+
 /* ******************************************************************************** */
 // Standard Lookup
 /* ******************************************************************************** */
 
-static void perform_lookup(const lookup_query_t *queries, int query_count, lookup_result_t *output) {
+static void perform_lookup(const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup,
+		lookup_result_t *output) {
 	int i;
 	selection_output_t selection_output;
-	lookup_resource_t *best_resource;
+	lookup_resource_t *best_resource = 0;
 
 	// Start with empty output
-	fsc_memset(output, 0, sizeof(*output));
+	Com_Memset(output, 0, sizeof(*output));
 
 	// Perform selection
 	initialize_selection_output(&selection_output);
@@ -471,13 +479,55 @@ static void perform_lookup(const lookup_query_t *queries, int query_count, looku
 		free_selection_output(&selection_output);
 		return; }
 
-	best_resource = &selection_output.resources[0];
-	for(i=1; i<selection_output.resource_count; ++i) {
-		if(precedence_comparator(best_resource, &selection_output.resources[i]) > 0) {
-			best_resource = &selection_output.resources[i]; } }
+	if(protected_vm_lookup && fs_restrict_dlfolder->integer) {
+		// Select the first resource that meets download folder restriction requirements
+		selection_sort(&selection_output);
+		for(i=0; i<selection_output.resource_count; ++i) {
+			if(selection_output.resources[i].flags & RESFLAG_IN_DOWNLOAD_PK3) {
+				char buffer[FS_FILE_BUFFER_SIZE];
+				qboolean trusted_hash = fs_check_trusted_vm_file(selection_output.resources[i].file);
+				if(!trusted_hash) {
+					// Raise error if connected to pure server, otherwise just print a warning and skip
+					fs_file_to_buffer(selection_output.resources[i].file, buffer, sizeof(buffer),
+							qtrue, qtrue, qtrue, qfalse);
+					if(!com_sv_running->integer && fs_connected_server_pure_state()) {
+						free_selection_output(&selection_output);
+						Com_Error(ERR_DROP, "QVM file %s has an untrusted hash and was blocked due to your"
+								" fs_restrict_dlfolder setting. To remedy this, you may either:"
+								"\n- Move the pk3 out of the downloads folder. If you don't trust the server"
+								" you downloaded this file from, this may be a security risk."
+								"\n- Set fs_restrict_dlfolder to 0 to allow running all QVMs from"
+								" downloaded pk3s. This may lead to increased security risks.", buffer); }
+					Com_Printf("^3WARNING: QVM file %s has an untrusted hash and was blocked due to your"
+							" fs_restrict_dlfolder setting.\n", buffer);
+					continue; }
+				else if(fs_restrict_dlfolder->integer != 1) {
+					// Raise error if connected to pure server, otherwise just print a warning and skip
+					fs_file_to_buffer(selection_output.resources[i].file, buffer, sizeof(buffer),
+							qtrue, qtrue, qtrue, qfalse);
+					if(!com_sv_running->integer && fs_connected_server_pure_state()) {
+						free_selection_output(&selection_output);
+						Com_Error(ERR_DROP, "QVM file %s has a trusted hash but was blocked due to your"
+								" fs_restrict_dlfolder setting. To remedy this, you may either:"
+								"\n- Move the pk3 out of the downloads folder. If you don't trust the server"
+								" you downloaded this file from, this may be a security risk."
+								"\n- Set fs_restrict_dlfolder to 1 to allow running trusted QVMs from"
+								" downloaded pk3s.", buffer); }
+					Com_Printf("^3WARNING: QVM file %s has a trusted hash but was blocked due to your"
+							" fs_restrict_dlfolder setting.\n", buffer);
+					continue; } }
 
-	// If top result was disabled in selection, leave output file null
-	if(!best_resource->disabled) {
+			// Have non-blocked file
+			best_resource = &selection_output.resources[i];
+			break; } }
+	else {
+		// Standard lookup; just pick the top resource
+		best_resource = &selection_output.resources[0];
+		for(i=1; i<selection_output.resource_count; ++i) {
+			if(precedence_comparator(best_resource, &selection_output.resources[i]) > 0) {
+				best_resource = &selection_output.resources[i]; } } }
+
+	if(best_resource && !best_resource->disabled) {
 		output->file = best_resource->file;
 		output->shader = best_resource->shader; }
 
@@ -489,37 +539,45 @@ static void perform_lookup(const lookup_query_t *queries, int query_count, looku
 
 /* *** Debug Query Storage *** */
 
-static int have_debug_selection = 0;
+static qboolean have_debug_selection = qfalse;
 static selection_output_t debug_selection;
 
 /* *** Debug Lookup - Generates sorted list of resources *** */
 
-static int debug_lookup_comparator(const void *e1, const void *e2) {
-	return precedence_comparator(e1, e2); }
-
-static void debug_lookup_sort(selection_output_t *selection_output) {
-	qsort(selection_output->resources, selection_output->resource_count, sizeof(*selection_output->resources), debug_lookup_comparator); }
-
-static void debug_lookup(const lookup_query_t *queries, int query_count) {
+static void debug_lookup(const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup) {
 	int i;
-	char data[1000];
-	fsc_stream_t stream = {data, 0, sizeof(data), 0};
 
 	// Set global state
 	if(have_debug_selection) free_selection_output(&debug_selection);
 	initialize_selection_output(&debug_selection);
 
-	// Get resource list
+	// Perform selection
 	for(i=0; i<query_count; ++i) {
 		perform_selection(&queries[i], &debug_selection); }
-	debug_lookup_sort(&debug_selection);
-	have_debug_selection = 1;
+	selection_sort(&debug_selection);
+	have_debug_selection = qtrue;
 
 	// Print element data
 	for(i=0; i<debug_selection.resource_count; ++i) {
-		stream.position = 0;
+		char buffer[2048];
+		fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
+
+		ADD_STRINGL(va("   Element %i: ", i+1));
 		resource_to_stream(&debug_selection.resources[i], &stream);
-		Com_Printf("   Element %i: %s\n\n", i+1, stream.data); }
+
+		if(protected_vm_lookup) {
+			// Print extra hash data
+			unsigned char hash[32];
+			calculate_file_sha256(debug_selection.resources[i].file, hash);
+			ADD_STRINGL("\nhash: ");
+			sha256_to_stream(hash, &stream);
+
+			if(debug_selection.resources[i].file->qp_ext_ptr &&
+					!Q_stricmp(STACKPTR(debug_selection.resources[i].file->qp_ext_ptr), "qvm")) {
+				ADD_STRINGL(va("\ntrusted: %s", fs_check_trusted_vm_hash(hash) ? "yes" :
+						"no; blocked in download folder if fs_restrict_dlfolder set")); } }
+
+		Com_Printf("%s\n\n", buffer); }
 
 	if(!debug_selection.resource_count) {
 		Com_Printf("No matching resources found.\n"); }
@@ -631,10 +689,10 @@ const fsc_file_t *fs_general_lookup(const char *name, qboolean use_pure_settings
 	query.extension_count = ext ? 1 : 0;
 
 	if(debug) {
-		debug_lookup(&query, 1);
+		debug_lookup(&query, 1, qfalse);
 		return 0; }
 
-	perform_lookup(&query, 1, &lookup_result);
+	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
 		Com_Printf("********** general lookup **********\n");
 		Com_Printf("name: %s\nuse_pure_settings: %s\nuse_current_map: %s\n", name,
@@ -661,8 +719,8 @@ static void shader_or_image_lookup(const char *name, qboolean image_only, int fl
 	query.qp_exts = flags & 1 ? exts : exts + 1;
 	query.extension_count = flags & 1 ? ARRAY_LEN(exts) : ARRAY_LEN(exts) - 1;
 
-	if(debug) debug_lookup(&query, 1);
-	else perform_lookup(&query, 1, output); }
+	if(debug) debug_lookup(&query, 1, qfalse);
+	else perform_lookup(&query, 1, qfalse, output); }
 
 const fsc_shader_t *fs_shader_lookup(const char *name, int flags, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
@@ -714,19 +772,21 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 	query.extension_count = 2;
 
 	if(debug) {
-		debug_lookup(&query, 1);
+		debug_lookup(&query, 1, qfalse);
 		return 0; }
 
-	perform_lookup(&query, 1, &lookup_result);
+	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
 		Com_Printf("********** sound lookup **********\n");
 		Com_Printf("name: %s\n", name);
 		lookup_print_debug_file(lookup_result.file); }
 	return lookup_result.file; }
 
-const fsc_file_t *fs_gamedll_lookup(const char *name, qboolean debug) {
-	// Returns game dll file, or null if not found or a qvm was selected instead
+const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) {
+	// Returns a qvm or game dll file, or null if not found
+	// May throw ERR_DROP due to fs_restrict_dlfolder checks
 	lookup_query_t queries[2];
+	int query_count = qvm_only ? 1 : 2;
 	char qpath_buffers[2][FSC_MAX_QPATH];
 	lookup_result_t lookup_result;
 
@@ -735,21 +795,27 @@ const fsc_file_t *fs_gamedll_lookup(const char *name, qboolean debug) {
 	queries[0].qp_exts = (char *[]){"qvm"};
 	queries[0].extension_count = 1;
 
-	fs_base_lookup_query(&queries[1], qtrue, qfalse);
-	fsc_process_qpath(va("%s" ARCH_STRING, name), qpath_buffers[1], &queries[1].qp_dir, &queries[1].qp_name, 0);
-	queries[1].qp_exts = (char *[]){DLL_EXT+1};
-	queries[1].extension_count = 1;
-	queries[1].dll_query = qtrue;
+	if(!qvm_only) {
+		fs_base_lookup_query(&queries[1], qtrue, qfalse);
+		fsc_process_qpath(va("%s" ARCH_STRING, name), qpath_buffers[1], &queries[1].qp_dir, &queries[1].qp_name, 0);
+		queries[1].qp_exts = (char *[]){DLL_EXT+1};
+		queries[1].extension_count = 1;
+		queries[1].dll_query = qtrue; }
 
 	if(debug) {
-		debug_lookup(queries, 2);
+		debug_lookup(queries, query_count, qtrue);
 		return 0; }
 
-	perform_lookup(queries, 2, &lookup_result);
+	perform_lookup(queries, query_count, qtrue, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** dll lookup **********\n");
+		Com_Printf("********** dll/qvm lookup **********\n");
 		Com_Printf("name: %s\n", name);
+		Com_Printf("qvm only: %s\n", qvm_only ? "yes" : "no");
 		lookup_print_debug_file(lookup_result.file); }
+
+	// Not elegant but should be adequate
+	if(is_dll_out) *is_dll_out = lookup_result.file &&
+			!Q_stricmp(STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT+1) ? qtrue : qfalse;
 	return lookup_result.file; }
 
 const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug) {
@@ -765,10 +831,10 @@ const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboo
 	query.config_query = type;
 
 	if(debug) {
-		debug_lookup(&query, 1);
+		debug_lookup(&query, 1, qfalse);
 		return 0; }
 
-	perform_lookup(&query, 1, &lookup_result);
+	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
 		Com_Printf("********** config lookup **********\n");
 		Com_Printf("name: %s\n", name);

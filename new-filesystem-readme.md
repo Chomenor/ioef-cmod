@@ -48,11 +48,16 @@ Special note: If you set fs_game on the command line, you will need to set fs_mo
 
 There are two new settings that can be used to control automatic downloads.
 
-- fs_saveto_dlfolder: If enabled, this will cause incoming downloads to be saved in the "downloads" folder within the target mod directory. For example, "baseq3/somefile.pk3" will be rewritten to "baseq3/downloads/somefile.pk3". Files stored directly in the mod directory will always take precedence over files in the downloads folder, to reduce the chance of automatically downloaded files causing problems.
+- fs_saveto_dlfolder: If enabled, this will cause incoming downloads to be saved in the "downloads" folder within the target mod directory. For example, "baseq3/somefile.pk3" will be rewritten to "baseq3/downloads/somefile.pk3". Pk3s directly in the mod directory will take precedence over those in the downloads folder.
 
-- fs_restrict_dlfolder: This blocks loading any qvm or config files from pk3s in the downloads folder. When combined with the setting above it should prevent servers from executing the most risky types of content. This is likely to break compatibility with some servers unless you manually move pk3s out of the downloads folder.
+- fs_restrict_dlfolder: This setting blocks potentially less secure content from pk3s in the downloads folder. It has three modes:
+    * setting 0: No restrictions.
+	* setting 1: Config files and qvm files that do not match a list of known trusted mod hashes will be blocked.
+	* setting 2: Config files and all qvm files will be blocked.
 
-This is based on ideas from github.com/ioquake/ioq3/issues/130
+These settings can increase security, but may break compatibility with some servers unless you manually move files out of the downloads folder.
+
+Based on ideas from github.com/ioquake/ioq3/issues/130
 
 # Source Directory Options
 

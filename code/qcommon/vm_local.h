@@ -150,7 +150,11 @@ struct vm_s {
 	//------------------------------------
    
 	char		name[MAX_QPATH];
+#ifdef NEW_FILESYSTEM
+	const fsc_file_t *source_file;		// Can be either qvm or dll
+#else
 	void	*searchPath;				// hint for FS_ReadFileDir()
+#endif
 
 	// for dynamic linked modules
 	void		*dllHandle;

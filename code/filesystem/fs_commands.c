@@ -54,7 +54,7 @@ static void cmd_find_vm(void) {
 		Com_Printf("Usage: find_vm <vm/dll name>\n");
 		return; }
 
-	fs_gamedll_lookup(Cmd_Argv(1), qtrue); }
+	fs_vm_lookup(Cmd_Argv(1), qfalse, qtrue, 0); }
 
 static void cmd_compare(void) {
 	if(Cmd_Argc() != 3) {

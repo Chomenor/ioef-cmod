@@ -368,9 +368,6 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	int					dataLength;
 	int					i;
 	char				filename[MAX_QPATH];
-#ifdef NEW_FILESYSTEM
-	const fsc_file_t	*qvm_file;
-#endif
 	union {
 		vmHeader_t	*h;
 		void				*v;
@@ -381,9 +378,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	Com_Printf( "Loading vm file %s...\n", filename );
 
 #ifdef NEW_FILESYSTEM
-	qvm_file = fs_general_lookup(filename, qtrue, qfalse, qfalse);
-	if(qvm_file) header.v = fs_read_data(qvm_file, 0, 0);
-	else header.v = 0;
+	header.v = fs_read_data(vm->source_file, 0, 0);
 #else
 	FS_ReadFileDir(filename, vm->searchPath, unpure, &header.v);
 #endif
@@ -399,7 +394,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 
 	// show where the qvm was loaded from
 #ifdef NEW_FILESYSTEM
-	fs_print_file_location(qvm_file);
+	fs_print_file_location(vm->source_file);
 #else
 	FS_Which(filename, vm->searchPath);
 #endif
@@ -547,6 +542,7 @@ vm_t *VM_Restart(vm_t *vm, qboolean unpure)
 {
 	vmHeader_t	*header;
 
+#ifndef NEW_FILESYSTEM
 	// DLL's can't be restarted in place
 	if ( vm->dllHandle ) {
 		char	name[MAX_QPATH];
@@ -560,9 +556,19 @@ vm_t *VM_Restart(vm_t *vm, qboolean unpure)
 		vm = VM_Create( name, systemCall, VMI_NATIVE );
 		return vm;
 	}
+#endif
 
 	// load the image
 	Com_Printf("VM_Restart()\n");
+
+#ifdef NEW_FILESYSTEM
+	if ( vm->dllHandle ) {
+		Sys_UnloadDll( vm->dllHandle );
+		vm->dllHandle = fs_load_game_dll(vm->source_file, &vm->entryPoint, VM_DllSyscall);
+		if(!vm->dllHandle) Com_Error(ERR_DROP, "VM_Restart on dll failed");
+		return vm;
+	}
+#endif
 
 	if(!(header = VM_LoadQVM(vm, qfalse, unpure)))
 	{
@@ -591,6 +597,7 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 #ifdef NEW_FILESYSTEM
 	int i;
 	int remaining;
+	qboolean is_dll = qfalse;
 #else
 	int			i, remaining, retval;
 	char filename[MAX_OSPATH];
@@ -627,11 +634,14 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 	Q_strncpyz(vm->name, module, sizeof(vm->name));
 
 #ifdef NEW_FILESYSTEM
-	if(interpret == VMI_NATIVE) {
-		vm->dllHandle = fs_load_game_dll(module, &vm->entryPoint, VM_DllSyscall);
-		if(vm->dllHandle) {
-			vm->systemCall = systemCalls;
-			return vm; } }
+	vm->source_file = fs_vm_lookup(module, interpret == VMI_NATIVE ? qfalse : qtrue, qfalse, &is_dll);
+	if(!vm->source_file) return 0;
+
+	if(is_dll) {
+		vm->dllHandle = fs_load_game_dll(vm->source_file, &vm->entryPoint, VM_DllSyscall);
+		if(!vm->dllHandle) return 0;
+		vm->systemCall = systemCalls;
+		return vm; }
 
 	header = VM_LoadQVM(vm, qtrue, qfalse);
 	if(!header) return 0;
