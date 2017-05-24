@@ -37,13 +37,11 @@ In general regular maps and skins will work fine in baseq3, but things that work
 
 Currently ioq3 stores a separate copy of the game settings for every mod. Whenever the mod changes, either by a user action or connection to a server, the settings are reset using the q3config.cfg from the new mod directory. This can lead to unexpected effects for users, such as graphics settings going haywire and changing resolutions when connecting to a server. This can be especially frustrating given that many mods are mostly server side and don't need any custom settings anyway.
 
-The new filesystem introduces a cvar called "fs_mod_settings", with the following effects:
+The new filesystem introduces a command line cvar called "fs_mod_settings", with the following effects:
 - fs_mod_settings 0: All settings are loaded and saved in the q3config.cfg in baseq3, regardless of the current mod. Every mod uses the same settings. This is closer to the original q3 behavior.
 - fs_mod_settings 1: Existing ioquake3 behavior, with separately stored settings for each mod.
 
 I favor fs_mod_settings 0 as the default value, because it's usually easier to manage a few settings that need to be changed between mods than to have every setting change between mods. Mods that require custom settings will be fine if they use deconflicted cvar names to store their settings. It appears most mods work under this setting without significant issues.
-
-Special note: If you set fs_game on the command line, you will need to set fs_mod_settings on the command line as well, or it will operate with the default value the game was compiled with. This is because the filesystem doesn't know the fs_mod_settings value until it loads the config file, but given fs_game is set it doesn't know which config file to load without knowing fs_mod_settings.
 
 # Download Directory Options
 

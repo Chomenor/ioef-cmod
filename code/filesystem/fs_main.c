@@ -154,12 +154,6 @@ void fs_set_mod_dir(const char *value, qboolean move_pid) {
 	// Set current_mod_dir
 	convert_mod_dir(value, current_mod_dir);
 
-	// Set fs_mod_settings cvar to non-modifiable when mods are loaded, because
-	// it would cause unwanted overwriting of config files and other issues
-	// Caution - this is a somewhat irregular use of the cvar system
-	if(*current_mod_dir) fs_mod_settings->flags = CVAR_ROM;
-	else fs_mod_settings->flags = CVAR_ARCHIVE;
-
 	// Move pid file to new mod dir if necessary
 	if(move_pid && strcmp(old_pid_dir, fs_pid_file_directory())) {
 		Sys_RemovePIDFile(old_pid_dir);
@@ -413,7 +407,7 @@ void fs_startup(void) {
 	// Initial startup, should only be called once
 	Com_Printf("\n----- fs_startup -----\n");
 
-	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_ARCHIVE);
+	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_INIT);
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
 	fs_search_inactive_mods = Cvar_Get("fs_search_inactive_mods", "2", CVAR_ARCHIVE);
 	fs_reference_inactive_mods = Cvar_Get("fs_reference_inactive_mods", "0", CVAR_ARCHIVE);
