@@ -1,14 +1,15 @@
-This is an updated file handling system for the ioquake3 project. It rewrites most of files.c and related components, and also includes tweaks in other parts of the game to use the updated filesystem functions.
+This is an updated file handling system for the ioquake3 project. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with almost all existing maps, mods, and configurations.
 
 Here are the key features:
-- Improved resource conflict negotiation. Broken textures and other glitches from conflicting pk3s are greatly reduced.
+- Improved resource conflict negotiation. Broken textures/shaders and other issues from conflicting pk3s are greatly reduced.
 - Improved load times, especially with lots of pk3s installed. Close to clean install performance with thousands of pk3s installed!
-- Searching for resources across all mods, even ones that aren't loaded. Maps can use textures from missionpack even when team arena mode isn't active.
-- Some new settings to fine tune filesystem and config file behavior.
-- New debugging commands for map and mod developers.
-- Various tweaks and security improvements.
-- Various code features to support future developments, such as loading resources from non-file sources.
-- New filesystem code is under ifdef and can be switched on and off at compile, to make integration with new projects easier.
+- Broad security improvements, safer downloading options, and fixes for multiple VM-based vulnerabilities.
+- Improved download handling when dealing with poorly configured servers.
+- Ability to use resources in mods that aren't loaded, such as missionpack maps and textures when team arena mode isn't active.
+- New debugging commands to trace file/shader origins.
+- Fixed server-side pure list overflow issues.
+- Semi-pure server support.
+- Numerous minor bug fixes and tweaks.
 
 Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
