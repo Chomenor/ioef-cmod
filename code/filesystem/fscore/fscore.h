@@ -166,7 +166,7 @@ int fsc_SkipBracedSection(char **program, int depth);
 /* ******************************************************************************** */
 
 unsigned int fsc_block_checksum(const void *buffer, int length);
-void fsc_calculate_sha256(const unsigned char *data, unsigned int size, unsigned char *output);
+void fsc_calculate_sha256(const char *data, unsigned int size, unsigned char *output);
 
 /* ******************************************************************************** */
 // OS Library Interface (fsc_os.c)
