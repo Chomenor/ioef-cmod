@@ -2973,8 +2973,10 @@ Writes key bindings and archived cvars to config file if modified
 ===============
 */
 void Com_WriteConfiguration( void ) {
+#ifndef NEW_FILESYSTEM
 #if !defined(DEDICATED) && !defined(STANDALONE)
 	cvar_t	*fs;
+#endif
 #endif
 	// if we are quiting without fully initializing, make sure
 	// we don't write out anything
@@ -2991,12 +2993,19 @@ void Com_WriteConfiguration( void ) {
 
 	// not needed for dedicated or standalone
 #if !defined(DEDICATED) && !defined(STANDALONE)
+#ifndef NEW_FILESYSTEM
 	fs = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO );
 
+#endif
 	if(!com_standalone->integer)
 	{
+#ifdef NEW_FILESYSTEM
+		if (UI_usesUniqueCDKey() && strcmp(FS_GetCurrentGameDir(), BASEGAME)) {
+			Com_WriteCDKey( FS_GetCurrentGameDir(), &cl_cdkey[16] );
+#else
 		if (UI_usesUniqueCDKey() && fs && fs->string[0] != 0) {
 			Com_WriteCDKey( fs->string, &cl_cdkey[16] );
+#endif
 		} else {
 			Com_WriteCDKey( BASEGAME, cl_cdkey );
 		}

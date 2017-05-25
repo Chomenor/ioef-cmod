@@ -147,6 +147,11 @@ static qboolean matches_current_mod_dir(const char *mod_dir) {
 	convert_mod_dir(mod_dir, converted_mod_dir);
 	return Q_stricmp(current_mod_dir, converted_mod_dir) ? qfalse : qtrue; }
 
+#ifndef STANDALONE
+void Com_AppendCDKey( const char *filename );
+void Com_ReadCDKey( const char *filename );
+#endif
+
 void fs_set_mod_dir(const char *value, qboolean move_pid) {
 	char old_pid_dir[FSC_MAX_MODDIR];
 	Q_strncpyz(old_pid_dir, fs_pid_file_directory(), sizeof(old_pid_dir));
@@ -158,6 +163,13 @@ void fs_set_mod_dir(const char *value, qboolean move_pid) {
 	if(move_pid && strcmp(old_pid_dir, fs_pid_file_directory())) {
 		Sys_RemovePIDFile(old_pid_dir);
 		Sys_InitPIDFile(fs_pid_file_directory()); }
+
+	// Read CD keys
+#ifndef STANDALONE
+	if(!com_standalone->integer) {
+		Com_ReadCDKey(BASEGAME);
+		if(strcmp(FS_GetCurrentGameDir(), BASEGAME)) Com_AppendCDKey(FS_GetCurrentGameDir()); }
+#endif
 
 	Cvar_Set("fs_game", current_mod_dir);
 	if(fs_debug_state->integer) Com_Printf("fs_state: current_mod_dir set to %s\n",
@@ -425,13 +437,11 @@ void fs_startup(void) {
 
 	Cvar_Get("new_filesystem", "1", CVAR_ROM);	// Enables new filesystem calls in renderer
 
-	fs_game = Cvar_Get("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO);
-
-	// Make sure fs_game is handled correctly if it was set on command line
-	fs_set_mod_dir(fs_game->string, qfalse);
-
 	fs_initialize_sourcedirs();
 	fs_initialize_index();
+
+	fs_game = Cvar_Get("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO);
+	fs_set_mod_dir(fs_game->string, qfalse);
 
 	Com_Printf("\n");
 	if(fs_filesystem_refresh_tracked() && fs_index_cache->integer && sourcedirs[0].writable) {
