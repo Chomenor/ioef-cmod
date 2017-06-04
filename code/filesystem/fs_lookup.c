@@ -27,9 +27,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ADD_STRING(string) fsc_stream_append_string(stream, string)
 #define ADD_STRINGL(string) fsc_stream_append_string(&stream, string)
 
-/* ******************************************************************************** */
-// Lookup Resource Construction
-/* ******************************************************************************** */
+typedef struct {
+	// File lookup
+	char *qp_name;	// null to disable file lookup
+	char *qp_dir;
+	char **qp_exts;
+	int extension_count;
+
+	// Shader lookup
+	char *shader_name;	// null to disable shader lookup
+
+	// Misc options
+	qboolean use_pure_settings;
+	qboolean use_current_map;
+
+	// Specialized query configurations
+	qboolean dll_query;
+	fs_config_type_t config_query;
+} lookup_query_t;
 
 #define RESFLAG_IN_DOWNLOAD_PK3 1
 #define RESFLAG_IN_CURRENT_MAP_PAK 2
@@ -37,6 +52,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define RESFLAG_CASE_MISMATCH 8
 
 typedef struct {
+	// This should contain only static data, i.e. no pointers that expire when the query
+	// finishes, since it gets saved for debug queries
 	const fsc_file_t *file;
 	const fsc_shader_t *shader;
 	int system_pak_priority;
@@ -49,6 +66,21 @@ typedef struct {
 	// have it show up in the precedence debug listings.
 	const char *disabled;
 } lookup_resource_t;
+
+typedef struct {
+	lookup_resource_t *resources;
+	int resource_count;
+	int resource_allocation;
+} selection_output_t;
+
+typedef struct {
+	const fsc_file_t *file;
+	const fsc_shader_t *shader;
+} query_result_t;
+
+/* ******************************************************************************** */
+// Resource construction - Converts file or shader to lookup resource
+/* ******************************************************************************** */
 
 static void configure_lookup_resource(const lookup_query_t *query, lookup_resource_t *resource) {
 	const char *resource_mod_dir = fsc_get_mod_dir(resource->file, &fs);
@@ -115,16 +147,10 @@ static void shader_to_lookup_resource(const lookup_query_t *query, fsc_shader_t 
 	configure_lookup_resource(query, resource); }
 
 /* ******************************************************************************** */
-// Selection - Generates set of matching lookup resources for given query
+// Selection - Generates set of lookup resources for given query
 /* ******************************************************************************** */
 
 /* *** Selection Output Structure *** */
-
-typedef struct {
-	lookup_resource_t *resources;
-	int resource_count;
-	int resource_allocation;
-} selection_output_t;
 
 static void initialize_selection_output(selection_output_t *output) {
 	// Initialize output structure
@@ -457,11 +483,13 @@ static void selection_sort(selection_output_t *selection_output) {
 			precedence_comparator_qsort); }
 
 /* ******************************************************************************** */
-// Standard Lookup
+// Query processing - Runs selection/precedence oprations for a given lookup query
 /* ******************************************************************************** */
 
+/* *** Standard Lookup *** */
+
 static void perform_lookup(const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup,
-		lookup_result_t *output) {
+		query_result_t *output) {
 	int i;
 	selection_output_t selection_output;
 	lookup_resource_t *best_resource = 0;
@@ -533,16 +561,12 @@ static void perform_lookup(const lookup_query_t *queries, int query_count, qbool
 
 	free_selection_output(&selection_output); }
 
-/* ******************************************************************************** */
-// Debug Lookup
-/* ******************************************************************************** */
-
 /* *** Debug Query Storage *** */
 
 static qboolean have_debug_selection = qfalse;
 static selection_output_t debug_selection;
 
-/* *** Debug Lookup - Generates sorted list of resources *** */
+/* *** Debug Lookup *** */
 
 static void debug_lookup(const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup) {
 	int i;
@@ -584,10 +608,6 @@ static void debug_lookup(const lookup_query_t *queries, int query_count, qboolea
 	else if(debug_selection.resources[0].disabled) {
 		Com_Printf("No resource was selected because element 1 is disabled: %s\n",
 				debug_selection.resources[0].disabled); } }
-
-/* ******************************************************************************** */
-// Debug Resource Comparison
-/* ******************************************************************************** */
 
 /* *** Debug Comparison - Compares two resources, lists each test and result, and debug info for decisive test *** */
 
@@ -654,7 +674,7 @@ void debug_resource_comparison(int resource1_position, int resource2_position) {
 	Com_Printf("%s\n", stream.data); }
 
 /* ******************************************************************************** */
-// File/Shader Lookup Functions
+// Wrapper functions - Generates query and calls query handling functions
 /* ******************************************************************************** */
 
 static void fs_base_lookup_query(lookup_query_t *query, qboolean use_pure_settings, qboolean use_current_map) {
@@ -674,7 +694,7 @@ const fsc_file_t *fs_general_lookup(const char *name, qboolean use_pure_settings
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
 	char *ext;
-	lookup_result_t lookup_result;
+	query_result_t lookup_result;
 
 	// For compatibility purposes, support dropping one leading slash from qpath
 	// as per FS_FOpenFileReadDir in original filesystem
@@ -701,7 +721,7 @@ const fsc_file_t *fs_general_lookup(const char *name, qboolean use_pure_settings
 	return lookup_result.file; }
 
 static void shader_or_image_lookup(const char *name, qboolean image_only, int flags,
-			lookup_result_t *output, qboolean debug) {
+			query_result_t *output, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	// flag 1 enables dds extension
 	lookup_query_t query;
@@ -726,7 +746,7 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int flags, qboolean debug
 	// Input name should be extension-free (call COM_StripExtension first)
 	// Returns null if shader not found or image took precedence
 	// flag 1 enables dds extension in image search
-	lookup_result_t lookup_result;
+	query_result_t lookup_result;
 	shader_or_image_lookup(name, qfalse, flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
@@ -738,7 +758,7 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int flags, qboolean debug
 const fsc_file_t *fs_image_lookup(const char *name, int flags, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	// flag 1 enables dds extension
-	lookup_result_t lookup_result;
+	query_result_t lookup_result;
 	shader_or_image_lookup(name, qtrue, flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
@@ -760,7 +780,7 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 		"opus",
 #endif
 	};
-	lookup_result_t lookup_result;
+	query_result_t lookup_result;
 
 	// For compatibility purposes, support dropping one leading slash from qpath
 	// as per FS_FOpenFileReadDir in original filesystem
@@ -788,7 +808,7 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 	lookup_query_t queries[2];
 	int query_count = qvm_only ? 1 : 2;
 	char qpath_buffers[2][FSC_MAX_QPATH];
-	lookup_result_t lookup_result;
+	query_result_t lookup_result;
 
 	fs_base_lookup_query(&queries[0], qtrue, qfalse);
 	fsc_process_qpath(va("vm/%s", name), qpath_buffers[0], &queries[0].qp_dir, &queries[0].qp_name, 0);
@@ -822,7 +842,7 @@ const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboo
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
 	char *ext;
-	lookup_result_t lookup_result;
+	query_result_t lookup_result;
 
 	fs_base_lookup_query(&query, type == FS_CONFIGTYPE_DEFAULT ? qtrue : qfalse, qfalse);
 	fsc_process_qpath(name, qpath_buffer, &query.qp_dir, &query.qp_name, &ext);

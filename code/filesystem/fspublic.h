@@ -112,30 +112,6 @@ typedef struct {
 	fs_hashtable_t ht;
 } pk3_list_t;
 
-typedef struct {
-	// File lookup
-	char *qp_name;	// null to disable file lookup
-	char *qp_dir;
-	char **qp_exts;
-	int extension_count;
-
-	// Shader lookup
-	char *shader_name;	// null to disable shader lookup
-
-	// Misc options
-	qboolean use_pure_settings;
-	qboolean use_current_map;
-
-	// Specialized query configurations
-	qboolean dll_query;
-	fs_config_type_t config_query;
-} lookup_query_t;
-
-typedef struct {
-	const fsc_file_t *file;
-	const fsc_shader_t *shader;
-} lookup_result_t;
-
 #define STACKPTR(pointer) ( fsc_stack_retrieve(&fs.general_stack, pointer) )
 #endif
 
