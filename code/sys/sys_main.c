@@ -514,6 +514,12 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 	void *dllhandle = 0;
 	char path[FS_MAX_PATH];
 
+	// Extra sanity check - this check shouldn't be security critical because it shouldn't be possible
+	// to get an arbitrary file written to the dll search locations, regardless of extension
+	if(!Sys_DllExtension(name)) {
+		Com_Printf("Refusing to attempt to load library \"%s\": Extension not allowed.\n", name);
+		return NULL; }
+
 	if(useSystemLib) {
 		Com_Printf("Trying to load \"%s\"...\n", name);
 		if(fs_generate_path(name, 0, 0, FS_ALLOW_DLL, 0, 0, path, sizeof(path)))

@@ -92,12 +92,15 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 		if(!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".qvm")) return qfalse;
 		if(!(flags & FS_ALLOW_PK3) && sanitized_path_length >= 4 &&
 				!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".pk3")) return qfalse;
-		if(!(flags & FS_ALLOW_DLL) && sanitized_path_length >= 4 &&
-				!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".dll")) return qfalse;
-		if(!(flags & FS_ALLOW_DLL) && sanitized_path_length >= 3 &&
-				!Q_stricmp(sanitized_path + sanitized_path_length - 3, ".so")) return qfalse;
-		if(!(flags & FS_ALLOW_DLL) && sanitized_path_length >= 6 &&
-				!Q_stricmp(sanitized_path + sanitized_path_length - 6, ".dylib")) return qfalse;
+		if(!(flags & FS_ALLOW_DLL)) {
+			if(Sys_DllExtension(sanitized_path)) return qfalse;
+			// Do some extra checks to be sure
+			if(sanitized_path_length >= 4 &&
+					!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".dll")) return qfalse;
+			if(sanitized_path_length >= 3 &&
+					!Q_stricmp(sanitized_path + sanitized_path_length - 3, ".so")) return qfalse;
+			if(sanitized_path_length >= 6 &&
+					!Q_stricmp(sanitized_path + sanitized_path_length - 6, ".dylib")) return qfalse; }
 		if(!(flags & FS_ALLOW_SPECIAL_CFG) && (!Q_stricmp(sanitized_path, Q3CONFIG_CFG) ||
 				!Q_stricmp(sanitized_path, "autoexec.cfg"))) return qfalse;
 
