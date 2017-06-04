@@ -535,7 +535,7 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 
 	if(!dllhandle) Com_Printf("Loading \"%s\" failed\n", name);
 #else
-	void *dllhandle;
+	void *dllhandle = NULL;
 
 	if(!Sys_DllExtension(name))
 	{
@@ -544,9 +544,12 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 	}
 
 	if(useSystemLib)
+	{
 		Com_Printf("Trying to load \"%s\"...\n", name);
+		dllhandle = Sys_LoadLibrary(name);
+	}
 	
-	if(!useSystemLib || !(dllhandle = Sys_LoadLibrary(name)))
+	if(!dllhandle)
 	{
 		const char *topDir;
 		char libPath[MAX_OSPATH];
@@ -717,6 +720,9 @@ int main( int argc, char **argv )
 {
 	int   i;
 	char  commandLine[ MAX_STRING_CHARS ] = { 0 };
+
+	extern void Sys_LaunchAutoupdater(int argc, char **argv);
+	Sys_LaunchAutoupdater(argc, argv);
 
 #ifndef DEDICATED
 	// SDL version check
