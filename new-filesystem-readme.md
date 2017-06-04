@@ -60,7 +60,7 @@ Based on ideas from github.com/ioquake/ioq3/issues/130
 
 # Source Directory Options
 
-A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*homepath basepath steampath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", and "fs_steampath" cvars, respectively.
+A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*homepath basepath steampath gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
 
 Notes:
 - You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
@@ -115,10 +115,12 @@ Once you run one of the above commands, you can use the "compare" command to fin
 
 # Known Issues
 
-- Little to no testing has been done on less common platforms and build environments, or on big endian systems. Fortunately most of the issues that could come up should be limited to a few places like fsc_os.c.
+- Little testing has been done on less common platforms and build environments, or on big endian systems. Fortunately most of the issues that could come up should be limited to a few places like fsc_os.c.
 
 - Only the makefile and msvc12 project files are updated to use the new filesystem. Some of the other project files and build scripts aren't updated yet. I figure somebody with more experience with those components would be better suited to make the changes.
 
 - The code conventions used for the filesystem are a bit different from the main ioq3 codebase in terms of stuff like function capitilization and brace placement.
 
 - The server-side pure verification function SV_VerifyPaks_f is no longer supported, since it has no security value in modern conditions. All other pure server functionality is supported and cross-compatible with existing clients and servers.
+
+- The pk3dir feature is currently not supported, as I'm not sure it's worth the code complexity to maintain it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you really need certainty that you get the same behavior as a pk3, you can use a script to generate an actual pk3.
