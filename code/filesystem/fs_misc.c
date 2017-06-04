@@ -757,11 +757,12 @@ static const unsigned int trusted_vms[][8] = {
 qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output) {
 	// Returns qtrue on success, qfalse otherwise
 	unsigned int size = 0;
-	const char *data = fs_read_data(file, 0, &size);
+	char *data = fs_read_data(file, 0, &size);
 	if(!data) {
 		Com_Memset(output, 0, 32);
 		return qfalse; }
 	fsc_calculate_sha256(data, size, output);
+	fs_free_data(data);
 	return qtrue; }
 
 qboolean fs_check_trusted_vm_hash(unsigned char *hash) {
