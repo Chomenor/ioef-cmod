@@ -3026,7 +3026,11 @@ static void UI_StartSkirmish(qboolean next) {
 		}
 	}
 	if (g >= GT_TEAM ) {
+		// send team command for vanilla q3 game qvm
 		trap_Cmd_ExecuteText( EXEC_APPEND, "wait 5; team Red\n" );
+
+		// set g_localTeamPref for ioq3 game qvm
+		trap_Cvar_Set( "g_localTeamPref", "Red" );
 	}
 }
 
@@ -4549,7 +4553,7 @@ static qboolean Team_Parse(char **p) {
       return qtrue;
     }
 
-    if ( !token || token[0] == 0 ) {
+    if (!token[0]) {
       return qfalse;
     }
 
@@ -4610,7 +4614,7 @@ static qboolean Character_Parse(char **p) {
       return qtrue;
     }
 
-    if ( !token || token[0] == 0 ) {
+    if (!token[0]) {
       return qfalse;
     }
 
@@ -4666,7 +4670,7 @@ static qboolean Alias_Parse(char **p) {
       return qtrue;
     }
 
-    if ( !token || token[0] == 0 ) {
+    if (!token[0]) {
       return qfalse;
     }
 
@@ -4715,7 +4719,7 @@ static void UI_ParseTeamInfo(const char *teamFile) {
 
 	while ( 1 ) {
 		token = COM_ParseExt( &p, qtrue );
-		if( !token || token[0] == 0 || token[0] == '}') {
+		if (!token[0] || token[0] == '}') {
 			break;
 		}
 
@@ -4767,7 +4771,7 @@ static qboolean GameType_Parse(char **p, qboolean join) {
 			return qtrue;
 		}
 
-		if ( !token || token[0] == 0 ) {
+		if (!token[0]) {
 			return qfalse;
 		}
 
@@ -4824,7 +4828,7 @@ static qboolean MapList_Parse(char **p) {
 			return qtrue;
 		}
 
-		if ( !token || token[0] == 0 ) {
+		if (!token[0]) {
 			return qfalse;
 		}
 
@@ -4885,7 +4889,7 @@ static void UI_ParseGameInfo(const char *teamFile) {
 
 	while ( 1 ) {
 		token = COM_ParseExt( &p, qtrue );
-		if( !token || token[0] == 0 || token[0] == '}') {
+		if (!token[0] || token[0] == '}') {
 			break;
 		}
 
@@ -5849,6 +5853,7 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_realCaptureLimit, "capturelimit", "8", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART},
 	{ &ui_serverStatusTimeOut, "ui_serverStatusTimeOut", "7000", CVAR_ARCHIVE},
 
+	{ NULL, "g_localTeamPref", "", 0 },
 };
 
 static int		cvarTableSize = ARRAY_LEN( cvarTable );
@@ -5878,6 +5883,10 @@ void UI_UpdateCvars( void ) {
 	cvarTable_t	*cv;
 
 	for ( i = 0, cv = cvarTable ; i < cvarTableSize ; i++, cv++ ) {
+		if ( !cv->vmCvar ) {
+			continue;
+		}
+
 		trap_Cvar_Update( cv->vmCvar );
 	}
 }
