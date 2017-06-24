@@ -123,4 +123,4 @@ Once you run one of the above commands, you can use the "compare" command to fin
 
 - The server-side pure verification function SV_VerifyPaks_f is no longer supported, since it has no security value in modern conditions. All other pure server functionality is supported and cross-compatible with existing clients and servers.
 
-- The pk3dir feature is currently not supported, as I'm not sure it's worth the code complexity to maintain it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you really need certainty that you get the same behavior as a pk3, you can use a script to generate an actual pk3.
+- The pk3dir feature is currently not supported, as I'm not sure it's worth the code complexity to include it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you have a use case that this doesn't cover sufficiently, let me know and I'll look into adding the full pk3dir functionality.
