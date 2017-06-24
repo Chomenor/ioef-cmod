@@ -720,8 +720,10 @@ static void SV_SendClientGameState( client_t *client ) {
  	Com_DPrintf ("SV_SendClientGameState() for %s\n", client->name);
 	Com_DPrintf( "Going from CS_CONNECTED to CS_PRIMED for %s\n", client->name );
 	client->state = CS_PRIMED;
+#ifndef NEW_FILESYSTEM
 	client->pureAuthentic = 0;
 	client->gotCP = qfalse;
+#endif
 
 	// when we receive the first packet from the client, we will
 	// notice that it is from a different serverid and that the
@@ -1250,6 +1252,20 @@ static void SV_Disconnect_f( client_t *cl ) {
 	SV_DropClient( cl, "disconnected" );
 }
 
+#ifdef NEW_FILESYSTEM
+/*
+=================
+SV_VerifyPaks_f / SV_ResetPureClient_f
+
+Placeholder functions to handle the deprecated cp and vdr commands
+=================
+*/
+static void SV_VerifyPaks_f( client_t *cl ) {
+}
+
+static void SV_ResetPureClient_f( client_t *cl ) {
+}
+#else
 /*
 =================
 SV_VerifyPaks_f
@@ -1264,10 +1280,6 @@ This routine would be a bit simpler with a goto but i abstained
 =================
 */
 static void SV_VerifyPaks_f( client_t *cl ) {
-#ifdef NEW_FILESYSTEM
-	cl->gotCP = qtrue;
-	cl->pureAuthentic = qtrue;
-#else
 	int nChkSum1, nChkSum2, nClientPaks, nServerPaks, i, j, nCurArg;
 	int nClientChkSum[1024];
 	int nServerChkSum[1024];
@@ -1414,7 +1426,6 @@ static void SV_VerifyPaks_f( client_t *cl ) {
 			SV_DropClient( cl, "Unpure client detected. Invalid .PK3 files referenced!" );
 		}
 	}
-#endif
 }
 
 /*
@@ -1426,6 +1437,7 @@ static void SV_ResetPureClient_f( client_t *cl ) {
 	cl->pureAuthentic = 0;
 	cl->gotCP = qfalse;
 }
+#endif
 
 /*
 =================
@@ -1762,6 +1774,7 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 	// save time for ping calculation
 	cl->frames[ cl->messageAcknowledge & PACKET_MASK ].messageAcked = svs.time;
 
+#ifndef NEW_FILESYSTEM
 	// TTimo
 	// catch the no-cp-yet situation before SV_ClientEnterWorld
 	// if CS_ACTIVE, then it's time to trigger a new gamestate emission
@@ -1775,6 +1788,7 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 		}
 		return;
 	}			
+#endif
 	
 	// if this is the first usercmd we have received
 	// this gamestate, put the client into the world
@@ -1783,11 +1797,13 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 		// the moves can be processed normaly
 	}
 	
+#ifndef NEW_FILESYSTEM
 	// a bad cp command was sent, drop the client
 	if (sv_pure->integer != 0 && cl->pureAuthentic == 0) {		
 		SV_DropClient( cl, "Cannot validate pure client!");
 		return;
 	}
+#endif
 
 	if ( cl->state != CS_ACTIVE ) {
 		cl->deltaMessage = -1;
