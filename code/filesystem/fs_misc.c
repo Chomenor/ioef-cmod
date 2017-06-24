@@ -477,6 +477,21 @@ void QDECL FS_Printf(fileHandle_t h, const char *fmt, ...) {
 	FS_Write(msg, strlen(msg), h);
 }
 
+qboolean FS_idPak(char *pak, char *base, int numPaks)
+{
+	int i;
+
+	for (i = 0; i < numPaks; i++) {
+		if ( !FS_FilenameCompare(pak, va("%s/pak%d", base, i)) ) {
+			break;
+		}
+	}
+	if (i < numPaks) {
+		return qtrue;
+	}
+	return qfalse;
+}
+
 /* ******************************************************************************** */
 // VM Hash Verification
 /* ******************************************************************************** */
@@ -788,253 +803,148 @@ void sha256_to_stream(unsigned char *sha, fsc_stream_t *output) {
 		fsc_stream_append_string(output, buffer); } }
 
 /* ******************************************************************************** */
-// ID Pak Verification
+// System Pak Verification
 /* ******************************************************************************** */
 
-qboolean FS_idPak(char *pak, char *base, int numPaks)
-{
-	int i;
-
-	for (i = 0; i < numPaks; i++) {
-		if ( !FS_FilenameCompare(pak, va("%s/pak%d", base, i)) ) {
-			break;
-		}
-	}
-	if (i < numPaks) {
-		return qtrue;
-	}
-	return qfalse;
-}
+// This section is used to verify the system (ID) paks on startup, and produce
+// appropriate warnings or errors if they are out of place
 
 #ifndef STANDALONE
+static const unsigned int core_hashes[] = {1566731103u, 298122907u, 412165236u,
+	2991495316u, 1197932710u, 4087071573u, 3709064859u, 908855077u, 977125798u};
 
-#define	DEMO_PAK0_CHECKSUM	2985612116u
-static const unsigned int pak_checksums[] = {
-	1566731103u,
-	298122907u,
-	412165236u,
-	2991495316u,
-	1197932710u,
-	4087071573u,
-	3709064859u,
-	908855077u,
-	977125798u
-};
+static const unsigned int missionpack_hashes[] = {2430342401u, 511014160u,
+	2662638993u, 1438664554u};
 
-#define NUM_ID_PAKS		9
-#define NUM_TA_PAKS		4
-
-static const unsigned int missionpak_checksums[] =
-{
-	2430342401u,
-	511014160u,
-	2662638993u,
-	1438664554u
-};
-
-/*
-===================
-FS_CheckPak0
-
-Check whether any of the original id pak files is present,
-and start up in standalone mode, if there are none and a
-different com_basegame was set.
-Note: If you're building a game that doesn't depend on the
-Q3 media pak0.pk3, you'll want to remove this by defining
-STANDALONE in q_shared.h
-===================
-*/
-void FS_CheckPak0( void )
-{
-	int i;
+static qboolean check_default_cfg_pk3(const char *mod, const char *filename, unsigned int hash) {
+	// Returns qtrue if there is a pk3 containing default.cfg with either the given name or hash
 	fsc_hashtable_iterator_t hti;
-	fsc_pk3_hash_map_entry_t *hash_entry;
-	qboolean founddemo = qfalse;
-	unsigned int foundPak = 0, foundTA = 0;
+	fsc_file_t *file;
 
-	for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
-		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-		while((hash_entry = STACKPTR(fsc_hashtable_next(&hti)))) {
-			const fsc_file_direct_t *pak = STACKPTR(hash_entry->pk3);
-			const char *pakBasename = STACKPTR(pak->f.qp_name_ptr);
-			const char *pakGamename = fsc_get_mod_dir((fsc_file_t *)pak, &fs);
-			unsigned int pakChecksum = pak->pk3_hash;
-			if(!fsc_is_file_enabled((fsc_file_t *)pak, &fs)) continue;
+	fsc_hashtable_open(&fs.files, fsc_string_hash("default", 0), &hti);
+	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
+		const fsc_file_t *pk3;
+		if(!fsc_is_file_enabled(file, &fs)) continue;
+		if(fs_inactive_mod_file_disabled((fsc_file_t *)file, fs_search_inactive_mods->integer)) continue;
+		if(file->sourcetype != FSC_SOURCETYPE_PK3) continue;
+		if(Q_stricmp(STACKPTR(file->qp_name_ptr), "default")) continue;
+		if(Q_stricmp(STACKPTR(file->qp_ext_ptr), "cfg")) continue;
+		if(file->qp_dir_ptr) continue;
 
-			if(!Q_stricmpn( pakGamename, "demoq3", MAX_OSPATH )
-					&& !Q_stricmpn( pakBasename, "pak0", MAX_OSPATH ))
-			{
-				if(pakChecksum == DEMO_PAK0_CHECKSUM)
-					founddemo = qtrue;
-			}
+		pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+		if(((fsc_file_direct_t *)pk3)->pk3_hash == hash) return qtrue;
+		if(mod && Q_stricmp(fsc_get_mod_dir(pk3, &fs), mod)) continue;
+		if(!Q_stricmp(STACKPTR(pk3->qp_name_ptr), filename)) return qtrue; }
 
-			else if(!Q_stricmpn( pakGamename, BASEGAME, MAX_OSPATH )
-					&& strlen(pakBasename) == 4 && !Q_stricmpn( pakBasename, "pak", 3 )
-					&& pakBasename[3] >= '0' && pakBasename[3] <= '0' + NUM_ID_PAKS - 1)
-			{
-				if( pakChecksum != pak_checksums[pakBasename[3]-'0'] )
-				{
-					if(pakBasename[3] == '0')
-					{
-						Com_Printf("\n\n"
-								"**************************************************\n"
-								"WARNING: " BASEGAME "/pak0.pk3 is present but its checksum (%u)\n"
-								"is not correct. Please re-copy pak0.pk3 from your\n"
-								"legitimate Q3 CDROM.\n"
-								"**************************************************\n\n\n",
-								pakChecksum );
-					}
-					else
-					{
-						Com_Printf("\n\n"
-								"**************************************************\n"
-								"WARNING: " BASEGAME "/pak%d.pk3 is present but its checksum (%u)\n"
-								"is not correct. Please re-install the point release\n"
-								"**************************************************\n\n\n",
-								pakBasename[3]-'0', pakChecksum );
-					}
-				}
+	return qfalse; }
 
-				foundPak |= 1<<(pakBasename[3]-'0');
-			}
-			else if(!Q_stricmpn(pakGamename, BASETA, MAX_OSPATH)
-					&& strlen(pakBasename) == 4 && !Q_stricmpn(pakBasename, "pak", 3)
-					&& pakBasename[3] >= '0' && pakBasename[3] <= '0' + NUM_TA_PAKS - 1)
+typedef struct {
+	const fsc_file_direct_t *name_match;
+	const fsc_file_direct_t *hash_match;
+} system_pak_state_t;
 
-			{
-				if(pakChecksum != missionpak_checksums[pakBasename[3]-'0'])
-				{
-					Com_Printf("\n\n"
-							"**************************************************\n"
-							"WARNING: " BASETA "/pak%d.pk3 is present but its checksum (%u)\n"
-							"is not correct. Please re-install Team Arena\n"
-							"**************************************************\n\n\n",
-							pakBasename[3]-'0', pakChecksum );
-				}
+static system_pak_state_t get_pak_state(const char *mod, const char *filename, unsigned int hash) {
+	// Locates name and hash matches for a given pak
+	const fsc_file_direct_t *name_match = 0;
+	fsc_hashtable_iterator_t hti;
+	fsc_pk3_hash_map_entry_t *entry;
+	const fsc_file_direct_t *file;
 
-				foundTA |= 1 << (pakBasename[3]-'0');
-			}
-			else
-			{
-				int index;
+	fsc_hashtable_open(&fs.files, fsc_string_hash(filename, 0), &hti);
+	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
+		if(!fsc_is_file_enabled((fsc_file_t *)file, &fs)) continue;
+		if(fs_inactive_mod_file_disabled((fsc_file_t *)file, fs_search_inactive_mods->integer)) continue;
+		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
+		if(Q_stricmp(STACKPTR(file->f.qp_name_ptr), filename)) continue;
+		if(Q_stricmp(STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
+		if(file->f.qp_dir_ptr) continue;
+		if(mod && Q_stricmp(fsc_get_mod_dir((fsc_file_t *)file, &fs), mod)) continue;
+		if(file->pk3_hash == hash) return (system_pak_state_t){file, file};
+		name_match = file; }
 
-				// Finally check whether this pak's checksum is listed because the user tried
-				// to trick us by renaming the file, and set foundPak's highest bit to indicate this case.
+	fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
+	while((entry = STACKPTR(fsc_hashtable_next(&hti)))) {
+		file = STACKPTR(entry->pk3);
+		if(!fsc_is_file_enabled((fsc_file_t *)file, &fs)) continue;
+		if(fs_inactive_mod_file_disabled((fsc_file_t *)file, fs_search_inactive_mods->integer)) continue;
+		if((file->pk3_hash == hash)) return (system_pak_state_t){name_match, file}; }
 
-				for(index = 0; index < ARRAY_LEN(pak_checksums); index++)
-				{
-					if(pakChecksum == pak_checksums[index])
-					{
-						char buffer[FS_FILE_BUFFER_SIZE];
-						fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
+	return (system_pak_state_t){name_match, 0}; }
 
-						Com_Printf("\n\n"
-								"**************************************************\n"
-								"WARNING: %s is renamed pak file %s%cpak%d.pk3\n"
-								"Running in standalone mode won't work\n"
-								"Please rename, or remove this file\n"
-								"**************************************************\n\n\n",
-								buffer, BASEGAME, PATH_SEP, index);
+static void generate_pak_warnings(const char *mod, const char *filename, system_pak_state_t *state,
+		fsc_stream_t *warning_popup_stream) {
+	// Prints console warning messages and appends warning popup string for a given pak
+	if(state->hash_match) {
+		if(!state->name_match) {
+			char hash_match_buffer[FS_FILE_BUFFER_SIZE];
+			fs_file_to_buffer((fsc_file_t *)state->hash_match, hash_match_buffer, sizeof(hash_match_buffer),
+					qfalse, qtrue, qfalse, qfalse);
+			Com_Printf("NOTE: %s/%s.pk3 is misnamed, found correct file at %s\n",
+					mod, filename, hash_match_buffer); }
+		else if(state->name_match != state->hash_match) {
+			char hash_match_buffer[FS_FILE_BUFFER_SIZE];
+			fs_file_to_buffer((fsc_file_t *)state->hash_match, hash_match_buffer, sizeof(hash_match_buffer),
+					qfalse, qtrue, qfalse, qfalse);
+			Com_Printf("WARNING: %s/%s.pk3 has incorrect hash, found correct file at %s\n",
+				mod, filename, hash_match_buffer); } }
+	else {
+		if(state->name_match) {
+			Com_Printf("WARNING: %s/%s.pk3 has incorrect hash\n", mod, filename);
+			fsc_stream_append_string(warning_popup_stream, va("%s/%s.pk3: incorrect hash\n", mod, filename)); }
+		else {
+			Com_Printf("WARNING: %s/%s.pk3 not found\n", mod, filename);
+			fsc_stream_append_string(warning_popup_stream, va("%s/%s.pk3: not found\n", mod, filename)); } } }
 
+void fs_check_system_paks(void) {
+	int i;
+	system_pak_state_t core_states[ARRAY_LEN(core_hashes)];
+	system_pak_state_t missionpack_states[ARRAY_LEN(missionpack_hashes)];
+	qboolean missionpack_installed = qfalse;	// Any missionpack paks detected
+	char warning_popup_buffer[1024];
+	fsc_stream_t warning_popup_stream = {warning_popup_buffer, 0, sizeof(warning_popup_buffer), qfalse};
 
-						foundPak |= 0x80000000;
-					}
-				}
+	// Generate pak states
+	for(i=0; i<ARRAY_LEN(core_hashes); ++i) {
+		core_states[i] = get_pak_state(BASEGAME, va("pak%i", i), core_hashes[i]); }
+	for(i=0; i<ARRAY_LEN(missionpack_hashes); ++i) {
+		missionpack_states[i] = get_pak_state("missionpack", va("pak%i", i), missionpack_hashes[i]);
+		if(missionpack_states[i].name_match || missionpack_states[i].hash_match) missionpack_installed = qtrue; }
 
-				for(index = 0; index < ARRAY_LEN(missionpak_checksums); index++)
-				{
-					if(pakChecksum == missionpak_checksums[index])
-					{
-						char buffer[FS_FILE_BUFFER_SIZE];
-						fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
+	// Check for standalone mode
+	if(Q_stricmp(com_basegame->string, BASEGAME)) {
+		qboolean have_id_pak = qfalse;
+		for(i=0; i<ARRAY_LEN(core_hashes); ++i) if(core_states[i].hash_match) have_id_pak = qtrue;
+		for(i=0; i<ARRAY_LEN(missionpack_hashes); ++i) if(missionpack_states[i].hash_match) have_id_pak = qtrue;
+		if(!have_id_pak) {
+			Com_Printf("Enabling standalone mode - no ID paks found\n");
+			Cvar_Set("com_standalone", "1");
+			return; } }
 
-						Com_Printf("\n\n"
-								"**************************************************\n"
-								"WARNING: %s is renamed pak file %s%cpak%d.pk3\n"
-								"Running in standalone mode won't work\n"
-								"Please rename, or remove this file\n"
-								"**************************************************\n\n\n",
-								buffer, BASETA, PATH_SEP, index);
+	// Print console warning messages and build warning popup string
+	for(i=0; i<ARRAY_LEN(core_hashes); ++i) {
+		generate_pak_warnings(BASEGAME, va("pak%i", i), &core_states[i], &warning_popup_stream); }
+	if(missionpack_installed) for(i=0; i<ARRAY_LEN(missionpack_hashes); ++i) {
+		generate_pak_warnings("missionpack", va("pak%i", i), &missionpack_states[i], &warning_popup_stream); }
 
-						foundTA |= 0x80000000;
-					}
-				}
-			}
-		}
-	}
+	// Check for missing default.cfg
+	if(!check_default_cfg_pk3(BASEGAME, "pak0", core_hashes[0])) {
+		if(core_states[0].name_match || core_states[0].hash_match) Com_Error(ERR_FATAL,
+			BASEGAME "/pak0.pk3 appears to be corrupt (missing default.cfg). Please recopy"
+			" this file from your Quake 3 CD or reinstall Quake 3. You may also try"
+			" deleting fscache.dat in case it has become corrupt");
+		else Com_Error(ERR_FATAL, BASEGAME "/pak0.pk3 is missing. Please recopy"
+			" this file from your Quake 3 CD or reinstall Quake 3"); }
 
-	if(!foundPak && !foundTA && Q_stricmp(com_basegame->string, BASEGAME))
-	{
-		Cvar_Set("com_standalone", "1");
-	}
-	else
-		Cvar_Set("com_standalone", "0");
-
-	if(!com_standalone->integer)
-	{
-		if(!(foundPak & 0x01))
-		{
-			if(founddemo)
-			{
-				Com_Printf( "\n\n"
-						"**************************************************\n"
-						"WARNING: It looks like you're using pak0.pk3\n"
-						"from the demo. This may work fine, but it is not\n"
-						"guaranteed or supported.\n"
-						"**************************************************\n\n\n" );
-
-				foundPak |= 0x01;
-			}
-		}
-	}
-
-
-	if(!com_standalone->integer && (foundPak & 0x1ff) != 0x1ff)
-	{
-		char errorText[MAX_STRING_CHARS] = "";
-
-		if((foundPak & 0x01) != 0x01)
-		{
-			Q_strcat(errorText, sizeof(errorText),
-					"\"pak0.pk3\" is missing. Please copy it "
-					"from your legitimate Q3 CDROM. ");
-		}
-
-		if((foundPak & 0x1fe) != 0x1fe)
-		{
-			Q_strcat(errorText, sizeof(errorText),
-					"Point Release files are missing. Please "
-					"re-install the 1.32 point release. ");
-		}
-
-		Q_strcat(errorText, sizeof(errorText),
-				va("Also check that your ioq3 executable is in "
-					"the correct place and that every file "
-					"in the \"%s\" directory is present and readable", BASEGAME));
-
-		Com_Error(ERR_FATAL, "%s", errorText);
-	}
-
-	if(!com_standalone->integer && foundTA && (foundTA & 0x0f) != 0x0f)
-	{
-		char errorText[MAX_STRING_CHARS] = "";
-
-		if((foundTA & 0x01) != 0x01)
-		{
-			Com_sprintf(errorText, sizeof(errorText),
-					"\"" BASETA "%cpak0.pk3\" is missing. Please copy it "
-					"from your legitimate Quake 3 Team Arena CDROM. ", PATH_SEP);
-		}
-
-		if((foundTA & 0x0e) != 0x0e)
-		{
-			Q_strcat(errorText, sizeof(errorText),
-					"Team Arena Point Release files are missing. Please "
-					"re-install the latest Team Arena point release.");
-		}
-
-		Com_Error(ERR_FATAL, "%s", errorText);
-	}
+#ifndef DEDICATED
+	// If warning popup info was generated, display warning popup
+	if(warning_popup_stream.position) {
+		dialogResult_t result = Sys_Dialog(DT_OK_CANCEL, va("The following game files appear"
+			" to be missing or corrupt. You can try to run the game anyway, but you may"
+			" experience errors or problems connecting to remote servers.\n\n%s\n"
+			"You may need to reinstall Quake 3, the v1.32 patch, and/or team arena.",
+			warning_popup_buffer), "File Warning");
+		if(result == DR_CANCEL) Sys_Quit(); }
+#endif
 }
 #endif
 

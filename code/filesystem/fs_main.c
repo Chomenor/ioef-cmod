@@ -453,7 +453,7 @@ void fs_startup(void) {
 	fs_initialized = qtrue;
 
 #ifndef STANDALONE
-	FS_CheckPak0();
+	fs_check_system_paks();
 #endif
 }
 

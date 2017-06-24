@@ -372,6 +372,9 @@ char *fs_file_extension(const fsc_file_t *file);
 void fs_print_file_location(const fsc_file_t *file);
 
 // Misc Functions
+#ifdef FSLOCAL
+qboolean FS_idPak(char *pak, char *base, int numPaks);
+#endif
 void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbufExec_t exec_type, qboolean quiet);
 void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)(int, ...),
 			intptr_t (QDECL *systemcalls)(intptr_t, ...));
@@ -389,7 +392,6 @@ qboolean fs_check_trusted_vm_hash(unsigned char *hash);
 qboolean fs_check_trusted_vm_file(const fsc_file_t *file);
 void sha256_to_stream(unsigned char *sha, fsc_stream_t *output);
 
-// ID Pak Verification
-qboolean FS_idPak(char *pak, char *base, int numPaks);
-void FS_CheckPak0( void );
+// System Pak Verification
+void fs_check_system_paks(void);
 #endif
