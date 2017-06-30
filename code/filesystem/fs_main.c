@@ -145,7 +145,7 @@ static void convert_mod_dir(const char *source, char *target) {
 static qboolean matches_current_mod_dir(const char *mod_dir) {
 	char converted_mod_dir[FSC_MAX_MODDIR];
 	convert_mod_dir(mod_dir, converted_mod_dir);
-	return Q_stricmp(current_mod_dir, converted_mod_dir) ? qfalse : qtrue; }
+	return strcmp(current_mod_dir, converted_mod_dir) ? qfalse : qtrue; }
 
 #ifndef STANDALONE
 void Com_AppendCDKey( const char *filename );
