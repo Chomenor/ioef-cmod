@@ -81,8 +81,7 @@ typedef enum {
 typedef struct {
 	char *name;
 	cvar_t *path_cvar;
-	int active_rank;	// 0 = inactive, otherwise lower means higher priority
-	qboolean writable;
+	qboolean active;
 } fs_source_directory_t;
 
 typedef struct fs_hashtable_entry_s {
@@ -120,6 +119,7 @@ typedef struct {
 /* ******************************************************************************** */
 
 #ifdef FSLOCAL
+extern cvar_t *fs_dirs;
 extern cvar_t *fs_mod_settings;
 extern cvar_t *fs_index_cache;
 extern cvar_t *fs_search_inactive_mods;
@@ -137,8 +137,8 @@ extern cvar_t *fs_debug_references;
 extern cvar_t *fs_debug_filelist;
 
 #define FS_SOURCEDIR_COUNT 4
-extern fs_source_directory_t sourcedirs[FS_SOURCEDIR_COUNT];
-extern cvar_t *fs_dirs;
+extern fs_source_directory_t fs_sourcedirs[FS_SOURCEDIR_COUNT];
+extern qboolean fs_read_only;
 
 extern fsc_filesystem_t fs;
 

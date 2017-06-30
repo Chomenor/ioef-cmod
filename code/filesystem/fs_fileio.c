@@ -143,14 +143,14 @@ int fs_generate_path(const char *path1, const char *path2, const char *path3,
 int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
 		int path1_flags, int path2_flags, char *target, int target_size) {
 	// Generates path prefixed by source directory
-	if(!sourcedirs[source_dir_id].active_rank) return 0;
-	return fs_generate_path(sourcedirs[source_dir_id].path_cvar->string, path1, path2, FS_NO_SANITIZE,
+	if(!fs_sourcedirs[source_dir_id].active) return 0;
+	return fs_generate_path(fs_sourcedirs[source_dir_id].path_cvar->string, path1, path2, FS_NO_SANITIZE,
 				path1_flags, path2_flags, target, target_size); }
 
 int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
 		char *target, int target_size) {
 	// Generates path prefixed by write directory
-	if(!sourcedirs[0].writable) return 0;
+	if(fs_read_only) return 0;
 	return fs_generate_path_sourcedir(0, path1, path2, path1_flags, path2_flags, target, target_size); }
 
 /* ******************************************************************************** */

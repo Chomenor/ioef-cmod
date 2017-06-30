@@ -173,8 +173,8 @@ static void FS_Path_f( void ) {
 	int i;
 
 	for(sourceid=0; sourceid<FS_SOURCEDIR_COUNT; ++sourceid) {
-		if(!sourcedirs[sourceid].active_rank) continue;
-		Com_Printf("Looking in %s (%s)\n", sourcedirs[sourceid].name, sourcedirs[sourceid].path_cvar->string);
+		if(!fs_sourcedirs[sourceid].active) continue;
+		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path_cvar->string);
 
 		for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);

@@ -165,7 +165,7 @@ static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int reche
 	fsc_stackptr_t candidate_entry_ptr;
 	fsc_file_direct_t *different_moddir_match = 0;
 
-	if(!sourcedirs[0].writable) {
+	if(fs_read_only) {
 		Com_Printf("WARNING: Ignoring download %s because filesystem is in read-only state.\n",
 			entry->local_name);
 		return qfalse; }

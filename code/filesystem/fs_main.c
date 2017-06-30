@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // The convention is that everything here can be accessed from anywhere in the
 // filesystem code, but should only be modified through this file
 
+cvar_t *fs_dirs;
 cvar_t *fs_mod_settings;
 cvar_t *fs_index_cache;
 cvar_t *fs_search_inactive_mods;
@@ -47,8 +48,8 @@ cvar_t *fs_debug_lookup;
 cvar_t *fs_debug_references;
 cvar_t *fs_debug_filelist;
 
-fs_source_directory_t sourcedirs[FS_SOURCEDIR_COUNT];
-cvar_t *fs_dirs;
+fs_source_directory_t fs_sourcedirs[FS_SOURCEDIR_COUNT];
+qboolean fs_read_only;	// If false, fs_sourcedirs[0] is write directory
 
 fsc_filesystem_t fs;
 static qboolean fs_initialized = qfalse;
@@ -223,46 +224,40 @@ static char *fs_default_homepath(void) {
 	if(!homepath) return "";
 	return homepath; }
 
-static fs_source_directory_t *find_sourcedir_by_name(char *name) {
-	// Returns sourcedir or null if not found
-	int i;
-	for(i=0; i<FS_SOURCEDIR_COUNT; ++i) {
-		if(sourcedirs[i].name && !Q_stricmp(name, sourcedirs[i].name)) return &sourcedirs[i]; }
-	return 0; }
+typedef struct {
+	char *name;
+	cvar_t *path_cvar;
+	int fs_dirs_position;	// 0 = inactive, otherwise lower means higher priority
+	qboolean write_dir;
+} temp_source_directory_t;
 
-static int compare_source_dirs(const fs_source_directory_t *dir1, const fs_source_directory_t *dir2) {
+static int compare_temp_source_dirs(const temp_source_directory_t *dir1, const temp_source_directory_t *dir2) {
 	// Put write dir first, followed by highest to lowest priority dirs, and inactive (0 active_rank) dirs last
-	if(dir1->writable && !dir2->writable) return -1;
-	if(dir2->writable && !dir1->writable) return 1;
-	if(dir1->active_rank && !dir2->active_rank) return -1;
-	if(dir2->active_rank && !dir1->active_rank) return 1;
-	if(dir1->active_rank < dir2->active_rank) return -1;
+	if(dir1->write_dir && !dir2->write_dir) return -1;
+	if(dir2->write_dir && !dir1->write_dir) return 1;
+	if(dir1->fs_dirs_position && !dir2->fs_dirs_position) return -1;
+	if(dir2->fs_dirs_position && !dir1->fs_dirs_position) return 1;
+	if(dir1->fs_dirs_position < dir2->fs_dirs_position) return -1;
 	return 1; }
 
-static int compare_source_dirs_qsort(const void *dir1, const void *dir2) {
-	return compare_source_dirs(dir1, dir2); }
+static int compare_temp_source_dirs_qsort(const void *dir1, const void *dir2) {
+	return compare_temp_source_dirs(dir1, dir2); }
 
 void fs_initialize_sourcedirs(void) {
 	int i;
 	qboolean have_write_dir = qfalse;
-	int current_rank = 0;
+	int current_position = 0;
 	char *fs_dirs_ptr;
 	char *token;
+	temp_source_directory_t temp_dirs[FS_SOURCEDIR_COUNT] = {
+		{"homepath",  Cvar_Get("fs_homepath", fs_default_homepath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"basepath", Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"steampath", Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"gogpath", Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse} };
 
-	sourcedirs[0].name = "homepath";
-	sourcedirs[0].path_cvar = Cvar_Get("fs_homepath", fs_default_homepath(), CVAR_INIT|CVAR_PROTECTED);
-	sourcedirs[1].name = "basepath";
-	sourcedirs[1].path_cvar = Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED);
-	sourcedirs[2].name = "steampath";
-	sourcedirs[2].path_cvar = Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED);
-	sourcedirs[3].name = "gogpath";
-	sourcedirs[3].path_cvar = Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED);
-
-	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
-
+	// Configure temp_dirs based on fs_dirs entries
 	fs_dirs_ptr = fs_dirs->string;
 	while(1) {
-		fs_source_directory_t *sourcedir;
 		qboolean write_dir = qfalse;
 
 		token = COM_ParseExt(&fs_dirs_ptr, qfalse);
@@ -272,32 +267,41 @@ void fs_initialize_sourcedirs(void) {
 			write_dir = qtrue;
 			++token; }
 
-		sourcedir = find_sourcedir_by_name(token);
-		if(!sourcedir) continue;
-		if(!*sourcedir->path_cvar->string) continue;
-		if(sourcedir->active_rank) continue;
+		for(i=0; i<FS_SOURCEDIR_COUNT; ++i) if(!Q_stricmp(token, temp_dirs[i].name)) break;
+		if(i >= FS_SOURCEDIR_COUNT) continue;	// Invalid source dir name
+		if(!*temp_dirs[i].path_cvar->string) continue;	// No path set
+		if(temp_dirs[i].fs_dirs_position) continue;		// Source dir already initialized
 
-		sourcedir->active_rank = ++current_rank;
+		temp_dirs[i].fs_dirs_position = ++current_position;
 
 		if(write_dir && !have_write_dir) {
-			Com_Printf("Checking if %s is writable...\n", sourcedir->path_cvar->name);
-			if(prepare_writable_directory(sourcedir->path_cvar->string)) {
+			Com_Printf("Checking if %s is writable...\n", temp_dirs[i].path_cvar->name);
+			if(prepare_writable_directory(temp_dirs[i].path_cvar->string)) {
 				Com_Printf("Confirmed writable.\n");
-				sourcedir->writable = qtrue;
+				temp_dirs[i].write_dir = qtrue;
 				have_write_dir = qtrue; }
 			else {
 				Com_Printf("Not writable due to failed write test.\n"); } } }
 
-	qsort(sourcedirs, FS_SOURCEDIR_COUNT, sizeof(*sourcedirs), compare_source_dirs_qsort);
+	// Sort temp_dirs
+	qsort(temp_dirs, FS_SOURCEDIR_COUNT, sizeof(*temp_dirs), compare_temp_source_dirs_qsort);
 
-	if(sourcedirs[0].writable) {
-		Com_Printf("Write directory: %s (%s)\n", sourcedirs[0].name, sourcedirs[0].path_cvar->string); }
+	// Check for read-only mode
+	if(temp_dirs[0].write_dir) {
+		fs_read_only = qfalse;
+		Com_Printf("Write directory: %s (%s)\n", temp_dirs[0].name, temp_dirs[0].path_cvar->string); }
 	else {
+		fs_read_only = qtrue;
 		Com_Printf("WARNING: No write directory selected. Filesystem in read-only mode.\n"); }
 
+	// Transfer data from temp_dirs to fs_sourcedirs
 	for(i=0; i<FS_SOURCEDIR_COUNT; ++i) {
-		if(!sourcedirs[i].active_rank) continue;
-		Com_Printf("Source directory %i: %s (%s)\n", i+1, sourcedirs[i].name, sourcedirs[i].path_cvar->string); } }
+		fs_sourcedirs[i].name = temp_dirs[i].name;
+		fs_sourcedirs[i].path_cvar = temp_dirs[i].path_cvar;
+		fs_sourcedirs[i].active = temp_dirs[i].fs_dirs_position ? qtrue : qfalse;
+
+		if(fs_sourcedirs[i].active) Com_Printf("Source directory %i: %s (%s)\n", i+1, fs_sourcedirs[i].name,
+				fs_sourcedirs[i].path_cvar->string); } }
 
 /* ******************************************************************************** */
 // Filesystem Refresh
@@ -348,9 +352,9 @@ void fs_refresh(qboolean quiet) {
 	fsc_filesystem_reset(&fs);
 
 	for(i=0; i<FS_SOURCEDIR_COUNT; ++i) {
-		if(!sourcedirs[i].active_rank) continue;
-		if(!quiet) Com_Printf("Indexing %s...\n", sourcedirs[i].name);
-		index_directory(sourcedirs[i].path_cvar->string, i, quiet); }
+		if(!fs_sourcedirs[i].active) continue;
+		if(!quiet) Com_Printf("Indexing %s...\n", fs_sourcedirs[i].name);
+		index_directory(fs_sourcedirs[i].path_cvar->string, i, quiet); }
 
 	if(!quiet) Com_Printf("Index memory usage at %iMB.\n",
 			fsc_fs_size_estimate(&fs) / 1048576 + 1); }
@@ -419,6 +423,7 @@ void fs_startup(void) {
 	// Initial startup, should only be called once
 	Com_Printf("\n----- fs_startup -----\n");
 
+	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_INIT);
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
 	fs_search_inactive_mods = Cvar_Get("fs_search_inactive_mods", "2", CVAR_ARCHIVE);
@@ -444,7 +449,7 @@ void fs_startup(void) {
 	fs_set_mod_dir(fs_game->string, qfalse);
 
 	Com_Printf("\n");
-	if(fs_filesystem_refresh_tracked() && fs_index_cache->integer && sourcedirs[0].writable) {
+	if(fs_filesystem_refresh_tracked() && fs_index_cache->integer && !fs_read_only) {
 		Com_Printf("Writing fscache.dat due to updated files...\n");
 		fs_indexcache_write(); }
 	Com_Printf("\n");
