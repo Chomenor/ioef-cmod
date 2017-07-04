@@ -421,7 +421,6 @@ static void ArenaServers_UpdateMenu( void ) {
 		}
 		else {
 			// all servers pinged - enable controls
-			g_arenaservers.master.generic.flags		&= ~QMF_GRAYED;
 			g_arenaservers.gametype.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.sortkey.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.showempty.generic.flags	&= ~QMF_GRAYED;
@@ -448,7 +447,6 @@ static void ArenaServers_UpdateMenu( void ) {
 			g_arenaservers.statusbar.string = "Press SPACE to stop";
 
 			// disable controls during refresh
-			g_arenaservers.master.generic.flags		|= QMF_GRAYED;
 			g_arenaservers.gametype.generic.flags	|= QMF_GRAYED;
 			g_arenaservers.sortkey.generic.flags	|= QMF_GRAYED;
 			g_arenaservers.showempty.generic.flags	|= QMF_GRAYED;
@@ -721,38 +719,6 @@ static void ArenaServers_Insert( char* adrstr, char* info, int pingtime )
 
 /*
 =================
-ArenaServers_InsertFavorites
-
-Insert nonresponsive address book entries into display lists.
-=================
-*/
-void ArenaServers_InsertFavorites( void )
-{
-	int		i;
-	int		j;
-	char	info[MAX_INFO_STRING];
-
-	// resync existing results with new or deleted cvars
-	info[0] = '\0';
-	Info_SetValueForKey( info, "hostname", "No Response" );
-	for (i=0; i<g_arenaservers.numfavoriteaddresses; i++)
-	{
-		// find favorite address in refresh list
-		for (j=0; j<g_numfavoriteservers; j++)
-			if (!Q_stricmp(g_arenaservers.favoriteaddresses[i],g_favoriteserverlist[j].adrstr))
-				break;
-
-		if ( j >= g_numfavoriteservers)
-		{
-			// not in list, add it
-			ArenaServers_Insert( g_arenaservers.favoriteaddresses[i], info, ArenaServers_MaxPing() );
-		}
-	}
-}
-
-
-/*
-=================
 ArenaServers_LoadFavorites
 
 Load cvar address book entries into local lists.
@@ -834,12 +800,6 @@ static void ArenaServers_StopRefresh( void )
 
 	g_arenaservers.refreshservers = qfalse;
 
-	if (g_servertype == UIAS_FAVORITES)
-	{
-		// nonresponsive favorites must be shown
-		ArenaServers_InsertFavorites();
-	}
-
 	// final tally
 	if (g_arenaservers.numqueriedservers >= 0)
 	{
@@ -881,6 +841,13 @@ static void ArenaServers_DoRefresh( void )
 			  return;
 			}
 	  }
+	} else if (g_servertype == UIAS_LOCAL) {
+		if (!trap_LAN_GetServerCount(AS_LOCAL)) {
+			// no local servers found, check again
+			trap_Cmd_ExecuteText( EXEC_APPEND, "localservers\n" );
+			g_arenaservers.refreshtime = uis.realtime + 5000;
+			return;
+		}
 	}
 
 	if (uis.realtime < g_arenaservers.nextpingtime)
@@ -926,6 +893,12 @@ static void ArenaServers_DoRefresh( void )
 				// stale it out
 				info[0] = '\0';
 				time    = maxPing;
+
+				// set hostname for nonresponsive favorite server
+				if (g_servertype == UIAS_FAVORITES) {
+					Info_SetValueForKey( info, "hostname", adrstr );
+					Info_SetValueForKey( info, "game", "???" );
+				}
 			}
 			else
 			{
@@ -1121,6 +1094,8 @@ ArenaServers_SetType
 */
 int ArenaServers_SetType( int type )
 {
+	ArenaServers_StopRefresh();
+
 	if(type >= UIAS_GLOBAL1 && type <= UIAS_GLOBAL5)
 	{
 		char masterstr[2], cvarname[sizeof("sv_master1")];
