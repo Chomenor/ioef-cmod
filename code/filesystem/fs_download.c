@@ -24,10 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fslocal.h"
 
-/* ******************************************************************************** */
-// Download List Handling
-/* ******************************************************************************** */
-
 #define MAX_DOWNLOAD_NAME 64	// Max length of the pk3 filename
 
 typedef struct download_entry_s {
@@ -38,6 +34,10 @@ typedef struct download_entry_s {
 	char *filename;
 	char *mod_dir;
 } download_entry_t;
+
+/* ******************************************************************************** */
+// Download List Handling
+/* ******************************************************************************** */
 
 static download_entry_t *current_download;
 static download_entry_t *next_download;
@@ -50,19 +50,132 @@ static void fs_free_download_entry(download_entry_t *entry) {
 	Z_Free(entry); }
 
 void fs_advance_download(void) {
-	// Frees any existing current_download, and moves download from next_download to current_download
+	// Pops a download entry from next_download into current_download
 	if(current_download) fs_free_download_entry(current_download);
 	current_download = next_download;
 	if(next_download) next_download = next_download->next; }
 
 static void fs_add_next_download(download_entry_t *entry) {
+	// Push a download entry into next_download
 	entry->next = next_download;
 	next_download = entry; }
 
 static void fs_free_download_list(void) {
+	// Free all downloads in list
 	while(current_download || next_download) fs_advance_download(); }
 
-static download_entry_t *create_download_entry(char *name) {
+/* ******************************************************************************** */
+// Attempted Download Tracking
+/* ******************************************************************************** */
+
+// This section is used to prevent trying to unsuccessfully download the same file over
+// and over again in the same session.
+
+pk3_list_t attempted_downloads_http;
+pk3_list_t attempted_downloads;
+
+static void register_attempted_download(unsigned int hash, qboolean http) {
+	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
+	if(!target->ht.bucket_count) pk3_list_initialize(target, 20);
+	pk3_list_insert(target, hash); }
+
+static qboolean check_attempted_download(unsigned int hash, qboolean http) {
+	// Returns qtrue if download already attempted
+	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
+	return pk3_list_lookup(target, hash, qfalse) ? qtrue : qfalse; }
+
+void fs_register_current_download_attempt(qboolean http) {
+	if(!current_download) Com_Error(ERR_FATAL,
+			"fs_register_current_download_attempt with null current_download");
+	register_attempted_download(current_download->hash, http); }
+
+void fs_clear_attempted_downloads(void) {
+	pk3_list_free(&attempted_downloads_http);
+	pk3_list_free(&attempted_downloads); }
+
+/* ******************************************************************************** */
+// Needed Download Checks
+/* ******************************************************************************** */
+
+static qboolean entry_match_in_index(download_entry_t *entry, fsc_file_direct_t **different_moddir_match_out) {
+	// Returns qtrue if download entry matches a file already in main index
+	fsc_hashtable_iterator_t hti;
+	fsc_pk3_hash_map_entry_t *hashmap_entry;
+
+	fsc_hashtable_open(&fs.pk3_hash_lookup, entry->hash, &hti);
+	while((hashmap_entry = STACKPTR(fsc_hashtable_next(&hti)))) {
+		fsc_file_direct_t *pk3 = STACKPTR(hashmap_entry->pk3);
+		if(!fsc_is_file_enabled((fsc_file_t *)pk3, &fs)) continue;
+		if(pk3->pk3_hash != entry->hash) continue;
+		if(fs_redownload_across_mods->integer &&
+				Q_stricmp(fsc_get_mod_dir((fsc_file_t *)pk3, &fs), entry->mod_dir)) {
+			// If "fs_redownload_across_mods" is set, ignore match from different mod dir,
+			// but record it so fs_is_valid_download can display a warning later
+			if(different_moddir_match_out) *different_moddir_match_out = pk3;
+			continue; }
+		return qtrue; }
+
+	return qfalse; }
+
+static qboolean fs_is_download_id_pak(download_entry_t *entry) {
+	char test_path[FS_MAX_PATH];
+	Com_sprintf(test_path, sizeof(test_path), "%s/%s", entry->mod_dir, entry->filename);
+	#ifndef STANDALONE
+	if(FS_idPak(test_path, BASEGAME, FS_NODOWNLOAD_PAKS)) return qtrue;
+	if(FS_idPak(test_path, BASETA, FS_NODOWNLOAD_PAKS_TEAMARENA)) return qtrue;
+	#endif
+	return qfalse; }
+
+static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int recheck_hash, qboolean curl_disconnected) {
+	// Returns qtrue if file should be downloaded, qfalse otherwise.
+	// recheck_hash can be set to retest a file that was downloaded and has an unexpected hash
+	unsigned int hash = recheck_hash ? recheck_hash : entry->hash;
+	fsc_file_direct_t *different_moddir_match = 0;
+
+	if(fs_read_only) {
+		Com_Printf("WARNING: Ignoring download %s because filesystem is in read-only state.\n",
+			entry->local_name);
+		return qfalse; }
+	if(!Q_stricmp(entry->mod_dir, "basemod")) {
+		Com_Printf("WARNING: Ignoring download %s because downloads to basemod directory are not allowed.\n",
+			entry->local_name);
+		return qfalse; }
+
+	if(entry_match_in_index(entry, &different_moddir_match)) {
+		if(recheck_hash) {
+			Com_Printf("WARNING: Downloaded pk3 %s has unexpected hash which already exists in index."
+				" Download not saved.\n", entry->local_name); }
+		return qfalse; }
+
+	if(!recheck_hash) {
+		if(check_attempted_download(hash, qfalse)) {
+			Com_Printf("WARNING: Ignoring download %s because a download with the same hash has already been"
+				" attempted in this session.\n", entry->local_name);
+			return qfalse; }
+		if(curl_disconnected && check_attempted_download(hash, qtrue)) {
+			// Wait for the reconnect to attempt this as a UDP download
+			return qfalse; } }
+
+	// NOTE: Consider using hash-based check instead of the old filename check?
+	if(fs_is_download_id_pak(entry)) {
+		Com_Printf("WARNING: Ignoring download %s as possible ID pak.\n", entry->local_name);
+		return qfalse; }
+
+	if(different_moddir_match) {
+		char buffer[FS_FILE_BUFFER_SIZE];
+		fs_file_to_buffer((fsc_file_t *)different_moddir_match, buffer, sizeof(buffer),
+				qfalse, qtrue, qfalse, qfalse);
+		Com_Printf("WARNING: %s %s, even though the file already appears to exist at %s."
+			" Set fs_redownload_across_mods to 0 to disable this behavior.\n",
+			recheck_hash ? "Saving" : "Downloading", entry->local_name, buffer); }
+
+	return qtrue; }
+
+/* ******************************************************************************** */
+// Download List Creation
+/* ******************************************************************************** */
+
+static download_entry_t *create_download_entry(char *name, unsigned int hash) {
 	// Returns new entry on success, null on error.
 	// Download entries should be freed by fs_free_download_entry.
 	download_entry_t *entry;
@@ -87,134 +200,51 @@ static download_entry_t *create_download_entry(char *name) {
 	entry->remote_name = CopyString(va("%s.pk3", name));
 	entry->mod_dir = CopyString(mod_dir);
 	entry->filename = CopyString(filename);
+	entry->hash = hash;
 	return entry; }
+
+static void print_download_list(void) {
+	// Prints predicted needed pak list to console
+	download_entry_t *entry = next_download;
+	qboolean have_entry = qfalse;
+	while(entry) {
+		if(!entry_match_in_index(entry, 0)) {
+			if(!have_entry) {
+				Com_Printf("Need paks: %s", entry->remote_name);
+				have_entry = qtrue; }
+			else {
+				Com_Printf(", %s", entry->remote_name); } }
+		entry = entry->next; }
+	if(have_entry) Com_Printf("\n"); }
 
 void fs_register_download_list(const char *hash_list, const char *name_list) {
 	// This command is used to process the list of potential downloads received from the server.
 	int i;
 	int count;
-	int hashes[4096];
+	int hashes[1024];
 
 	fs_free_download_list();
 
 	Cmd_TokenizeString(hash_list);
 	count = Cmd_Argc();
-	if(count > 4096) count = 4096;	// Sanity check
+	if(count > ARRAY_LEN(hashes)) count = ARRAY_LEN(hashes);
 	for(i=0; i<count; ++i) {
 		hashes[i] = atoi(Cmd_Argv(i)); }
 
 	Cmd_TokenizeString(name_list);
 	if(Cmd_Argc() < count) count = Cmd_Argc();
 	for(i=count-1; i>=0; --i) {
-		download_entry_t *entry = create_download_entry(Cmd_Argv(i));
+		download_entry_t *entry = create_download_entry(Cmd_Argv(i), hashes[i]);
 		if(!entry) {
 			Com_Printf("WARNING: Ignoring download %s due to invalid name.\n", Cmd_Argv(i));
 			continue; }
-		entry->hash = hashes[i];
-		fs_add_next_download(entry);
+		fs_add_next_download(entry); }
 
-		//Com_Printf("fs_register_download_list: got %s - %u\n", entry->name, entry->hash);
-	} }
-
-/* ******************************************************************************** */
-// Attempted Download Tracking
-/* ******************************************************************************** */
-
-// This section is used to prevent trying to unsuccessfully download the same file over
-// and over again in the same session.
-
-pk3_list_t attempted_downloads_http;
-pk3_list_t attempted_downloads;
-
-static void register_attempted_download(unsigned int hash, qboolean http) {
-	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
-	if(!target->ht.bucket_count) pk3_list_initialize(target, 20);
-	pk3_list_insert(target, hash); }
-
-static qboolean check_attempted_download(unsigned int hash, qboolean http) {
-	// Returns qtrue if download already attempted
-	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
-	return pk3_list_lookup(target, hash, qfalse) ? qtrue : qfalse; }
-
-void fs_register_current_download_attempt(qboolean http) {
-	register_attempted_download(current_download->hash, http); }
-
-void fs_clear_attempted_downloads(void) {
-	pk3_list_free(&attempted_downloads_http);
-	pk3_list_free(&attempted_downloads); }
+	print_download_list(); }
 
 /* ******************************************************************************** */
 // Download List Advancement
 /* ******************************************************************************** */
-
-static qboolean fs_is_download_id_pak(download_entry_t *entry) {
-	char test_path[FS_MAX_PATH];
-	Com_sprintf(test_path, sizeof(test_path), "%s/%s", entry->mod_dir, entry->filename);
-	#ifndef STANDALONE
-	if(FS_idPak(test_path, BASEGAME, FS_NODOWNLOAD_PAKS)) return qtrue;
-	if(FS_idPak(test_path, BASETA, FS_NODOWNLOAD_PAKS_TEAMARENA)) return qtrue;
-	#endif
-	return qfalse; }
-
-static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int recheck_hash, qboolean curl_disconnected) {
-	// Returns qtrue if file should be downloaded, qfalse otherwise.
-	// recheck_hash can be set to retest a file that was downloaded and has an unexpected hash
-	unsigned int hash = recheck_hash ? recheck_hash : entry->hash;
-	qboolean system_pak = system_pk3_position(hash) ? qtrue : qfalse;
-	fsc_hashtable_iterator_t hti;
-	fsc_stackptr_t candidate_entry_ptr;
-	fsc_file_direct_t *different_moddir_match = 0;
-
-	if(fs_read_only) {
-		Com_Printf("WARNING: Ignoring download %s because filesystem is in read-only state.\n",
-			entry->local_name);
-		return qfalse; }
-	if(!Q_stricmp(entry->mod_dir, "basemod")) {
-		Com_Printf("WARNING: Ignoring download %s because downloads to basemod directory are not allowed.\n",
-			entry->local_name);
-		return qfalse; }
-
-	fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
-	while((candidate_entry_ptr = fsc_hashtable_next(&hti))) {
-		fsc_pk3_hash_map_entry_t *candidate_entry = STACKPTR(candidate_entry_ptr);
-		fsc_file_direct_t *candidate_pk3 = STACKPTR(candidate_entry->pk3);
-		if(!fsc_is_file_enabled((fsc_file_t *)candidate_pk3, &fs)) continue;
-		if(candidate_pk3->pk3_hash != hash) continue;
-		// If "fs_redownload_across_mods" is set, ignore match from different mod dir,
-		// but record it so we can display a warning later
-		if(fs_redownload_across_mods->integer && !system_pak && (!candidate_pk3->qp_mod_ptr ||
-				Q_stricmp(STACKPTR(candidate_pk3->qp_mod_ptr), entry->mod_dir))) {
-			different_moddir_match = candidate_pk3;
-			continue; }
-		// Have match
-		if(recheck_hash) {
-			Com_Printf("WARNING: Downloaded pk3 %s has unexpected hash which already exists in index."
-				" Download not saved.\n", current_download->local_name); }
-		return qfalse; }
-
-	if(!recheck_hash) {
-		if(check_attempted_download(hash, qfalse)) {
-			Com_Printf("WARNING: Ignoring download %s because a download with the same hash has already been"
-				" attempted in this session.\n", entry->local_name);
-			return qfalse; }
-		if(curl_disconnected && check_attempted_download(hash, qtrue)) {
-			// Wait for the reconnect to attempt this as a UDP download
-			return qfalse; } }
-
-	// NOTE: Consider using hash-based check instead of the old filename check?
-	if(fs_is_download_id_pak(entry)) {
-		Com_Printf("WARNING: Ignoring download %s as possible system pak.\n", entry->local_name);
-		return qfalse; }
-
-	if(different_moddir_match) {
-		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer((fsc_file_t *)different_moddir_match, buffer, sizeof(buffer),
-				qfalse, qtrue, qfalse, qfalse);
-		Com_Printf("WARNING: %s %s, even though the file already appears to exist at %s."
-			" Set fs_redownload_across_mods to 0 to disable this behavior.\n",
-			recheck_hash ? "Saving" : "Downloading", entry->local_name, buffer); }
-
-	return qtrue; }
 
 void fs_advance_next_needed_download(qboolean curl_disconnected) {
 	// Advances through download queue until the current download is either null
