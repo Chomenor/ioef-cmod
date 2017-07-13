@@ -10,7 +10,7 @@ There are thousands of high quality, community created maps available for Quake 
 
 3) Both startup and map load times get longer and longer as more maps are installed, which is an annoying anti-reward for collecting more maps. Combined with the previous issue, this leads custom map fans to have to "clear out" their maps to maintain good performance even though they otherwise have disk space for them.
 
-While it may be possible to improve on some of these issues with modifications to the existing filesystem code, the more extensive rewrite undertaken by this project allows more comprehensive scalability improvements and introduces a much more flexible and transparent resource conflict resolution system. The following are some of the main architectural changes compared to the original filesystem.
+While it may be possible to improve on some of these issues with modifications to the existing filesystem code, the more extensive rewrite undertaken by this project allows a more thorough removal of same of the pk3 scalability bottlenecks and introduces a much more flexible and transparent resource conflict resolution system. The following are some of the main architectural changes compared to the original filesystem.
 
 1) The file index and state data such as the current mod and pure list are stored separately. File precedence is resolved dynamically on each file request, with no need to reindex or reorder the file index when the state changes.
 
@@ -62,6 +62,7 @@ Shaders are defined in files with qpaths of the form "scripts/*.shader", which u
 
 The core component of the filesystem handles the basic file indexing support, and can be compiled and used separately from the rest of ioq3. The fsc_filesystem_t structure holds the filesystem core state, based on hashtables that can be used to locate various game resources.
 
+```
 typedef struct fsc_filesystem_s {
 	// Support
 	fsc_stack_t general_stack;
@@ -91,6 +92,7 @@ typedef struct fsc_filesystem_s {
 	fsc_stats_t active_stats;
 	fsc_stats_t new_stats;
 } fsc_filesystem_t;
+```
 
 - general_stack: Handles the memory allocation for the filesystem index. All fsc_stackptr_t pointers used throughout the index need to be dereferenced against this structure by calling the fsc_stack_retrieve function. This is usually abbreviated via the STACKPTR macro, which under fscore generally references an fsc_filesystem_t local function parameter, and in the main filesystem references the global "fs" variable defined in fs_main.c.
 
@@ -132,6 +134,7 @@ The simplest way to initialize the index and populate it with files is to use th
 
 For example, this code loads files from the "source1" and "source2" directories.
 
+```
 void filesystem_test(void) {
 	void *source1_path = fsc_string_to_os_path("source1");
 	void *source2_path = fsc_string_to_os_path("source2");
@@ -146,6 +149,7 @@ void filesystem_test(void) {
 
 	// Do something with filesystem...
 }
+```
 
 Note the 0 and 1 values to the source_dir_id parameter in fsc_load_directory. These values are not used internally by the filesystem core, but they get stored in the file structures so you can tell which source directory the file came from later.
 
@@ -153,9 +157,11 @@ Note the 0 and 1 values to the source_dir_id parameter in fsc_load_directory. Th
 
 Once the filesystem is loaded, you can refresh it to update files that are changed or added on the disk. Simply call fsc_filesystem_reset to "clear" the filesystem and disable all files, then repeat the calls to fsc_load_directory that were used in the initialization.
 
+```
 fsc_filesystem_reset(&fs);
 fsc_load_directory(&fs, source1_path, 0, 0);
 fsc_load_directory(&fs, source2_path, 1, 0);
+```
 
 This performs very quickly because pk3s already in the index, matched by name, size and timestamp, will simply be re-enabled rather than reindexed from scratch.
 
@@ -393,7 +399,7 @@ The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_
 
 # Conclusion
 
-If you have any corrections, questions, etc. feel free to email me: [chomenor@gmail.com]
+If you have any corrections, questions, etc. feel free to email me: chomenor@gmail.com
 
 This project is dedicated to the creators, mapping, and modding communities of Quake 3, Elite Force, and similar games. Thank you for all your amazing work!
 
