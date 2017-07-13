@@ -2,7 +2,7 @@ This file provides some documentation on the design and implementation of my ioq
 
 # Project Overview
 
-There are thousands of high quality, community created maps available for Quake 3, as seen on sites such as [lvlworld.com](lvlworld.com) and [ws.q3df.org](ws.q3df.org). However, most of these maps get limited play in the traditional online server community, and most servers run primarily stock maps or only a small subset of user-created maps. There are several limitations of the ioquake3 engine that discourage players and servers from utilizing the full custom map libraries of Quake 3 and other games based on the same engine.
+There are thousands of high quality, community created maps available for Quake 3, as seen on sites such as [lvlworld.com](http://lvlworld.com) and [ws.q3df.org](http://ws.q3df.org). However, most of these maps get limited play in the traditional online server community, and most servers run primarily stock maps or only a small subset of user-created maps. There are several limitations of the ioquake3 engine that discourage players and servers from utilizing the full custom map libraries of Quake 3 and other games based on the same engine.
 
 1) Automatic downloads are not considered secure and are disabled by default in the client. This creates a disincentive for even well configured servers to run less common maps, because users with default settings won't be able to connect because their downloads are disabled.
 
