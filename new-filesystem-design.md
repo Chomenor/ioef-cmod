@@ -2,7 +2,7 @@ This file provides some documentation on the design and implementation of my ioq
 
 # Project Overview
 
-There are thousands of high quality, community created maps available for Quake 3, as seen on sites such as lvlworld.com and ws.q3df.org. However, most of these maps get limited play in the traditional online server community, and most servers run primarily stock maps or only a small subset of user-created maps. There are several limitations of the ioquake3 engine that discourage players and servers from utilizing the full custom map libraries of Quake 3 and other games based on the same engine.
+There are thousands of high quality, community created maps available for Quake 3, as seen on sites such as <lvlworld.com> and <ws.q3df.org>. However, most of these maps get limited play in the traditional online server community, and most servers run primarily stock maps or only a small subset of user-created maps. There are several limitations of the ioquake3 engine that discourage players and servers from utilizing the full custom map libraries of Quake 3 and other games based on the same engine.
 
 1) Automatic downloads are not considered secure and are disabled by default in the client. This creates a disincentive for even well configured servers to run less common maps, because users with default settings won't be able to connect because their downloads are disabled.
 
@@ -10,7 +10,7 @@ There are thousands of high quality, community created maps available for Quake 
 
 3) Both startup and map load times get longer and longer as more maps are installed, which is an annoying anti-reward for collecting more maps. Combined with the previous issue, this leads custom map fans to have to "clear out" their maps to maintain good performance even though they otherwise have disk space for them.
 
-While it may be possible to improve on some of these issues with modifications to the existing filesystem code, the more extensive rewrite undertaken by this project allows a more thorough removal of same of the pk3 scalability bottlenecks and introduces a much more flexible and transparent resource conflict resolution system. The following are some of the main architectural changes compared to the original filesystem.
+While it may be possible to improve on some of these issues with modifications to the existing filesystem code, the more extensive rewrite undertaken by this project allows a more thorough removal of some of the pk3 scalability bottlenecks and introduces a much more flexible and transparent resource conflict resolution system. The following are some of the main architectural changes compared to the original filesystem.
 
 1) The file index and state data such as the current mod and pure list are stored separately. File precedence is resolved dynamically on each file request, with no need to reindex or reorder the file index when the state changes.
 
@@ -287,13 +287,13 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 ## Downloaded VM Restrictions
 
-The fs_restrict_dlfolder setting of 2 is used to restrict the loading of VMs from the downloads folder to those that match a set of known trusted hashes. If a VM fails to match a verified hash, the current behavior is to throw an ERR_DROP on hash miss when connected to a pure server, and fall back to the best available qvm when not on a pure server. This helps provide an informative error message in the pure server scenario (where a specific qvm is likely required) but also avoids a single nonessential pk3 causing a mod to permanently error out on non-pure servers.
+The fs_restrict_dlfolder setting of 2 is used to restrict the loading of VMs from the downloads folder to those that match a set of known trusted hashes. If a VM fails to match a verified hash, the current behavior is to throw an ERR_DROP when connected to a pure server, and fall back to the best available qvm when not on a pure server. This helps provide an informative error message in the pure server scenario (where a specific qvm is likely required) but also avoids a single nonessential pk3 causing a mod to permanently error out on non-pure servers.
 
 The verification is handled in the query processing functions, after the resources have already been sorted by the normal precedence rules. This allows the hash calculation to only be done on the highest precedence VM and working down if necessary, instead of having to calculate the hash for every potential VM.
 
 # File Reading / Writing (fs_fileio.c)
 
-This component supports file read/write operations based on a specific path on the disk.
+This component handles file read/write operations based on a specific path on the disk.
 
 ## Path Handling Functions
 
@@ -343,20 +343,20 @@ The download system stores two sets of hashes, attempted_downloads and attempted
 
 Here are some download situations/test cases that should be handled by the download system.
 
-Scenario: Downloads enabled on client but not server.
-Original FS: Attempt UDP download anyway, resulting in error code from server and ERR_DROP
+Scenario: Downloads enabled on client but not server.  
+Original FS: Attempt UDP download anyway, resulting in error code from server and ERR_DROP  
 New FS: Skip download and continue with connection.
 
-Scenario: cURL download fails.
-Original FS: Throws ERR_DROP
+Scenario: cURL download fails.  
+Original FS: Throws ERR_DROP  
 New FS: Attempt UDP download if available, and continue with connection.
 
-Scenario: cURL download has wrong hash.
-Original FS: Download loop
+Scenario: cURL download has wrong hash.  
+Original FS: Download loop  
 New FS: Save file if and only if it doesn't match an existing hash, attempt UDP download if available, and continue with connection.
 
-Scenario: VM/default.cfg missing until download completes due to pure server settings.
-Original FS: Throws ERR_DROP
+Scenario: VM/default.cfg missing until download completes due to pure server settings.  
+Original FS: Throws ERR_DROP  
 New FS: Works because there is no restart or default.cfg check until after downloads complete.
 
 Keep in mind that downloads are not always essential, so it's a good idea to keep trying to connect even if a download fails. Even on a pure server you do not necessarily need to have every pak on the server, you just can't load paks that aren't on the server.
