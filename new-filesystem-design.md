@@ -350,7 +350,7 @@ Original FS: Throws ERR_DROP
 New FS: Attempt UDP download if available, and continue with connection.
 
 Scenario: cURL download has wrong hash.  
-Original FS: Download loop  
+Original FS: Throws ERR_DROP, or possible download loop  
 New FS: Save file if and only if it doesn't match an existing hash, attempt UDP download if available, and continue with connection.
 
 Scenario: VM/default.cfg missing until download completes due to pure server settings.  
