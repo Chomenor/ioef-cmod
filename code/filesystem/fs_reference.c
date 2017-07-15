@@ -155,7 +155,7 @@ static void get_pure_checksum_entry_callback(void *context, char *data, int size
 	pure_checksum_entry_t **entry = context;
 	*entry = fsc_malloc(sizeof(pure_checksum_entry_t) + size);
 	(*entry)->data_size = size;
-	Com_Memcpy((char *)*entry + sizeof(pure_checksum_entry_t), data, size); }
+	Com_Memcpy((char *)&(*entry)->checksum_feed + 4, data, size); }
 
 static pure_checksum_entry_t *get_pure_checksum_entry(const fsc_file_direct_t *pk3) {
 	pure_checksum_entry_t *entry = 0;
