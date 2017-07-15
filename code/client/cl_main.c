@@ -2419,6 +2419,9 @@ void CL_InitDownloads(void) {
 
 	*clc.downloadTempName = *clc.downloadName = 0;
 	Cvar_Set( "cl_downloadName", "" );
+	if(clc.download) {
+		FS_FCloseFile(clc.download);
+		clc.download = 0; }
 
 	CL_NextDownload();
 #else
