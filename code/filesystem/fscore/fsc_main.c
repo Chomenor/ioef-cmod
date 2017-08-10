@@ -151,6 +151,13 @@ int fsc_filename_contents(const char *qp_dir, const char *qp_name, const char *q
 		if(!fsc_stricmp(buffer, "crosshair")) contents |= FSC_CONTENTS_CROSSHAIR; }
 	return contents; }
 
+static int fsc_app_extension(const char *name) {
+	// Returns 1 if name matches mac app bundle extension, 0 otherwise
+	int length = fsc_strlen(name);
+	if(length < 4) return 0;
+	if(!fsc_stricmp(name + (length - 4), ".app")) return 1;
+	return 0; }
+
 static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod_dir, unsigned int os_timestamp, unsigned int filesize,
 			fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	fsc_stackptr_t file_ptr;
@@ -172,6 +179,7 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 
 	// Determine path attributes
 	if(!fsc_process_mod_dir(qpath_with_mod_dir, qp_mod, &qpath_without_mod_dir)) return;
+	if(fsc_app_extension(qp_mod)) return;	// Don't index mac app bundles as mods
 	if(!qpath_without_mod_dir) return;
 	if(!fsc_process_qpath(qpath_without_mod_dir, qp_buffer, &qp_dir, &qp_name, &qp_ext)) return;
 

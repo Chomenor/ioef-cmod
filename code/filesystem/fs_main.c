@@ -140,6 +140,7 @@ static void convert_mod_dir(const char *source, char *target) {
 	char buffer[FSC_MAX_MODDIR];
 	Q_strncpyz(buffer, source, sizeof(buffer));
 	if(!fs_generate_path(buffer, 0, 0, 0, 0, 0, target, FSC_MAX_MODDIR)) *target = 0;
+	else if(COM_CompareExtension(target, ".app")) *target = 0;	// Don't allow mac app bundles
 	else if(!Q_stricmp(target, "basemod")) *target = 0;
 	else if(!Q_stricmp(target, com_basegame->string)) *target = 0; }
 
