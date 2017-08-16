@@ -118,12 +118,14 @@ static qboolean entry_match_in_index(download_entry_t *entry, fsc_file_direct_t 
 	return qfalse; }
 
 static qboolean fs_is_download_id_pak(download_entry_t *entry) {
+#ifndef ELITEFORCE
 	char test_path[FS_MAX_PATH];
 	Com_sprintf(test_path, sizeof(test_path), "%s/%s", entry->mod_dir, entry->filename);
 	#ifndef STANDALONE
 	if(FS_idPak(test_path, BASEGAME, FS_NODOWNLOAD_PAKS)) return qtrue;
 	if(FS_idPak(test_path, BASETA, FS_NODOWNLOAD_PAKS_TEAMARENA)) return qtrue;
 	#endif
+#endif
 	return qfalse; }
 
 static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int recheck_hash, qboolean curl_disconnected) {

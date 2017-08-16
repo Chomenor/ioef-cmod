@@ -626,6 +626,60 @@
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_iteration.c">
       <Filter>filesystem\fscore</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_brightshift.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_cmd.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_crosshair.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_crosshair_builtins.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_cvar.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_misc.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\snd_codec_mp3.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_layer12.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_madhuffman.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_stream.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_synth.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_timer.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_version.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_bit.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_decoder.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_fixed.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_frame.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\mad\mad_layer3.c">
+      <Filter>cmod\mad</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\code\cgame\cg_public.h" />
@@ -743,6 +797,12 @@
     <ClInclude Include="..\..\code\filesystem\fscore\fscore.h">
       <Filter>filesystem\fscore</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\code\cmod\cmod_defs.h">
+      <Filter>cmod</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\code\cmod\cmod_misc.h">
+      <Filter>cmod</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\code\asm\ftola.asm" />
@@ -775,6 +835,12 @@
     </Filter>
     <Filter Include="filesystem\fscore">
       <UniqueIdentifier>{c982234a-2656-4cb5-9ab7-607c8fba7772}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cmod">
+      <UniqueIdentifier>{3926ed9b-13fc-44da-8f5f-2841fc4778bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cmod\mad">
+      <UniqueIdentifier>{7be7da1e-f36b-4df2-987c-8270d706b4b9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -32,14 +32,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 int demo_protocols[] =
+#ifdef ELITEFORCE
+{ 0 };
+#else
 { 67, 66, 0 };
+#endif
 
 #define MAX_NUM_ARGVS	50
 
 #define MIN_DEDICATED_COMHUNKMEGS 1
 #define MIN_COMHUNKMEGS		56
 #define DEF_COMHUNKMEGS 	128
+#ifdef ELITEFORCE
+#define DEF_COMZONEMEGS		32
+#else
 #define DEF_COMZONEMEGS		24
+#endif
 #define DEF_COMHUNKMEGS_S	XSTRING(DEF_COMHUNKMEGS)
 #define DEF_COMZONEMEGS_S	XSTRING(DEF_COMZONEMEGS)
 
@@ -74,6 +82,9 @@ cvar_t	*com_blood;
 cvar_t	*com_buildScript;	// for automated data building scripts
 #ifdef CINEMATICS_INTRO
 cvar_t	*com_introPlayed;
+#endif
+#ifdef ELITEFORCE
+cvar_t  *com_novmcompat;	// set to 1 to indicate VMs are run by the new engine.
 #endif
 cvar_t	*cl_paused;
 cvar_t	*sv_paused;
@@ -365,6 +376,19 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 }
 
 
+#ifdef CMOD_SETTINGS
+void Com_WriteGlobalSettings(void) {
+	fileHandle_t f = fs_open_global_settings_file_write(Q3CONFIG_CFG);
+
+	FS_Printf(f, "// This file is loaded when Elite Force starts and saved when it exits." SYSTEM_NEWLINE
+			"// Only settings that are different from the default are saved." SYSTEM_NEWLINE
+			"// You can delete any line to restore settings to the default." SYSTEM_NEWLINE);
+	Key_WriteBindings (f);
+	Cvar_WriteVariables (f);
+
+	FS_FCloseFile( f ); }
+#endif
+
 /*
 =============
 Com_Quit_f
@@ -386,6 +410,9 @@ void Com_Quit_f( void ) {
 		CL_Shutdown(p[0] ? p : "Client quit", qtrue, qtrue);
 		VM_Forced_Unload_Done();
 		Com_Shutdown ();
+#ifdef CMOD_SETTINGS
+		Com_WriteGlobalSettings();
+#endif
 #ifdef NEW_FILESYSTEM
 		fs_close_all_handles();
 #else
@@ -497,10 +524,14 @@ void Com_StartupVariable( const char *match ) {
 		
 		if(!match || !strcmp(s, match))
 		{
+#ifdef CMOD_CVAR_HANDLING
+			Cvar_StartupSet(s, Cmd_ArgsFrom(2));
+#else
 			if(Cvar_Flags(s) == CVAR_NONEXISTENT)
 				Cvar_Get(s, Cmd_ArgsFrom(2), CVAR_USER_CREATED);
 			else
 				Cvar_Set2(s, Cmd_ArgsFrom(2), qfalse);
+#endif
 		}
 	}
 }
@@ -1947,7 +1978,11 @@ EVENT LOOP
 ========================================================================
 */
 
+#ifdef CMOD_EVENT_QUEUE_SIZE
+#define MAX_QUEUED_EVENTS  1024
+#else
 #define MAX_QUEUED_EVENTS  256
+#endif
 #define MASK_QUEUED_EVENTS ( MAX_QUEUED_EVENTS - 1 )
 
 static sysEvent_t  eventQueue[ MAX_QUEUED_EVENTS ];
@@ -2357,11 +2392,18 @@ For controlling environment variables
 void Com_ExecuteCfg(void)
 {
 #ifdef NEW_FILESYSTEM
+#ifdef CMOD_SETTINGS
+	if(!Com_SafeMode()) {
+		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
+		fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_GLOBAL_SETTINGS, EXEC_APPEND, qfalse);
+		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse); }
+#else
 	fs_execute_config_file("default.cfg", FS_CONFIGTYPE_DEFAULT, EXEC_APPEND, qfalse);
 	if(!Com_SafeMode()) {
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
 		fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
 		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse); }
+#endif
 	Cbuf_Execute();
 	Com_Printf("\n");
 #else
@@ -2413,9 +2455,11 @@ void Com_GameRestart(int checksumFeed, qboolean disconnect)
 		FS_Restart(checksumFeed);
 #endif
 	
+#ifndef CMOD_SETTINGS
 		// Clean out any user and VM created cvars
 		Cvar_Restart(qtrue);
 		Com_ExecuteCfg();
+#endif
 
 		if(disconnect)
 		{
@@ -2493,7 +2537,14 @@ void Com_ReadCDKey( const char *filename ) {
 	char			buffer[33];
 	char			fbuffer[MAX_OSPATH];
 
+#ifdef ELITEFORCE
+	int index = 0;
+	char curchar;
+
+	sprintf(fbuffer, "%s/efq3.key", filename);
+#else
 	Com_sprintf(fbuffer, sizeof(fbuffer), "%s/q3key", filename);
+#endif
 
 	FS_SV_FOpenFileRead( fbuffer, &f );
 	if ( !f ) {
@@ -2503,6 +2554,59 @@ void Com_ReadCDKey( const char *filename ) {
 
 	Com_Memset( buffer, 0, sizeof(buffer) );
 
+#ifdef ELITEFORCE
+	// check for the normal CD key
+	while(index < 16)
+	{
+		if(FS_Read(&curchar, 1, f) != 1)
+		{
+			Q_strncpyz( cl_cdkey, "                ", 17 );
+			FS_FCloseFile(f);
+			return;
+		}
+
+		curchar = toupper(curchar);
+
+		if(curchar < '0' || (curchar > '9' && curchar < 'A') || curchar > 'Z')
+			continue;
+
+		buffer[index] = toupper(curchar);
+
+		index++;
+	}
+	FS_FCloseFile(f);
+
+	// check for the expansion pack cd key
+	sprintf(fbuffer, "%s/expefq3.key", filename);
+	FS_SV_FOpenFileRead(fbuffer, &f);
+
+	if(f)
+	{
+		while(index < 32)
+		{
+			// same game
+
+			if(FS_Read(&curchar, 1, f) != 1)
+			{
+				Q_strncpyz( cl_cdkey, "                ", 17 );
+				FS_FCloseFile(f);
+				return;
+			}
+
+			curchar = toupper(curchar);
+
+			if(curchar < '0' || (curchar > '9' && curchar < 'A') || curchar > 'Z')
+				continue;
+
+			buffer[index] = toupper(curchar);
+
+			index++;
+		}
+		FS_FCloseFile(f);
+	}
+
+	Q_strncpyz(cl_cdkey, buffer, index+1);
+#else
 	FS_Read( buffer, 16, f );
 	FS_FCloseFile( f );
 
@@ -2511,6 +2615,7 @@ void Com_ReadCDKey( const char *filename ) {
 	} else {
 		Q_strncpyz( cl_cdkey, "                ", 17 );
 	}
+#endif
 }
 
 /*
@@ -2544,6 +2649,7 @@ void Com_AppendCDKey( const char *filename ) {
 }
 
 #ifndef DEDICATED
+#ifndef CMOD_SETTINGS
 /*
 =================
 Com_WriteCDKey
@@ -2552,20 +2658,33 @@ Com_WriteCDKey
 static void Com_WriteCDKey( const char *filename, const char *ikey ) {
 	fileHandle_t	f;
 	char			fbuffer[MAX_OSPATH];
+#ifdef ELITEFORCE
+	char			key[23];
+#else
 	char			key[17];
+#endif
 #ifndef _WIN32
 	mode_t			savedumask;
 #endif
 
 
+#ifdef ELITEFORCE
+	sprintf(fbuffer, "%s/efq3.key", filename);
+#else
 	Com_sprintf(fbuffer, sizeof(fbuffer), "%s/q3key", filename);
+#endif
 
 
+#ifdef ELITEFORCE
+	Q_strncpyz( key, ikey, 23 );
+	key[22] = '\0';
+#else
 	Q_strncpyz( key, ikey, 17 );
 
 	if(!CL_CDKeyValidate(key, NULL) ) {
 		return;
 	}
+#endif
 
 #ifndef _WIN32
 	savedumask = umask(0077);
@@ -2576,7 +2695,11 @@ static void Com_WriteCDKey( const char *filename, const char *ikey ) {
 		goto out;
 	}
 
+#ifdef ELITEFORCE
+	FS_Write( key, strlen(key), f );
+#else
 	FS_Write( key, 16, f );
+#endif
 
 	FS_Printf( f, "\n// generated by quake, do not modify\r\n" );
 	FS_Printf( f, "// Do not give this file to ANYONE.\r\n" );
@@ -2590,6 +2713,7 @@ out:
 	;
 #endif
 }
+#endif
 #endif
 
 #endif // STANDALONE
@@ -2745,11 +2869,21 @@ void Com_Init( char *commandLine ) {
 		Cmd_AddCommand ("crash", Com_Crash_f);
 		Cmd_AddCommand ("freeze", Com_Freeze_f);
 	}
+#ifdef CMOD_COMMAND_INTERPRETER
+	Cmd_AddProtectableCommand ("quit", (xcommand_protected_t)Com_Quit_f);
+#else
 	Cmd_AddCommand ("quit", Com_Quit_f);
+#endif
 	Cmd_AddCommand ("changeVectors", MSG_ReportChangeVectors_f );
 	Cmd_AddCommand ("writeconfig", Com_WriteConfig_f );
 	Cmd_SetCommandCompletionFunc( "writeconfig", Cmd_CompleteCfgName );
 	Cmd_AddCommand("game_restart", Com_GameRestart_f);
+
+#ifdef CMOD_SETTINGS
+#ifndef DEDICATED
+	load_default_binds();
+#endif
+#endif
 
 	Com_ExecuteCfg();
 
@@ -2812,6 +2946,10 @@ void Com_Init( char *commandLine ) {
 	com_introPlayed = Cvar_Get( "com_introplayed", "0", CVAR_ARCHIVE);
 #endif
 
+#ifdef ELITEFORCE
+	com_novmcompat = Cvar_Get( "com_novmcompat", "1", CVAR_ROM);
+#endif
+
 	s = va("%s %s %s", Q3_VERSION, PLATFORM_STRING, PRODUCT_DATE );
 	com_version = Cvar_Get ("version", s, CVAR_ROM | CVAR_SERVERINFO );
 	com_gamename = Cvar_Get("com_gamename", GAMENAME_FOR_MASTER, CVAR_SERVERINFO | CVAR_INIT);
@@ -2821,7 +2959,11 @@ void Com_Init( char *commandLine ) {
 
 	// Keep for compatibility with old mods / mods that haven't updated yet.
 	if(com_legacyprotocol->integer > 0)
+#ifdef CMOD_GETSTATUS_FIXES
+		Cvar_Get("protocol", com_legacyprotocol->string, CVAR_ROM|CVAR_SERVERINFO);
+#else
 		Cvar_Get("protocol", com_legacyprotocol->string, CVAR_ROM);
+#endif
 	else
 #endif
 		Cvar_Get("protocol", com_protocol->string, CVAR_ROM);
@@ -2857,6 +2999,7 @@ void Com_Init( char *commandLine ) {
 
 	// add + commands from command line
 	if ( !Com_AddStartupCommands() ) {
+#ifndef ELITEFORCE
 		// if the user didn't give any commands, run default action
 		if ( !com_dedicated->integer ) {
 #ifdef CINEMATICS_LOGO
@@ -2869,6 +3012,7 @@ void Com_Init( char *commandLine ) {
 			}
 #endif
 		}
+#endif
 	}
 
 	// start in full screen ui mode
@@ -2956,7 +3100,11 @@ void Com_WriteConfigToFile( const char *filename ) {
 	if(!Q_stricmp(filename, Q3CONFIG_CFG)) {
 		f = fs_open_settings_file_write(Q3CONFIG_CFG); }
 	else {
+#ifdef CMOD_RESTRICT_CFG_FILES
+		f = FS_FOpenConfigFileWrite( filename ); }
+#else
 		f = FS_FOpenFileWrite( filename ); }
+#endif
 #else
 	f = FS_FOpenFileWrite( filename );
 #endif
@@ -2965,13 +3113,19 @@ void Com_WriteConfigToFile( const char *filename ) {
 		return;
 	}
 
+#ifdef CMOD_SETTINGS
+	FS_Printf(f, "// This file was generated by the writeconfig command." SYSTEM_NEWLINE
+			"// Only settings that are different from the default are saved." SYSTEM_NEWLINE);
+#else
 	FS_Printf (f, "// generated by quake, do not modify\n");
+#endif
 	Key_WriteBindings (f);
 	Cvar_WriteVariables (f);
 	FS_FCloseFile( f );
 }
 
 
+#ifndef CMOD_SETTINGS
 /*
 ===============
 Com_WriteConfiguration
@@ -3019,6 +3173,7 @@ void Com_WriteConfiguration( void ) {
 	}
 #endif
 }
+#endif
 
 
 /*
@@ -3148,8 +3303,10 @@ void Com_Frame( void ) {
 	timeBeforeClient = 0;
 	timeAfter = 0;
 
+#ifndef CMOD_SETTINGS
 	// write config file if anything changed
 	Com_WriteConfiguration(); 
+#endif
 
 	//
 	// main event loop
@@ -3208,6 +3365,10 @@ void Com_Frame( void ) {
 			NET_Sleep(timeVal - 1);
 	} while(Com_TimeVal(minMsec));
 	
+#ifdef CMOD_INPUTLAG_FIX
+	IN_Frame();
+#endif
+
 	lastTime = com_frameTime;
 	com_frameTime = Com_EventLoop();
 	

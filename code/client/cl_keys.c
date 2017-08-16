@@ -905,7 +905,11 @@ char *Key_KeynumToString( int keynum ) {
 Key_SetBinding
 ===================
 */
+#ifdef CMOD_COMMAND_INTERPRETER
+void Key_SetBinding( int keynum, const char *binding, cmd_mode_t cmd_mode ) {
+#else
 void Key_SetBinding( int keynum, const char *binding ) {
+#endif
 	if ( keynum < 0 || keynum >= MAX_KEYS ) {
 		return;
 	}
@@ -917,6 +921,10 @@ void Key_SetBinding( int keynum, const char *binding ) {
 		
 	// allocate memory for new binding
 	keys[keynum].binding = CopyString( binding );
+
+#ifdef CMOD_COMMAND_INTERPRETER
+	keys[keynum].cmd_mode = cmd_mode;
+#endif
 
 	// consider this like modifying an archived cvar, so the
 	// file write will be triggered at the next oportunity
@@ -978,7 +986,11 @@ void Key_Unbind_f (void)
 		return;
 	}
 
+#ifdef CMOD_COMMAND_INTERPRETER
+	Key_SetBinding (b, "", CMD_NORMAL);
+#else
 	Key_SetBinding (b, "");
+#endif
 }
 
 /*
@@ -992,7 +1004,11 @@ void Key_Unbindall_f (void)
 	
 	for (i=0 ; i < MAX_KEYS; i++)
 		if (keys[i].binding)
+#ifdef CMOD_COMMAND_INTERPRETER
+			Key_SetBinding (i, "", CMD_NORMAL);
+#else
 			Key_SetBinding (i, "");
+#endif
 }
 
 
@@ -1001,7 +1017,11 @@ void Key_Unbindall_f (void)
 Key_Bind_f
 ===================
 */
+#ifdef CMOD_COMMAND_INTERPRETER
+void Key_Bind_f(cmd_mode_t mode)
+#else
 void Key_Bind_f (void)
+#endif
 {
 	int			i, c, b;
 	char		cmd[1024];
@@ -1038,7 +1058,11 @@ void Key_Bind_f (void)
 			strcat (cmd, " ");
 	}
 
+#ifdef CMOD_COMMAND_INTERPRETER
+	Key_SetBinding (b, cmd, mode == CMD_PROTECTED || !Q_stricmp(Cmd_Argv(0), "bindp") ? CMD_PROTECTED : CMD_NORMAL);
+#else
 	Key_SetBinding (b, cmd);
+#endif
 }
 
 /*
@@ -1050,6 +1074,18 @@ Writes lines containing "bind key value"
 */
 void Key_WriteBindings( fileHandle_t f ) {
 	int		i;
+#ifdef CMOD_SETTINGS
+	int count = 0;
+
+	for(i=0; i<MAX_KEYS; ++i) {
+		if(!keys[i].binding) continue;
+		if(keys[i].default_binding && !Q_stricmp(keys[i].binding, keys[i].default_binding)) continue;
+
+		if(!count) FS_Printf(f, SYSTEM_NEWLINE "// Key bindings" SYSTEM_NEWLINE);
+		FS_Printf(f, "bind%s %s \"%s\"" SYSTEM_NEWLINE, keys[i].cmd_mode == CMD_PROTECTED ? "p" : "",
+				Key_KeynumToString(i), keys[i].binding);
+		++count; }
+#else
 
 	FS_Printf (f, "unbindall\n" );
 
@@ -1060,6 +1096,7 @@ void Key_WriteBindings( fileHandle_t f ) {
 		}
 
 	}
+#endif
 }
 
 
@@ -1142,7 +1179,12 @@ CL_InitKeyCommands
 */
 void CL_InitKeyCommands( void ) {
 	// register our functions
+#ifdef CMOD_COMMAND_INTERPRETER
+	Cmd_AddProtectableCommand("bind", Key_Bind_f);
+	Cmd_AddProtectableCommand("bindp", Key_Bind_f);
+#else
 	Cmd_AddCommand ("bind",Key_Bind_f);
+#endif
 	Cmd_SetCommandCompletionFunc( "bind", Key_CompleteBind );
 	Cmd_AddCommand ("unbind",Key_Unbind_f);
 	Cmd_SetCommandCompletionFunc( "unbind", Key_CompleteUnbind );
@@ -1209,14 +1251,22 @@ void CL_ParseBinding( int key, qboolean down, unsigned time )
 				char cmd[1024];
 				Com_sprintf( cmd, sizeof( cmd ), "%c%s %d %d\n",
 					( down ) ? '+' : '-', p + 1, key, time );
+#ifdef CMOD_COMMAND_INTERPRETER
+				Cbuf_AddTextByMode( cmd, keys[key].cmd_mode );
+#else
 				Cbuf_AddText( cmd );
+#endif
 			}
 		}
 		else if( down )
 		{
 			// normal commands only execute on key press
 			if ( allCommands || CL_BindUICommand( p ) ) {
+#ifdef CMOD_COMMAND_INTERPRETER
+				Cbuf_AddTextByMode( p, keys[key].cmd_mode );
+#else
 				Cbuf_AddText( p );
+#endif
 				Cbuf_AddText( "\n" );
 			}
 		}
@@ -1279,12 +1329,14 @@ void CL_KeyDownEvent( int key, unsigned time )
 			return;
 		}
 
+#ifndef ELITEFORCE
 		// escape always gets out of CGAME stuff
 		if (Key_GetCatcher( ) & KEYCATCH_CGAME) {
 			Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_CGAME );
 			VM_Call (cgvm, CG_EVENT_HANDLING, CGAME_EVENT_NONE);
 			return;
 		}
+#endif
 
 		if ( !( Key_GetCatcher( ) & KEYCATCH_UI ) ) {
 			if ( clc.state == CA_ACTIVE && !clc.demoplaying ) {
@@ -1298,7 +1350,11 @@ void CL_KeyDownEvent( int key, unsigned time )
 			return;
 		}
 
+#ifdef ELITEFORCE
+		VM_Call( uivm, UI_KEY_EVENT, key );
+#else
 		VM_Call( uivm, UI_KEY_EVENT, key, qtrue );
+#endif
 		return;
 	}
 
@@ -1312,10 +1368,12 @@ void CL_KeyDownEvent( int key, unsigned time )
 		if ( uivm ) {
 			VM_Call( uivm, UI_KEY_EVENT, key, qtrue );
 		} 
+#ifndef ELITEFORCE
 	} else if ( Key_GetCatcher( ) & KEYCATCH_CGAME ) {
 		if ( cgvm ) {
 			VM_Call( cgvm, CG_KEY_EVENT, key, qtrue );
 		} 
+#endif
 	} else if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE ) {
 		Message_Key( key );
 	} else if ( clc.state == CA_DISCONNECTED ) {
@@ -1352,11 +1410,13 @@ void CL_KeyUpEvent( int key, unsigned time )
 	//
 	CL_ParseBinding( key, qfalse, time );
 
+#ifndef ELITEFORCE
 	if ( Key_GetCatcher( ) & KEYCATCH_UI && uivm ) {
 		VM_Call( uivm, UI_KEY_EVENT, key, qfalse );
 	} else if ( Key_GetCatcher( ) & KEYCATCH_CGAME && cgvm ) {
 		VM_Call( cgvm, CG_KEY_EVENT, key, qfalse );
 	}
+#endif
 }
 
 /*
@@ -1583,3 +1643,87 @@ void CL_SaveConsoleHistory( void )
 
 	FS_FCloseFile( f );
 }
+
+#ifdef CMOD_SETTINGS
+typedef struct {
+	char *key;
+	char *binding;
+} default_bind_t;
+
+default_bind_t default_binds[] = {
+	{"1", "weapon 1"},
+	{"2", "weapon 2"},
+	{"3", "weapon 3"},
+	{"4", "weapon 4"},
+	{"5", "weapon 5"},
+	{"6", "weapon 6"},
+	{"7", "weapon 7"},
+	{"8", "weapon 8"},
+	{"9", "weapon 9"},
+	{"-", "weapon 10"},
+	{"=", "weapon 11"},
+	{"h", "weapon 12"},
+
+	{"[", "weapprev"},
+	{"]", "weapnext"},
+	{"ENTER", "+button2"},
+	{"mwheelup", "weapnext"},
+	{"mwheeldown", "weapprev"},
+
+	{"CTRL", "+attack"},
+	{"ALT", "+altattack"},
+	{"SHIFT", "+speed"},
+	{"DEL", "+lookdown"},
+	{"PGDN", "+lookup"},
+	{"END", "centerview"},
+
+	{"c", "+movedown"},
+	{"SPACE", "+use"},
+	{"/", "+moveup"},
+	{"x", "+moveup"},
+
+	{"UPARROW", "+moveup"},
+	{"DOWNARROW", "+back"},
+	{"LEFTARROW", "+moveleft"},
+	{"RIGHTARROW", "+moveright"},
+	{"w", "+forward"},
+	{"a", "+moveleft"},
+	{"s", "+back"},
+	{"d", "+moveright"},
+	{"z", "+zoom"},
+
+	{",", "+moveleft"},
+	{".", "+moveright"},
+
+	{"\\", "+mlook"},
+	{"~", "toggleconsole"},
+	{"`", "toggleconsole"},
+	{"TAB", "+info"},
+	{"F1", "vote yes"},
+	{"F2", "vote no"},
+	{"F3", "ui_teamorders"},
+	{"F4", "levelselect"},
+	{"F11", "screenshot"},
+
+	{"y", "messagemode"},
+	{"t", "messagemode2"},
+	{"g", "+button3"},
+
+	{"MOUSE1", "+attack"},
+	{"MOUSE2", "+forward"},
+	{"MOUSE3", "+zoom"},
+};
+
+void load_default_binds(void) {
+	int i;
+	for(i=0; i<ARRAY_LEN(default_binds); ++i) {
+		int keynum = Key_StringToKeynum(default_binds[i].key);
+		if(keynum < 0) {
+			Com_Printf("load_default_binds: invalid key %s\n", default_binds[i].key);
+			continue; }
+
+		keys[keynum].default_binding = default_binds[i].binding;
+		Key_SetBinding(keynum, keys[keynum].default_binding, CMD_NORMAL);
+	}
+}
+#endif

@@ -157,6 +157,9 @@ static void SV_WriteSnapshotToClient( client_t *client, msg_t *msg ) {
 	// NOTE, MRE: now sent at the start of every message from server to client
 	// let the client know which reliable clientCommands we have received
 	//MSG_WriteLong( msg, client->lastClientCommand );
+#ifdef ELITEFORCE
+	if(msg->compat) MSG_WriteLong( msg, client->lastClientCommand );
+#endif
 
 	// send over the current server time so the client can drift
 	// its view of time to try to match
@@ -413,6 +416,7 @@ static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *fra
 
 		// if it's a portal entity, add everything visible from its camera position
 		if ( ent->r.svFlags & SVF_PORTAL ) {
+#ifndef ELITEFORCE
 			if ( ent->s.generic1 ) {
 				vec3_t dir;
 				VectorSubtract(ent->s.origin, origin, dir);
@@ -420,6 +424,7 @@ static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *fra
 					continue;
 				}
 			}
+#endif
 			SV_AddEntitiesVisibleFromPoint( ent->s.origin2, frame, eNums, qtrue );
 		}
 
@@ -607,11 +612,22 @@ void SV_SendClientSnapshot( client_t *client ) {
 		return;
 	}
 
+#ifdef ELITEFORCE
+	if(client->compat)
+	{
+		MSG_InitOOB(&msg, msg_buf, sizeof(msg_buf));
+		msg.compat = qtrue;
+	}
+	else
+#endif
 	MSG_Init (&msg, msg_buf, sizeof(msg_buf));
 	msg.allowoverflow = qtrue;
 
 	// NOTE, MRE: all server->client messages now acknowledge
 	// let the client know which reliable clientCommands we have received
+#ifdef ELITEFORCE
+	if(!client->compat)
+#endif
 	MSG_WriteLong( &msg, client->lastClientCommand );
 
 	// (re)send any reliable server commands

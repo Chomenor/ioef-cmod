@@ -70,6 +70,10 @@ void GLimp_Shutdown( void )
 	ri.IN_Shutdown();
 
 	SDL_QuitSubSystem( SDL_INIT_VIDEO );
+#ifdef CMOD_GLIMP_SHUTDOWN_FIX
+	SDL_window = 0;
+	SDL_glContext = 0;
+#endif
 }
 
 /*
@@ -791,6 +795,10 @@ of OpenGL
 */
 void GLimp_Init( qboolean coreContext)
 {
+#ifdef CMOD_FULLSCREEN
+	cvar_t *r_fullscreenMode = ri.Cvar_Get( "r_fullscreenMode", "-2", CVAR_ARCHIVE | CVAR_LATCH );
+	int mode;
+#endif
 	ri.Printf( PRINT_DEVELOPER, "Glimp_Init( )\n" );
 
 	r_allowSoftwareGL = ri.Cvar_Get( "r_allowSoftwareGL", "0", CVAR_LATCH );
@@ -806,23 +814,43 @@ void GLimp_Init( qboolean coreContext)
 		ri.Cvar_Set( "com_abnormalExit", "0" );
 	}
 
+#ifdef CMOD_FULLSCREEN
+	mode = r_fullscreen->integer ? r_fullscreenMode->integer : r_mode->integer;
+#endif
+
 	ri.Sys_GLimpInit( );
 
 	// Create the window and set up the context
+#ifdef CMOD_FULLSCREEN
+	if(GLimp_StartDriverAndSetMode(mode, r_fullscreen->integer, r_noborder->integer, coreContext))
+#else
 	if(GLimp_StartDriverAndSetMode(r_mode->integer, r_fullscreen->integer, r_noborder->integer, coreContext))
+#endif
 		goto success;
 
 	// Try again, this time in a platform specific "safe mode"
 	ri.Sys_GLimpSafeInit( );
 
+#ifdef CMOD_FULLSCREEN
+	if(GLimp_StartDriverAndSetMode(mode, r_fullscreen->integer, qfalse, coreContext))
+#else
 	if(GLimp_StartDriverAndSetMode(r_mode->integer, r_fullscreen->integer, qfalse, coreContext))
+#endif
 		goto success;
 
 	// Finally, try the default screen resolution
+#ifdef CMOD_FULLSCREEN
+	if( mode != R_MODE_FALLBACK )
+#else
 	if( r_mode->integer != R_MODE_FALLBACK )
+#endif
 	{
 		ri.Printf( PRINT_ALL, "Setting r_mode %d failed, falling back on r_mode %d\n",
+#ifdef CMOD_FULLSCREEN
+				mode, R_MODE_FALLBACK );
+#else
 				r_mode->integer, R_MODE_FALLBACK );
+#endif
 
 		if(GLimp_StartDriverAndSetMode(R_MODE_FALLBACK, qfalse, qfalse, coreContext))
 			goto success;
@@ -836,9 +864,11 @@ success:
 	glConfig.driverType = GLDRV_ICD;
 	glConfig.hardwareType = GLHW_GENERIC;
 
+#ifndef CMOD_FRAMEBUFFER
 	// Only using SDL_SetWindowBrightness to determine if hardware gamma is supported
 	glConfig.deviceSupportsGamma = !r_ignorehwgamma->integer &&
 		SDL_SetWindowBrightness( SDL_window, 1.0f ) >= 0;
+#endif
 
 	// get our config strings
 	Q_strncpyz( glConfig.vendor_string, (char *) qglGetString (GL_VENDOR), sizeof( glConfig.vendor_string ) );
@@ -880,7 +910,9 @@ void GLimp_EndFrame( void )
 	{
 		int         fullscreen;
 		qboolean    needToToggle;
+#ifndef CMOD_FULLSCREEN
 		qboolean    sdlToggled = qfalse;
+#endif
 
 		// Find out the current state
 		fullscreen = !!( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_FULLSCREEN );
@@ -897,10 +929,12 @@ void GLimp_EndFrame( void )
 
 		if( needToToggle )
 		{
+#ifndef CMOD_FULLSCREEN
 			sdlToggled = SDL_SetWindowFullscreen( SDL_window, r_fullscreen->integer ) >= 0;
 
 			// SDL_WM_ToggleFullScreen didn't work, so do it the slow way
 			if( !sdlToggled )
+#endif
 				ri.Cmd_ExecuteText(EXEC_APPEND, "vid_restart\n");
 
 			ri.IN_Restart( );

@@ -21,19 +21,19 @@ ifndef BUILD_SERVER
   BUILD_SERVER     =
 endif
 ifndef BUILD_GAME_SO
-  BUILD_GAME_SO    =
+  BUILD_GAME_SO    = 0
 endif
 ifndef BUILD_GAME_QVM
-  BUILD_GAME_QVM   =
+  BUILD_GAME_QVM   = 0
 endif
 ifndef BUILD_BASEGAME
-  BUILD_BASEGAME =
+  BUILD_BASEGAME = 0
 endif
 ifndef BUILD_MISSIONPACK
-  BUILD_MISSIONPACK=
+  BUILD_MISSIONPACK= 0
 endif
 ifndef BUILD_RENDERER_OPENGL2
-  BUILD_RENDERER_OPENGL2=
+  BUILD_RENDERER_OPENGL2= 0
 endif
 ifndef BUILD_AUTOUPDATER  # DON'T build unless you mean to!
   BUILD_AUTOUPDATER=0
@@ -104,15 +104,15 @@ endif
 export CROSS_COMPILING
 
 ifndef VERSION
-VERSION=1.36
+VERSION=0.94
 endif
 
 ifndef CLIENTBIN
-CLIENTBIN=ioquake3
+CLIENTBIN=ioEF-cMod
 endif
 
 ifndef SERVERBIN
-SERVERBIN=ioq3ded
+SERVERBIN=cmod_dedicated
 endif
 
 ifndef BASEGAME
@@ -224,7 +224,7 @@ USE_LOCAL_HEADERS=$(USE_INTERNAL_LIBS)
 endif
 
 ifndef USE_RENDERER_DLOPEN
-USE_RENDERER_DLOPEN=1
+USE_RENDERER_DLOPEN=0
 endif
 
 ifndef USE_YACC
@@ -1015,10 +1015,6 @@ ifneq ($(BUILD_AUTOUPDATER),0)
   TARGETS += $(B)/$(AUTOUPDATER_BIN)
 endif
 
-ifeq ($(NEW_FILESYSTEM),1)
-  BASE_CFLAGS += -DNEW_FILESYSTEM
-endif
-
 ifeq ($(USE_OPENAL),1)
   CLIENT_CFLAGS += -DUSE_OPENAL
   ifeq ($(USE_OPENAL_DLOPEN),1)
@@ -1089,6 +1085,8 @@ endif
 ifeq ($(USE_MUMBLE),1)
   CLIENT_CFLAGS += -DUSE_MUMBLE
 endif
+
+BASE_CFLAGS += -include $(MOUNT_DIR)/cmod/cmod_defs.h
 
 ifeq ($(USE_INTERNAL_ZLIB),1)
   ZLIB_CFLAGS = -DNO_GZIP -I$(ZDIR)
@@ -1753,6 +1751,26 @@ Q3OBJ = \
   $(B)/client/fs_misc.o \
   $(B)/client/fs_reference.o
 
+Q3OBJ += \
+  $(B)/client/cmod_brightshift.o \
+  $(B)/client/cmod_cmd.o \
+  $(B)/client/cmod_crosshair.o \
+  $(B)/client/cmod_crosshair_builtins.o \
+  $(B)/client/cmod_cvar.o \
+  $(B)/client/cmod_misc.o \
+  $(B)/client/snd_codec_mp3.o \
+  $(B)/client/mad_bit.o \
+  $(B)/client/mad_decoder.o \
+  $(B)/client/mad_fixed.o \
+  $(B)/client/mad_frame.o \
+  $(B)/client/mad_layer3.o \
+  $(B)/client/mad_layer12.o \
+  $(B)/client/mad_madhuffman.o \
+  $(B)/client/mad_stream.o \
+  $(B)/client/mad_synth.o \
+  $(B)/client/mad_timer.o \
+  $(B)/client/mad_version.o
+
 ifdef MINGW
   Q3OBJ += \
     $(B)/client/con_passive.o
@@ -1863,6 +1881,7 @@ Q3ROBJ = \
   $(B)/renderergl1/tr_sky.o \
   $(B)/renderergl1/tr_surface.o \
   $(B)/renderergl1/tr_world.o \
+  $(B)/renderergl1/cmod_fbo.o \
   \
   $(B)/renderergl1/sdl_gamma.o \
   $(B)/renderergl1/sdl_glimp.o
@@ -2310,6 +2329,11 @@ Q3DOBJ = \
   $(B)/ded/fs_misc.o \
   $(B)/ded/fs_reference.o
 
+Q3DOBJ += \
+  $(B)/ded/cmod_cmd.o \
+  $(B)/ded/cmod_cvar.o \
+  $(B)/ded/cmod_misc.o
+
 ifeq ($(ARCH),x86)
   Q3DOBJ += \
       $(B)/ded/matha.o \
@@ -2707,6 +2731,11 @@ $(B)/client/%.o: $(FSDIR)/%.c
 $(B)/client/%.o: $(FSDIR_FSCORE)/%.c
 	$(DO_CC)
 
+$(B)/client/%.o: $(MOUNT_DIR)/cmod/%.c
+	$(DO_CC)
+$(B)/client/%.o: $(MOUNT_DIR)/cmod/mad/%.c
+	$(DO_CC)
+
 $(B)/client/%.o: $(SDLDIR)/%.c
 	$(DO_CC)
 
@@ -2719,6 +2748,9 @@ $(B)/client/%.o: $(SYSDIR)/%.m
 $(B)/client/%.o: $(SYSDIR)/%.rc
 	$(DO_WINDRES)
 
+
+$(B)/renderergl1/%.o: $(MOUNT_DIR)/cmod/%.c
+	$(DO_REF_CC)
 
 $(B)/renderergl1/%.o: $(CMDIR)/%.c
 	$(DO_REF_CC)
@@ -2767,6 +2799,9 @@ $(B)/ded/%.o: $(ZDIR)/%.c
 $(B)/ded/%.o: $(FSDIR)/%.c
 	$(DO_DED_CC)
 $(B)/ded/%.o: $(FSDIR_FSCORE)/%.c
+	$(DO_DED_CC)
+
+$(B)/ded/%.o: $(MOUNT_DIR)/cmod/%.c
 	$(DO_DED_CC)
 
 $(B)/ded/%.o: $(BLIBDIR)/%.c

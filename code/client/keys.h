@@ -25,6 +25,12 @@ typedef struct {
 	qboolean	down;
 	int			repeats;		// if > 1, it is autorepeating
 	char		*binding;
+#ifdef CMOD_COMMAND_INTERPRETER
+	cmd_mode_t	cmd_mode;
+#endif
+#ifdef CMOD_SETTINGS
+	char		*default_binding;
+#endif
 } qkey_t;
 
 extern	qboolean	key_overstrikeMode;
@@ -46,7 +52,11 @@ extern	qboolean	chat_team;
 extern	int			chat_playerNum;
 
 void Key_WriteBindings( fileHandle_t f );
+#ifdef CMOD_COMMAND_INTERPRETER
+void Key_SetBinding( int keynum, const char *binding, cmd_mode_t cmd_mode );
+#else
 void Key_SetBinding( int keynum, const char *binding );
+#endif
 char *Key_GetBinding( int keynum );
 qboolean Key_IsDown( int keynum );
 qboolean Key_GetOverstrikeMode( void );

@@ -424,8 +424,16 @@ void fs_startup(void) {
 	// Initial startup, should only be called once
 	Com_Printf("\n----- fs_startup -----\n");
 
+#ifdef ELITEFORCE
+	fs_dirs = Cvar_Get("fs_dirs", "*basepath *homepath", CVAR_INIT|CVAR_PROTECTED);
+#else
 	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
+#endif
+#ifdef CMOD_SETTINGS
+	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_ROM);
+#else
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_INIT);
+#endif
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
 	fs_search_inactive_mods = Cvar_Get("fs_search_inactive_mods", "2", CVAR_ARCHIVE);
 	fs_reference_inactive_mods = Cvar_Get("fs_reference_inactive_mods", "0", CVAR_ARCHIVE);

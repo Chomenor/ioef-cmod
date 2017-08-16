@@ -448,10 +448,17 @@ void RB_BeginDrawingView (void) {
 	if ( r_fastsky->integer && !( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) )
 	{
 		clearBits |= GL_COLOR_BUFFER_BIT;	// FIXME: only if sky shaders have been used
+#ifdef ELITEFORCE
+		if(r_origfastsky->integer)
+			qglClearColor(0.8f, 0.7f, 0.4f, 1.0f);
+		else
+			qglClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+#else
 #ifdef _DEBUG
 		qglClearColor( 0.8f, 0.7f, 0.4f, 1.0f );	// FIXME: get color of sky
 #else
 		qglClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	// FIXME: get color of sky
+#endif
 #endif
 	}
 	qglClear( clearBits );
@@ -711,7 +718,11 @@ void	RB_SetGL2D (void) {
 			  GLS_SRCBLEND_SRC_ALPHA |
 			  GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 
+#ifdef CMOD_LOADINGSCREEN_FIX
+	qglDisable( GL_CULL_FACE );
+#else
 	GL_Cull( CT_TWO_SIDED );
+#endif
 	qglDisable( GL_CLIP_PLANE0 );
 
 	// set time for 2D shaders
@@ -1100,6 +1111,10 @@ const void	*RB_SwapBuffers( const void *data ) {
 		ri.Hunk_FreeTempMemory( stencilReadback );
 	}
 
+#ifdef CMOD_FRAMEBUFFER
+	framebuffer_render();
+#endif
+
 
 	if ( !glState.finishCalled ) {
 		qglFinish();
@@ -1126,6 +1141,10 @@ void RB_ExecuteRenderCommands( const void *data ) {
 
 	while ( 1 ) {
 		data = PADP(data, sizeof(void *));
+
+#ifdef CMOD_FRAMEBUFFER
+		framebuffer_bind();
+#endif
 
 		switch ( *(const int *)data ) {
 		case RC_SET_COLOR:

@@ -211,6 +211,10 @@ void CL_ParseSnapshot( msg_t *msg ) {
 	// get the reliable sequence acknowledge number
 	// NOTE: now sent with all server to client messages
 	//clc.reliableAcknowledge = MSG_ReadLong( msg );
+#ifdef ELITEFORCE
+	if(msg->compat)
+		clc.reliableAcknowledge = MSG_ReadLong( msg );
+#endif
 
 	// read in the new snapshot to a temporary buffer
 	// we will only copy to cl.snap if it is valid
@@ -254,7 +258,11 @@ void CL_ParseSnapshot( msg_t *msg ) {
 			// is too old, so we can't reconstruct it properly.
 			Com_Printf ("Delta frame too old.\n");
 		} else if ( cl.parseEntitiesNum - old->parseEntitiesNum > MAX_PARSE_ENTITIES - MAX_SNAPSHOT_ENTITIES ) {
+#ifdef CMOD_REDUCE_WARNINGS
+			Com_DPrintf ("Delta parseEntitiesNum too old.\n");
+#else
 			Com_Printf ("Delta parseEntitiesNum too old.\n");
+#endif
 		} else {
 			newSnap.valid = qtrue;	// valid delta parse
 		}
@@ -500,7 +508,11 @@ void CL_ParseGamestate( msg_t *msg ) {
 	while ( 1 ) {
 		cmd = MSG_ReadByte( msg );
 
+#ifdef ELITEFORCE
+		if((msg->compat && cmd <= 0) || cmd == svc_EOF) {
+#else
 		if ( cmd == svc_EOF ) {
+#endif
 			break;
 		}
 		
@@ -535,8 +547,14 @@ void CL_ParseGamestate( msg_t *msg ) {
 		}
 	}
 
+#ifdef ELITEFORCE
+	if(!msg->compat)
+#endif
 	clc.clientNum = MSG_ReadLong(msg);
 	// read the checksum feed
+#ifdef ELITEFORCE
+	if(!clc.demoplaying || !msg->compat)
+#endif
 	clc.checksumFeed = MSG_ReadLong( msg );
 
 	// save old gamedir
@@ -887,6 +905,10 @@ void CL_ParseServerMessage( msg_t *msg ) {
 		Com_Printf ("------------------\n");
 	}
 
+#ifdef ELITEFORCE
+	if(!msg->compat)
+	{
+#endif
 	MSG_Bitstream(msg);
 
 	// get the reliable sequence acknowledge number
@@ -895,6 +917,9 @@ void CL_ParseServerMessage( msg_t *msg ) {
 	if ( clc.reliableAcknowledge < clc.reliableSequence - MAX_RELIABLE_COMMANDS ) {
 		clc.reliableAcknowledge = clc.reliableSequence;
 	}
+#ifdef ELITEFORCE
+	}
+#endif
 
 	//
 	// parse the message
@@ -907,7 +932,11 @@ void CL_ParseServerMessage( msg_t *msg ) {
 
 		cmd = MSG_ReadByte( msg );
 
+#ifdef ELITEFORCE
+		if(cmd == svc_EOF || (msg->compat && cmd == -1)) {
+#else
 		if (cmd == svc_EOF) {
+#endif
 			SHOWNET( msg, "END OF MESSAGE" );
 			break;
 		}

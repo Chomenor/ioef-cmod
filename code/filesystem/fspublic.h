@@ -25,6 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Definitions
 /* ******************************************************************************** */
 
+#ifdef ELITEFORCE
+// These paks get special precedence. Can be non-defined to disable.
+#define FS_SYSTEM_PAKS {3376297517, 596947475, 3960871590, 1592359207}
+#define FS_NODOWNLOAD_PAKS 4
+#else
 #ifndef STANDALONE
 // These paks get special precedence. Can be non-defined to disable.
 #define FS_SYSTEM_PAKS {2430342401u, 511014160u, 2662638993u, 1438664554u, \
@@ -38,11 +43,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define FS_NODOWNLOAD_PAKS 9
 #define FS_NODOWNLOAD_PAKS_TEAMARENA 4
 #endif
+#endif
 
+#ifdef ELITEFORCE
+#ifdef CMOD_SETTINGS
+#ifdef DEDICATED
+#define Q3CONFIG_CFG "cmod_server.cfg"
+#else
+#define Q3CONFIG_CFG "cmod.cfg"
+#endif
+#else
+#define Q3CONFIG_CFG "hmconfig.cfg"
+#endif
+#else
 #ifdef DEDICATED
 #	define Q3CONFIG_CFG "q3config_server.cfg"
 #else
 #	define Q3CONFIG_CFG "q3config.cfg"
+#endif
 #endif
 
 #ifdef WIN32
@@ -63,11 +81,20 @@ typedef struct fsc_shader_s fsc_shader_t;
 #define FS_ALLOW_PK3 16
 #define FS_ALLOW_DLL 32
 #define FS_ALLOW_SPECIAL_CFG 64
+#ifdef CMOD_RESTRICT_CFG_FILES
+#define FS_ALLOW_CFG 128
+#endif
 
 typedef enum {
 	FS_CONFIGTYPE_NONE,
 	FS_CONFIGTYPE_DEFAULT,
 	FS_CONFIGTYPE_SETTINGS
+#ifdef CMOD_COMMAND_INTERPRETER
+	,FS_CONFIGTYPE_PROTECTED
+#endif
+#ifdef CMOD_SETTINGS
+	,FS_CONFIGTYPE_GLOBAL_SETTINGS
+#endif
 } fs_config_type_t;
 
 typedef enum {
@@ -265,12 +292,18 @@ char *fs_read_journal_data(void);
 
 // Config file functions
 fileHandle_t fs_open_settings_file_write(const char *filename);
+#ifdef CMOD_SETTINGS
+fileHandle_t fs_open_global_settings_file_write(const char *filename);
+#endif
 
 // Misc Handle Operations
 long FS_ReadFile(const char *qpath, void **buffer);
 void FS_FreeFile(void *buffer);
 long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE);
 long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp);
+#ifdef CMOD_RESTRICT_CFG_FILES
+fileHandle_t FS_FOpenConfigFileWrite(const char *filename);
+#endif
 fileHandle_t FS_FOpenFileWrite(const char *filename);
 fileHandle_t FS_SV_FOpenFileWrite(const char *filename);
 fileHandle_t FS_FOpenFileAppend(const char *filename);

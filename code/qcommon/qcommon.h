@@ -23,6 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef _QCOMMON_H_
 #define _QCOMMON_H_
 
+#ifdef ELITEFORCE
+#ifdef MISSIONPACK
+#undef MISSIONPACK
+#endif
+#endif
+
 #include "../qcommon/cm_public.h"
 
 #ifdef NEW_FILESYSTEM
@@ -47,6 +53,9 @@ typedef struct {
 	qboolean	allowoverflow;	// if false, do a Com_Error
 	qboolean	overflowed;		// set to true if the buffer size failed (with allowoverflow set)
 	qboolean	oob;			// set to true if the buffer size failed (with allowoverflow set)
+#ifdef ELITEFORCE
+	qboolean	compat;		// Compatibility mode for old EliteForce servers.
+#endif
 	byte	*data;
 	int		maxsize;
 	int		cursize;
@@ -99,6 +108,10 @@ float	MSG_ReadAngle16 (msg_t *sb);
 void	MSG_ReadData (msg_t *sb, void *buffer, int size);
 int		MSG_LookaheadByte (msg_t *msg);
 
+#ifdef ELITEFORCE
+void MSG_WriteDeltaUsercmd( msg_t *msg, usercmd_t *from, usercmd_t *to );
+void MSG_ReadDeltaUsercmd( msg_t *msg, usercmd_t *from, usercmd_t *to );
+#endif
 void MSG_WriteDeltaUsercmdKey( msg_t *msg, int key, usercmd_t *from, usercmd_t *to );
 void MSG_ReadDeltaUsercmdKey( msg_t *msg, int key, usercmd_t *from, usercmd_t *to );
 
@@ -255,14 +268,24 @@ PROTOCOL
 ==============================================================
 */
 
+#ifdef ELITEFORCE
+#define PROTOCOL_VERSION		26
+#define PROTOCOL_LEGACY_VERSION	24
+#else
 #define	PROTOCOL_VERSION	71
 #define PROTOCOL_LEGACY_VERSION	68
+#endif
 // 1.31 - 67
 
 // maintain a list of compatible protocols for demo playing
 // NOTE: that stuff only works with two digits protocols
 extern int demo_protocols[];
 
+#ifdef ELITEFORCE
+#define	UPDATE_SERVER_NAME	"motd.stef1.ravensoft.com"
+#define MASTER_SERVER_NAME	"master.stef1.ravensoft.com"
+#define	AUTHORIZE_SERVER_NAME	"authenticate.stef1.ravensoft.com"
+#else
 #if !defined UPDATE_SERVER_NAME && !defined STANDALONE
 #define	UPDATE_SERVER_NAME	"update.quake3arena.com"
 #endif
@@ -270,8 +293,13 @@ extern int demo_protocols[];
 #ifndef MASTER_SERVER_NAME
 #define MASTER_SERVER_NAME	"master.quake3arena.com"
 #endif
+#endif
 
 #ifndef STANDALONE
+#ifdef ELITEFORCE
+  #define	AUTHORIZE_SERVER_NAME	"authenticate.stef1.ravensoft.com"
+  #define	PORT_AUTHORIZE		27953
+#else
   #ifndef AUTHORIZE_SERVER_NAME
     #define	AUTHORIZE_SERVER_NAME	"authorize.quake3arena.com"
   #endif
@@ -279,8 +307,13 @@ extern int demo_protocols[];
   #define	PORT_AUTHORIZE		27952
   #endif
 #endif
+#endif
 
+#ifdef ELITEFORCE
+#define	PORT_MASTER			27953
+#else
 #define	PORT_MASTER			27950
+#endif
 #define	PORT_UPDATE			27951
 #define	PORT_SERVER			27960
 #define	NUM_SERVER_PORTS	4		// broadcast scan this many ports after
@@ -405,6 +438,23 @@ files can be execed.
 
 */
 
+#ifdef CMOD_COMMAND_INTERPRETER
+typedef enum {
+	CMD_NORMAL,
+	CMD_PROTECTED
+} cmd_mode_t;
+
+void Cbuf_ExecuteTextByMode(int exec_when, const char *text, cmd_mode_t mode);
+void Cbuf_AddTextByMode(const char *text, cmd_mode_t mode);
+#else
+#ifdef CMOD_CVAR_HANDLING
+typedef enum {
+	CMD_NORMAL,
+	CMD_PROTECTED
+} cmd_mode_t;
+#endif
+#endif
+
 void Cbuf_Init (void);
 // allocates an initial text buffer that will grow as needed
 
@@ -428,6 +478,12 @@ Command execution takes a null terminated string, breaks it into tokens,
 then searches for a command or variable that matches the first token.
 
 */
+
+#ifdef CMOD_COMMAND_INTERPRETER
+typedef void (*xcommand_protected_t) (cmd_mode_t mode);
+
+void Cmd_AddProtectableCommand( const char *cmd_name, xcommand_protected_t protected_function );
+#endif
 
 typedef void (*xcommand_t) (void);
 
@@ -502,6 +558,15 @@ The are also occasionally used to communicated information between different
 modules of the program.
 
 */
+
+#ifdef CMOD_CVAR_HANDLING
+void cvar_end_session(void);
+qboolean cvar_command(cmd_mode_t mode);
+void cvar_vstr(cmd_mode_t mode);
+qboolean Cvar_Set_Command( cmd_mode_t mode );
+void Cvar_CompleteCvarName( char *args, int argNum );
+void Cvar_StartupSet(const char *var_name, const char *value);
+#endif
 
 cvar_t *Cvar_Get( const char *var_name, const char *value, int flags );
 // creates the variable if it doesn't exist, or returns the existing one
@@ -604,10 +669,14 @@ issues.
 
 #define	MAX_FILE_HANDLES	64
 
+#ifdef ELITEFORCE
+  #define Q3CONFIG_CFG "hmconfig.cfg"
+#else
 #ifdef DEDICATED
 #	define Q3CONFIG_CFG "q3config_server.cfg"
 #else
 #	define Q3CONFIG_CFG "q3config.cfg"
+#endif
 #endif
 
 qboolean FS_Initialized( void );
@@ -1039,6 +1108,10 @@ void Key_KeynameCompletion( void(*callback)(const char *s) );
 void Key_WriteBindings( fileHandle_t f );
 // for writing the config files
 
+#ifdef CMOD_SETTINGS
+void load_default_binds(void);
+#endif
+
 void S_ClearSoundBuffer( void );
 // call before filesystem access
 
@@ -1225,5 +1298,9 @@ extern huffman_t clientHuffTables;
 #define DLF_NO_REDIRECT 2
 #define DLF_NO_UDP 4
 #define DLF_NO_DISCONNECT 8
+
+#ifdef CMOD_COMMON
+#include "../cmod/cmod_misc.h"
+#endif
 
 #endif // _QCOMMON_H_

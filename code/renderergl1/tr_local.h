@@ -118,6 +118,9 @@ typedef enum {
 	GF_INVERSE_SAWTOOTH, 
 
 	GF_NOISE
+#ifdef ELITEFORCE
+	,GF_RANDOM
+#endif
 
 } genFunc_t;
 
@@ -872,6 +875,10 @@ typedef struct {
 	qboolean				new_filesystem;		// use new filesystem calls
 #endif
 
+#ifdef CMOD_FRAMEBUFFER
+	qboolean				framebuffer_active;
+#endif
+
 	int						visCount;		// incremented every time a new vis cluster is entered
 	int						frameCount;		// incremented every frame
 	int						sceneCount;		// incremented every scene
@@ -913,7 +920,11 @@ typedef struct {
 
 	float					identityLight;		// 1.0 / ( 1 << overbrightBits )
 	int						identityLightByte;	// identityLight * 255
+#ifdef CMOD_OVERBRIGHT
+	float					overbrightFactor;
+#else
 	int						overbrightBits;		// r_overbrightBits->integer, but set to 0 if no hw gamma
+#endif
 
 	orientationr_t			or;					// for current entity
 
@@ -952,6 +963,9 @@ typedef struct {
 	float					triangleTable[FUNCTABLE_SIZE];
 	float					sawToothTable[FUNCTABLE_SIZE];
 	float					inverseSawToothTable[FUNCTABLE_SIZE];
+#ifdef ELITEFORCE
+	float					noiseTable[FUNCTABLE_SIZE];
+#endif
 	float					fogTable[FOG_TABLE_SIZE];
 } trGlobals_t;
 
@@ -992,6 +1006,9 @@ extern cvar_t	*r_primitives;			// "0" = based on compiled vertex array existance
 
 extern cvar_t	*r_inGameVideo;				// controls whether in game video should be draw
 extern cvar_t	*r_fastsky;				// controls whether sky should be cleared or drawn
+#ifdef ELITEFORCE
+extern cvar_t	*r_origfastsky;				// controls whether fastsky color is like in original EF.
+#endif
 extern cvar_t	*r_drawSun;				// controls drawing of sun quad
 extern cvar_t	*r_dynamiclight;		// dynamic lights enabled/disabled
 extern cvar_t	*r_dlightBacks;			// dlight non-facing surfaces for continuity
@@ -1050,8 +1067,10 @@ extern	cvar_t	*r_greyscale;
 
 extern	cvar_t	*r_ignoreGLErrors;
 
+#ifndef CMOD_OVERBRIGHT
 extern	cvar_t	*r_overBrightBits;
 extern	cvar_t	*r_mapOverBrightBits;
+#endif
 
 extern	cvar_t	*r_debugSurface;
 extern	cvar_t	*r_simpleMipMaps;
@@ -1063,7 +1082,26 @@ extern	cvar_t	*r_printShaders;
 
 extern cvar_t	*r_marksOnTriangleMeshes;
 
+#ifdef CMOD_OVERBRIGHT
+extern	cvar_t	*r_overBrightFactor;
+extern	cvar_t	*r_mapOverBrightFactor;
+extern	cvar_t	*r_overBrightFactorShifted;
+extern	cvar_t	*r_mapOverBrightFactorShifted;
+#endif
+
+#ifdef CMOD_GAMMA_SHIFT
+extern	cvar_t	*r_gammaShift;
+#endif
+
+#ifdef CMOD_FRAMEBUFFER
+extern	cvar_t	*r_framebuffer;
+#endif
+
 //====================================================================
+
+#ifdef ELITEFORCE
+int R_RandomOn( float t );
+#endif
 
 void R_SwapBuffers( int );
 
@@ -1587,5 +1625,13 @@ size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
 void RE_TakeVideoFrame( int width, int height,
 		byte *captureBuffer, byte *encodeBuffer, qboolean motionJpeg );
 
+
+#ifdef CMOD_FRAMEBUFFER
+void framebuffer_shutdown(void);
+void framebuffer_init(void);
+void framebuffer_render(void);
+void framebuffer_bind(void);
+void framebuffer_test(void);
+#endif
 
 #endif //TR_LOCAL_H

@@ -293,6 +293,12 @@ static genFunc_t NameToGenFunc( const char *funcname )
 	{
 		return GF_NOISE;
 	}
+#ifdef ELITEFORCE
+	else if( !Q_stricmp( funcname, "random" ) )
+	{
+		return GF_RANDOM;
+	}
+#endif
 
 	ri.Printf( PRINT_WARNING, "WARNING: invalid genfunc name '%s' in shader '%s'\n", funcname, shader.name );
 	return GF_SIN;
@@ -778,6 +784,12 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 			{
 				depthFuncBits = 0;
 			}
+#ifdef ELITEFORCE
+			if ( !Q_stricmp( token, "disable" ) )
+			{
+				depthFuncBits = 0;
+			}
+#endif
 			else if ( !Q_stricmp( token, "equal" ) )
 			{
 				depthFuncBits = GLS_DEPTHFUNC_EQUAL;
@@ -2234,7 +2246,11 @@ static shader_t *FinishShader( void ) {
 
     // check for a missing texture
 		if ( !pStage->bundle[0].image[0] ) {
+#ifdef CMOD_REDUCE_WARNINGS
+			ri.Printf( PRINT_DEVELOPER, "Shader %s has a stage with no image\n", shader.name );
+#else
 			ri.Printf( PRINT_WARNING, "Shader %s has a stage with no image\n", shader.name );
+#endif
 			pStage->active = qfalse;
 			stage++;
 			continue;
@@ -2363,6 +2379,16 @@ static shader_t *FinishShader( void ) {
 		} else {
 			ri.Printf( PRINT_DEVELOPER, "WARNING: shader '%s' has lightmap but no lightmap stage!\n", shader.name );
   			shader.lightmapIndex = LIGHTMAP_NONE;
+#ifdef CMOD_LIGHTMAPSTAGE_FIX
+			// Repeat the check in R_FindShader due to modified lightmapIndex
+			{	shader_t *sh;
+				int hash = generateHashValue(shader.name, FILE_HASH_SIZE);
+				for (sh = hashTable[hash]; sh; sh = sh->next) {
+					if ( (sh->lightmapIndex == shader.lightmapIndex || sh->defaultShader) &&
+						 !Q_stricmp(sh->name, shader.name)) {
+						// match found
+						return sh; } } }
+#endif
 		}
 	}
 
@@ -2860,6 +2886,38 @@ qhandle_t RE_RegisterShaderNoMip( const char *name ) {
 
 	return sh->index;
 }
+
+#ifdef ELITEFORCE
+/*
+====================
+RE_RegisterShader3D
+
+For explicitly defined shaders that need LIGHTMAP_NONE
+as lightmapIndex.
+====================
+*/
+qhandle_t RE_RegisterShader3D( const char *name ) {
+	shader_t	*sh;
+
+	if ( strlen( name ) >= MAX_QPATH ) {
+		Com_Printf( "Shader name exceeds MAX_QPATH\n" );
+		return 0;
+	}
+
+	sh = R_FindShader( name, LIGHTMAP_NONE, qfalse );
+
+	// we want to return 0 if the shader failed to
+	// load for some reason, but R_FindShader should
+	// still keep a name allocated for it, so if
+	// something calls RE_RegisterShader again with
+	// the same name, we don't try looking for it again
+	if ( sh->defaultShader ) {
+		return 0;
+	}
+
+	return sh->index;
+}
+#endif
 
 /*
 ====================

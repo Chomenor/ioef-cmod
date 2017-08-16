@@ -89,6 +89,7 @@ void LAN_SaveServersToCache( void ) {
 }
 
 
+#ifndef ELITEFORCE
 /*
 ====================
 LAN_ResetPings
@@ -208,6 +209,7 @@ static void LAN_RemoveServer(int source, const char *addr) {
 		}
 	}
 }
+#endif
 
 
 /*
@@ -261,6 +263,7 @@ static void LAN_GetServerAddressString( int source, int n, char *buf, int buflen
 	buf[0] = '\0';
 }
 
+#ifndef ELITEFORCE
 /*
 ====================
 LAN_GetServerInfo
@@ -448,6 +451,7 @@ static int LAN_CompareServers( int source, int sortKey, int sortDir, int s1, int
 	}
 	return res;
 }
+#endif
 
 /*
 ====================
@@ -485,6 +489,7 @@ static void LAN_GetPingInfo( int n, char *buf, int buflen ) {
 	CL_GetPingInfo( n, buf, buflen );
 }
 
+#ifndef ELITEFORCE
 /*
 ====================
 LAN_MarkServerVisible
@@ -562,6 +567,7 @@ static int LAN_ServerIsVisible(int source, int n ) {
 	}
 	return qfalse;
 }
+#endif
 
 /*
 =======================
@@ -636,6 +642,7 @@ static void Key_GetBindingBuf( int keynum, char *buf, int buflen ) {
 	}
 }
 
+#ifndef ELITEFORCE
 /*
 ====================
 CLUI_GetCDKey
@@ -656,6 +663,7 @@ static void CLUI_GetCDKey( char *buf, int buflen ) {
 	*buf = 0;
 #endif
 }
+#endif
 
 
 /*
@@ -673,7 +681,12 @@ static void CLUI_SetCDKey( char *buf ) {
 		// set the flag so the fle will be written at the next opportunity
 		cvar_modifiedFlags |= CVAR_ARCHIVE;
 	} else {
+#ifdef ELITEFORCE
+		Com_Memcpy(cl_cdkey, buf, 22);
+		cl_cdkey[22] = '\0';
+#else
 		Com_Memcpy( cl_cdkey, buf, 16 );
+#endif
 		// set the flag so the fle will be written at the next opportunity
 		cvar_modifiedFlags |= CVAR_ARCHIVE;
 	}
@@ -756,6 +769,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_CVAR_SETVALUE:
+#ifdef CMOD_CROSSHAIR
+		if(crosshair_cvar_setvalue(VMA(1), VMF(2))) return 0;
+#endif
 		Cvar_SetValueSafe( VMA(1), VMF(2) );
 		return 0;
 
@@ -787,7 +803,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 			Com_Printf (S_COLOR_YELLOW "turning EXEC_NOW '%.11s' into EXEC_INSERT\n", (const char*)VMA(2));
 			args[1] = EXEC_INSERT;
 		}
+#ifdef CMOD_COMMAND_INTERPRETER
+		Cbuf_ExecuteTextByMode( args[1], VMA(2), CMD_PROTECTED );
+#else
 		Cbuf_ExecuteText( args[1], VMA(2) );
+#endif
 		return 0;
 
 	case UI_FS_FOPENFILE:
@@ -821,11 +841,13 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 	case UI_FS_GETFILELIST:
 		return FS_GetFileList( VMA(1), VMA(2), VMA(3), args[4] );
 
+#ifndef ELITEFORCE
 	case UI_FS_SEEK:
 #ifdef NEW_FILESYSTEM
 		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_UI) return 0;
 #endif
 		return FS_Seek( args[1], args[2], args[3] );
+#endif
 	
 	case UI_R_REGISTERMODEL:
 		return re.RegisterModel( VMA(1) );
@@ -834,6 +856,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return re.RegisterSkin( VMA(1) );
 
 	case UI_R_REGISTERSHADERNOMIP:
+#ifdef CMOD_CROSSHAIR
+		{	qhandle_t result = re.RegisterShaderNoMip( VMA(1) );
+			crosshair_vm_registering_shader(VMA(1), result);
+			return result; }
+#endif
 		return re.RegisterShaderNoMip( VMA(1) );
 
 	case UI_R_CLEARSCENE:
@@ -861,6 +888,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_R_DRAWSTRETCHPIC:
+#ifdef CMOD_CROSSHAIR
+		if(crosshair_stretchpic(VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9])) return 0;
+#endif
 		re.DrawStretchPic( VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9] );
 		return 0;
 
@@ -892,7 +922,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_KEY_SETBINDING:
+#ifdef CMOD_COMMAND_INTERPRETER
+		Key_SetBinding( args[1], VMA(2), CMD_PROTECTED );
+#else
 		Key_SetBinding( args[1], VMA(2) );
+#endif
 		return 0;
 
 	case UI_KEY_ISDOWN:
@@ -932,6 +966,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 	case UI_GETCONFIGSTRING:
 		return GetConfigString( args[1], VMA(2), args[3] );
 
+#ifndef ELITEFORCE
 	case UI_LAN_LOADCACHEDSERVERS:
 		LAN_LoadCachedServers();
 		return 0;
@@ -946,6 +981,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 	case UI_LAN_REMOVESERVER:
 		LAN_RemoveServer(args[1], VMA(2));
 		return 0;
+#endif
 
 	case UI_LAN_GETPINGQUEUECOUNT:
 		return LAN_GetPingQueueCount();
@@ -962,6 +998,20 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		LAN_GetPingInfo( args[1], VMA(2), args[3] );
 		return 0;
 
+#ifdef ELITEFORCE
+	case UI_LAN_GETLOCALSERVERCOUNT:
+		return LAN_GetServerCount(AS_LOCAL);
+
+	case UI_LAN_GETLOCALSERVERADDRESSSTRING:
+		LAN_GetServerAddressString( AS_LOCAL, args[1], VMA(2), args[3] );
+		return 0;
+	case UI_LAN_GETGLOBALSERVERCOUNT:
+		return LAN_GetServerCount(AS_GLOBAL);
+
+	case UI_LAN_GETGLOBALSERVERADDRESSSTRING:
+		LAN_GetServerAddressString( AS_GLOBAL, args[1], VMA(2), args[3] );
+		return 0;
+#else
 	case UI_LAN_GETSERVERCOUNT:
 		return LAN_GetServerCount(args[1]);
 
@@ -995,26 +1045,34 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 
 	case UI_LAN_COMPARESERVERS:
 		return LAN_CompareServers( args[1], args[2], args[3], args[4], args[5] );
+#endif
 
 	case UI_MEMORY_REMAINING:
 		return Hunk_MemoryRemaining();
 
+#ifndef ELITEFORCE
 	case UI_GET_CDKEY:
 		CLUI_GetCDKey( VMA(1), args[2] );
 		return 0;
+#endif
 
 	case UI_SET_CDKEY:
 #ifndef STANDALONE
 		CLUI_SetCDKey( VMA(1) );
 #endif
+#ifdef ELITEFORCE
+		return qtrue;
+#endif
 		return 0;
 	
+#ifndef ELITEFORCE
 	case UI_SET_PBCLSTATUS:
 		return 0;	
 
 	case UI_R_REGISTERFONT:
 		re.RegisterFont( VMA(1), args[2], VMA(3));
 		return 0;
+#endif
 
 	case UI_MEMSET:
 		Com_Memset( VMA(1), args[2], args[3] );
@@ -1025,7 +1083,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_STRNCPY:
+#ifdef CMOD_VM_STRNCPY_FIX
+		vm_strncpy( VMA(1), VMA(2), args[3] );
+#else
 		strncpy( VMA(1), VMA(2), args[3] );
+#endif
 		return args[1];
 
 	case UI_SIN:
@@ -1046,6 +1108,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 	case UI_CEIL:
 		return FloatAsInt( ceil( VMF(1) ) );
 
+#ifndef ELITEFORCE
 	case UI_PC_ADD_GLOBAL_DEFINE:
 		return botlib_export->PC_AddGlobalDefine( VMA(1) );
 	case UI_PC_LOAD_SOURCE:
@@ -1091,6 +1154,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 
 	case UI_VERIFY_CDKEY:
 		return CL_CDKeyValidate(VMA(1), VMA(2));
+#endif
 		
 	default:
 		Com_Error( ERR_DROP, "Bad UI system trap: %ld", (long int) args[0] );
@@ -1130,6 +1194,10 @@ void CL_InitUI( void ) {
 	int		v;
 	vmInterpret_t		interpret;
 
+#ifdef CMOD_CROSSHAIR
+	crosshair_ui_init(cls.glconfig.vidWidth, cls.glconfig.vidHeight);
+#endif
+
 	// load the dll or bytecode
 	interpret = Cvar_VariableValue("vm_ui");
 #ifndef NEW_FILESYSTEM
@@ -1152,6 +1220,9 @@ void CL_InitUI( void ) {
 //		Com_Printf(S_COLOR_YELLOW "WARNING: loading old Quake III Arena User Interface version %d\n", v );
 		// init for this gamestate
 		VM_Call( uivm, UI_INIT, (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE));
+#ifdef ELITEFORCE
+		Cvar_SetValue("ui_cdkeychecked2", 1);
+#endif
 	}
 	else if (v != UI_API_VERSION) {
 		// Free uivm now, so UI_SHUTDOWN doesn't get called later.
@@ -1164,16 +1235,23 @@ void CL_InitUI( void ) {
 	else {
 		// init for this gamestate
 		VM_Call( uivm, UI_INIT, (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE) );
+#ifdef ELITEFORCE
+		Cvar_SetValue("ui_cdkeychecked2", 1);
+#endif
 	}
 }
 
 #ifndef STANDALONE
 qboolean UI_usesUniqueCDKey( void ) {
+#ifdef ELITEFORCE
+	return qfalse;
+#else
 	if (uivm) {
 		return (VM_Call( uivm, UI_HASUNIQUECDKEY) == qtrue);
 	} else {
 		return qfalse;
 	}
+#endif
 }
 #endif
 

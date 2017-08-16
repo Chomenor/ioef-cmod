@@ -1093,6 +1093,9 @@ static void IN_ProcessEvents( void )
 				switch( e.window.event )
 				{
 					case SDL_WINDOWEVENT_RESIZED:
+#ifdef CMOD_IGNORE_RESIZE_MESSAGES
+						if(!Cvar_VariableIntegerValue("r_allowResize")) break;
+#endif
 						{
 							int width, height;
 
@@ -1130,6 +1133,17 @@ static void IN_ProcessEvents( void )
 	}
 }
 
+#ifdef CMOD_INPUTLAG_FIX
+void IN_CheckDelayedVidRestart(void) {
+	// In case we had to delay actual restart of video system
+	if( ( vidRestartTime != 0 ) && ( vidRestartTime < Sys_Milliseconds( ) ) )
+	{
+		vidRestartTime = 0;
+		Cbuf_AddText( "vid_restart\n" );
+	}
+}
+#endif
+
 /*
 ===============
 IN_Frame
@@ -1164,12 +1178,14 @@ void IN_Frame( void )
 
 	IN_ProcessEvents( );
 
+#ifndef CMOD_INPUTLAG_FIX
 	// In case we had to delay actual restart of video system
 	if( ( vidRestartTime != 0 ) && ( vidRestartTime < Sys_Milliseconds( ) ) )
 	{
 		vidRestartTime = 0;
 		Cbuf_AddText( "vid_restart\n" );
 	}
+#endif
 }
 
 /*

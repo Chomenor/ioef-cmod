@@ -318,10 +318,19 @@ void SV_MasterHeartbeat(const char *message)
 		// this command should be changed if the server info / status format
 		// ever incompatably changes
 
+#ifdef ELITEFORCE
+		if(adr[i][0].type != NA_BAD)
+			NET_OutOfBandPrint(NS_SERVER, adr[i][0], "\\heartbeat\\%d\\gamename\\%s\\",
+					   Cvar_VariableIntegerValue("net_port"), message);
+		if(adr[i][1].type != NA_BAD)
+			NET_OutOfBandPrint(NS_SERVER, adr[i][1], "\\heartbeat\\%d\\gamename\\%s\\",
+					   Cvar_VariableIntegerValue("net_port6"), message);
+#else
 		if(adr[i][0].type != NA_BAD)
 			NET_OutOfBandPrint( NS_SERVER, adr[i][0], "heartbeat %s\n", message);
 		if(adr[i][1].type != NA_BAD)
 			NET_OutOfBandPrint( NS_SERVER, adr[i][1], "heartbeat %s\n", message);
+#endif
 	}
 }
 
@@ -559,6 +568,12 @@ static void SVC_Status( netadr_t from ) {
 
 	strcpy( infostring, Cvar_InfoString( CVAR_SERVERINFO ) );
 
+#ifdef CMOD_GETSTATUS_FIXES
+	Info_SetValueForKey( infostring, "version_cmod", "v" PRODUCT_VERSION " " PLATFORM_STRING " " PRODUCT_DATE);
+	Info_SetValueForKey( infostring, "version", "ioEF:cMod HM v1.20 compatible");
+	if(*Cmd_Argv(1)) Info_SetValueForKey( infostring, "gamename", "baseEF" );
+#endif
+
 	// echo back the parameter to status. so master servers can use it as a challenge
 	// to prevent timed spoofed reply packets that add ghost servers
 	Info_SetValueForKey( infostring, "challenge", Cmd_Argv(1) );
@@ -640,7 +655,9 @@ void SVC_Info( netadr_t from ) {
 
 	// echo back the parameter to status. so servers can use it as a challenge
 	// to prevent timed spoofed reply packets that add ghost servers
+#ifndef CMOD_GETSTATUS_FIXES
 	Info_SetValueForKey( infostring, "challenge", Cmd_Argv(1) );
+#endif
 
 	Info_SetValueForKey( infostring, "gamename", com_gamename->string );
 
@@ -677,8 +694,15 @@ void SVC_Info( netadr_t from ) {
 	if( *gamedir ) {
 		Info_SetValueForKey( infostring, "game", gamedir );
 	}
+#ifdef CMOD_GETSTATUS_FIXES
+	Info_SetValueForKey( infostring, "challenge", Cmd_Argv(1) );
+#endif
 
+#ifdef ELITEFORCE
+	NET_OutOfBandPrint( NS_SERVER, from, "infoResponse \"%s\"", infostring );
+#else
 	NET_OutOfBandPrint( NS_SERVER, from, "infoResponse\n%s", infostring );
+#endif
 }
 
 /*
@@ -783,9 +807,11 @@ static void SV_ConnectionlessPacket( netadr_t from, msg_t *msg ) {
 	MSG_BeginReadingOOB( msg );
 	MSG_ReadLong( msg );		// skip the -1 marker
 
+#ifndef ELITEFORCE
 	if (!Q_strncmp("connect", (char *) &msg->data[4], 7)) {
 		Huff_Decompress(msg, 12);
 	}
+#endif
 
 	s = MSG_ReadStringLine( msg );
 	Cmd_TokenizeString( s );
@@ -862,6 +888,10 @@ void SV_PacketEvent( netadr_t from, msg_t *msg ) {
 			Com_Printf( "SV_PacketEvent: fixing up a translated port\n" );
 			cl->netchan.remoteAddress.port = from.port;
 		}
+
+#ifdef ELITEFORCE
+		msg->compat = cl->compat;
+#endif
 
 		// make sure it is a valid, in sequence packet
 		if (SV_Netchan_Process(cl, msg)) {

@@ -1307,9 +1307,20 @@ void R_SetColorMappings( void ) {
 	int		i, j;
 	float	g;
 	int		inf;
+#ifndef CMOD_OVERBRIGHT
 	int		shift;
+#endif
 
 	// setup the overbright lighting
+#ifdef CMOD_OVERBRIGHT
+	tr.overbrightFactor = r_overBrightFactor->value;
+	if(*r_overBrightFactorShifted->string) tr.overbrightFactor = r_overBrightFactorShifted->value;
+
+	if(!tr.framebuffer_active && (!glConfig.deviceSupportsGamma || !glConfig.isFullscreen)) {
+		tr.overbrightFactor = 1; }
+
+	tr.identityLight = 1.0f / tr.overbrightFactor;
+#else
 	tr.overbrightBits = r_overBrightBits->integer;
 	if ( !glConfig.deviceSupportsGamma ) {
 		tr.overbrightBits = 0;		// need hardware gamma for overbright
@@ -1336,6 +1347,7 @@ void R_SetColorMappings( void ) {
 	}
 
 	tr.identityLight = 1.0f / ( 1 << tr.overbrightBits );
+#endif
 	tr.identityLightByte = 255 * tr.identityLight;
 
 
@@ -1343,6 +1355,11 @@ void R_SetColorMappings( void ) {
 		ri.Cvar_Set( "r_intensity", "1" );
 	}
 
+#ifdef CMOD_GAMMASHIFT
+	g = r_gamma->value + r_gammaShift->value;
+	if(g < 0.5f) g = 0.5f;
+	else if(g > 3.0f) g = 3.0f;
+#else
 	if ( r_gamma->value < 0.5f ) {
 		ri.Cvar_Set( "r_gamma", "0.5" );
 	} else if ( r_gamma->value > 3.0f ) {
@@ -1350,16 +1367,25 @@ void R_SetColorMappings( void ) {
 	}
 
 	g = r_gamma->value;
+#endif
 
+#ifndef CMOD_OVERBRIGHT
 	shift = tr.overbrightBits;
+#endif
 
 	for ( i = 0; i < 256; i++ ) {
 		if ( g == 1 ) {
 			inf = i;
 		} else {
+#ifdef CMOD_OVERBRIGHT
+			inf = 255 * pow ( i/255.0f, 1.0f / g ) * tr.overbrightFactor + 0.5f;
+#else
 			inf = 255 * pow ( i/255.0f, 1.0f / g ) + 0.5f;
+#endif
 		}
+#ifndef CMOD_OVERBRIGHT
 		inf <<= shift;
+#endif
 		if (inf < 0) {
 			inf = 0;
 		}
@@ -1377,7 +1403,12 @@ void R_SetColorMappings( void ) {
 		s_intensitytable[i] = j;
 	}
 
+#ifdef CMOD_FRAMEBUFFER
+	if(glConfig.deviceSupportsGamma && !tr.framebuffer_active)
+		// GLimp_SetGamma is responsible to set glConfig.deviceSupportsGamma to qfalse if it fails
+#else
 	if ( glConfig.deviceSupportsGamma )
+#endif
 	{
 		GLimp_SetGamma( s_gammatable, s_gammatable, s_gammatable );
 	}
@@ -1390,8 +1421,18 @@ R_InitImages
 */
 void	R_InitImages( void ) {
 	Com_Memset(hashTable, 0, sizeof(hashTable));
+#ifdef CMOD_FRAMEBUFFER
+	glConfig.deviceSupportsGamma = (tr.framebuffer_active || !r_ignorehwgamma->integer) ? qtrue : qfalse;
+
+	// First pass, if attempting to load hardware gamma
+	if(glConfig.deviceSupportsGamma && !tr.framebuffer_active) R_SetColorMappings();
+
+	// Second pass, if not using hardware gamma
+	if(!(glConfig.deviceSupportsGamma && !tr.framebuffer_active)) R_SetColorMappings();
+#else
 	// build brightness translation tables
 	R_SetColorMappings();
+#endif
 
 	// create default texture and white texture
 	R_CreateBuiltinImages();

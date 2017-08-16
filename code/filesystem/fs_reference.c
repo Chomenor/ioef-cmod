@@ -340,7 +340,11 @@ static qboolean is_pak_downloadable(fsc_file_direct_t *pak) {
 	// Don't put paks that fail the id pak check in download list because clients won't download
 	// them anyway and may throw an error
 #ifndef STANDALONE
+#ifdef ELITEFORCE
+	if(FS_idPak(pak_name, BASEGAME, FS_NODOWNLOAD_PAKS)) return qfalse;
+#else
 	if(FS_idPak(pak_name, BASEGAME, FS_NODOWNLOAD_PAKS) || FS_idPak(pak_name, BASETA, FS_NODOWNLOAD_PAKS_TEAMARENA)) return qfalse;
+#endif
 #endif
 
 	return qtrue; }

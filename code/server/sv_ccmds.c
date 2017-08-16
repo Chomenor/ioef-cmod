@@ -181,7 +181,11 @@ static void SV_Map_f( void ) {
 	}
 
 	// force latched values to get set
+#ifdef CMOD_CVAR_HANDLING
+	Cvar_Register(0, "g_gametype", "0", 0);
+#else
 	Cvar_Get ("g_gametype", "0", CVAR_SERVERINFO | CVAR_USERINFO | CVAR_LATCH );
+#endif
 
 	cmd = Cmd_Argv(0);
 	if( Q_stricmpn( cmd, "sp", 2 ) == 0 ) {

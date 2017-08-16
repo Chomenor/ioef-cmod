@@ -111,6 +111,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>CompileAsC</CompileAs>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <ForcedIncludeFiles>../../code/cmod/cmod_defs.h</ForcedIncludeFiles>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -164,6 +165,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <CompileAs>CompileAsC</CompileAs>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <ForcedIncludeFiles>../../code/cmod/cmod_defs.h</ForcedIncludeFiles>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -216,6 +218,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>CompileAsC</CompileAs>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <ForcedIncludeFiles>../../code/cmod/cmod_defs.h</ForcedIncludeFiles>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -263,6 +266,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <CompileAs>CompileAsC</CompileAs>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <ForcedIncludeFiles>../../code/cmod/cmod_defs.h</ForcedIncludeFiles>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -461,6 +465,24 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release TA|Win32'">true</BrowseInformation>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_brightshift.c" />
+    <ClCompile Include="..\..\code\cmod\cmod_cmd.c" />
+    <ClCompile Include="..\..\code\cmod\cmod_crosshair.c" />
+    <ClCompile Include="..\..\code\cmod\cmod_crosshair_builtins.c" />
+    <ClCompile Include="..\..\code\cmod\cmod_cvar.c" />
+    <ClCompile Include="..\..\code\cmod\cmod_misc.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_bit.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_decoder.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_fixed.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_frame.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_layer12.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_layer3.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_madhuffman.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_stream.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_synth.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_timer.c" />
+    <ClCompile Include="..\..\code\cmod\mad\mad_version.c" />
+    <ClCompile Include="..\..\code\cmod\snd_codec_mp3.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_cache.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_crosshair.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_gameparse.c" />
@@ -956,6 +978,8 @@
     <ClInclude Include="..\..\code\client\qal.h" />
     <ClInclude Include="..\..\code\client\snd_local.h" />
     <ClInclude Include="..\..\code\client\snd_public.h" />
+    <ClInclude Include="..\..\code\cmod\cmod_defs.h" />
+    <ClInclude Include="..\..\code\cmod\cmod_misc.h" />
     <ClInclude Include="..\..\code\filesystem\fscore\fscore.h" />
     <ClInclude Include="..\..\code\filesystem\fslocal.h" />
     <ClInclude Include="..\..\code\filesystem\fspublic.h" />

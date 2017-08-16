@@ -301,7 +301,11 @@ void R_LoadTGA ( const char *name, byte **pic, int *width, int *height)
 #endif
   // instead we just print a warning
   if (targa_header.attributes & 0x20) {
+#ifdef CMOD_REDUCE_WARNINGS
+    ri.Printf( PRINT_DEVELOPER, "WARNING: '%s' TGA file header declares top-down image, ignoring\n", name);
+#else
     ri.Printf( PRINT_WARNING, "WARNING: '%s' TGA file header declares top-down image, ignoring\n", name);
+#endif
   }
 
   if (width)

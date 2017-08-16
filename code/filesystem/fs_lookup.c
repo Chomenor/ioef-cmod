@@ -696,6 +696,11 @@ const fsc_file_t *fs_general_lookup(const char *name, qboolean use_pure_settings
 	char *ext;
 	query_result_t lookup_result;
 
+#ifdef CMOD_CROSSHAIR
+	{	fsc_file_t *crosshair = crosshair_process_lookup(name);
+		if(crosshair) return crosshair; }
+#endif
+
 	// For compatibility purposes, support dropping one leading slash from qpath
 	// as per FS_FOpenFileReadDir in original filesystem
 	if(*name == '/' || *name == '\\') ++name;
@@ -747,6 +752,9 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int flags, qboolean debug
 	// Returns null if shader not found or image took precedence
 	// flag 1 enables dds extension in image search
 	query_result_t lookup_result;
+#ifdef CMOD_CROSSHAIR
+	if(crosshair_process_lookup(name)) return 0;
+#endif
 	shader_or_image_lookup(name, qfalse, flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
@@ -759,6 +767,10 @@ const fsc_file_t *fs_image_lookup(const char *name, int flags, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	// flag 1 enables dds extension
 	query_result_t lookup_result;
+#ifdef CMOD_CROSSHAIR
+	{	fsc_file_t *crosshair = crosshair_process_lookup(name);
+		if(crosshair) return crosshair; }
+#endif
 	shader_or_image_lookup(name, qtrue, flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
@@ -773,6 +785,9 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 	char qpath_buffer[FSC_MAX_QPATH];
 	char *exts[] = {
 		"wav",
+#ifdef USE_CODEC_MP3
+		"mp3",
+#endif
 #ifdef USE_CODEC_VORBIS
 		"ogg",
 #endif

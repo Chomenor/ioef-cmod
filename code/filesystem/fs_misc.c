@@ -309,6 +309,11 @@ void fs_print_file_location(const fsc_file_t *file) {
 void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbufExec_t exec_type, qboolean quiet) {
 	char *data;
 	unsigned int size = 0;
+#ifdef CMOD_COMMAND_INTERPRETER
+	cmd_mode_t mode = CMD_NORMAL;
+	if(config_type == FS_CONFIGTYPE_PROTECTED) mode = CMD_PROTECTED;
+	else if(config_type == FS_CONFIGTYPE_DEFAULT) mode = CMD_PROTECTED;
+#endif
 
 	if(com_journalDataFile && com_journal->integer == 2) {
 		Com_Printf("execing %s from journal data file\n", name);
@@ -316,6 +321,17 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 		if(!data) {
 			Com_Printf("couldn't exec %s - not present in journal\n", name);
 			return; } }
+#ifdef CMOD_SETTINGS
+	else if(config_type == FS_CONFIGTYPE_GLOBAL_SETTINGS) {
+		data = 0;
+		char path[FS_MAX_PATH];
+		if(fs_generate_path_sourcedir(0, name, 0, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof(path))) {
+			data = fs_read_data(0, path, 0); }
+		if(!data) {
+			Com_Printf("couldn't exec %s - failed to read global config file\n", name);
+			fs_write_journal_data(0, 0);
+			return; } }
+#endif
 	else {
 		const fsc_file_t *file;
 		if(!quiet) Com_Printf("execing %s\n", name);
@@ -329,11 +345,21 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 		if(!data) {
 			Com_Printf("couldn't exec %s - failed to read data\n", name);
 			fs_write_journal_data(0, 0);
+#ifdef CMOD_COMMAND_INTERPRETER
+			return; }
+		if(file->sourcetype != FSC_SOURCETYPE_DIRECT) mode = CMD_PROTECTED;
+		else if(!file->qp_ext_ptr || Q_stricmp(STACKPTR(file->qp_ext_ptr), "cfg")) mode = CMD_PROTECTED; }
+#else
 			return; } }
+#endif
 
 	fs_write_journal_data(data, size);
 
+#ifdef CMOD_COMMAND_INTERPRETER
+	Cbuf_ExecuteTextByMode(exec_type, data, mode);
+#else
 	Cbuf_ExecuteText(exec_type, data);
+#endif
 	if(exec_type == EXEC_APPEND) Cbuf_ExecuteText(EXEC_APPEND, "\n");
 	fs_free_data(data); }
 
@@ -503,6 +529,7 @@ qboolean FS_idPak(char *pak, char *base, int numPaks)
 //   does not necessarily mean it is even compatible with ioquake3, only that it belongs to a
 //   "legitimate" mod and is likely not malicious.
 
+#ifndef ELITEFORCE
 #define SHA(b0,b1,b2,b3,b4,b5,b6,b7) {0x##b0,0x##b1,0x##b2,0x##b3,0x##b4,0x##b5,0x##b6,0x##b7}
 
 static const unsigned int trusted_vms[][8] = {
@@ -768,6 +795,7 @@ static const unsigned int trusted_vms[][8] = {
 	SHA(935c37ac,c683a77f,4ee1fabd,c832d5f8,8a95c27a,525717d2,08f6cb39,d1b53dcb),	// reaction1.pk3 ui
 	SHA(c55dac68,36e685ae,016fd0ed,b4148be0,9c70e0f9,92688fb9,1ed10ff9,720fc094),	// reaction1.pk3 qagame
 };
+#endif
 
 qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output) {
 	// Returns qtrue on success, qfalse otherwise
@@ -782,11 +810,15 @@ qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output) {
 
 qboolean fs_check_trusted_vm_hash(unsigned char *hash) {
 	// Returns qtrue if hash is trusted, qfalse otherwise
+#ifdef ELITEFORCE
+	// Hash list not yet implemented for EF
+#else
 	int i;
 	unsigned int int_hash[8];
 	for(i=0; i<8; ++i) int_hash[i] = (((unsigned int)(hash[4*i]))<<24) + (((unsigned int)(hash[4*i+1]))<<16) +
 			(((unsigned int)(hash[4*i+2]))<<8) + ((unsigned int)(hash[4*i+3]));
 	for(i=0; i<ARRAY_LEN(trusted_vms); ++i) if(!memcmp(int_hash, trusted_vms[i], 32)) return qtrue;
+#endif
 	return qfalse; }
 
 qboolean fs_check_trusted_vm_file(const fsc_file_t *file) {
@@ -810,11 +842,15 @@ void sha256_to_stream(unsigned char *sha, fsc_stream_t *output) {
 // appropriate warnings or errors if they are out of place
 
 #ifndef STANDALONE
+#ifdef ELITEFORCE
+static const unsigned core_hashes[] = {3376297517u, 596947475u, 3960871590u};
+#else
 static const unsigned int core_hashes[] = {1566731103u, 298122907u, 412165236u,
 	2991495316u, 1197932710u, 4087071573u, 3709064859u, 908855077u, 977125798u};
 
 static const unsigned int missionpack_hashes[] = {2430342401u, 511014160u,
 	2662638993u, 1438664554u};
+#endif
 
 static qboolean check_default_cfg_pk3(const char *mod, const char *filename, unsigned int hash) {
 	// Returns qtrue if there is a pk3 containing default.cfg with either the given name or hash
@@ -898,14 +934,17 @@ static void generate_pak_warnings(const char *mod, const char *filename, system_
 void fs_check_system_paks(void) {
 	int i;
 	system_pak_state_t core_states[ARRAY_LEN(core_hashes)];
+#ifndef ELITEFORCE
 	system_pak_state_t missionpack_states[ARRAY_LEN(missionpack_hashes)];
 	qboolean missionpack_installed = qfalse;	// Any missionpack paks detected
+#endif
 	char warning_popup_buffer[1024];
 	fsc_stream_t warning_popup_stream = {warning_popup_buffer, 0, sizeof(warning_popup_buffer), qfalse};
 
 	// Generate pak states
 	for(i=0; i<ARRAY_LEN(core_hashes); ++i) {
 		core_states[i] = get_pak_state(BASEGAME, va("pak%i", i), core_hashes[i]); }
+#ifndef ELITEFORCE
 	for(i=0; i<ARRAY_LEN(missionpack_hashes); ++i) {
 		missionpack_states[i] = get_pak_state("missionpack", va("pak%i", i), missionpack_hashes[i]);
 		if(missionpack_states[i].name_match || missionpack_states[i].hash_match) missionpack_installed = qtrue; }
@@ -919,21 +958,32 @@ void fs_check_system_paks(void) {
 			Com_Printf("Enabling standalone mode - no ID paks found\n");
 			Cvar_Set("com_standalone", "1");
 			return; } }
+#endif
 
 	// Print console warning messages and build warning popup string
 	for(i=0; i<ARRAY_LEN(core_hashes); ++i) {
 		generate_pak_warnings(BASEGAME, va("pak%i", i), &core_states[i], &warning_popup_stream); }
+#ifndef ELITEFORCE
 	if(missionpack_installed) for(i=0; i<ARRAY_LEN(missionpack_hashes); ++i) {
 		generate_pak_warnings("missionpack", va("pak%i", i), &missionpack_states[i], &warning_popup_stream); }
+#endif
 
 	// Check for missing default.cfg
 	if(!check_default_cfg_pk3(BASEGAME, "pak0", core_hashes[0])) {
 		if(core_states[0].name_match || core_states[0].hash_match) Com_Error(ERR_FATAL,
 			BASEGAME "/pak0.pk3 appears to be corrupt (missing default.cfg). Please recopy"
+#ifdef ELITEFORCE
+			" this file from your Elite Force CD or reinstall Elite Force. You may also try"
+#else
 			" this file from your Quake 3 CD or reinstall Quake 3. You may also try"
+#endif
 			" deleting fscache.dat in case it has become corrupt");
 		else Com_Error(ERR_FATAL, BASEGAME "/pak0.pk3 is missing. Please recopy"
+#ifdef ELITEFORCE
+			" this file from your Elite Force CD or reinstall Elite Force"); }
+#else
 			" this file from your Quake 3 CD or reinstall Quake 3"); }
+#endif
 
 #ifndef DEDICATED
 	// If warning popup info was generated, display warning popup
@@ -941,7 +991,11 @@ void fs_check_system_paks(void) {
 		dialogResult_t result = Sys_Dialog(DT_OK_CANCEL, va("The following game files appear"
 			" to be missing or corrupt. You can try to run the game anyway, but you may"
 			" experience errors or problems connecting to remote servers.\n\n%s\n"
+#ifdef ELITEFORCE
+			"You may need to reinstall Elite Force, the v1.20 patch, and/or the expansion pack.",
+#else
 			"You may need to reinstall Quake 3, the v1.32 patch, and/or team arena.",
+#endif
 			warning_popup_buffer), "File Warning");
 		if(result == DR_CANCEL) Sys_Quit(); }
 #endif

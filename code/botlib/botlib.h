@@ -79,8 +79,29 @@ struct weaponinfo_s;
 #define BLERR_CANNOTLOADWEAPONCONFIG	12	//cannot load weapon config
 
 //action flags
+#ifdef CMOD_BOT_TWEAKS
+#define ACTION_ATTACK			1
+#define ACTION_USE				2
+#define ACTION_RESPAWN			4
+#define ACTION_JUMP				8
+#define ACTION_MOVEUP			8
+#define ACTION_CROUCH			16
+#define ACTION_MOVEDOWN			16
+#define ACTION_MOVEFORWARD		32
+#define ACTION_MOVEBACK			64
+#define ACTION_MOVELEFT			128
+#define ACTION_MOVERIGHT		256
+#define ACTION_DELAYEDJUMP		512
+#define ACTION_TALK				1024
+#define ACTION_GESTURE			2048
+#define ACTION_WALK				4096
+#define ACTION_ALTATTACK		8192
+#else
 #define ACTION_ATTACK			0x00000001
 #define ACTION_USE			0x00000002
+#ifdef ELITEFORCE
+#define ACTION_ALTATTACK		0x00000004
+#endif
 #define ACTION_RESPAWN			0x00000008
 #define ACTION_JUMP			0x00000010
 #define ACTION_MOVEUP			0x00000020
@@ -100,6 +121,7 @@ struct weaponinfo_s;
 #define ACTION_GUARDBASE		0x01000000
 #define ACTION_PATROL			0x02000000
 #define ACTION_FOLLOWME			0x08000000
+#endif
 #define ACTION_JUMPEDLASTFRAME		0x10000000
 
 //the bot input, will be converted to a usercmd_t
@@ -276,6 +298,13 @@ typedef struct ea_export_s
 	void	(*EA_Gesture)(int client);
 	void	(*EA_Talk)(int client);
 	void	(*EA_Attack)(int client);
+#ifdef ELITEFORCE
+	void	(*EA_AltAttack)(int client);
+	void	(*EA_UseItem)(int client, char *it);
+	void	(*EA_DropItem)(int client, char *it);
+	void	(*EA_UseInv)(int client, char *inv);
+	void	(*EA_DropInv)(int client, char *inv);
+#endif
 	void	(*EA_Use)(int client);
 	void	(*EA_Respawn)(int client);
 	void	(*EA_MoveUp)(int client);
@@ -331,7 +360,11 @@ typedef struct ai_export_s
 	void	(*BotReplaceSynonyms)(char *string, unsigned long int context);
 	int		(*BotLoadChatFile)(int chatstate, char *chatfile, char *chatname);
 	void	(*BotSetChatGender)(int chatstate, int gender);
+#ifdef ELITEFORCE
+	void	(*BotSetChatName)(int chatstate, char *name);
+#else
 	void	(*BotSetChatName)(int chatstate, char *name, int client);
+#endif
 	//-----------------------------------
 	// be_ai_goal.h
 	//-----------------------------------

@@ -103,6 +103,10 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 					!Q_stricmp(sanitized_path + sanitized_path_length - 6, ".dylib")) return qfalse; }
 		if(!(flags & FS_ALLOW_SPECIAL_CFG) && (!Q_stricmp(sanitized_path, Q3CONFIG_CFG) ||
 				!Q_stricmp(sanitized_path, "autoexec.cfg"))) return qfalse;
+#ifdef CMOD_RESTRICT_CFG_FILES
+		if(!(flags & (FS_ALLOW_CFG|FS_ALLOW_SPECIAL_CFG)) && sanitized_path_length >= 4 &&
+				!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".cfg")) return qfalse;
+#endif
 
 		// Write out the string
 		fsc_stream_append_string(stream, sanitized_path); }
@@ -1014,6 +1018,14 @@ fileHandle_t fs_open_settings_file_write(const char *filename) {
 			path, sizeof(path))) return 0;
 	return fs_write_handle_open(path, qfalse, qfalse); }
 
+#ifdef CMOD_SETTINGS
+fileHandle_t fs_open_global_settings_file_write(const char *filename) {
+	char path[FS_MAX_PATH];
+	if(!fs_generate_path_writedir(filename, 0, FS_ALLOW_SPECIAL_CFG, 0,
+			path, sizeof(path))) return 0;
+	return fs_write_handle_open(path, qfalse, qfalse); }
+#endif
+
 /* ******************************************************************************** */
 // Misc Handle Operations
 /* ******************************************************************************** */
@@ -1057,6 +1069,11 @@ static fileHandle_t open_write_handle_with_mod_dir(const char *mod_dir, const ch
 			FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE|flags, full_path, sizeof(full_path))) return 0;
 
 	return fs_write_handle_open(full_path, append, sync); }
+
+#ifdef CMOD_RESTRICT_CFG_FILES
+fileHandle_t FS_FOpenConfigFileWrite(const char *filename) {
+	return open_write_handle_with_mod_dir(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
+#endif
 
 fileHandle_t FS_FOpenFileWrite(const char *filename) {
 	return open_write_handle_with_mod_dir(FS_GetCurrentGameDir(), filename, qfalse, qfalse, 0); }

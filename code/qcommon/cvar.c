@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // cvar.c -- dynamic variable tracking
 
+#ifndef CMOD_CVAR_HANDLING
 #include "q_shared.h"
 #include "qcommon.h"
 
@@ -1433,3 +1434,4 @@ void Cvar_Init (void)
 	Cmd_AddCommand ("cvar_modified", Cvar_ListModified_f);
 	Cmd_AddCommand ("cvar_restart", Cvar_Restart_f);
 }
+#endif

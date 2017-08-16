@@ -607,7 +607,11 @@ static int	CM_GridPlane( int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2], int i,
 	}
 
 	// should never happen
+#ifdef CMOD_REDUCE_WARNINGS
+	Com_DPrintf( "WARNING: CM_GridPlane unresolvable\n" );
+#else
 	Com_Printf( "WARNING: CM_GridPlane unresolvable\n" );
+#endif
 	return -1;
 }
 

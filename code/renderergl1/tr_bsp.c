@@ -98,6 +98,27 @@ R_ColorShiftLightingBytes
 ===============
 */
 static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
+#ifdef CMOD_OVERBRIGHT
+	int i;
+	float colors[3];
+	float max = 0;
+	float map_overbright_factor = *r_mapOverBrightFactorShifted->string ?
+			r_mapOverBrightFactorShifted->value : r_mapOverBrightFactor->value;
+	float shift = map_overbright_factor / tr.overbrightFactor;
+
+	for(i=0; i<3; ++i) {
+		colors[i] = in[i] * shift;
+		if(colors[i] > max) max = colors[i]; }
+
+	if(max > 255.0) for(i=0; i<3; ++i) {
+		colors[i] *= (255.0 / max); }
+
+	for(i=0; i<3; ++i) {
+		int color = colors[i];
+		if(color < 0) color = 0;
+		if(color > 255) color = 255;
+		out[i] = color; }
+#else
 	int		shift, r, g, b;
 
 	// shift the color data based on overbright range
@@ -122,6 +143,7 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	out[0] = r;
 	out[1] = g;
 	out[2] = b;
+#endif
 	out[3] = in[3];
 }
 

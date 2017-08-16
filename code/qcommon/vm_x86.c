@@ -66,7 +66,9 @@ static	int		compiledOfs = 0;
 static	byte	*code = NULL;
 static	int		pc = 0;
 
+#ifndef CMOD_VMFLOATCAST
 #define FTOL_PTR
+#endif
 
 static	int	instruction, pass;
 static	int	lastConst = 0;
