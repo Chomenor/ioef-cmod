@@ -698,6 +698,7 @@ void Cmd_Echo_f(cmd_mode_t mode)
 static const char *base_protectable_commands[] = {
 	"cmd",
 	"vid_restart",
+	"connect",
 	"disconnect",
 	"globalservers",
 	"ping",
