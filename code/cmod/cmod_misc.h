@@ -43,11 +43,6 @@ qboolean crosshair_cvar_update(const char *cvar_name, vmCvar_t *vm_cvar);
 fsc_file_t *crosshair_process_lookup(const char *name);
 #endif
 
-#ifdef CMOD_INPUTLAG_FIX
-void IN_Frame( void );
-void IN_CheckDelayedVidRestart(void);
-#endif
-
 #ifdef CMOD_VM_STRNCPY_FIX
 void vm_strncpy(char *dst, char *src, int length);
 #endif

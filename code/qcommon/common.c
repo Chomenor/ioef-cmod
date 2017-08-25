@@ -3365,10 +3365,6 @@ void Com_Frame( void ) {
 			NET_Sleep(timeVal - 1);
 	} while(Com_TimeVal(minMsec));
 	
-#ifdef CMOD_INPUTLAG_FIX
-	IN_Frame();
-#endif
-
 	lastTime = com_frameTime;
 	com_frameTime = Com_EventLoop();
 	

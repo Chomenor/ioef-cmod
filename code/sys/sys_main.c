@@ -803,11 +803,7 @@ int main( int argc, char **argv )
 
 	while( 1 )
 	{
-#ifdef CMOD_INPUTLAG_FIX
-		IN_CheckDelayedVidRestart();
-#else
 		IN_Frame( );
-#endif
 		Com_Frame( );
 	}
 
