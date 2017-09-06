@@ -77,6 +77,51 @@ The new filesystem uses a file called "fscache.dat" to store pk3 index data and 
 
 The new filesystem also uses a memory cache to keep previously accessed files in memory for faster access. This helps speed up load times between maps. The size of this buffer is controlled by the "fs_read_cache_megs" cvar. The default is currently 64 for the client and 4 for the dedicated server. This value can be set to 0 to disable the cache altogether.
 
+# Download / Pure List Configuration
+
+Two new cvars, "fs_download_manifest" and "fs_pure_manifest", can be used to customize which pk3s are added to the download and pure lists when running a server. Both cvars use a space-seperated list of selector rules that can be either specific pk3 names or one of the following keywords:
+
+- *mod_paks - Selects all paks from the current active mod.
+- *base_paks - Selects all paks from com_basegame (baseq3).
+- *inactivemod_paks - Selects all paks that don't fit the previous two categories
+- *currentmap_pak - Selects the pak containing the bsp of the current running map.
+- *cgame_pak - Selects the pak containing the preferred cgame.qvm file.
+- *ui_pak - Selects the pak containing the preferred ui.qvm file.
+- *referenced_paks - Selects paks accessed during the loading process on the server.
+
+The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The *referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to *currentmap_pak and *mod_paks and can be dropped without issue.
+```
+set fs_download_manifest *mod_paks *cgame_pak *ui_pak *currentmap_pak *referenced_paks
+```
+
+Some server configurations have a lot of maps or optional mod files in the mod directory. This can lead to clients having too many files to download, since the default behavior is to place everything in the mod directory into the download list. To avoid this, you can specify only the core mod files that clients require instead of using the *mod_paks rule. For example, here is a reduced download manifest for the OSP mod.
+```
+set fs_download_manifest osp/zz-osp-pak3 osp/zz-osp-pak2 osp/zz-osp-pak1 osp/zz-osp-pak0 *currentmap_pak
+```
+
+The default pure manifest simply selects every pak available to the game.
+```
+set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks
+```
+
+Pure servers with a large number of pk3s in baseq3 (300+) can run into problems with the pure list overflowing. To avoid such issues you can replace the *base_baks rule in the pure manifest with specific core paks. Note that any auxiliary paks in baseq3 required by maps or mods will need be included manually as well.
+```
+set fs_pure_manifest *mod_paks baseq3/pak8 baseq3/pak7 baseq3/pak6 baseq3/pak5 baseq3/pak4 baseq3/pak3 baseq3/pak2 baseq3/pak1 baseq3/pak0 *currentmap_pak
+```
+
+The order of the pure list determines the precedence of files on clients. Normally the files in the pure list are sorted according to the filesystem precedence on the server, rather than the order in the pure manifest. It is possible to force a certain order in the pure manifest by separating sections with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering.
+```
+set fs_pure_manifest baseq3/somefile - *mod_paks *base_paks *currentmap_pak
+```
+
+Note that if the same pk3 is selected by multiple rules, its position will be according to the first rule that selected it.
+
+# Semi-Pure Server
+
+This option causes clients to prioritize data from paks on the server like a normal pure server, but also allows loading content from other paks when it is not available from the pure list paks. For example, it lets clients use custom models that are not on the server. To enable, set sv_pure to 2 on the server. This setting only affects clients using the new filesystem; clients using the original filesystem will function the same as if sv_pure is 1.
+
+In theory this option will work with servers running any filesystem version, but it is recommended to use with the new filesystem if possible.
+
 # Shader Precedence
 
 This section concerns map and mod developers who work with shaders, specifically regarding cases where the same shader is defined differently in different pk3 files.
@@ -84,12 +129,6 @@ This section concerns map and mod developers who work with shaders, specifically
 To start with an example, suppose you have a shader called "textures/myshader", in the file "scripts/myshaders.shader", located in "pak0.pk3" of your mod. Now suppose you want to release an update "pak1.pk3" that replaces this shader with an updated version. The correct way is to duplicate the file "scripts/myshaders.shader" into pak1.pk3 and then update the shader within that file. Due to filesystem precedence this will override the version of the file from pak0.pk3 so it doesn't get loaded at all, ensuring only the shaders from the updated file will be used.
 
 Now suppose you were to name the updated shader file "scripts/myshaders2.shader". Both the old and new shader files will get loaded, since they have different names, leading to behavior that can be confusing and inconsistent across different versions of Quake 3. In the original filesystem the shader precedence tends to be the opposite of the filesystem precedence, so the shader from pak0.pk3 will usually take precedence over the one from pak1.pk3. But in the new filesystem, shaders are taken from the higher precedence pk3, regardless of the .shader filename. This is a much more robust approach in general, but it means that in rare cases mods that actually depend on the old backwards precedence behavior could break. Mods doing shader replacements should apply the .shader override technique if they want consistent behavior on both the original and new filesystems.
-
-# Semi-Pure Server
-
-This option causes clients to prioritize data from paks on the server like a normal pure server, but also allows loading content from other paks when it is not available from the pure list paks. For example, it lets clients use custom models that are not on the server. To enable, set sv_pure to 2 on the server. This setting only affects clients using the new filesystem; clients using the original filesystem will function the same as if sv_pure is 1.
-
-In theory this option will work with servers running any filesystem version, but it is recommended to use with the new filesystem if possible.
 
 # Debugging Cvars
 
@@ -121,6 +160,6 @@ Once you run one of the above commands, you can use the "compare" command to fin
 
 - The code conventions used for the filesystem are a bit different from the main ioq3 codebase in terms of stuff like function capitilization and brace placement.
 
-- The server-side pure verification function SV_VerifyPaks_f is no longer supported, since it has no security value in modern conditions. All other pure server functionality is supported and cross-compatible with existing clients and servers.
+- The server-side pure validation function SV_VerifyPaks_f is no longer supported, since it has no security value in modern conditions. All other pure server functionality is supported and cross-compatible with existing clients and servers.
 
 - The pk3dir feature is currently not supported, as I'm not sure it's worth the code complexity to include it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you have a use case that this doesn't cover sufficiently, let me know and I'll look into adding the full pk3dir functionality.

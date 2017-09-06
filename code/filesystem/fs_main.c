@@ -35,7 +35,8 @@ cvar_t *fs_dirs;
 cvar_t *fs_mod_settings;
 cvar_t *fs_index_cache;
 cvar_t *fs_search_inactive_mods;
-cvar_t *fs_reference_inactive_mods;
+cvar_t *fs_download_manifest;
+cvar_t *fs_pure_manifest;
 cvar_t *fs_redownload_across_mods;
 cvar_t *fs_full_pure_validation;
 cvar_t *fs_saveto_dlfolder;
@@ -95,7 +96,7 @@ int fs_connected_server_pure_state(void) {
 /* ******************************************************************************** */
 
 void fs_register_current_map(const char *name) {
-	const fsc_file_t *bsp_file = fs_general_lookup(name, qtrue, qfalse, qfalse);
+	const fsc_file_t *bsp_file = fs_general_lookup(name, LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse);
 	if(!bsp_file || bsp_file->sourcetype != FSC_SOURCETYPE_PK3) current_map_pk3 = 0;
 	else current_map_pk3 = STACKPTR(((fsc_file_frompk3_t *)bsp_file)->source_pk3);
 
@@ -436,7 +437,9 @@ void fs_startup(void) {
 #endif
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
 	fs_search_inactive_mods = Cvar_Get("fs_search_inactive_mods", "2", CVAR_ARCHIVE);
-	fs_reference_inactive_mods = Cvar_Get("fs_reference_inactive_mods", "0", CVAR_ARCHIVE);
+	fs_download_manifest = Cvar_Get("fs_download_manifest",
+			"*mod_paks *cgame_pak *ui_pak *currentmap_pak *referenced_paks", CVAR_ARCHIVE);
+	fs_pure_manifest = Cvar_Get("fs_pure_manifest", "*mod_paks *base_paks *inactivemod_paks", CVAR_ARCHIVE);
 	fs_redownload_across_mods = Cvar_Get("fs_redownload_across_mods", "1", CVAR_ARCHIVE);
 	fs_full_pure_validation = Cvar_Get("fs_full_pure_validation", "0", CVAR_ARCHIVE);
 	fs_saveto_dlfolder = Cvar_Get("fs_saveto_dlfolder", "0", CVAR_ARCHIVE);

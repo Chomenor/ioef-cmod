@@ -3281,7 +3281,7 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	//
 #ifdef NEW_FILESYSTEM
 	if(tr.new_filesystem) {
-		fsShader = ri.fs_shader_lookup(strippedName, 0, qfalse);
+		fsShader = ri.fs_shader_lookup(strippedName, r_ext_compressed_textures->integer ? LOOKUPFLAG_ENABLE_DDS : 0, qfalse);
 		shaderText = shaderTextToFree = fsShader ? ri.fs_read_shader(fsShader) : 0; }
 	else
 #endif

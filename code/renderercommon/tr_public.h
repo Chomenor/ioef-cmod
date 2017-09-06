@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 typedef struct fsc_file_s fsc_file_t;
 typedef struct fsc_shader_s fsc_shader_t;
+#define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups. Must match value in fspublic.h!
 #endif
 
 #include "tr_types.h"
@@ -189,8 +190,8 @@ typedef struct {
 	void	(*Sys_GLimpInit)( void );
 	qboolean (*Sys_LowPhysicalMemory)( void );
 #ifdef NEW_FILESYSTEM
-	const fsc_file_t *(*fs_image_lookup)(const char *name, int flags, qboolean debug);
-	const fsc_shader_t *(*fs_shader_lookup)(const char *name, int flags, qboolean debug);
+	const fsc_file_t *(*fs_image_lookup)(const char *name, int lookup_flags, qboolean debug);
+	const fsc_shader_t *(*fs_shader_lookup)(const char *name, int lookup_flags, qboolean debug);
 	char *(*fs_read_shader)(const fsc_shader_t *shader);
 	char *(*fs_file_extension)(const fsc_file_t *file);
 	int (*fs_valid_md3_lods)(int max_lods, const char *name, const char *extension);
