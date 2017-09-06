@@ -789,7 +789,7 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 	fs_base_lookup_query(&query, qtrue, qtrue);
 	fsc_process_qpath(name, qpath_buffer, &query.qp_dir, &query.qp_name, 0);
 	query.qp_exts = exts;
-	query.extension_count = 2;
+	query.extension_count = ARRAY_LEN(exts);
 
 	if(debug) {
 		debug_lookup(&query, 1, qfalse);
