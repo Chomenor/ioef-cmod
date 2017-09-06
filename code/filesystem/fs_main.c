@@ -220,11 +220,13 @@ static qboolean prepare_writable_directory(char *directory) {
 	fs_delete_file(path);
 	return qtrue; }
 
+#ifndef CMOD_DEDICATED_SOURCEDIRS
 static char *fs_default_homepath(void) {
 	// Default homepath but it returns empty string in place of null
 	char *homepath = Sys_DefaultHomePath();
 	if(!homepath) return "";
 	return homepath; }
+#endif
 
 typedef struct {
 	char *name;
@@ -252,10 +254,23 @@ void fs_initialize_sourcedirs(void) {
 	char *fs_dirs_ptr;
 	char *token;
 	temp_source_directory_t temp_dirs[FS_SOURCEDIR_COUNT] = {
+#ifdef ELITEFORCE
+#ifdef CMOD_DEDICATED_SOURCEDIRS
+		{"dir1", Cvar_Get("fs_dir1", ".", CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"dir2", Cvar_Get("fs_dir2", "", CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"dir3", Cvar_Get("fs_dir3", "", CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"dir4", Cvar_Get("fs_dir4", "", CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"dir5", Cvar_Get("fs_dir5", "", CVAR_INIT|CVAR_PROTECTED), 0, qfalse} };
+#else
+		{"homepath",  Cvar_Get("fs_homepath", fs_default_homepath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+		{"basepath", Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse} };
+#endif
+#else
 		{"homepath",  Cvar_Get("fs_homepath", fs_default_homepath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
 		{"basepath", Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
 		{"steampath", Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
 		{"gogpath", Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse} };
+#endif
 
 	// Configure temp_dirs based on fs_dirs entries
 	fs_dirs_ptr = fs_dirs->string;
@@ -426,7 +441,11 @@ void fs_startup(void) {
 	Com_Printf("\n----- fs_startup -----\n");
 
 #ifdef ELITEFORCE
+#ifdef CMOD_DEDICATED_SOURCEDIRS
+	fs_dirs = Cvar_Get("fs_dirs", "*dir1 dir2 dir3 dir4 dir5", CVAR_INIT|CVAR_PROTECTED);
+#else
 	fs_dirs = Cvar_Get("fs_dirs", "*basepath *homepath", CVAR_INIT|CVAR_PROTECTED);
+#endif
 #else
 	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
 #endif

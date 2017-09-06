@@ -160,7 +160,11 @@ extern cvar_t *fs_debug_lookup;
 extern cvar_t *fs_debug_references;
 extern cvar_t *fs_debug_filelist;
 
+#ifdef ELITEFORCE
+#define FS_SOURCEDIR_COUNT 5
+#else
 #define FS_SOURCEDIR_COUNT 4
+#endif
 extern fs_source_directory_t fs_sourcedirs[FS_SOURCEDIR_COUNT];
 extern qboolean fs_read_only;
 

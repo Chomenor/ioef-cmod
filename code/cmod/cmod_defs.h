@@ -57,6 +57,9 @@
 
 #define CMOD_GETSTATUS_FIXES
 #define CMOD_BOT_TWEAKS
+#ifdef DEDICATED
+	#define CMOD_DEDICATED_SOURCEDIRS
+#endif
 
 /* ******************************************************************************** */
 // Misc
