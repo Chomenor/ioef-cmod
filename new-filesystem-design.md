@@ -373,27 +373,23 @@ File listing is primarily used to populate UI menus, not to load actual game con
 
 # Pk3 Reference Handling (fs_reference.c)
 
-This component handles several referenced/loaded pk3 related tasks.
+This component handles constructing the pure and download lists when hosting a server, and generating the pure verification string which is necessary when connecting to an original filesystem pure server. The main sections are as follows.
 
-## Pure List Handling
+- Reference set: This is a hashtable-based temporary structure for storing paks. Only a single pk3 is stored for a given hash, and conflicts are resolved by selecting the pk3 with the higher filesystem precedence. A position field is also stored, which is used by the dash separator feature in manifest strings to alter the reference list sort order.
 
-When hosting a pure server, the pure list is set through SV_SetPureList in sv_init.c, which calls FS_LoadedPakChecksums and FS_LoadedPakNames in fs_reference.c. SV_SetPureList checks for overflow conditions in either individual pure list strings or the systeminfo configstring. If an overflow occurs it will first try skipping sv_pakNames, since it is only used for informational purposes. If that isn't sufficient it will set sv_pure to 0.
+- Reference list: The reference list is a sortable pak list structure that is generated from a reference set.
 
-## Download List Handling
+- Reference string building: Used to convert a reference list to the hash/filename pure/download strings that are sent to clients.
 
-The server download (referenced) pak list is constructed in the following manner:
+- Pure verification: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because of a server with some nonstandard verification behavior, you can enable it with the fs_full_pure_validation setting.
 
-1) SV_SpawnServer calls FS_ClearPakReferences, which clears the referenced_paks structure in fs_reference.c.
+- Referenced paks: This section is used to record which paks have been accessed by the game. It is used for pure verification when fs_full_pure_validation is set to 1, and for the *referenced_paks selector rule for the download list. Neither feature is essential, so referenced pak tracking could be considered for deprecation in the future.
 
-2) As the server initialization proceeds, file requests trigger calls to fs_register_reference, which populates referenced_paks.
+- Download / pure list building: This section is used to convert both download and pure list manifest strings into reference sets.
 
-3) SV_SpawnServer calls fs_set_download_list, which populates the download_paks structure using referenced_paks, all the paks from the current mod dir, and the cgame/ui VM paks. The download paks are then converted to strings and added to the sv_referencedPaks and sv_referencedPakNames systeminfo cvars to be sent to clients.
+- Server download list handling: The fs_set_download_list is called from SV_SpawnServer during server initialization, which populates the download_paks structure and sets the "sv_referencedPaks" and "sv_referencedPakNames" cvars accordingly. When a download request is received from the client, fs_open_download_pak is called to open the read handle. It searches the download_paks reference set for a file matching the client request and retrieves the real path from the reference set entry. This is safer than opening the path directly and it correctly handles cases where the pk3 name was changed by path sanitization or the pk3 is located in the downloads folder on the server.
 
-When a download request is received from the client, fs_open_download_pak is called to open the read handle. It searches the download_paks reference set for a file matching the client request and retrieves the real path from the reference set entry. This is safer than opening the path directly and it correctly handles cases where the pk3 name was changed by path sanitization or the pk3 is located in the downloads folder on the server.
-
-## Pure Verification
-
-The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because of a server with some nonstandard verification behavior, you can enable it with the fs_full_pure_validation setting.
+- Pure list handling: When hosting a pure server, the pure list is set through SV_SetPureList in sv_init.c, which calls FS_LoadedPakChecksums and FS_LoadedPakNames in fs_reference.c. SV_SetPureList checks for overflow conditions in either individual pure list strings or the systeminfo configstring. If an overflow occurs it will first try skipping sv_pakNames, since it is only used for informational purposes. If that isn't sufficient it will set sv_pure to 0.
 
 # Conclusion
 
