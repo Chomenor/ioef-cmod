@@ -25,8 +25,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Simple strncpy function to avoid overlap check issues with some library implementations
 void vm_strncpy(char *dst, char *src, int length) {
 	int i;
-	for(i=0; i<length-1; ++i) {
-		if(!src[i]) break;
-		dst[i] = src[i]; }
-	if(length > 0) dst[i] = 0; }
+	for(i=0; i<length; ++i) {
+		dst[i] = src[i];
+		if(!src[i]) break; }
+	for(; i<length; ++i) {
+		dst[i] = 0; } }
 #endif
