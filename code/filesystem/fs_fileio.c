@@ -269,7 +269,7 @@ static cache_entry_t *cache_lookup_search(const fsc_file_t *file) {
 // ***** Cache data store *****
 
 #define CACHE_ENTRY_DATA(cache_entry) ((char *)(cache_entry) + sizeof(cache_entry_t))
-#define CACHE_ALIGN(ptr) (((uintptr_t)(ptr) + 7) & ~7)
+#define CACHE_ALIGN(ptr) (((uintptr_t)(ptr) + 15) & ~15)
 
 int cache_stage = 0;
 int cache_size = 0;
