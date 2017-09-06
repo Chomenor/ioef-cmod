@@ -23,6 +23,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cm_local.h"
 
+#ifdef CMOD_CM_ALIGN_FIX
+// Workaround for some wacky bsps that don't use 4-byte aligned structures
+#undef LittleLong
+static __attribute__ ((noinline)) unsigned int LittleLong(unsigned int x) {
+	return x; }
+#endif
+
 #ifdef BSPC
 
 #include "../bspc/l_qfiles.h"
