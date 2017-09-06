@@ -47,11 +47,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifdef ELITEFORCE
 #ifdef CMOD_SETTINGS
-#ifdef DEDICATED
-#define Q3CONFIG_CFG "cmod_server.cfg"
-#else
 #define Q3CONFIG_CFG "cmod.cfg"
-#endif
 #else
 #define Q3CONFIG_CFG "hmconfig.cfg"
 #endif

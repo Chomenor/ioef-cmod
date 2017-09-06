@@ -411,7 +411,9 @@ void Com_Quit_f( void ) {
 		VM_Forced_Unload_Done();
 		Com_Shutdown ();
 #ifdef CMOD_SETTINGS
+#ifndef DEDICATED
 		Com_WriteGlobalSettings();
+#endif
 #endif
 #ifdef NEW_FILESYSTEM
 		fs_close_all_handles();
@@ -2406,19 +2408,23 @@ void Com_ExecuteCfg(void)
 {
 #ifdef NEW_FILESYSTEM
 #ifdef CMOD_SETTINGS
+#ifndef DEDICATED
 	if(!Com_SafeMode()) {
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
 		fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_GLOBAL_SETTINGS, EXEC_APPEND, qfalse);
 		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse); }
+	Cbuf_Execute();
+	Com_Printf("\n");
+#endif
 #else
 	fs_execute_config_file("default.cfg", FS_CONFIGTYPE_DEFAULT, EXEC_APPEND, qfalse);
 	if(!Com_SafeMode()) {
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
 		fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
 		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse); }
-#endif
 	Cbuf_Execute();
 	Com_Printf("\n");
+#endif
 #else
 	Cbuf_ExecuteText(EXEC_NOW, "exec default.cfg\n");
 	Cbuf_Execute(); // Always execute after exec to prevent text buffer overflowing
