@@ -1022,9 +1022,7 @@ special_cvar_t specials[] = {
 #ifdef USE_RENDERER_DLOPEN
 	{"cl_renderer", "opengl1", CVARTYPE_NONE, 0},
 #endif
-#ifndef DEDICATED
 	{"sv_pure", "0", CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
-#endif
 	{"com_hunkmegs", "256", CVARTYPE_NONE, 0},
 	{"com_soundMegs", "32", CVARTYPE_NONE, 0},
 	{"s_sdlSpeed", "44100", CVARTYPE_NONE, 0},
@@ -1034,7 +1032,11 @@ special_cvar_t specials[] = {
 	{"sv_master3", "efmaster.tjps.eu", CVARTYPE_NONE, 0},
 	{"sv_master4", "", CVARTYPE_NONE, 0},
 	{"sv_master5", "", CVARTYPE_NONE, 0},
+#ifdef DEDICATED
+	{"dedicated", "1", CVARTYPE_NONE, CVAR_NOARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
+#else
 	{"dedicated", "0", CVARTYPE_NONE, CVAR_NOARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
+#endif
 	{"fs_game", "", CVARTYPE_NONE, CVAR_NOARCHIVE},
 	{"sv_killserver", "", CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cg_drawCrosshair", 0, CVARTYPE_NONE, CVAR_PROTECTED_ARCHIVABLE},
