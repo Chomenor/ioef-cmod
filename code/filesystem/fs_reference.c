@@ -250,8 +250,8 @@ static void add_referenced_pure_pk3s(fsc_stream_t *stream, fs_hashtable_t *refer
 static void build_pure_validation_string(char *output, int output_size, fs_hashtable_t *referenced_paks) {
 	fsc_stream_t stream = {output, 0, output_size, 0};
 	char buffer[50];
-	int cgame_checksum = get_pure_checksum_for_file(fs_general_lookup("vm/cgame.qvm", qtrue, qfalse, qfalse), checksum_feed);
-	int ui_checksum = get_pure_checksum_for_file(fs_general_lookup("vm/ui.qvm", qtrue, qfalse, qfalse), checksum_feed);
+	int cgame_checksum = get_pure_checksum_for_file(fs_general_lookup("vm/cgame.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse), checksum_feed);
+	int ui_checksum = get_pure_checksum_for_file(fs_general_lookup("vm/ui.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse), checksum_feed);
 
 	Com_sprintf(buffer, sizeof(buffer), "%i %i @", cgame_checksum, ui_checksum);
 	fsc_stream_append_string(&stream, buffer);
@@ -380,8 +380,8 @@ void fs_set_download_list(void) {
 				add_download_pak(pak); } } }
 
 	// Add cgame and ui paks
-	{	const fsc_file_t *cgame_file = fs_general_lookup("vm/cgame.qvm", qtrue, qfalse, qfalse);
-		const fsc_file_t *ui_file = fs_general_lookup("vm/ui.qvm", qtrue, qfalse, qfalse);
+	{	const fsc_file_t *cgame_file = fs_general_lookup("vm/cgame.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP|LOOKUPFLAG_PK3_SOURCE_ONLY, qfalse);
+		const fsc_file_t *ui_file = fs_general_lookup("vm/ui.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP|LOOKUPFLAG_PK3_SOURCE_ONLY, qfalse);
 		if(cgame_file && cgame_file->sourcetype == FSC_SOURCETYPE_PK3) {
 			add_download_pak(STACKPTR(((fsc_file_frompk3_t *)cgame_file)->source_pk3)); }
 		if(ui_file && ui_file->sourcetype == FSC_SOURCETYPE_PK3) {

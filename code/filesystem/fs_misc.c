@@ -381,7 +381,7 @@ int fs_valid_md3_lods(int max_lods, const char *name, const char *extension) {
 		const fsc_file_t *current_file;
 		if(lod) Com_sprintf(namebuf, sizeof(namebuf), "%s_%d.%s", name, lod, extension);
 		else Com_sprintf(namebuf, sizeof(namebuf), "%s.%s", name, extension);
-		current_file = fs_general_lookup(namebuf, qtrue, qtrue, qfalse);
+		current_file = fs_general_lookup(namebuf, 0, qfalse);
 		if(!current_file) return lod;
 
 		// If it's lod 0 save it as base file

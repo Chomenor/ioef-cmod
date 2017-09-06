@@ -186,9 +186,15 @@ void debug_resource_comparison(int resource1_position, int resource2_position);
 const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug);
 #endif
 
-const fsc_file_t *fs_general_lookup(const char *name, qboolean use_pure_list, qboolean use_current_map, qboolean debug);
-const fsc_shader_t *fs_shader_lookup(const char *name, int flags, qboolean debug);
-const fsc_file_t *fs_image_lookup(const char *name, int flags, qboolean debug);
+#define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups. Must match value in tr_public.h!
+#define LOOKUPFLAG_IGNORE_PURE_LIST 2
+#define LOOKUPFLAG_IGNORE_CURRENT_MAP 4
+#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 8
+#define LOOKUPFLAG_PK3_SOURCE_ONLY 16
+
+const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug);
+const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolean debug);
+const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean debug);
 const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug);
 const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out);
 

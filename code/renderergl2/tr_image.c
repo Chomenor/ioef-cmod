@@ -2306,7 +2306,7 @@ void R_LoadImageNewFS( const char *name, byte **pic, int *width, int *height, GL
 
 	// Look up the file
 	COM_StripExtension(name, localName, MAX_QPATH);
-	file = ri.fs_image_lookup(localName, r_ext_compressed_textures->integer ? 1 : 0, qfalse);
+	file = ri.fs_image_lookup(localName, r_ext_compressed_textures->integer ? LOOKUPFLAG_ENABLE_DDS : 0, qfalse);
 	if(!file) return;
 
 	// Get extension

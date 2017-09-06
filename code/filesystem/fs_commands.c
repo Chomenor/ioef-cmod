@@ -33,7 +33,7 @@ static void cmd_find_file(void) {
 		Com_Printf("Usage: find_file <path>\n");
 		return; }
 
-	fs_general_lookup(Cmd_Argv(1), qtrue, qtrue, qtrue); }
+	fs_general_lookup(Cmd_Argv(1), 0, qtrue); }
 
 static void cmd_find_shader(void) {
 	if(Cmd_Argc() != 2) {
@@ -146,7 +146,7 @@ static void FS_Which_f( void ) {
 		filename++;
 	}
 
-	file = fs_general_lookup(filename, qtrue, qtrue, qfalse);
+	file = fs_general_lookup(filename, 0, qfalse);
 	if(file) fs_print_file_location(file);
 	else Com_Printf("File not found: \"%s\"\n", filename);
 }

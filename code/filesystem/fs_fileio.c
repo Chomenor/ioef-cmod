@@ -1023,7 +1023,7 @@ long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueF
 	unsigned int size;
 
 	// Get the file
-	fscfile = fs_general_lookup(filename, qtrue, qtrue, qfalse);
+	fscfile = fs_general_lookup(filename, 0, qfalse);
 	if(!fscfile) {
 		*file = 0;
 		return -1; }
@@ -1072,7 +1072,7 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 	int size;
 
 	if(!f) {
-		const fsc_file_t *fscfile = fs_general_lookup(qpath, qtrue, qtrue, qfalse);
+		const fsc_file_t *fscfile = fs_general_lookup(qpath, 0, qfalse);
 		if(fscfile) return fscfile->filesize;
 		return -1; }
 
@@ -1144,7 +1144,7 @@ long FS_ReadFile(const char *qpath, void **buffer) {
 	const fsc_file_t *file;
 	unsigned int len;
 
-	file = fs_general_lookup(qpath, qtrue, qtrue, qfalse);
+	file = fs_general_lookup(qpath, 0, qfalse);
 
 	if(!file) {
 		// File not found

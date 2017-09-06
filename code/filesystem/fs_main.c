@@ -95,7 +95,7 @@ int fs_connected_server_pure_state(void) {
 /* ******************************************************************************** */
 
 void fs_register_current_map(const char *name) {
-	const fsc_file_t *bsp_file = fs_general_lookup(name, qtrue, qfalse, qfalse);
+	const fsc_file_t *bsp_file = fs_general_lookup(name, LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse);
 	if(!bsp_file || bsp_file->sourcetype != FSC_SOURCETYPE_PK3) current_map_pk3 = 0;
 	else current_map_pk3 = STACKPTR(((fsc_file_frompk3_t *)bsp_file)->source_pk3);
 

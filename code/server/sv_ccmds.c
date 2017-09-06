@@ -172,7 +172,7 @@ static void SV_Map_f( void ) {
 	// Perform the check without respect to current connected pure list
 	// If we go forward loading the map, the pure list will be cleared in SV_SpawnServer
 	// before further access to the bsp
-	if(!fs_general_lookup(expanded, qfalse, qfalse, qfalse)) {
+	if(!fs_general_lookup(expanded, LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse)) {
 #else
 	if ( FS_ReadFile (expanded, NULL) == -1 ) {
 #endif
