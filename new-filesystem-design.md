@@ -36,7 +36,7 @@ The new filesystem code is divided into logically distinct source files located 
 
 - fs_filelist.c: Supports directory listing functions. Primarily used to populate map/model menus in the UI.
 
-- fs_reference.c: Used to generate the pure list and download list when hosting a server. Also handles pure verification requirements when connecting to legacy pure servers.
+- fs_reference.c: Used to generate the pure list and download list when hosting a server. Also handles pure validation requirements when connecting to legacy pure servers.
 
 - fs_commands.c: Supports user-entered console commands, e.g. "find_file" and "dir".
 
@@ -373,7 +373,7 @@ File listing is primarily used to populate UI menus, not to load actual game con
 
 # Pk3 Reference Handling (fs_reference.c)
 
-This component handles constructing the pure and download lists when hosting a server, and generating the pure verification string which is necessary when connecting to an original filesystem pure server. The main sections are as follows.
+This component handles constructing the pure and download lists when hosting a server, and generating the pure validation string which is necessary when connecting to an original filesystem pure server. The main sections are as follows.
 
 - Reference set: This is a hashtable-based temporary structure for storing paks. Only a single pk3 is stored for a given hash, and conflicts are resolved by selecting the pk3 with the higher filesystem precedence. A position field is also stored, which is used by the dash separator feature in manifest strings to alter the reference list sort order.
 
@@ -381,9 +381,9 @@ This component handles constructing the pure and download lists when hosting a s
 
 - Reference string building: Used to convert a reference list to the hash/filename pure/download strings that are sent to clients.
 
-- Pure verification: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because of a server with some nonstandard verification behavior, you can enable it with the fs_full_pure_validation setting.
+- Pure validation: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because of a server with some nonstandard validation behavior, you can enable it with the fs_full_pure_validation setting.
 
-- Referenced paks: This section is used to record which paks have been accessed by the game. It is used for pure verification when fs_full_pure_validation is set to 1, and for the *referenced_paks selector rule for the download list. Neither feature is essential, so referenced pak tracking could be considered for deprecation in the future.
+- Referenced paks: This section is used to record which paks have been accessed by the game. It is used for pure validation when fs_full_pure_validation is set to 1, and for the *referenced_paks selector rule for the download list. Neither feature is essential, so referenced pak tracking could be considered for deprecation in the future.
 
 - Download / pure list building: This section is used to convert both download and pure list manifest strings into reference sets.
 

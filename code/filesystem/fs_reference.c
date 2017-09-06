@@ -151,7 +151,7 @@ static qboolean reference_list_to_buffer(reference_list_t *reference_list, char 
 	return qtrue; }
 
 /* ******************************************************************************** */
-// Pure Verification
+// Pure Validation
 /* ******************************************************************************** */
 
 // Pure checksum entry handling
@@ -229,7 +229,7 @@ static int get_pure_checksum_for_file(const fsc_file_t *file, int checksum_feed)
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
 	return get_pure_checksum_for_pk3(STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), checksum_feed); }
 
-// Pure verification string building
+// Pure validation string building
 
 static void add_referenced_pure_pk3s(fsc_stream_t *stream, fs_hashtable_t *referenced_paks) {
 	int i;
@@ -278,7 +278,7 @@ static void build_pure_validation_string(char *output, int output_size, fs_hasht
 
 // The "referenced_paks" set is filled by logging game references to pk3 files
 // It currently serves two purposes:
-// 1) To generate the pure verification string when fs_full_pure_validation is 1
+// 1) To generate the pure validation string when fs_full_pure_validation is 1
 //		(Although I have never seen any server that requires this to connect)
 // 2) As a component of the download pak list creation
 //		(Although in virtually all cases it is redundant to just using the current map)
