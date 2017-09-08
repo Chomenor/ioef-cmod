@@ -41,6 +41,7 @@ typedef fs_hashtable_t reference_set_t;
 
 static qboolean reference_set_add(reference_set_t *reference_set, fsc_file_direct_t *pak, int position) {
 	// Returns qtrue on success, qfalse if already inserted or maximum hit
+	// This function should be called in lowest-to-highest position order
 	fs_hashtable_iterator_t it = fs_hashtable_iterate(reference_set, pak->pk3_hash, qfalse);
 	reference_set_entry_t *entry;
 
@@ -49,8 +50,8 @@ static qboolean reference_set_add(reference_set_t *reference_set, fsc_file_direc
 	while((entry = fs_hashtable_next(&it))) {
 		if(entry->pak->pk3_hash == pak->pk3_hash) {
 			// File with same hash - only keep the higher precedence file
-			if(entry->pak != pak && fs_compare_file((fsc_file_t *)entry->pak, (fsc_file_t *)pak, qfalse) > 0) entry->pak = pak;
-			if(position < entry->position) entry->position = position;
+			if(entry->pak != pak && position == entry->position &&
+					fs_compare_file((fsc_file_t *)entry->pak, (fsc_file_t *)pak, qfalse) > 0) entry->pak = pak;
 			return qfalse; } }
 
 	entry = S_Malloc(sizeof(reference_set_entry_t));
