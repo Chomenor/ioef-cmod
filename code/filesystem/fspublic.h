@@ -333,8 +333,7 @@ const char *FS_ReferencedPakNames( void );
 const char *FS_ReferencedPakPureChecksums( void );
 void fs_set_download_list(void);
 fileHandle_t fs_open_download_pak(const char *path, unsigned int *size_out);
-const char *FS_LoadedPakChecksums( void );
-const char *FS_LoadedPakNames( void );
+void fs_set_pure_list(void);
 
 /* ******************************************************************************** */
 // Misc

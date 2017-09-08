@@ -392,52 +392,6 @@ static void SV_TouchCGame(void) {
 }
 #endif
 
-#ifdef NEW_FILESYSTEM
-/*
-================
-SV_SetPureList
-
-Sets sv_paks and sv_pakNames, and resets sv_pure to 0 if there was an overflow.
-================
-*/
-#define SYSTEMINFO_RESERVED_SIZE 256
-static void SV_SetPureList(void) {
-	const char *paks = FS_LoadedPakChecksums();
-	const char *pakNames = FS_LoadedPakNames();
-	int systeminfo_base_length;
-
-	Cvar_Set("sv_paks", "");
-	Cvar_Set("sv_pakNames", "");
-
-	if(!sv_pure->integer) return;
-
-	if(!paks || !*paks) {
-		if(!paks) Com_Printf("WARNING: Setting sv_pure to 0 due to pk3 list overflow."
-			" Remove some pk3s from the server if you want to use sv_pure.\n");
-		else Com_Printf("WARNING: Setting sv_pure to 0 due to empty loaded pk3 list.\n");
-		Cvar_Set("sv_pure", "0");
-		return;
-	}
-
-	systeminfo_base_length = strlen(Cvar_InfoString_Big(CVAR_SYSTEMINFO));
-	if(systeminfo_base_length + strlen(paks) + SYSTEMINFO_RESERVED_SIZE >= BIG_INFO_STRING) {
-		Com_Printf("WARNING: Setting sv_pure to 0 due to systeminfo overflow."
-			" Remove some pk3s from the server if you want to use sv_pure.\n");
-		Cvar_Set("sv_pure", "0");
-		return;
-	}
-
-	Cvar_Set("sv_paks", paks);
-
-	// It should be fine to leave sv_pakNames empty if it overflowed since it is normally
-	// only used for informational purposes anyway
-	if(pakNames && systeminfo_base_length + strlen(paks) + strlen(pakNames) +
-			SYSTEMINFO_RESERVED_SIZE < BIG_INFO_STRING) {
-		Cvar_Set("sv_pakNames", pakNames);
-	}
-}
-#endif
-
 /*
 ================
 SV_SpawnServer
@@ -626,7 +580,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	fs_set_download_list();
 
 	// Set sv_paks and sv_pakNames (pure list)
-	SV_SetPureList();
+	fs_set_pure_list();
 #else
 	if ( sv_pure->integer ) {
 		// the server sends these to the clients so they will only
