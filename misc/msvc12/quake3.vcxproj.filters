@@ -680,6 +680,9 @@
     <ClCompile Include="..\..\code\cmod\mad\mad_layer3.c">
       <Filter>cmod\mad</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_misc.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\code\cgame\cg_public.h" />
@@ -803,6 +806,9 @@
     <ClInclude Include="..\..\code\cmod\cmod_misc.h">
       <Filter>cmod</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\code\cmod\server\sv_misc.h">
+      <Filter>cmod\server</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\code\asm\ftola.asm" />
@@ -841,6 +847,9 @@
     </Filter>
     <Filter Include="cmod\mad">
       <UniqueIdentifier>{7be7da1e-f36b-4df2-987c-8270d706b4b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cmod\server">
+      <UniqueIdentifier>{17d075ff-1330-4776-a7b2-5cbb07b4214f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

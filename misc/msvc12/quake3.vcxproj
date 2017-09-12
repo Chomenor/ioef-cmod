@@ -483,6 +483,7 @@
     <ClCompile Include="..\..\code\cmod\mad\mad_timer.c" />
     <ClCompile Include="..\..\code\cmod\mad\mad_version.c" />
     <ClCompile Include="..\..\code\cmod\snd_codec_mp3.c" />
+    <ClCompile Include="..\..\code\cmod\server\sv_misc.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_cache.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_crosshair.c" />
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_gameparse.c" />
@@ -980,6 +981,7 @@
     <ClInclude Include="..\..\code\client\snd_public.h" />
     <ClInclude Include="..\..\code\cmod\cmod_defs.h" />
     <ClInclude Include="..\..\code\cmod\cmod_misc.h" />
+    <ClInclude Include="..\..\code\cmod\server\sv_misc.h" />
     <ClInclude Include="..\..\code\filesystem\fscore\fscore.h" />
     <ClInclude Include="..\..\code\filesystem\fslocal.h" />
     <ClInclude Include="..\..\code\filesystem\fspublic.h" />

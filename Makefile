@@ -1769,7 +1769,8 @@ Q3OBJ += \
   $(B)/client/mad_stream.o \
   $(B)/client/mad_synth.o \
   $(B)/client/mad_timer.o \
-  $(B)/client/mad_version.o
+  $(B)/client/mad_version.o \
+  $(B)/client/sv_misc.o
 
 ifdef MINGW
   Q3OBJ += \
@@ -2332,7 +2333,8 @@ Q3DOBJ = \
 Q3DOBJ += \
   $(B)/ded/cmod_cmd.o \
   $(B)/ded/cmod_cvar.o \
-  $(B)/ded/cmod_misc.o
+  $(B)/ded/cmod_misc.o \
+  $(B)/ded/sv_misc.o
 
 ifeq ($(ARCH),x86)
   Q3DOBJ += \
@@ -2735,6 +2737,8 @@ $(B)/client/%.o: $(MOUNT_DIR)/cmod/%.c
 	$(DO_CC)
 $(B)/client/%.o: $(MOUNT_DIR)/cmod/mad/%.c
 	$(DO_CC)
+$(B)/client/%.o: $(MOUNT_DIR)/cmod/server/%.c
+	$(DO_CC)
 
 $(B)/client/%.o: $(SDLDIR)/%.c
 	$(DO_CC)
@@ -2802,6 +2806,8 @@ $(B)/ded/%.o: $(FSDIR_FSCORE)/%.c
 	$(DO_DED_CC)
 
 $(B)/ded/%.o: $(MOUNT_DIR)/cmod/%.c
+	$(DO_DED_CC)
+$(B)/ded/%.o: $(MOUNT_DIR)/cmod/server/%.c
 	$(DO_DED_CC)
 
 $(B)/ded/%.o: $(BLIBDIR)/%.c
