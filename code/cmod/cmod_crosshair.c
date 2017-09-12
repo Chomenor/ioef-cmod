@@ -246,7 +246,8 @@ int settings_menu_phase;
 // Don't enable the crosshair override until the standard set of 12 crosshairs has been registered
 // by at least one VM. This helps protect a bit against incompatible VMs with modified crosshair handling.
 
-#define VM_OVERRIDE_ACTIVE (cmod_crosshair_enable->integer && font_shader > 0 && vm_crosshairs_registered == 4095)
+#define VM_OVERRIDE_ACTIVE (cmod_crosshair_enable && cmod_crosshair_enable->integer && font_shader > 0 \
+		&& vm_crosshairs_registered == 4095)
 
 static void crosshair_general_init(void);
 
