@@ -4,9 +4,10 @@ Here are the key features:
 - Improved resource conflict negotiation. Broken textures/shaders and other issues from conflicting pk3s are greatly reduced.
 - Improved load times, especially with lots of pk3s installed. Close to clean install performance with thousands of pk3s installed!
 - Broad security improvements, safer downloading options, and fixes for multiple VM-based vulnerabilities.
-- Improved download handling when dealing with poorly configured servers.
+- Improved download handling, especially when downloading from poorly configured servers.
 - Ability to use resources in mods that aren't loaded, such as missionpack maps and textures when team arena mode isn't active.
 - New debugging commands to trace file/shader origins.
+- Ability to customize the download and pure lists when hosting servers.
 - Fixed server-side pure list overflow issues.
 - Semi-pure server support.
 - Numerous minor bug fixes and tweaks.
@@ -104,7 +105,7 @@ The default pure manifest simply selects every pak available to the game.
 set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks
 ```
 
-Pure servers with a large number of pk3s in baseq3 (300+) can run into problems with the pure list overflowing. To avoid such issues you can replace the *base_baks rule in the pure manifest with specific core paks. Note that any auxiliary paks in baseq3 required by maps or mods will need be included manually as well.
+Pure servers with a large number of pk3s in baseq3 (300+) can run into problems with the pure list overflowing. To avoid such issues you can replace the *base_baks rule in the pure manifest with specific core paks. Note that any auxiliary paks in baseq3 required by maps or mods, as well as optional content like player models, will need be included manually as well.
 ```
 set fs_pure_manifest *mod_paks baseq3/pak8 baseq3/pak7 baseq3/pak6 baseq3/pak5 baseq3/pak4 baseq3/pak3 baseq3/pak2 baseq3/pak1 baseq3/pak0 *currentmap_pak
 ```
@@ -162,4 +163,4 @@ Once you run one of the above commands, you can use the "compare" command to fin
 
 - The server-side pure validation function SV_VerifyPaks_f is no longer supported, since it has no security value in modern conditions. All other pure server functionality is supported and cross-compatible with existing clients and servers.
 
-- The pk3dir feature is currently not supported, as I'm not sure it's worth the code complexity to include it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you have a use case that this doesn't cover sufficiently, let me know and I'll look into adding the full pk3dir functionality.
+- The pk3dir feature is currently not supported, as I'm not sure it's worth the complexity to include it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you have a use case that this doesn't cover sufficiently, let me know and I'll look into adding the full pk3dir functionality.

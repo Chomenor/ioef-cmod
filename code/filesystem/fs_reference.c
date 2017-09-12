@@ -41,6 +41,7 @@ typedef fs_hashtable_t reference_set_t;
 
 static qboolean reference_set_add(reference_set_t *reference_set, fsc_file_direct_t *pak, int position) {
 	// Returns qtrue on success, qfalse if already inserted or maximum hit
+	// This function should be called in lowest-to-highest position order
 	fs_hashtable_iterator_t it = fs_hashtable_iterate(reference_set, pak->pk3_hash, qfalse);
 	reference_set_entry_t *entry;
 
@@ -49,8 +50,8 @@ static qboolean reference_set_add(reference_set_t *reference_set, fsc_file_direc
 	while((entry = fs_hashtable_next(&it))) {
 		if(entry->pak->pk3_hash == pak->pk3_hash) {
 			// File with same hash - only keep the higher precedence file
-			if(entry->pak != pak && fs_compare_file((fsc_file_t *)entry->pak, (fsc_file_t *)pak, qfalse) > 0) entry->pak = pak;
-			if(position < entry->position) entry->position = position;
+			if(entry->pak != pak && position == entry->position &&
+					fs_compare_file((fsc_file_t *)entry->pak, (fsc_file_t *)pak, qfalse) > 0) entry->pak = pak;
 			return qfalse; } }
 
 	entry = S_Malloc(sizeof(reference_set_entry_t));
@@ -564,37 +565,52 @@ fileHandle_t fs_open_download_pak(const char *path, unsigned int *size_out) {
 // Server Pure List Handling
 /* ******************************************************************************** */
 
-static void get_pure_paks(reference_list_t *reference_list) {
-	// Provide an uninitialized reference list for output
-	fs_hashtable_t loaded_paks;
-	fs_hashtable_initialize(&loaded_paks, 2048);
-	add_paks_from_manifest_string(&loaded_paks, fs_pure_manifest->string, qfalse);
-	reference_set_to_reference_list(&loaded_paks, reference_list);
-	sort_reference_list(reference_list, qfalse);
-	fs_hashtable_free(&loaded_paks, 0); }
+#define SYSTEMINFO_RESERVED_SIZE 256
+static void fs_set_pure_list2(reference_list_t *pure_list) {
+	char hash_string[BIG_INFO_STRING];
+	char name_string[BIG_INFO_STRING];
+	int systeminfo_base_length;
 
-const char *FS_LoadedPakChecksums( void ) {
-	// Returns a space separated string containing the hashes of pk3 files to be in the pure list.
-	// Servers with sv_pure set will get this string and pass it to clients.
-	// Returns NULL if list overflowed.
-	static char buffer[BIG_INFO_STRING];
-	qboolean overflow = qfalse;
-	reference_list_t reference_list;
-	get_pure_paks(&reference_list);
-	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_hash_string)) overflow = qtrue;
-	free_reference_list(&reference_list);
-	return overflow ? 0 : buffer; }
+	if(!reference_list_to_buffer(pure_list, hash_string, sizeof(hash_string), reference_hash_string)) {
+		Com_Printf("WARNING: Setting sv_pure to 0 due to pure list overflow. Remove some"
+			" paks from the server or adjust the pure manifest if you want to use sv_pure.\n");
+		Cvar_Set("sv_pure", 0);
+		return; }
 
-const char *FS_LoadedPakNames( void ) {
-	// Returns a space separated string containing the names of pk3 files to be in the pure list.
-	// Servers with sv_pure set will get this string and pass it to clients.
-	// Returns NULL if list overflowed.
-	static char buffer[BIG_INFO_STRING];
-	qboolean overflow = qfalse;
-	reference_list_t reference_list;
-	get_pure_paks(&reference_list);
-	if(!reference_list_to_buffer(&reference_list, buffer, sizeof(buffer), reference_name_string)) overflow = qtrue;
-	free_reference_list(&reference_list);
-	return overflow ? 0 : buffer; }
+	if(!*hash_string) {
+		Com_Printf("WARNING: Setting sv_pure to 0 due to empty pure list.\n");
+		Cvar_Set("sv_pure", "0");
+		return; }
+
+	systeminfo_base_length = strlen(Cvar_InfoString_Big(CVAR_SYSTEMINFO));
+	if(systeminfo_base_length + strlen(hash_string) + SYSTEMINFO_RESERVED_SIZE >= BIG_INFO_STRING) {
+		Com_Printf("WARNING: Setting sv_pure to 0 due to systeminfo overflow. Remove some"
+			" paks from the server or adjust the pure manifest if you want to use sv_pure.\n");
+		Cvar_Set("sv_pure", "0");
+		return; }
+
+	Cvar_Set("sv_paks", hash_string);
+
+	// It should be fine to leave sv_pakNames empty if it overflowed since it is normally
+	// only used for informational purposes anyway
+	if(reference_list_to_buffer(pure_list, name_string, sizeof(name_string), reference_name_string) &&
+			systeminfo_base_length + strlen(hash_string) + strlen(name_string) +
+			SYSTEMINFO_RESERVED_SIZE < BIG_INFO_STRING) {
+		Cvar_Set("sv_pakNames", name_string); } }
+
+void fs_set_pure_list(void) {
+	Cvar_Set("sv_paks", "");
+	Cvar_Set("sv_pakNames", "");
+
+	if(Cvar_VariableIntegerValue("sv_pure")) {
+		fs_hashtable_t pure_list_set;
+		reference_list_t pure_list;
+		fs_hashtable_initialize(&pure_list_set, 2048);
+		add_paks_from_manifest_string(&pure_list_set, fs_pure_manifest->string, qfalse);
+		reference_set_to_reference_list(&pure_list_set, &pure_list);
+		fs_hashtable_free(&pure_list_set, 0);
+		sort_reference_list(&pure_list, qfalse);
+		fs_set_pure_list2(&pure_list);
+		free_reference_list(&pure_list); } }
 
 #endif	// NEW_FILESYSTEM

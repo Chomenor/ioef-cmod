@@ -2113,6 +2113,7 @@ void CL_Snd_Restart_f(void)
 }
 
 
+#ifndef NEW_FILESYSTEM
 /*
 ==================
 CL_PK3List_f
@@ -2130,6 +2131,7 @@ CL_PureList_f
 void CL_ReferencedPK3List_f( void ) {
 	Com_Printf("Referenced PK3 Names: %s\n", FS_ReferencedPakNames());
 }
+#endif
 
 /*
 ==================
@@ -3974,8 +3976,10 @@ void CL_Init( void ) {
 	Cmd_AddCommand ("ping", CL_Ping_f );
 	Cmd_AddCommand ("serverstatus", CL_ServerStatus_f );
 	Cmd_AddCommand ("showip", CL_ShowIP_f );
+#ifndef NEW_FILESYSTEM
 	Cmd_AddCommand ("fs_openedList", CL_OpenedPK3List_f );
 	Cmd_AddCommand ("fs_referencedList", CL_ReferencedPK3List_f );
+#endif
 	Cmd_AddCommand ("model", CL_SetModel_f );
 	Cmd_AddCommand ("video", CL_Video_f );
 	Cmd_AddCommand ("stopvideo", CL_StopVideo_f );
