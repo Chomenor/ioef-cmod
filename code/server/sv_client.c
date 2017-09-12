@@ -905,6 +905,11 @@ static void SV_DoneDownload_f( client_t *cl ) {
 	if ( cl->state == CS_ACTIVE )
 		return;
 
+#ifdef CMOD_DL_PROTOCOL_FIXES
+	// Make sure client doesn't try to delta from dummy snapshot frames
+	if(cl->compat) cl->netchan.outgoingSequence += 50;
+#endif
+
 	Com_DPrintf( "clientDownload: %s Done\n", cl->name);
 	// resend the game state to update any clients that entered during the download
 	SV_SendClientGameState(cl);
@@ -1274,13 +1279,29 @@ int SV_SendDownloadMessages(void)
 		
 		if(cl->state && *cl->downloadName)
 		{
+#ifdef CMOD_DL_PROTOCOL_FIXES
+			if(cl->compat)
+			{
+				MSG_InitOOB(&msg, msgBuffer, sizeof(msgBuffer));
+				msg.compat = qtrue;
+				write_download_dummy_snapshot(cl, &msg);
+			}
+			else
+			{
+#endif
 			MSG_Init(&msg, msgBuffer, sizeof(msgBuffer));
 			MSG_WriteLong(&msg, cl->lastClientCommand);
+#ifdef CMOD_DL_PROTOCOL_FIXES
+			}
+#endif
 			
 			retval = SV_WriteDownloadToClient(cl, &msg);
 				
 			if(retval)
 			{
+#ifdef CMOD_DL_PROTOCOL_FIXES
+				if(!cl->compat)
+#endif
 				MSG_WriteByte(&msg, svc_EOF);
 				SV_Netchan_Transmit(cl, &msg);
 				numDLs += retval;
