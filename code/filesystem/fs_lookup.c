@@ -311,8 +311,9 @@ PC_DEBUG(server_pak_position) {
 				high_num, high->server_pak_position, low_num, low->server_pak_position)); } }
 
 PC_COMPARE(basemod_or_current_mod_dir) {
-	if(r1->mod_dir_match >= 2 && r2->mod_dir_match < 2) return -1;
-	if(r2->mod_dir_match >= 2 && r1->mod_dir_match < 2) return 1;
+	if(r1->mod_dir_match >= 2 || r2->mod_dir_match >= 2) {
+		if(r1->mod_dir_match > r2->mod_dir_match) return -1;
+		if(r2->mod_dir_match > r1->mod_dir_match) return 1; }
 	return 0; }
 
 PC_DEBUG(basemod_or_current_mod_dir) {
