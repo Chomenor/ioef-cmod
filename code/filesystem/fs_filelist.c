@@ -27,12 +27,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Limit max files returned by searches to avoid Z_Malloc overflows
 #define	MAX_FOUND_FILES	32768
 
+#define FL_FLAG_USE_PURE_LIST 1
+
 typedef struct {
 	const char *extension;
 	int extension_length;
 	const char *filter;
-	qboolean use_pure_list;
 	int search_inactive_mods;
+	int flags;
 } filelist_query_t;
 
 /* ******************************************************************************** */
@@ -49,7 +51,7 @@ static file_list_sort_key_t *generate_sort_key(const fsc_file_t *file, fsc_stack
 	fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
 	file_list_sort_key_t *key;
 
-	fs_generate_file_sort_key(file, &stream, query->use_pure_list);
+	fs_generate_file_sort_key(file, &stream, (query->flags & FL_FLAG_USE_PURE_LIST) ? qtrue : qfalse);
 
 	key = fsc_stack_retrieve(stack, fsc_stack_allocate(stack, sizeof(*key) + stream.position));
 	key->length = stream.position;
@@ -131,7 +133,7 @@ static qboolean file_in_server_pak_list(const fsc_file_t *file) {
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_query_t *query) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
 	if(!fsc_is_file_enabled(file, &fs)) return qfalse;
-	if(query->use_pure_list && fs_connected_server_pure_state() == 1 && !file_in_server_pak_list(file)) return qfalse;
+	if((query->flags & FL_FLAG_USE_PURE_LIST) && fs_connected_server_pure_state() == 1 && !file_in_server_pak_list(file)) return qfalse;
 	if(fs_inactive_mod_file_disabled(file, query->search_inactive_mods)) return qfalse;
 	return qtrue; }
 
@@ -354,7 +356,7 @@ static char **FS_ListFilteredFiles2(const char *path, int *numfiles_out, filelis
 char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
 		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
 	filelist_query_t query = {extension, extension ? strlen(extension) : 0, filter,
-			!allowNonPureFilesOnDisk, fs_search_inactive_mods->integer};
+			fs_search_inactive_mods->integer, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
 	return FS_ListFilteredFiles2(path, numfiles_out, &query); }
 
 /* ******************************************************************************** */
@@ -442,26 +444,28 @@ static int FS_GetModList(char *listbuf, int bufsize) {
 /* ******************************************************************************** */
 
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
-	return FS_ListFilteredFiles( path, extension, NULL, numfiles, qfalse );
-}
+	return FS_ListFilteredFiles( path, extension, NULL, numfiles, qfalse ); }
 
 int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize ) {
-	int		nFiles, i, nTotal, nLen;
+	int i;
+	filelist_query_t query;
+	int flags = FL_FLAG_USE_PURE_LIST;
+	int nFiles = 0;
+	int nTotal = 0;
+	int nLen;
 	char **pFiles = NULL;
 
 	*listbuf = 0;
-	nFiles = 0;
-	nTotal = 0;
 
-	if (Q_stricmp(path, "$modlist") == 0) {
-		return FS_GetModList(listbuf, bufsize);
-	}
+	if(!Q_stricmp(path, "$modlist")) {
+		return FS_GetModList(listbuf, bufsize); }
 
 	if(!Q_stricmp(path, "demos")) {
 		// Check for new demos before displaying the UI demo menu
 		fs_auto_refresh(); }
 
-	pFiles = FS_ListFiles(path, extension, &nFiles);
+	query = (filelist_query_t){extension, extension ? strlen(extension) : 0, 0, fs_search_inactive_mods->integer, flags};
+	pFiles = FS_ListFilteredFiles2(path, &nFiles, &query);
 
 	for (i =0; i < nFiles; i++) {
 		nLen = strlen(pFiles[i]) + 1;
