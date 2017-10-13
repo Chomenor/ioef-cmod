@@ -81,7 +81,7 @@ static int get_pk3_central_directory_fp(void *fp, unsigned int file_length, cent
 		if(buffer_read_target <= buffer_read_size) return 1;
 
 		// Read the data
-		fsc_fseek(fp, file_length - buffer_read_target, FSC_SEEK_SET);
+		fsc_fseek_set(fp, file_length - buffer_read_target);
 		fsc_fread(buffer + sizeof(buffer) - buffer_read_target, buffer_read_target - buffer_read_size, fp);
 
 		// Search for magic number
@@ -128,7 +128,7 @@ static int get_pk3_central_directory_fp(void *fp, unsigned int file_length, cent
 			// Since central directory starts before buffer, read unbuffered part of central directory into output
 			unbuffered_read_length = buffer_file_position - cd_position;
 			if(unbuffered_read_length > (unsigned int)output->cd_length) unbuffered_read_length = output->cd_length;
-			fsc_fseek(fp, cd_position, FSC_SEEK_SET);
+			fsc_fseek_set(fp, cd_position);
 			fsc_fread(output->data, unbuffered_read_length, fp); }
 		if(unbuffered_read_length < (unsigned int)output->cd_length) {
 			// Read remaining data from buffer into output
@@ -320,61 +320,100 @@ void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile
 // PK3 Extraction Support
 /* ******************************************************************************** */
 
-static int zlib_extract(void *fp, unsigned int source_pos, unsigned int source_size, unsigned int output_size, void *output, fsc_errorhandler_t *eh) {
-	// Returns 0 on success, 1 on failure
+typedef struct {
+	void *input_handle;
+	int compression_method;
+	unsigned int input_remaining;	// Remaining to be read from input handle
 
-	z_stream stream;
-	void *source_data;
-	unsigned int result;
+	// For zlib streams only
+	unsigned int input_buffer_size;
+	char *input_buffer;
+	z_stream zlib_stream;
+} pk3_handle_t;
 
-	// Read all the source data
-	source_data = fsc_malloc(source_size);
-	fsc_fseek(fp, source_pos, FSC_SEEK_SET);
-	result = fsc_fread(source_data, source_size, fp);
-	if(result != source_size) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "zlib_extract - failed to read all source data", 0);
+static int fsc_pk3_handle_open2(pk3_handle_t *handle, const fsc_file_frompk3_t *file, int input_buffer_size,
+		const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+	// Returns 1 on error, 0 otherwise
+	const fsc_file_direct_t *source_pk3 = STACKPTR(file->source_pk3);
+	char localheader[30];
+	unsigned int data_position;
+
+	// Open the file
+	handle->input_handle = fsc_open_file(STACKPTR(source_pk3->os_path_ptr), "rb");
+	if(!handle->input_handle) {
+		fsc_report_error(eh, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to open pk3 file", 0);
 		return 1; }
 
-	// Set up the stream
-	fsc_memset(&stream, 0, sizeof(stream));
-	if(inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "zlib_extract - zlib inflateInit failed", 0);
+	// Read the local header to get data position
+	fsc_fseek_set(handle->input_handle, file->header_position);
+	if(fsc_fread(localheader, 30, handle->input_handle) != 30) {
+		fsc_report_error(eh, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to read local header", 0);
+		return 1; }
+	if(localheader[0] != 0x50 || localheader[1] != 0x4b || localheader[2] != 0x03 || localheader[3] != 0x04) {
+		fsc_report_error(eh, FSC_ERROR_EXTRACT, "pk3_handle_open - incorrect signature in local header", 0);
+		return 1; }
+	#define LH_SHORT(offset) fsc_endian_convert_short(*(unsigned short *)(localheader + offset))
+	data_position = file->header_position + LH_SHORT(26) + LH_SHORT(28) + 30;
+
+	// Seek to data start position
+	fsc_fseek_set(handle->input_handle, data_position);
+
+	// Configure the handle
+	handle->input_remaining = file->compressed_size;
+	if(file->compression_method == 8) {
+		if(inflateInit2(&handle->zlib_stream, -MAX_WBITS) != Z_OK) {
+			fsc_report_error(eh, FSC_ERROR_EXTRACT, "pk3_handle_open - zlib inflateInit failed", 0);
+			return 1; }
+
+		handle->compression_method = 8;
+		handle->input_buffer_size = input_buffer_size;
+		handle->input_buffer = fsc_malloc(input_buffer_size); }
+	else if(file->compression_method != 0) {
+		fsc_report_error(eh, FSC_ERROR_EXTRACT, "pk3_handle_open - unknown compression method", 0);
 		return 1; }
 
-	stream.next_in = source_data;
-	stream.avail_in = source_size;
-
-	stream.next_out = output;
-	stream.avail_out = output_size;
-
-	inflate(&stream, Z_SYNC_FLUSH);
-
-	if(stream.total_out != output_size) {
-		inflateEnd(&stream);
-		fsc_free(source_data);
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "zlib_extract - failed to reach correct output size", 0);
-		return 1; }
-
-	inflateEnd(&stream);
-	fsc_free(source_data);
 	return 0; }
 
-static int direct_pk3_extract(void *fp, unsigned int source_pos, unsigned int source_size,
-		unsigned int output_size, char *output, fsc_errorhandler_t *eh) {
-	// Returns 0 on success, 1 on failure
-	unsigned int result;
+void *fsc_pk3_handle_open(const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+	// Returns handle on success, null on error
+	pk3_handle_t *handle = fsc_calloc(sizeof(*handle));
+	if(fsc_pk3_handle_open2(handle, file, input_buffer_size, fs, eh)) {
+		if(handle->input_handle) fsc_fclose(handle->input_handle);
+		fsc_free(handle);
+		return 0; }
+	return (void *)handle; }
 
-	if(source_size != output_size) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "direct_pk3_extract - source_size and output_size should be the same", 0);
-		return 1; }
+void fsc_pk3_handle_close(void *handle) {
+	pk3_handle_t *Handle = (pk3_handle_t *)handle;
+	if(Handle->input_handle) fsc_fclose(Handle->input_handle);
+	if(Handle->compression_method == 8) {
+		fsc_free(Handle->input_buffer);
+		inflateEnd(&Handle->zlib_stream); }
+	fsc_free(handle); }
 
-	fsc_fseek(fp, source_pos, FSC_SEEK_SET);
-	result = fsc_fread(output, source_size, fp);
-	if(result != source_size) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "direct_pk3_extract - failed to read all data", 0);
-		return 1; }
+unsigned int fsc_pk3_handle_read(void *handle, char *buffer, unsigned int length) {
+	// Returns number of bytes read
+	pk3_handle_t *Handle = (pk3_handle_t *)handle;
+	if(Handle->compression_method == 8) {
+		Handle->zlib_stream.next_out = (Bytef *)buffer;
+		Handle->zlib_stream.avail_out = length;
 
-	return 0; }
+		while(Handle->zlib_stream.avail_out) {
+			if(!Handle->zlib_stream.avail_in) {
+				// Load new batch of data into input
+				unsigned int feed_amount = Handle->input_remaining;
+				if(feed_amount > Handle->input_buffer_size) feed_amount = Handle->input_buffer_size;
+				if(!feed_amount) break;		// Ran out of input
+				if(fsc_fread(Handle->input_buffer, (int)feed_amount, Handle->input_handle) != feed_amount) break;
+				Handle->zlib_stream.avail_in += feed_amount;
+				Handle->input_remaining -= feed_amount;
+				Handle->zlib_stream.next_in = (Bytef *)Handle->input_buffer; }
+
+			if(inflate(&Handle->zlib_stream, Z_SYNC_FLUSH) != Z_OK) break; }
+
+		return length - Handle->zlib_stream.avail_out; }
+	else {
+		return fsc_fread(buffer, length, Handle->input_handle); } }
 
 /* ******************************************************************************** */
 // PK3 Sourcetype Operations
@@ -390,50 +429,13 @@ static const char *fsc_pk3_get_mod_dir(const fsc_file_t *file, const fsc_filesys
 
 static int fsc_pk3_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Returns 0 on success, 1 on failure
-	const fsc_file_frompk3_t *frompk3 = (const fsc_file_frompk3_t *)file;
-	const fsc_file_direct_t *source_pk3 = STACKPTR(frompk3->source_pk3);
-	int retval = 1;
-	void *fp;
-	char localheader[30];
-	unsigned int result;
-
-	unsigned int data_start;
-
-	// Open the file
-	fp = fsc_open_file(STACKPTR(source_pk3->os_path_ptr), "rb");
-	if(!fp) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "extract_pk3_file - failed to open pk3 file", 0);
-		return 1; }
-
-	// Read the local header to get data position
-	fsc_fseek(fp, frompk3->header_position, FSC_SEEK_SET);
-	result = fsc_fread(localheader, 30, fp);
-	if(result != 30) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "extract_pk3_file - failed to read local header", 0);
-		goto close; }
-	if(localheader[0] != 0x50 || localheader[1] != 0x4b || localheader[2] != 0x03 || localheader[3] != 0x04) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "extract_pk3_file - incorrect signature in local header", 0);
-		goto close; }
-
-	#define LH_SHORT(offset) fsc_endian_convert_short(*(unsigned short *)(localheader + offset))
-	data_start = frompk3->header_position + LH_SHORT(26) + LH_SHORT(28) + 30;
-
-	// Read the data
-	if(frompk3->compression_method == 8) {
-		if(zlib_extract(fp, data_start, frompk3->compressed_size, file->filesize, buffer, eh)) {
-			goto close; } }
-	else if(frompk3->compression_method == 0) {
-		if(direct_pk3_extract(fp, data_start, frompk3->compressed_size, file->filesize, buffer, eh)) {
-			goto close; } }
-	else {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "extract_pk3_file - unknown compression type", 0);
-		goto close; }
-
-	retval = 0;
-
-	close:
-	fsc_fclose(fp);
-	return retval; }
+	int result = 0;
+	const fsc_file_frompk3_t *File = (fsc_file_frompk3_t *)file;
+	void *handle = fsc_pk3_handle_open(File, File->compressed_size, fs, eh);
+	if(!handle) return 1;
+	if(fsc_pk3_handle_read(handle, buffer, file->filesize) != file->filesize) result = 1;
+	fsc_pk3_handle_close(handle);
+	return result; }
 
 fsc_sourcetype_t pk3_sourcetype = {FSC_SOURCETYPE_PK3, fsc_pk3_is_file_active,
 		fsc_pk3_get_mod_dir, fsc_pk3_extract_data};
