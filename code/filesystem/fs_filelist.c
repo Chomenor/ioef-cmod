@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	MAX_FOUND_FILES	32768
 
 #define FL_FLAG_USE_PURE_LIST 1
+#define FL_FLAG_IGNORE_TAMODELS 2
 
 typedef struct {
 	const char *extension;
@@ -274,7 +275,7 @@ void FS_FreeFileList( char **list ) {
 	Z_Free(list); }
 
 /* ******************************************************************************** */
-// Main file list function (FS_ListFilteredFiles)
+// Main file list function (list_files)
 /* ******************************************************************************** */
 
 static fsc_directory_t *get_start_directory(const char *path, int length) {
@@ -302,7 +303,7 @@ static fsc_directory_t *get_start_directory(const char *path, int length) {
 	if(!directory_ptr) return 0;
 	return directory; }
 
-static char **FS_ListFilteredFiles2(const char *path, int *numfiles_out, filelist_query_t *query) {
+static char **list_files(const char *path, int *numfiles_out, filelist_query_t *query) {
 	int path_length = strlen(path);
 	fsc_directory_t *start_directory;
 	fsc_stack_t sort_key_stack;
@@ -352,12 +353,6 @@ static char **FS_ListFilteredFiles2(const char *path, int *numfiles_out, filelis
 
 	fsc_stack_free(&sort_key_stack);
 	return result; }
-
-char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
-		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
-	filelist_query_t query = {extension, extension ? strlen(extension) : 0, filter,
-			fs_search_inactive_mods->integer, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
-	return FS_ListFilteredFiles2(path, numfiles_out, &query); }
 
 /* ******************************************************************************** */
 // Mod directory listing (FS_GetModList)
@@ -440,8 +435,14 @@ static int FS_GetModList(char *listbuf, int bufsize) {
 	return nMods; }
 
 /* ******************************************************************************** */
-// Additional file list functions
+// External file list functions
 /* ******************************************************************************** */
+
+char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
+		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
+	filelist_query_t query = {extension, extension ? strlen(extension) : 0, filter,
+			fs_search_inactive_mods->integer, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
+	return list_files(path, numfiles_out, &query); }
 
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
 	return FS_ListFilteredFiles( path, extension, NULL, numfiles, qfalse ); }
@@ -465,7 +466,7 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 		fs_auto_refresh(); }
 
 	query = (filelist_query_t){extension, extension ? strlen(extension) : 0, 0, fs_search_inactive_mods->integer, flags};
-	pFiles = FS_ListFilteredFiles2(path, &nFiles, &query);
+	pFiles = list_files(path, &nFiles, &query);
 
 	for (i =0; i < nFiles; i++) {
 		nLen = strlen(pFiles[i]) + 1;
