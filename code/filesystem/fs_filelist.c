@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	MAX_FOUND_FILES	32768
 
 #define FL_FLAG_USE_PURE_LIST 1
-#define FL_FLAG_IGNORE_TAMODELS 2
+#define FL_FLAG_IGNORE_TAPAK0 2
 
 typedef struct {
 	const char *extension;
@@ -135,6 +135,8 @@ static qboolean check_file_enabled(const fsc_file_t *file, const filelist_query_
 	// Returns qtrue if file is valid to use, qfalse otherwise
 	if(!fsc_is_file_enabled(file, &fs)) return qfalse;
 	if((query->flags & FL_FLAG_USE_PURE_LIST) && fs_connected_server_pure_state() == 1 && !file_in_server_pak_list(file)) return qfalse;
+	if((query->flags & FL_FLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&
+			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash == 2430342401u) return qfalse;
 	if(fs_inactive_mod_file_disabled(file, query->search_inactive_mods)) return qfalse;
 	return qtrue; }
 
@@ -464,6 +466,12 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 	if(!Q_stricmp(path, "demos")) {
 		// Check for new demos before displaying the UI demo menu
 		fs_auto_refresh(); }
+
+	if(!Q_stricmp(path, "models/players") && extension && !Q_stricmp(extension, "/")
+			&& Q_stricmp(current_mod_dir, BASETA)) {
+		// Special case to block missionpack pak0.pk3 models from the standard non-TA model list
+		// which doesn't handle their skin setting correctly
+		flags |= FL_FLAG_IGNORE_TAPAK0; }
 
 	query = (filelist_query_t){extension, extension ? strlen(extension) : 0, 0, fs_search_inactive_mods->integer, flags};
 	pFiles = list_files(path, &nFiles, &query);
