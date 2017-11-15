@@ -683,6 +683,21 @@
     <ClCompile Include="..\..\code\cmod\server\sv_misc.c">
       <Filter>cmod\server</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_record_common.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_record_convert.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_record_main.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_record_spectator.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_record_writer.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\code\cgame\cg_public.h" />
@@ -807,6 +822,9 @@
       <Filter>cmod</Filter>
     </ClInclude>
     <ClInclude Include="..\..\code\cmod\server\sv_misc.h">
+      <Filter>cmod\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\code\cmod\server\sv_record_local.h">
       <Filter>cmod\server</Filter>
     </ClInclude>
   </ItemGroup>

@@ -143,6 +143,9 @@ void SV_SetConfigstring (int index, const char *val) {
 			SV_SendConfigstring(client, index);
 		}
 	}
+#ifdef CMOD_RECORD
+	record_process_configstring_change(index, val);
+#endif
 }
 
 /*
@@ -637,6 +640,10 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	}
 #endif
 
+#ifdef CMOD_RECORD
+	record_process_map_loaded();
+#endif
+
 	Com_Printf ("-----------------------------------\n");
 }
 
@@ -734,6 +741,9 @@ void SV_Init (void)
 	
 	// Load saved bans
 	Cbuf_AddText("rehashbans\n");
+#ifdef CMOD_RECORD
+	record_initialize();
+#endif
 }
 
 

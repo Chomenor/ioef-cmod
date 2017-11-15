@@ -460,6 +460,10 @@ void SV_DirectConnect( netadr_t from ) {
 		challengeptr->connected = qtrue;
 	}
 
+#ifdef CMOD_RECORD
+	if(record_process_connection(&from, userinfo, compat)) return;
+#endif
+
 	newcl = &temp;
 	Com_Memset (newcl, 0, sizeof(client_t));
 
@@ -1793,6 +1797,10 @@ void SV_ClientThink (client_t *cl, usercmd_t *cmd) {
 	if ( cl->state != CS_ACTIVE ) {
 		return;		// may have been kicked during the last usercmd
 	}
+
+#ifdef CMOD_RECORD
+	record_process_usercmd(cl-svs.clients, cmd);
+#endif
 
 	VM_Call( gvm, GAME_CLIENT_THINK, cl - svs.clients );
 }

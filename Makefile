@@ -1763,7 +1763,12 @@ Q3OBJ += \
   $(B)/client/mad_synth.o \
   $(B)/client/mad_timer.o \
   $(B)/client/mad_version.o \
-  $(B)/client/sv_misc.o
+  $(B)/client/sv_misc.o \
+  $(B)/client/sv_record_common.o \
+  $(B)/client/sv_record_convert.o \
+  $(B)/client/sv_record_main.o \
+  $(B)/client/sv_record_spectator.o \
+  $(B)/client/sv_record_writer.o
 
 ifdef MINGW
   Q3OBJ += \
@@ -2327,7 +2332,12 @@ Q3DOBJ += \
   $(B)/ded/cmod_cmd.o \
   $(B)/ded/cmod_cvar.o \
   $(B)/ded/cmod_misc.o \
-  $(B)/ded/sv_misc.o
+  $(B)/ded/sv_misc.o \
+  $(B)/ded/sv_record_common.o \
+  $(B)/ded/sv_record_convert.o \
+  $(B)/ded/sv_record_main.o \
+  $(B)/ded/sv_record_spectator.o \
+  $(B)/ded/sv_record_writer.o
 
 ifeq ($(ARCH),x86)
   Q3DOBJ += \

@@ -153,6 +153,10 @@ void SV_AddServerCommand( client_t *client, const char *cmd ) {
 	if( client->state < CS_PRIMED )
 		return;
 
+#ifdef CMOD_RECORD
+	record_process_servercmd(client-svs.clients, cmd);
+#endif
+
 	client->reliableSequence++;
 	// if we would be losing an old command that hasn't been acknowledged,
 	// we must drop the connection
@@ -905,6 +909,9 @@ void SV_PacketEvent( netadr_t from, msg_t *msg ) {
 		}
 		return;
 	}
+#ifdef CMOD_RECORD
+	record_process_packet_event(&from, msg, qport);
+#endif
 }
 
 

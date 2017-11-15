@@ -26,3 +26,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef CMOD_DL_PROTOCOL_FIXES
 void write_download_dummy_snapshot(client_t *client, msg_t *msg);
 #endif
+
+#ifdef CMOD_RECORD
+void record_initialize(void);
+void record_process_usercmd(int clientNum, usercmd_t *usercmd);
+void record_process_configstring_change(int index, const char *value);
+void record_process_servercmd(int clientNum, const char *value);
+void record_process_map_loaded(void);
+void record_process_snapshot(void);
+void record_game_shutdown(void);
+void record_verify_visibility_check(int clientNum, int numSnapshotEntities, int *snapshotEntities, int areabytes, byte *areabits);
+qboolean record_process_connection(netadr_t *address, const char *userinfo, qboolean compat);
+qboolean record_process_packet_event(netadr_t *address, msg_t *msg, int qport);
+#endif

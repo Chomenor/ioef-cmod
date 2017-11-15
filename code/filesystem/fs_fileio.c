@@ -1262,6 +1262,17 @@ void FS_Flush(fileHandle_t f) {
 void FS_ForceFlush(fileHandle_t f) {
 	fs_write_handle_flush(f, qtrue); }
 
+#ifdef CMOD_RECORD
+void FS_SV_Rename(const char *from, const char *to, qboolean safe) {
+	char source_path[FS_MAX_PATH];
+	char target_path[FS_MAX_PATH];
+
+	if(!fs_generate_path_writedir(from, 0, FS_ALLOW_SLASH, 0, source_path, sizeof(source_path))) return;
+	if(!fs_generate_path_writedir(to, 0, FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE, 0,
+			target_path, sizeof(target_path))) return;
+	fs_rename_file(source_path, target_path); }
+#endif
+
 /* ******************************************************************************** */
 // Misc Data Operations
 /* ******************************************************************************** */

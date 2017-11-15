@@ -936,6 +936,9 @@ Called every time a map changes
 ===============
 */
 void SV_ShutdownGameProgs( void ) {
+#ifdef CMOD_RECORD
+	record_game_shutdown();
+#endif
 	if ( !gvm ) {
 		return;
 	}

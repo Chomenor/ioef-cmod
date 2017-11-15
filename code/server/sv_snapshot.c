@@ -503,6 +503,11 @@ static void SV_BuildClientSnapshot( client_t *client ) {
 	qsort( entityNumbers.snapshotEntities, entityNumbers.numSnapshotEntities, 
 		sizeof( entityNumbers.snapshotEntities[0] ), SV_QsortEntityNumbers );
 
+#ifdef CMOD_RECORD
+	record_verify_visibility_check(client-svs.clients, entityNumbers.numSnapshotEntities, entityNumbers.snapshotEntities,
+		frame->areabytes, frame->areabits);
+#endif
+
 	// now that all viewpoint's areabits have been OR'd together, invert
 	// all of them to make it a mask vector, which is what the renderer wants
 	for ( i = 0 ; i < MAX_MAP_AREA_BYTES/4 ; i++ ) {
@@ -698,4 +703,7 @@ void SV_SendClientMessages(void)
 		c->lastSnapshotTime = svs.time;
 		c->rateDelayed = qfalse;
 	}
+#ifdef CMOD_RECORD
+	record_process_snapshot();
+#endif
 }

@@ -324,6 +324,9 @@ int FS_Seek(fileHandle_t f, long offset, int origin);
 int FS_FTell(fileHandle_t f);
 void FS_Flush(fileHandle_t f);
 void FS_ForceFlush(fileHandle_t f);
+#ifdef CMOD_RECORD
+void FS_SV_Rename(const char *from, const char *to, qboolean safe);
+#endif
 void FS_WriteFile( const char *qpath, const void *buffer, int size );
 
 /* ******************************************************************************** */
