@@ -111,8 +111,27 @@ int fsc_fseek(void *fp, int offset, fsc_seek_type_t type) {
 	if(type == FSC_SEEK_END) os_type = SEEK_END;
 	return fseek(fp, offset, os_type); }
 
+int fsc_fseek_set(void *fp, unsigned int offset) {
+	// Returns 1 on error, 0 otherwise
+	fsc_seek_type_t type = FSC_SEEK_SET;
+	do {
+		unsigned int seek_amount = offset;
+		if(seek_amount > 2000000000) seek_amount = 2000000000;
+		if(fsc_fseek(fp, (int)seek_amount, type)) return 1;
+		offset -= seek_amount;
+		type = FSC_SEEK_CUR; }
+	while(offset);
+	return 0; }
+
 unsigned int fsc_ftell(void *fp) {
-	return ftell(fp); }
+	// Returns 4294967295 on error or overflow
+	#ifdef WIN32
+		long long value = _ftelli64(fp);
+	#else
+		off_t value = ftello(fp);
+	#endif
+		if(value < 0 || value > 4294967295u) return 4294967295u;
+		return (unsigned int)value; }
 
 void fsc_memcpy(void *dst, const void *src, unsigned int size) {
 	memcpy(dst, src, size); }
@@ -340,7 +359,7 @@ static void iterate_directory2(iterate_work_t *iw, int junction_allowed) {
 			iterate_directory2(iw, junction_allowed); }
 		else {
 			// Skip files greater than 4GB; they are not currently supported
-			if(st.st_size > 4294967295) continue;
+			if(st.st_size > 4294967295u) continue;
 
 			iw->file_data.os_path = iw->path;
 			iw->file_data.qpath_with_mod_dir = fsc_os_path_to_qpath(iw->path + iw->base_length + 1, iw->qpath_buffer);

@@ -1240,7 +1240,11 @@ void		R_Modellist_f (void);
 
 //====================================================
 
+#ifdef NEW_FILESYSTEM
+#define	MAX_DRAWIMAGES			5000	// Increased limit to support large UI map selection menus
+#else
 #define	MAX_DRAWIMAGES			2048
+#endif
 #define	MAX_SKINS				1024
 
 
@@ -1336,9 +1340,6 @@ typedef enum {
 // We can't change glConfig_t without breaking DLL/vms compatibility, so
 // store extensions we have here.
 typedef struct {
-	int openglMajorVersion;
-	int openglMinorVersion;
-
 	qboolean    intelGraphics;
 
 	qboolean	occlusionQuery;

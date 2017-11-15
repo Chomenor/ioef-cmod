@@ -202,6 +202,7 @@ unsigned int fsc_fread(void *dest, int size, void *fp);
 unsigned int fsc_fwrite(const void *src, int size, void *fp);
 void fsc_fflush(void *fp);
 int fsc_fseek(void *fp, int offset, fsc_seek_type_t type);
+int fsc_fseek_set(void *fp, unsigned int offset);
 unsigned int fsc_ftell(void *fp);
 void fsc_memcpy(void *dst, const void *src, unsigned int size);
 int fsc_memcmp(const void *str1, const void *str2, unsigned int size);
@@ -353,11 +354,14 @@ void fsc_load_directory(fsc_filesystem_t *fs, void *os_path, int source_dir_id, 
 // PK3 Handling (fsc_pk3.c)
 /* ******************************************************************************** */
 
-// receive_hash_data is used for calculating pure checksums for legacy servers,
+// receive_hash_data is used for standalone hash calculation operations,
 // and should be nulled during normal filesystem loading
 void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr, fsc_errorhandler_t *eh,
 				void (receive_hash_data)(void *context, char *data, int size), void *receive_hash_data_context );
 void register_pk3_hash_lookup_entry(fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t *pk3_hash_lookup, fsc_stack_t *stack);
+void *fsc_pk3_handle_open(const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
+void fsc_pk3_handle_close(void *handle);
+unsigned int fsc_pk3_handle_read(void *handle, char *buffer, unsigned int length);
 extern fsc_sourcetype_t pk3_sourcetype;
 
 /* ******************************************************************************** */

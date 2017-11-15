@@ -57,7 +57,7 @@ typedef struct {
 	const fsc_shader_t *shader;
 	int system_pak_priority;
 	int server_pak_position;
-	int extension_priority;
+	int extension_position;
 	int mod_dir_match;	// 3 = current mod dir, 2 = 'basemod' dir, 1 = base dir, 0 = no match
 	int flags;
 
@@ -142,7 +142,7 @@ static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_
 	fsc_memset(resource, 0, sizeof(*resource));
 	resource->file = file;
 	resource->shader = 0;
-	resource->extension_priority = extension_index;
+	resource->extension_position = extension_index;
 	if(case_mismatch) resource->flags |= RESFLAG_CASE_MISMATCH;
 	configure_lookup_resource(query, resource); }
 
@@ -311,8 +311,9 @@ PC_DEBUG(server_pak_position) {
 				high_num, high->server_pak_position, low_num, low->server_pak_position)); } }
 
 PC_COMPARE(basemod_or_current_mod_dir) {
-	if(r1->mod_dir_match >= 2 && r2->mod_dir_match < 2) return -1;
-	if(r2->mod_dir_match >= 2 && r1->mod_dir_match < 2) return 1;
+	if(r1->mod_dir_match >= 2 || r2->mod_dir_match >= 2) {
+		if(r1->mod_dir_match > r2->mod_dir_match) return -1;
+		if(r2->mod_dir_match > r1->mod_dir_match) return 1; }
 	return 0; }
 
 PC_DEBUG(basemod_or_current_mod_dir) {
@@ -396,8 +397,8 @@ PC_DEBUG(pk3_name_precedence) {
 		"than the pk3 containing resource %i.", high_num, low_num)); }
 
 PC_COMPARE(extension_precedence) {
-	if(r1->extension_priority > r2->extension_priority) return -1;
-	if(r2->extension_priority > r1->extension_priority) return 1;
+	if(r1->extension_position < r2->extension_position) return -1;
+	if(r2->extension_position < r1->extension_position) return 1;
 	return 0; }
 
 PC_DEBUG(extension_precedence) {

@@ -558,6 +558,7 @@ typedef enum {
 	FS_HANDLE_INVALID,
 	FS_HANDLE_CACHE_READ,
 	FS_HANDLE_DIRECT_READ,
+	FS_HANDLE_PK3_READ,
 	FS_HANDLE_WRITE,
 	FS_HANDLE_PIPE
 } fs_handle_type_t;
@@ -579,6 +580,13 @@ typedef struct {
 	fs_handle_t h;
 	void *fsc_handle;
 } fs_direct_read_handle_t;
+
+typedef struct {
+	fs_handle_t h;
+	const fsc_file_frompk3_t *file;
+	void *fsc_handle;
+	unsigned int position;
+} fs_pk3_read_handle_t;
 
 typedef struct {
 	fs_handle_t h;
@@ -608,6 +616,7 @@ static fileHandle_t fs_allocate_handle(fs_handle_type_t type) {
 	switch(type) {
 		case FS_HANDLE_CACHE_READ: size = sizeof(fs_cache_read_handle_t); break;
 		case FS_HANDLE_DIRECT_READ: size = sizeof(fs_direct_read_handle_t); break;
+		case FS_HANDLE_PK3_READ: size = sizeof(fs_pk3_read_handle_t); break;
 		case FS_HANDLE_WRITE: size = sizeof(fs_write_handle_t); break;
 		case FS_HANDLE_PIPE: size = sizeof(fs_pipe_handle_t); break;
 		default: Com_Error(ERR_DROP, "fs_allocate_handle with invalid type"); }
@@ -678,7 +687,7 @@ static int fs_cache_read_handle_seek(fs_cache_read_handle_t *handle_entry, int o
 		case FS_SEEK_CUR: origin = handle_entry->position; break;
 		case FS_SEEK_END: origin = handle_entry->size; break;
 		case FS_SEEK_SET: origin = 0; break;
-		default: Com_Error(ERR_DROP, "fs_handle_seek with invalid origin mode"); }
+		default: Com_Error(ERR_DROP, "fs_cache_read_handle_seek with invalid origin mode"); }
 
 	// Get offset_origin and correct overflow conditions
 	offset_origin = origin + offset;
@@ -754,6 +763,92 @@ static int fs_direct_read_handle_seek(fs_direct_read_handle_t *handle_entry, int
 
 static void fs_direct_read_handle_close(fs_direct_read_handle_t *handle_entry) {
 	fsc_fclose(handle_entry->fsc_handle); }
+
+/* ******************************************************************************** */
+// Pk3 read handle operations
+/* ******************************************************************************** */
+
+static fileHandle_t fs_pk3_read_handle_open(const fsc_file_t *file) {
+	// Returns handle on success, null on error
+	char debug_path[FS_MAX_PATH];
+	void *fsc_handle;
+	fileHandle_t handle;
+	fs_pk3_read_handle_t *handle_entry;
+
+	if(file->sourcetype != FSC_SOURCETYPE_PK3) Com_Error(ERR_FATAL, "fs_pk3_read_handle_open on non pk3 file");
+	fs_file_to_buffer((fsc_file_t *)file, debug_path, sizeof(debug_path), qtrue, qtrue, qtrue, qfalse);
+
+	if(fs_debug_fileio->integer) Com_Printf("********** opening pk3 read handle **********\nfile: %s\n", debug_path);
+
+	fsc_handle = fsc_pk3_handle_open((fsc_file_frompk3_t *)file, 16384, &fs, 0);
+	if(!fsc_handle) {
+		if(fs_debug_fileio->integer) Com_Printf("result: failed to open file\n");
+		return 0; }
+
+	// Set up handle entry
+	handle = fs_allocate_handle(FS_HANDLE_PK3_READ);
+	handle_entry = (fs_pk3_read_handle_t *)fs_get_handle_entry(handle);
+	handle_entry->file = (fsc_file_frompk3_t *)file;
+	handle_entry->fsc_handle = fsc_handle;
+	handle_entry->position = 0;
+	handle_entry->h.debug_path = CopyString(debug_path);
+
+	if(fs_debug_fileio->integer) Com_Printf("result: success\n");
+	return handle; }
+
+static unsigned int fs_pk3_read_handle_read(char *buffer, unsigned int length, fs_pk3_read_handle_t *handle_entry) {
+	unsigned int max_length = handle_entry->file->f.filesize - handle_entry->position;
+	if(length > max_length) length = max_length;
+	length = fsc_pk3_handle_read(handle_entry->fsc_handle, buffer, length);
+	handle_entry->position += length;
+	return length; }
+
+static int fs_pk3_read_handle_seek(fs_pk3_read_handle_t *handle_entry, int offset, fsOrigin_t origin_mode) {
+	// Uses very similar, not very efficient, method as the original filesystem
+	// This function is very rarely used but needs to be supported for mod compatibility
+	unsigned int origin;
+	unsigned int offset_origin;
+
+	// Get origin
+	switch(origin_mode) {
+		case FS_SEEK_CUR: origin = handle_entry->position; break;
+		case FS_SEEK_END: origin = handle_entry->file->f.filesize; break;
+		case FS_SEEK_SET: origin = 0; break;
+		default: Com_Error(ERR_DROP, "fs_pk3_read_handle_seek with invalid origin mode"); }
+
+	// Get offset_origin and correct overflow conditions
+	offset_origin = origin + offset;
+	if(offset < 0 && offset_origin > origin) offset_origin = 0;
+	if((offset > 0 && offset_origin < origin) || offset_origin > handle_entry->file->f.filesize)
+		offset_origin = handle_entry->file->f.filesize;
+
+	// If seeking to end, just set the position
+	if(offset_origin >= handle_entry->file->f.filesize) {
+		handle_entry->position = handle_entry->file->f.filesize;
+		return 0; }
+
+	// If seeking backwards, reset the handle
+	if(offset_origin < handle_entry->position) {
+		fsc_pk3_handle_close(handle_entry->fsc_handle);
+		handle_entry->fsc_handle = fsc_pk3_handle_open(handle_entry->file, 16384, &fs, 0);
+		if(!handle_entry->fsc_handle) Com_Error(ERR_FATAL, "fs_pk3_read_handle_seek failed to reopen handle");
+		handle_entry->position = 0; }
+
+	// Seek forwards by reading data to a temp buffer
+	while(handle_entry->position < offset_origin) {
+		char buffer[65536];
+		unsigned int read_amount;
+		unsigned int read_target = offset_origin - handle_entry->position;
+		if(read_target > sizeof(buffer)) read_target = sizeof(buffer);
+		read_amount = fsc_pk3_handle_read(handle_entry->fsc_handle, buffer, read_target);
+		handle_entry->position += read_amount;
+		if(read_amount != read_target) return -1; }
+
+	if(offset_origin == origin + offset) return 0;
+	return -1; }
+
+static void fs_pk3_read_handle_close(fs_pk3_read_handle_t *handle_entry) {
+	fsc_pk3_handle_close(handle_entry->fsc_handle); }
 
 /* ******************************************************************************** */
 // Write handle operations
@@ -870,6 +965,7 @@ void fs_handle_close(fileHandle_t handle) {
 	switch(handle_entry->type) {
 		case FS_HANDLE_CACHE_READ: fs_cache_read_handle_close((fs_cache_read_handle_t *)handle_entry); break;
 		case FS_HANDLE_DIRECT_READ: fs_direct_read_handle_close((fs_direct_read_handle_t *)handle_entry); break;
+		case FS_HANDLE_PK3_READ: fs_pk3_read_handle_close((fs_pk3_read_handle_t *)handle_entry); break;
 		case FS_HANDLE_WRITE: fs_write_handle_close((fs_write_handle_t *)handle_entry); break;
 		case FS_HANDLE_PIPE: fs_pipe_handle_close((fs_pipe_handle_t *)handle_entry); break;
 		default: Com_Error(ERR_DROP, "fs_handle_close invalid handle type"); }
@@ -892,6 +988,7 @@ static unsigned int fs_handle_read(char *buffer, unsigned int length, fileHandle
 	switch(handle_entry->type) {
 		case FS_HANDLE_CACHE_READ: return fs_cache_read_handle_read(buffer, length, (fs_cache_read_handle_t *)handle_entry);
 		case FS_HANDLE_DIRECT_READ: return fs_direct_read_handle_read(buffer, length, (fs_direct_read_handle_t *)handle_entry);
+		case FS_HANDLE_PK3_READ: return fs_pk3_read_handle_read(buffer, length, (fs_pk3_read_handle_t *)handle_entry);
 		case FS_HANDLE_PIPE: return fs_pipe_handle_read(buffer, length, (fs_pipe_handle_t *)handle_entry);
 		default: Com_Error(ERR_DROP, "fs_handle_read invalid handle type"); }
 	return 0; }
@@ -905,6 +1002,7 @@ static int fs_handle_seek(fileHandle_t handle, int offset, fsOrigin_t origin_mod
 	switch(handle_entry->type) {
 		case FS_HANDLE_CACHE_READ: return fs_cache_read_handle_seek((fs_cache_read_handle_t *)handle_entry, offset, origin_mode);
 		case FS_HANDLE_DIRECT_READ: return fs_direct_read_handle_seek((fs_direct_read_handle_t *)handle_entry, offset, origin_mode);
+		case FS_HANDLE_PK3_READ: return fs_pk3_read_handle_seek((fs_pk3_read_handle_t *)handle_entry, offset, origin_mode);
 		case FS_HANDLE_WRITE: return fs_write_handle_seek((fs_write_handle_t *)handle_entry, offset, origin_mode);
 		default: Com_Error(ERR_DROP, "fs_handle_seek invalid handle type"); }
 	return 1; }
@@ -933,6 +1031,7 @@ fs_handle_owner_t fs_handle_get_owner(fileHandle_t handle) {
 static char *identify_handle_type(fs_handle_type_t type) {
 	if(type == FS_HANDLE_CACHE_READ) return "cache read";
 	if(type == FS_HANDLE_DIRECT_READ) return "direct read";
+	if(type == FS_HANDLE_PK3_READ) return "pk3 read";
 	if(type == FS_HANDLE_WRITE) return "write";
 	if(type == FS_HANDLE_PIPE) return "pipe";
 	return "unknown"; }
@@ -1030,7 +1129,7 @@ fileHandle_t fs_open_global_settings_file_write(const char *filename) {
 // Misc Handle Operations
 /* ******************************************************************************** */
 
-long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) {
+static long FS_FOpenFileRead2(const char *filename, fileHandle_t *file, qboolean allow_direct_handle) {
 	const fsc_file_t *fscfile;
 	unsigned int size;
 
@@ -1041,9 +1140,18 @@ long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueF
 		return -1; }
 
 	// Get the handle
-	*file = fs_cache_read_handle_open(fscfile, 0, &size);
+	if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_PK3 && fscfile->filesize > 65536) {
+		*file = fs_pk3_read_handle_open(fscfile);
+		size = fscfile->filesize; }
+	else if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_DIRECT && fscfile->filesize > 65536) {
+		*file = fs_direct_read_handle_open(fscfile, 0, &size); }
+	else {
+		*file = fs_cache_read_handle_open(fscfile, 0, &size); }
 	if(!*file) return -1;
 	return size; }
+
+long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) {
+	return FS_FOpenFileRead2(filename, file, qfalse); }
 
 long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	int i;
@@ -1101,8 +1209,12 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 			char path[FS_MAX_PATH];
 			if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_SLASH,
 					path, sizeof(path))) {
-				*f = fs_direct_read_handle_open(0, path, (unsigned int *)&size); } }
-		if(!*f) size = FS_FOpenFileRead(qpath, f, 0); }
+				*f = fs_direct_read_handle_open(0, path, (unsigned int *)&size); }
+
+			// Use read with direct handle option, to deal with mods like UI Enhanced that do bulk
+			// .bsp handle opens on startup which would be very slow using normal cache handles
+			if(!*f) size = FS_FOpenFileRead2(qpath, f, qtrue); }
+		else size = FS_FOpenFileRead2(qpath, f, qfalse); }
 	else if(mode == FS_WRITE) {
 		*f = FS_FOpenFileWrite(qpath); }
 	else if(mode == FS_APPEND_SYNC) {
