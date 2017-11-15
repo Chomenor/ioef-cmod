@@ -409,12 +409,12 @@ void Com_Quit_f( void ) {
 		SV_Shutdown(p[0] ? p : "Server quit");
 		CL_Shutdown(p[0] ? p : "Client quit", qtrue, qtrue);
 		VM_Forced_Unload_Done();
-		Com_Shutdown ();
 #ifdef CMOD_SETTINGS
 #ifndef DEDICATED
 		Com_WriteGlobalSettings();
 #endif
 #endif
+		Com_Shutdown ();
 #ifdef NEW_FILESYSTEM
 		fs_close_all_handles();
 #else
