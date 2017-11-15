@@ -705,6 +705,7 @@ static const char *base_protectable_commands[] = {
 	"+attack",
 	"-attack",
 	"map",
+	"map_restart",
 	"demo",
 	"devmap",
 	"screenshot",
