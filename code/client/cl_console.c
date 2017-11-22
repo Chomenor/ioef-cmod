@@ -61,6 +61,28 @@ cvar_t		*con_notifytime;
 
 #define	DEFAULT_CONSOLE_WIDTH	78
 
+#ifdef CMOD_FONT_SCALING
+int smallchar_width = 8;
+int smallchar_height = 16;
+
+static int get_font_width_factor(void) {
+	int x_width_factor = cls.glconfig.vidWidth / 80;
+	int y_width_factor = cls.glconfig.vidHeight / 60;
+	int width_factor = x_width_factor < y_width_factor ? x_width_factor : y_width_factor;
+	int x_width_factor_scaled = cmod_font_scaling->value * cls.glconfig.vidWidth / 80;
+	int y_width_factor_scaled = cmod_font_scaling->value * cls.glconfig.vidHeight / 60;
+	int width_factor_scaled = x_width_factor_scaled < y_width_factor_scaled ? x_width_factor_scaled : y_width_factor_scaled;
+	if(width_factor_scaled < 8) return 8;
+	if(width_factor_scaled > width_factor) return width_factor;
+	return width_factor_scaled; }
+
+void cmod_fontsize_update(void) {
+	smallchar_width = (get_font_width_factor() / 2) * 2;
+	smallchar_height = smallchar_width * 2;
+
+	g_console_field_width = cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 2;
+	g_consoleField.widthInChars = g_console_field_width; }
+#endif
 
 /*
 ================
@@ -283,7 +305,11 @@ void Con_CheckResize (void)
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
 	short	tbuf[CON_TEXTSIZE];
 
+#ifdef CMOD_FONT_SCALING
+	width = 78;
+#else
 	width = (SCREEN_WIDTH / SMALLCHAR_WIDTH) - 2;
+#endif
 
 	if (width == con.linewidth)
 		return;
@@ -782,6 +808,9 @@ Con_DrawConsole
 ==================
 */
 void Con_DrawConsole( void ) {
+#ifdef CMOD_FONT_SCALING
+	cmod_fontsize_update();
+#endif
 	// check for console width changes from a vid mode change
 	Con_CheckResize ();
 

@@ -404,8 +404,15 @@ extern	vec3_t	bytedirs[NUMVERTEXNORMALS];
 #define TINYCHAR_WIDTH		(SMALLCHAR_WIDTH)
 #define TINYCHAR_HEIGHT		(SMALLCHAR_HEIGHT/2)
 
+#ifdef CMOD_FONT_SCALING
+extern int smallchar_width;
+extern int smallchar_height;
+#define SMALLCHAR_WIDTH smallchar_width
+#define SMALLCHAR_HEIGHT smallchar_height
+#else
 #define SMALLCHAR_WIDTH		8
 #define SMALLCHAR_HEIGHT	16
+#endif
 
 #define BIGCHAR_WIDTH		16
 #define BIGCHAR_HEIGHT		16

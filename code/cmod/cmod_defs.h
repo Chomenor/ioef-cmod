@@ -44,6 +44,7 @@
 #define CMOD_LOADINGSCREEN_FIX
 #define CMOD_LIGHTMAPSTAGE_FIX
 #define CMOD_GLIMP_SHUTDOWN_FIX
+#define CMOD_FONT_SCALING
 
 /* ******************************************************************************** */
 // Version Identification
