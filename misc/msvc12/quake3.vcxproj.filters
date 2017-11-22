@@ -815,6 +815,9 @@
     <ClInclude Include="..\..\code\filesystem\fscore\fscore.h">
       <Filter>filesystem\fscore</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\code\cmod\cmod_cvar_defs.h">
+      <Filter>cmod</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\code\cmod\cmod_defs.h">
       <Filter>cmod</Filter>
     </ClInclude>

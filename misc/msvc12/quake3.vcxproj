@@ -984,6 +984,7 @@
     <ClInclude Include="..\..\code\client\qal.h" />
     <ClInclude Include="..\..\code\client\snd_local.h" />
     <ClInclude Include="..\..\code\client\snd_public.h" />
+    <ClInclude Include="..\..\code\cmod\cmod_cvar_defs.h" />
     <ClInclude Include="..\..\code\cmod\cmod_defs.h" />
     <ClInclude Include="..\..\code\cmod\cmod_misc.h" />
     <ClInclude Include="..\..\code\cmod\server\sv_misc.h" />

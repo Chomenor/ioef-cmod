@@ -110,6 +110,12 @@ cvar_t	*com_busyWait;
 cvar_t  *con_autochat;
 #endif
 
+#ifdef CMOD_CVAR_DEFS
+#define CVAR_DEF(name, value, flags) cvar_t * name;
+#include "../cmod/cmod_cvar_defs.h"
+#undef CVAR_DEF
+#endif
+
 #if idx64
 	int (*Q_VMftol)(void);
 #elif id386
@@ -2858,6 +2864,12 @@ void Com_Init( char *commandLine ) {
 
 	Com_InitZoneMemory();
 	Cmd_Init ();
+
+#ifdef CMOD_CVAR_DEFS
+#define CVAR_DEF(name, value, flags) name = Cvar_Get(#name, value, flags);
+#include "../cmod/cmod_cvar_defs.h"
+#undef CVAR_DEF
+#endif
 
 	// get the developer cvar set as early as possible
 	com_developer = Cvar_Get("developer", "0", CVAR_TEMP);

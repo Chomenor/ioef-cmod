@@ -7,6 +7,7 @@
 
 // Core cMod defines
 #define CMOD_COMMON
+#define CMOD_CVAR_DEFS
 
 // New filesystem
 #define NEW_FILESYSTEM
