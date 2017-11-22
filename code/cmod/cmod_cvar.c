@@ -314,7 +314,7 @@ static void cvar_finalize(localCvar_t *cvar, qboolean unlatch) {
 
 static int get_protected_permissions(localCvar_t *cvar) {
 	// Returns 0 for nonmodifiable, 1 for modifiable, 2 for archivable
-	if(!(cvar->s.flags & CVAR_SYSTEM_REGISTERED)) return 2;
+	if(!(cvar->system_flags & CVAR_SYSTEM_REGISTERED)) return 2;
 	if(cvar->system_flags & CVAR_PROTECTED_ARCHIVABLE) return 2;
 	if(cvar->system_flags & (CVAR_PROTECTED_MODIFIABLE | CVAR_SYSTEMINFO)) return 1;
 	return 0; }
@@ -361,7 +361,7 @@ void cvar_system_set(const char *name, const char *value) {
 
 	cvar_finalize(cvar, qtrue); }
 
-static void cvar_command_set(const char *name, const char *value, int flags, qboolean protect, qboolean init, qboolean verbose) {
+static void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t mode, qboolean init, qboolean verbose) {
 	localCvar_t *cvar = get_cvar(name, qtrue);
 	if(!cvar) return;
 
@@ -379,7 +379,7 @@ static void cvar_command_set(const char *name, const char *value, int flags, qbo
 		return; }
 
 	// Set value and flags in appropriate location
-	if(protect) {
+	if(mode & CMD_PROTECTED) {
 		if(!get_protected_permissions(cvar)) {
 			if(verbose) Com_Printf("%s cannot be set in protected mode.\n", name);
 			return; }
@@ -479,7 +479,7 @@ cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force ) {
 
 void Cvar_StartupSet(const char *var_name, const char *value) {
 	// Used for loading startup variables from the command line
-	cvar_command_set(var_name, value, 0, qfalse, qtrue, qtrue); }
+	cvar_command_set(var_name, value, 0, CMD_NORMAL, qtrue, qtrue); }
 
 void Cvar_Set( const char *var_name, const char *value) {
 	// Called by system code
@@ -733,7 +733,7 @@ qboolean cvar_command(cmd_mode_t mode) {
 		return qtrue; }
 
 	// perform the same set as in Cvar_Set_Command
-	cvar_command_set(cvar->s.name, Cmd_Args(), 0, mode == CMD_PROTECTED, qfalse, qtrue);
+	cvar_command_set(cvar->s.name, Cmd_Args(), 0, mode, qfalse, qtrue);
 	return qtrue; }
 
 void cvar_vstr(cmd_mode_t mode) {
@@ -745,8 +745,8 @@ void cvar_vstr(cmd_mode_t mode) {
 	cvar = get_cvar(Cmd_Argv(1), qfalse);
 	if(!cvar) return;
 
-	if(cvar->protected_value) mode = CMD_PROTECTED;
-	else if(!Q_stricmp(cvar->s.name, "fs_game")) mode = CMD_PROTECTED;
+	if(cvar->protected_value) mode |= CMD_PROTECTED;
+	else if(!Q_stricmp(cvar->s.name, "fs_game")) mode |= CMD_PROTECTED;
 
 	Cbuf_ExecuteTextByMode(EXEC_INSERT, cvar->s.string, mode); }
 
@@ -767,20 +767,19 @@ qboolean Cvar_Set_Command( cmd_mode_t mode ) {
 	int c = Cmd_Argc();
 	char *cmd = Cmd_Argv(0);
 	char *cmd_flags = cmd + 3;
-	qboolean protect = qfalse;
 	int flags = 0;
 
 	while(*cmd_flags) {
 		int flag = 0;
 		switch(*(cmd_flags++)) {
 			case 'a': case 'A': flag = CVAR_ARCHIVE; break;
-			case 'u': case 'U': flag  = CVAR_USERINFO; break;
+			case 'u': case 'U': flag = CVAR_USERINFO; break;
 			case 's': case 'S': flag = CVAR_SERVERINFO; break;
-			case 'p': case 'P':
-				if(protect) return qfalse;
-				protect = qtrue; }
+			case 'p': case 'P': mode |= CMD_PROTECTED; break;
+			default: return qfalse; }
 
-		if((!flag && !protect) || (flag & flags)) return qfalse;
+		// Abort if flags are repeated, to avoid conflicts with other commands starting with 'set'
+		if(flag & flags) return qfalse;
 		flags |= flag; }
 
 	if ( c < 2 ) {
@@ -790,9 +789,7 @@ qboolean Cvar_Set_Command( cmd_mode_t mode ) {
 		Cvar_Print_f();
 		return qtrue; }
 
-	if(mode != CMD_NORMAL) protect = qtrue;
-
-	cvar_command_set(Cmd_Argv(1), Cmd_ArgsFrom(2), flags, protect, qfalse, qtrue);
+	cvar_command_set(Cmd_Argv(1), Cmd_ArgsFrom(2), flags, mode, qfalse, qtrue);
 	return qtrue; }
 
 void Cvar_List_f( void ) {
@@ -861,7 +858,7 @@ void Cvar_List_f( void ) {
 	Com_Printf ("\n%i total cvars\n", cvar_count);
 	Com_Printf ("%i VM indexes\n", current_index.index); }
 
-void Cvar_Toggle_f( void ) {
+void Cvar_Toggle_f(cmd_mode_t mode) {
 	int		i, c = Cmd_Argc();
 	char		*curval;
 
@@ -872,7 +869,7 @@ void Cvar_Toggle_f( void ) {
 
 	if(c == 2) {
 		cvar_command_set(Cmd_Argv(1), va("%d", 
-			!Cvar_VariableValue(Cmd_Argv(1))), 0, qfalse, qfalse, qtrue);
+			!Cvar_VariableValue(Cmd_Argv(1))), 0, mode, qfalse, qtrue);
 		return;
 	}
 
@@ -887,13 +884,13 @@ void Cvar_Toggle_f( void ) {
 	// behaviour is the same as no match (set to the first argument)
 	for(i = 2; i + 1 < c; i++) {
 		if(strcmp(curval, Cmd_Argv(i)) == 0) {
-			cvar_command_set(Cmd_Argv(1), Cmd_Argv(i + 1), 0, qfalse, qfalse, qtrue);
+			cvar_command_set(Cmd_Argv(1), Cmd_Argv(i + 1), 0, mode, qfalse, qtrue);
 			return;
 		}
 	}
 
 	// fallback
-	cvar_command_set(Cmd_Argv(1), Cmd_Argv(2), 0, qfalse, qfalse, qtrue); }
+	cvar_command_set(Cmd_Argv(1), Cmd_Argv(2), 0, mode, qfalse, qtrue); }
 
 static void reset_cvar(localCvar_t *cvar, qboolean clear_flags) {
 	if(clear_flags) cvar->main_flags = 0;
@@ -1403,18 +1400,13 @@ void Cvar_WriteVariables(fileHandle_t f) {
 // Initialization
 /* ******************************************************************************** */
 
-#ifndef CMOD_COMMAND_INTERPRETER
-void Cvar_Set_f( void ) {
-	Cvar_Set_Command(CMD_NORMAL); }
-#endif
-
 void Cvar_Init(void) {
 	sv_cheats = Cvar_Get("sv_cheats", "1", CVAR_ROM | CVAR_SYSTEMINFO);
 
 	register_special_cvars();
 
 	Cmd_AddCommand("print", Cvar_Print_f);
-	Cmd_AddCommand ("toggle", Cvar_Toggle_f);
+	Cmd_AddProtectableCommand ("toggle", Cvar_Toggle_f);
 	Cmd_SetCommandCompletionFunc( "toggle", Cvar_CompleteCvarName );
 	Cmd_AddCommand ("reset", Cvar_Reset_f);
 	Cmd_SetCommandCompletionFunc( "reset", Cvar_CompleteCvarName );

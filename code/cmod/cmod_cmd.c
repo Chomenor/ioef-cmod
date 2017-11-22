@@ -410,7 +410,7 @@ void Cmd_ExecuteStringByMode(const char *text, cmd_mode_t mode) {
 			if(cmd->function) {
 				if(cmd->protected_support) {
 					((xcommand_protected_t)cmd->function)(mode); }
-				else if(mode == CMD_NORMAL) {
+				else if(!(mode & CMD_PROTECTED)) {
 					cmd->function(); }
 				return; }
 
@@ -648,11 +648,11 @@ void Cmd_Exec_f(cmd_mode_t mode) {
 	Q_strncpyz( filename, Cmd_Argv(1), sizeof( filename ) );
 	COM_DefaultExtension( filename, sizeof( filename ), ".cfg" );
 #ifndef DEDICATED
-	if(!COM_CompareExtension(filename, ".cfg")) mode = CMD_PROTECTED;
+	if(!COM_CompareExtension(filename, ".cfg")) mode |= CMD_PROTECTED;
 #endif
 #ifdef NEW_FILESYSTEM
 	fs_execute_config_file(filename,
-			mode == CMD_PROTECTED ? FS_CONFIGTYPE_PROTECTED : FS_CONFIGTYPE_NONE, EXEC_INSERT, quiet);
+			(mode & CMD_PROTECTED) ? FS_CONFIGTYPE_PROTECTED : FS_CONFIGTYPE_NONE, EXEC_INSERT, quiet);
 #else
 	FS_ReadFile( filename, &f.v);
 	if (!f.c) {

@@ -1059,7 +1059,7 @@ void Key_Bind_f (void)
 	}
 
 #ifdef CMOD_COMMAND_INTERPRETER
-	Key_SetBinding (b, cmd, mode == CMD_PROTECTED || !Q_stricmp(Cmd_Argv(0), "bindp") ? CMD_PROTECTED : CMD_NORMAL);
+	Key_SetBinding (b, cmd, (mode & CMD_PROTECTED) || !Q_stricmp(Cmd_Argv(0), "bindp") ? CMD_PROTECTED : CMD_NORMAL);
 #else
 	Key_SetBinding (b, cmd);
 #endif
@@ -1082,7 +1082,7 @@ void Key_WriteBindings( fileHandle_t f ) {
 		if(keys[i].default_binding && !Q_stricmp(keys[i].binding, keys[i].default_binding)) continue;
 
 		if(!count) FS_Printf(f, SYSTEM_NEWLINE "// Key bindings" SYSTEM_NEWLINE);
-		FS_Printf(f, "bind%s %s \"%s\"" SYSTEM_NEWLINE, keys[i].cmd_mode == CMD_PROTECTED ? "p" : "",
+		FS_Printf(f, "bind%s %s \"%s\"" SYSTEM_NEWLINE, (keys[i].cmd_mode & CMD_PROTECTED) ? "p" : "",
 				Key_KeynumToString(i), keys[i].binding);
 		++count; }
 #else

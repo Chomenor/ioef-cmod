@@ -15,15 +15,16 @@
 // Mp3 Support
 #define USE_CODEC_MP3
 
-// New cvar and command handling. Requires NEW_FILESYSTEM for a few things.
-#define CMOD_CVAR_HANDLING
+// New command handling
 #define CMOD_COMMAND_INTERPRETER
 
-// Requires CMOD_COMMAND_INTERPRETER
-#define CMOD_RESTRICT_CFG_FILES
+// New cvar handling; requires NEW_FILESYSTEM and CMOD_COMMAND_INTERPRETER.
+#define CMOD_CVAR_HANDLING
 
-// Requires NEW_FILESYSTEM and CMOD_CVAR_HANDLING
+// New settings file system; requires NEW_FILESYSTEM, CMOD_COMMAND_INTERPRETER, and CMOD_CVAR_HANDLING.
 #define CMOD_SETTINGS
+
+#define CMOD_RESTRICT_CFG_FILES
 
 // Requires NEW_FILESYSTEM and CMOD_CVAR_HANDLING
 #ifndef DEDICATED

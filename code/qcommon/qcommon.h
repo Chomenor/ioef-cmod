@@ -439,19 +439,17 @@ files can be execed.
 */
 
 #ifdef CMOD_COMMAND_INTERPRETER
-typedef enum {
-	CMD_NORMAL,
-	CMD_PROTECTED
-} cmd_mode_t;
+typedef int cmd_mode_t;
+#define CMD_NORMAL 0
+#define CMD_PROTECTED 1
 
 void Cbuf_ExecuteTextByMode(int exec_when, const char *text, cmd_mode_t mode);
 void Cbuf_AddTextByMode(const char *text, cmd_mode_t mode);
 #else
 #ifdef CMOD_CVAR_HANDLING
-typedef enum {
-	CMD_NORMAL,
-	CMD_PROTECTED
-} cmd_mode_t;
+typedef int cmd_mode_t;
+#define CMD_NORMAL 0
+#define CMD_PROTECTED 1
 #endif
 #endif
 

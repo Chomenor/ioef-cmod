@@ -310,9 +310,9 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	char *data;
 	unsigned int size = 0;
 #ifdef CMOD_COMMAND_INTERPRETER
-	cmd_mode_t mode = CMD_NORMAL;
-	if(config_type == FS_CONFIGTYPE_PROTECTED) mode = CMD_PROTECTED;
-	else if(config_type == FS_CONFIGTYPE_DEFAULT) mode = CMD_PROTECTED;
+	cmd_mode_t mode = 0;
+	if(config_type == FS_CONFIGTYPE_PROTECTED) mode |= CMD_PROTECTED;
+	else if(config_type == FS_CONFIGTYPE_DEFAULT) mode |= CMD_PROTECTED;
 #endif
 
 	if(com_journalDataFile && com_journal->integer == 2) {
@@ -347,8 +347,8 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 			fs_write_journal_data(0, 0);
 #ifdef CMOD_COMMAND_INTERPRETER
 			return; }
-		if(file->sourcetype != FSC_SOURCETYPE_DIRECT) mode = CMD_PROTECTED;
-		else if(!file->qp_ext_ptr || Q_stricmp(STACKPTR(file->qp_ext_ptr), "cfg")) mode = CMD_PROTECTED; }
+		if(file->sourcetype != FSC_SOURCETYPE_DIRECT) mode |= CMD_PROTECTED;
+		else if(!file->qp_ext_ptr || Q_stricmp(STACKPTR(file->qp_ext_ptr), "cfg")) mode |= CMD_PROTECTED; }
 #else
 			return; } }
 #endif
