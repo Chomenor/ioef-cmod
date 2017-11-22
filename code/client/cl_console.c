@@ -124,7 +124,11 @@ void Con_MessageMode_f (void) {
 	chat_playerNum = -1;
 	chat_team = qfalse;
 	Field_Clear( &chatField );
+#ifdef CMOD_CHAT_FIELD_SIZE
+	chatField.widthInChars = 55;
+#else
 	chatField.widthInChars = 30;
+#endif
 
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
@@ -138,7 +142,11 @@ void Con_MessageMode2_f (void) {
 	chat_playerNum = -1;
 	chat_team = qtrue;
 	Field_Clear( &chatField );
+#ifdef CMOD_CHAT_FIELD_SIZE
+	chatField.widthInChars = 50;
+#else
 	chatField.widthInChars = 25;
+#endif
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
 
@@ -155,7 +163,11 @@ void Con_MessageMode3_f (void) {
 	}
 	chat_team = qfalse;
 	Field_Clear( &chatField );
+#ifdef CMOD_CHAT_FIELD_SIZE
+	chatField.widthInChars = 55;
+#else
 	chatField.widthInChars = 30;
+#endif
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
 
@@ -172,7 +184,11 @@ void Con_MessageMode4_f (void) {
 	}
 	chat_team = qfalse;
 	Field_Clear( &chatField );
+#ifdef CMOD_CHAT_FIELD_SIZE
+	chatField.widthInChars = 55;
+#else
 	chatField.widthInChars = 30;
+#endif
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
 }
 
