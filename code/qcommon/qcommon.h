@@ -442,6 +442,7 @@ files can be execed.
 typedef int cmd_mode_t;
 #define CMD_NORMAL 0
 #define CMD_PROTECTED 1
+#define CMD_RESTRICTED 2
 
 void Cbuf_ExecuteTextByMode(int exec_when, const char *text, cmd_mode_t mode);
 void Cbuf_AddTextByMode(const char *text, cmd_mode_t mode);
@@ -450,6 +451,7 @@ void Cbuf_AddTextByMode(const char *text, cmd_mode_t mode);
 typedef int cmd_mode_t;
 #define CMD_NORMAL 0
 #define CMD_PROTECTED 1
+#define CMD_RESTRICTED 2
 #endif
 #endif
 

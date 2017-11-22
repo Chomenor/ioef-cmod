@@ -940,6 +940,7 @@ default values.
 #define CVAR_IGNORE_VM_DEFAULT	0x20000		// allow system default to override vm default
 #define CVAR_NOARCHIVE	0x40000		// override CVAR_ARCHIVE
 #define CVAR_NUMERIC	0x80000		// perform numeric comparison with default when deciding to write the cvar to config file
+#define CVAR_RESTRICTED_MODIFIABLE	0x100000	// allow modifying this var from restricted (autoexec) scripts
 #endif
 // These flags are only returned by the Cvar_Flags() function
 #define CVAR_MODIFIED		0x40000000	// Cvar was modified

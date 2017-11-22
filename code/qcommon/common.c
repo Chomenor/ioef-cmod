@@ -2418,8 +2418,9 @@ void Com_ExecuteCfg(void)
 	if(!Com_SafeMode()) {
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
 		fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_GLOBAL_SETTINGS, EXEC_APPEND, qfalse);
-		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse); }
-	Cbuf_Execute();
+		Cbuf_Execute();
+		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
+		Cbuf_Execute(); }
 	Com_Printf("\n");
 #endif
 #else

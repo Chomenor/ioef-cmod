@@ -325,6 +325,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	else if(config_type == FS_CONFIGTYPE_GLOBAL_SETTINGS) {
 		data = 0;
 		char path[FS_MAX_PATH];
+		if(!quiet) Com_Printf("execing <%s>\n", name);
 		if(fs_generate_path_sourcedir(0, name, 0, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof(path))) {
 			data = fs_read_data(0, path, 0); }
 		if(!data) {
@@ -351,6 +352,14 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 		else if(!file->qp_ext_ptr || Q_stricmp(STACKPTR(file->qp_ext_ptr), "cfg")) mode |= CMD_PROTECTED; }
 #else
 			return; } }
+#endif
+
+#ifdef CMOD_SETTINGS
+	if(cmod_restrict_autoexec->integer && config_type == FS_CONFIGTYPE_SETTINGS && !Q_stricmp(name, "autoexec.cfg")) {
+		Com_Printf("NOTE: Running autoexec.cfg file in restricted mode to avoid compatibility issues. This "
+			"may cause some commands not to work. If you know your autoexec.cfg file is compatible with cMod, "
+			"set cmod_restrict_autoexec to 0 to enable full command support.\n");
+		mode |= (CMD_RESTRICTED|CMD_PROTECTED); }
 #endif
 
 	fs_write_journal_data(data, size);

@@ -379,6 +379,9 @@ static void cvar_command_set(const char *name, const char *value, int flags, cmd
 		return; }
 
 	// Set value and flags in appropriate location
+	if((mode & CMD_RESTRICTED) && (cvar->s.flags & CVAR_SYSTEM_REGISTERED) &&
+				!(cvar->s.flags & CVAR_RESTRICTED_MODIFIABLE)) {
+		return; }
 	if(mode & CMD_PROTECTED) {
 		if(!get_protected_permissions(cvar)) {
 			if(verbose) Com_Printf("%s cannot be set in protected mode.\n", name);
@@ -938,6 +941,7 @@ static void cvar_flags_to_stream(int flags, cvar_stream_t *stream) {
 	RUN_FLAG(CVAR_IGNORE_VM_DEFAULT);
 	RUN_FLAG(CVAR_NOARCHIVE);
 	RUN_FLAG(CVAR_NUMERIC);
+	RUN_FLAG(CVAR_RESTRICTED_MODIFIABLE);
 	if(!have_flag) ADD_TEXT2("<None>"); }
 
 void cvar_cmd_var(void) {
