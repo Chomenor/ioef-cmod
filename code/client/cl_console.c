@@ -84,6 +84,7 @@ void cmod_fontsize_update(void) {
 	g_consoleField.widthInChars = g_console_field_width; }
 #endif
 
+
 /*
 ================
 Con_ToggleConsole_f
