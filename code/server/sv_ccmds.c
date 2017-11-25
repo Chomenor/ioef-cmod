@@ -525,6 +525,7 @@ static void SV_KickNum_f( void ) {
 	cl->lastPacketTime = svs.time;	// in case there is a funny zombie
 }
 
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 // these functions require the auth server which of course is not available anymore for stand-alone games.
 
@@ -637,6 +638,7 @@ static void SV_BanNum_f( void ) {
 		Com_Printf("%s was banned from coming back\n", cl->name);
 	}
 }
+#endif
 #endif
 
 /*
@@ -1541,12 +1543,14 @@ void SV_AddOperatorCommands( void ) {
 
 	Cmd_AddCommand ("heartbeat", SV_Heartbeat_f);
 	Cmd_AddCommand ("kick", SV_Kick_f);
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 	if(!com_standalone->integer)
 	{
 		Cmd_AddCommand ("banUser", SV_Ban_f);
 		Cmd_AddCommand ("banClient", SV_BanNum_f);
 	}
+#endif
 #endif
 	Cmd_AddCommand ("kickbots", SV_KickBots_f);
 	Cmd_AddCommand ("kickall", SV_KickAll_f);

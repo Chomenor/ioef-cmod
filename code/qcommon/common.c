@@ -2541,6 +2541,7 @@ void Com_GameRestart_f(void)
 	Com_GameRestart(0, qtrue);
 }
 
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 
 // TTimo: centralizing the cl_cdkey stuff after I discovered a buffer overflow problem with the dedicated server version
@@ -2743,6 +2744,7 @@ out:
 #endif
 
 #endif // STANDALONE
+#endif
 
 static void Com_DetectAltivec(void)
 {
@@ -3166,9 +3168,11 @@ Writes key bindings and archived cvars to config file if modified
 ===============
 */
 void Com_WriteConfiguration( void ) {
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef NEW_FILESYSTEM
 #if !defined(DEDICATED) && !defined(STANDALONE)
 	cvar_t	*fs;
+#endif
 #endif
 #endif
 	// if we are quiting without fully initializing, make sure
@@ -3185,6 +3189,7 @@ void Com_WriteConfiguration( void ) {
 	Com_WriteConfigToFile( Q3CONFIG_CFG );
 
 	// not needed for dedicated or standalone
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #if !defined(DEDICATED) && !defined(STANDALONE)
 #ifndef NEW_FILESYSTEM
 	fs = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO );
@@ -3203,6 +3208,7 @@ void Com_WriteConfiguration( void ) {
 			Com_WriteCDKey( BASEGAME, cl_cdkey );
 		}
 	}
+#endif
 #endif
 }
 #endif

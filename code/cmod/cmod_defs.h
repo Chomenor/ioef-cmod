@@ -26,6 +26,10 @@
 
 #define CMOD_RESTRICT_CFG_FILES
 
+// Disable auth stuff like in standalone mode, since EF auth server doesn't restrict anything anyway
+// and sometimes goes down causing issues
+#define CMOD_DISABLE_AUTH_STUFF
+
 // Requires NEW_FILESYSTEM and CMOD_CVAR_HANDLING
 #ifndef DEDICATED
 	#define CMOD_CROSSHAIR

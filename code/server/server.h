@@ -243,8 +243,10 @@ typedef struct {
 	int			nextHeartbeatTime;
 	challenge_t	challenges[MAX_CHALLENGES];	// to prevent invalid IPs from connecting
 	netadr_t	redirectAddress;			// for rcon return messages
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 	netadr_t	authorizeAddress;			// authorize server address
+#endif
 #endif
 	int			masterResolveTime[MAX_MASTER_SERVERS]; // next svs.time that server should do dns lookup for master server
 } serverStatic_t;
@@ -293,8 +295,10 @@ extern	cvar_t	*sv_gametype;
 extern	cvar_t	*sv_pure;
 extern	cvar_t	*sv_floodProtect;
 extern	cvar_t	*sv_lanForceRate;
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 extern	cvar_t	*sv_strictAuth;
+#endif
 #endif
 extern	cvar_t	*sv_banFile;
 
@@ -369,8 +373,10 @@ void SV_GetChallenge(netadr_t from);
 
 void SV_DirectConnect( netadr_t from );
 
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 void SV_AuthorizeIpPacket( netadr_t from );
+#endif
 #endif
 
 void SV_ExecuteClientMessage( client_t *cl, msg_t *msg );

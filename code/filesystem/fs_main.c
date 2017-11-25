@@ -169,10 +169,12 @@ void fs_set_mod_dir(const char *value, qboolean move_pid) {
 		Sys_InitPIDFile(fs_pid_file_directory()); }
 
 	// Read CD keys
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 	if(!com_standalone->integer) {
 		Com_ReadCDKey(BASEGAME);
 		if(strcmp(FS_GetCurrentGameDir(), BASEGAME)) Com_AppendCDKey(FS_GetCurrentGameDir()); }
+#endif
 #endif
 
 	Cvar_Set("fs_game", current_mod_dir);

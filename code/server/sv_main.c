@@ -58,8 +58,10 @@ cvar_t	*sv_gametype;
 cvar_t	*sv_pure;
 cvar_t	*sv_floodProtect;
 cvar_t	*sv_lanForceRate; // dedicated 1 (LAN) server forces local client rates to 99999 (bug #491)
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 cvar_t	*sv_strictAuth;
+#endif
 #endif
 cvar_t	*sv_banFile;
 
@@ -831,9 +833,11 @@ static void SV_ConnectionlessPacket( netadr_t from, msg_t *msg ) {
 		SV_GetChallenge(from);
 	} else if (!Q_stricmp(c, "connect")) {
 		SV_DirectConnect( from );
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 	} else if (!Q_stricmp(c, "ipAuthorize")) {
 		SV_AuthorizeIpPacket( from );
+#endif
 #endif
 	} else if (!Q_stricmp(c, "rcon")) {
 		SVC_RemoteCommand( from, msg );

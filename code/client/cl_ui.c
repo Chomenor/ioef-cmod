@@ -671,6 +671,7 @@ static void CLUI_GetCDKey( char *buf, int buflen ) {
 CLUI_SetCDKey
 ====================
 */
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 static void CLUI_SetCDKey( char *buf ) {
 	cvar_t	*fs;
@@ -691,6 +692,7 @@ static void CLUI_SetCDKey( char *buf ) {
 		cvar_modifiedFlags |= CVAR_ARCHIVE;
 	}
 }
+#endif
 #endif
 
 /*
@@ -1057,8 +1059,10 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 #endif
 
 	case UI_SET_CDKEY:
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 		CLUI_SetCDKey( VMA(1) );
+#endif
 #endif
 #ifdef ELITEFORCE
 		return qtrue;

@@ -1667,6 +1667,7 @@ If no response is received from the authorize server after two tries, the client
 in anyway.
 ===================
 */
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 void CL_RequestAuthorization( void ) {
 	char	nums[64];
@@ -1711,6 +1712,7 @@ void CL_RequestAuthorization( void ) {
 
 	NET_OutOfBandPrint(NS_CLIENT, cls.authorizeServer, "getKeyAuthorize %i %s", fs->integer, nums );
 }
+#endif
 #endif
 /*
 ======================================================================
@@ -2565,9 +2567,11 @@ void CL_CheckForResend( void ) {
 	switch ( clc.state ) {
 	case CA_CONNECTING:
 		// requesting a challenge .. IPv6 users always get in as authorize server supports no ipv6.
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 		if (!com_standalone->integer && clc.serverAddress.type == NA_IP && !Sys_IsLANAddress( clc.serverAddress ) )
 			CL_RequestAuthorization();
+#endif
 #endif
 
 		// The challenge request shall be followed by a client challenge so no malicious server can hijack this connection.
@@ -4962,6 +4966,9 @@ CL_CDKeyValidate
 =================
 */
 qboolean CL_CDKeyValidate( const char *key, const char *checksum ) {
+#ifdef CMOD_DISABLE_AUTH_STUFF
+	return qtrue;
+#else
 #ifdef STANDALONE
 	return qtrue;
 #else
@@ -5021,5 +5028,6 @@ qboolean CL_CDKeyValidate( const char *key, const char *checksum ) {
 	}
 
 	return qfalse;
+#endif
 #endif
 }
