@@ -146,6 +146,7 @@ extern cvar_t *fs_dirs;
 extern cvar_t *fs_mod_settings;
 extern cvar_t *fs_index_cache;
 extern cvar_t *fs_search_inactive_mods;
+extern cvar_t *fs_list_inactive_mods;
 extern cvar_t *fs_download_manifest;
 extern cvar_t *fs_pure_manifest;
 extern cvar_t *fs_redownload_across_mods;

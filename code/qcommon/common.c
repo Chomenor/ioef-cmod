@@ -54,7 +54,7 @@ int demo_protocols[] =
 int		com_argc;
 char	*com_argv[MAX_NUM_ARGVS+1];
 
-jmp_buf abortframe;		// an ERR_DROP occured, exit the entire frame
+jmp_buf abortframe;		// an ERR_DROP occurred, exit the entire frame
 
 
 FILE *debuglogfile;
@@ -175,7 +175,7 @@ void Com_EndRedirect (void)
 Com_Printf
 
 Both client and server can use this, and it will output
-to the apropriate place.
+to the appropriate place.
 
 A raw string should NEVER be passed as fmt, because of "%f" type crashers.
 =============
@@ -400,7 +400,7 @@ void Com_WriteGlobalSettings(void) {
 Com_Quit_f
 
 Both client and server can use this, and it will
-do the apropriate things.
+do the appropriate things.
 =============
 */
 void Com_Quit_f( void ) {
@@ -437,7 +437,7 @@ void Com_Quit_f( void ) {
 
 COMMAND LINE FUNCTIONS
 
-+ characters seperate the commandLine string into multiple console
++ characters separate the commandLine string into multiple console
 command lines.
 
 All of these are valid:
@@ -550,7 +550,7 @@ void Com_StartupVariable( const char *match ) {
 Com_AddStartupCommands
 
 Adds command line parameters as script statements
-Commands are seperated by + signs
+Commands are separated by + signs
 
 Returns qtrue if any late commands were added, which
 will keep the demoloop from immediately starting
@@ -1252,7 +1252,7 @@ char *CopyString( const char *in ) {
 ==============================================================================
 
 Goals:
-	reproducable without history effects -- no out of memory errors on weird map to map changes
+	reproducible without history effects -- no out of memory errors on weird map to map changes
 	allow restarting of the client without fragmentation
 	minimize total pages in use at run time
 	minimize total pages needed during load time
