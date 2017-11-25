@@ -373,8 +373,13 @@ void SV_DirectConnect( netadr_t from ) {
 	{
 		if(version != com_protocol->integer)
 		{
+#ifdef CMOD_PROTOCOL_MSG_FIX
+			// Old ioEF clients check for this exact message string to switch to legacy protocol
+			NET_OutOfBandPrint(NS_SERVER, from, "print\nServer uses protocol version 24.\n");
+#else
 			NET_OutOfBandPrint(NS_SERVER, from, "print\nServer uses protocol version %i "
 					   "(yours is %i).\n", com_protocol->integer, version);
+#endif
 			Com_DPrintf("    rejected connect from version %i\n", version);
 			return;
 		}
