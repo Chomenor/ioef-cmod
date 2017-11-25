@@ -72,6 +72,21 @@ Examples:
 - "fs_dirs" = "*basepath": Read and write to fs_basepath only.
 - "fs_dirs" = "homepath basepath": Read-only mode with homepath taking precedence over basepath.
 
+# Inactive Mod Support
+
+This project supports loading files from all mod directories, not just the current active mod. This is intended to help smooth out discrepancies between server directory configurations and allows maps to work correctly even if they have dependencies that, for one reason or another, are located in the wrong mod directory.
+
+The precedence system ensures that files located in the current mod and basegame directories always have first priority. Inactive mods are only accessed as a last resort if files cannot be found anywhere else.
+
+There are two cvars used to control this feature:
+- fs_search_inactive_mods: Applies to primary file lookups used to load models, textures, and sounds. (default: 2)
+- fs_list_inactive_mods: Applies to file listing queries used by the ingame map and model menus. (default: 1)
+
+Both cvars support the following settings:
+- 0: Disabled; all files from inactive mods blocked
+- 1: Enabled only for ID paks (including missionpack) and files on the connected server's pure list
+- 2: Enabled; all files from inactive mods allowed
+
 # Cache Mechanisms
 
 The new filesystem uses a file called "fscache.dat" to store pk3 index data and reduce startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.

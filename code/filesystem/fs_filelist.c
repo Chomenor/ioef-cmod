@@ -443,7 +443,7 @@ static int FS_GetModList(char *listbuf, int bufsize) {
 char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
 		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
 	filelist_query_t query = {extension, extension ? strlen(extension) : 0, filter,
-			fs_search_inactive_mods->integer, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
+			fs_list_inactive_mods->integer, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
 	return list_files(path, numfiles_out, &query); }
 
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
@@ -473,7 +473,7 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 		// which doesn't handle their skin setting correctly
 		flags |= FL_FLAG_IGNORE_TAPAK0; }
 
-	query = (filelist_query_t){extension, extension ? strlen(extension) : 0, 0, fs_search_inactive_mods->integer, flags};
+	query = (filelist_query_t){extension, extension ? strlen(extension) : 0, 0, fs_list_inactive_mods->integer, flags};
 	pFiles = list_files(path, &nFiles, &query);
 
 	for (i =0; i < nFiles; i++) {
