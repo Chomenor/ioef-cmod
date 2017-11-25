@@ -634,7 +634,11 @@ void CL_ParseDownload ( msg_t *msg ) {
 		return;
 	}
 	
+#ifdef CMOD_DL_LASTMSG_FIX
+	if(size || !msg->compat) MSG_ReadData(msg, data, size);
+#else
 	MSG_ReadData(msg, data, size);
+#endif
 
 	if((clc.downloadBlock & 0xFFFF) != block)
 	{
