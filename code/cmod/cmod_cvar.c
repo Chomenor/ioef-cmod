@@ -1020,6 +1020,7 @@ special_cvar_t specials[] = {
 	// Special cvars and defaults
 	{"in_mouse", "-1", CVARTYPE_NONE, 0},
 	{"ui_cdkeychecked", "-1", CVARTYPE_NONE, 0},
+	{"cl_motd", "0", CVARTYPE_NONE, 0},
 #ifdef USE_RENDERER_DLOPEN
 	{"cl_renderer", "opengl1", CVARTYPE_NONE, 0},
 #endif
@@ -1083,7 +1084,6 @@ special_cvar_t specials[] = {
 	{"r_mode", "3", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
 	{"r_picmip", "0", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
 	{"r_dynamiclight", "1", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
-	{"r_ext_compress_textures", "0", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
 	{"r_ext_compress_textures", "0", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
 	{"r_ext_texture_filter_anisotropic", "1", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
 	{"r_ext_max_anisotropy", "16", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
