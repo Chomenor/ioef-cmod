@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* ******************************************************************************** */
 
 typedef struct {
-	float overbright_target;
 	float map_overbright_target;
 	float gamma_shift;
 } shift_set_t;
@@ -58,19 +57,12 @@ static float current_value(cvar_t *cvar) {
 	return cvar->value; }
 
 static void apply_shift_set(shift_set_t *shift_set) {
-	cvar_t *r_overBrightFactor = Cvar_Get("r_overBrightFactor", "", 0);
 	cvar_t *r_mapOverBrightFactor = Cvar_Get("r_mapOverBrightFactor", "", 0);
-	float r_overBrightFactor_shifted = shift_value(default_value(r_overBrightFactor),
-			current_value(r_overBrightFactor), shift_set->overbright_target);
 	float r_mapOverBrightFactor_shifted = shift_value(default_value(r_mapOverBrightFactor),
 			current_value(r_mapOverBrightFactor), shift_set->map_overbright_target);
 	char shift_info[128];
 	shift_info[0] = 0;
 
-	if(r_overBrightFactor_shifted != current_value(r_overBrightFactor)) {
-		Q_strcat(shift_info, sizeof(shift_info), va("overBrightFactor(%g => %g)",
-				current_value(r_overBrightFactor), r_overBrightFactor_shifted));
-		Cvar_Set("r_overBrightFactorShifted", va("%g", r_overBrightFactor_shifted)); }
 	if(r_mapOverBrightFactor_shifted != current_value(r_mapOverBrightFactor)) {
 		Q_strcat(shift_info, sizeof(shift_info), va("%smapOverBrightFactor(%g => %g)",
 				shift_info[0] ? " " : "", current_value(r_mapOverBrightFactor), r_mapOverBrightFactor_shifted));
@@ -90,15 +82,20 @@ struct {
 	int hash;
 	shift_set_t shift_set;
 } special_shifts[] = {
-	{610817057, {1.5f, 2.0f, 0.1f}},		// ctf_twilight
-	{-1374186326, {1.5f, 4.0f, 0.1f}},		// ut_subway
-	{875359710, {1.5f, 1.0f, 0.0f}},		// pokernight
-	{1006385614, {1.5f, 1.2f, 0.0f}},		// 1upxmas
-	{-443776329, {1.5f, 1.0f, 0.0f}},		// crazychristmas
-	{-768581189, {1.5f, 1.0f, 0.0f}},		// ut4_terrorism4
-	{-1359736521, {1.5f, 1.0f, 0.0f}},		// ef_turnpike
-	{1038626548, {1.5f, 1.0f, 0.0f}},		// ctf_becks
-	{2006033781, {1.5f, 1.0f, 0.0f}},		// chickens
+	{610817057, {2.0f, 0.1f}},		// ctf_twilight
+	{-1374186326, {4.0f, 0.1f}},	// ut_subway
+	{875359710, {1.0f, 0.0f}},		// pokernight
+	{1006385614, {1.2f, 0.0f}},		// 1upxmas
+	{-443776329, {1.0f, 0.0f}},		// crazychristmas
+	{-768581189, {1.0f, 0.0f}},		// ut4_terrorism4
+	{-1359736521, {1.0f, 0.0f}},	// ef_turnpike
+	{1038626548, {1.0f, 0.0f}},		// ctf_becks
+	{2006033781, {1.0f, 0.0f}},		// chickens
+	{-4369078, {1.5f, 0.2f}},		// amenhotep
+	{-301759510, {2.0f, 0.2f}},		// anubis
+	{1831086714, {2.0f, 0.2f}},		// heretic
+	{1535467701, {4.0f, 0.1f}},		// summer
+	{-169342235, {4.0f, 0.2f}},		// winter
 };
 
 static qboolean check_brightshift_hash(int hash) {
@@ -172,7 +169,7 @@ static qboolean check_quake3_entities(char *entities) {
 	//Com_Printf("quake entity hits: %i\n", entity_hits);
 
 	if(entity_hits >= 3) {
-		apply_shift_set(&(shift_set_t){1.5f, 4.0f, -0.1f});
+		apply_shift_set(&(shift_set_t){4.0f, 0.0f});
 		return qtrue; }
 	return qfalse; }
 
@@ -206,7 +203,6 @@ static void process_bsp_data(char *data, int length) {
 void brightshift_configure(const char *mapname) {
 	//Com_Printf("Have brightshift config call: mapname(%s)\n", mapname);
 
-	Cvar_Set("r_overBrightFactorShifted", "");
 	Cvar_Set("r_mapOverBrightFactorShifted", "");
 	Cvar_Set("r_gammaShift", "0");
 

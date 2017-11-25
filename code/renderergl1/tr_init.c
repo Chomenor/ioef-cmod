@@ -174,7 +174,6 @@ int		max_polyverts;
 #ifdef CMOD_OVERBRIGHT
 cvar_t	*r_overBrightFactor;
 cvar_t	*r_mapOverBrightFactor;
-cvar_t	*r_overBrightFactorShifted;
 cvar_t	*r_mapOverBrightFactorShifted;
 #endif
 
@@ -1208,7 +1207,6 @@ void R_Register( void )
 #ifdef CMOD_OVERBRIGHT
 	r_overBrightFactor = ri.Cvar_Get("r_overBrightFactor", "1.5", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapOverBrightFactor = ri.Cvar_Get("r_mapOverBrightFactor", "2", CVAR_ARCHIVE | CVAR_LATCH);
-	r_overBrightFactorShifted = ri.Cvar_Get("r_overBrightFactorShifted", "", 0);
 	r_mapOverBrightFactorShifted = ri.Cvar_Get("r_mapOverBrightFactorShifted", "", 0);
 #endif
 

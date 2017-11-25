@@ -1314,7 +1314,6 @@ void R_SetColorMappings( void ) {
 	// setup the overbright lighting
 #ifdef CMOD_OVERBRIGHT
 	tr.overbrightFactor = r_overBrightFactor->value;
-	if(*r_overBrightFactorShifted->string) tr.overbrightFactor = r_overBrightFactorShifted->value;
 
 	if(!tr.framebuffer_active && (!glConfig.deviceSupportsGamma || !glConfig.isFullscreen)) {
 		tr.overbrightFactor = 1; }
