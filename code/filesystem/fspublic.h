@@ -359,14 +359,7 @@ void pk3_list_free(pk3_list_t *pk3_list);
 // System pk3 checks
 int system_pk3_position(unsigned int hash);
 
-// File Sorting Functions
-void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list);
-int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list);
-int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2);
-#endif
-
 // File helper functions
-#ifdef FSLOCAL
 #define FS_FILE_BUFFER_SIZE 512
 int fs_get_source_dir_id(const fsc_file_t *file);
 char *fs_get_source_dir_string(const fsc_file_t *file);
@@ -379,8 +372,13 @@ void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qb
 char *fs_file_extension(const fsc_file_t *file);
 void fs_print_file_location(const fsc_file_t *file);
 
-// Misc Functions
 #ifdef FSLOCAL
+// File Sorting Functions
+void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list);
+int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list);
+int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2);
+
+// Misc Functions
 qboolean FS_idPak(char *pak, char *base, int numPaks);
 #endif
 void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbufExec_t exec_type, qboolean quiet);

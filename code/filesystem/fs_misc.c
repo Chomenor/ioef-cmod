@@ -130,6 +130,75 @@ int system_pk3_position(unsigned int hash) {
 	return 0; }
 
 /* ******************************************************************************** */
+// File helper functions
+/* ******************************************************************************** */
+
+char *fs_file_extension(const fsc_file_t *file) {
+	return STACKPTR(file->qp_ext_ptr); }
+
+int fs_get_source_dir_id(const fsc_file_t *file) {
+	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
+		return ((const fsc_file_direct_t *)file)->source_dir_id; }
+	else if (file->sourcetype == FSC_SOURCETYPE_PK3) {
+		return ((const fsc_file_direct_t *)STACKPTR(((const fsc_file_frompk3_t *)file)->source_pk3))->source_dir_id; }
+	else return -1; }
+
+char *fs_get_source_dir_string(const fsc_file_t *file) {
+	int id = fs_get_source_dir_id(file);
+	if(id >= 0 && id < FS_SOURCEDIR_COUNT) return fs_sourcedirs[id].name;
+	return "unknown"; }
+
+qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level) {
+	// Check if a file is disabled by inactive mod settings
+	if(level < 2) {
+		// Look for active mod dir match
+		const char *file_mod_dir = fsc_get_mod_dir(file, &fs);
+		if(!Q_stricmp(file_mod_dir, com_basegame->string)) return qfalse;
+		if(*current_mod_dir && !Q_stricmp(file_mod_dir, current_mod_dir)) return qfalse;
+		if(!Q_stricmp(file_mod_dir, "basemod")) return qfalse;
+		if(level == 1) {
+			// Also look for pure list or system pak match
+			unsigned int hash = 0;
+			if(file->sourcetype == FSC_SOURCETYPE_PK3)
+				hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
+			if(file->sourcetype == FSC_SOURCETYPE_DIRECT) hash = ((fsc_file_direct_t *)file)->pk3_hash;
+			if(hash) {
+				if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
+				if(system_pk3_position(hash)) return qfalse; } }
+		return qtrue; }
+	return qfalse; }
+
+void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
+			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
+	if(include_source_dir) {
+		fsc_stream_append_string(stream, fs_get_source_dir_string(file));
+		fsc_stream_append_string(stream, "/"); }
+	fsc_file_to_stream(file, stream, &fs, include_mod, include_pk3_origin);
+
+	if(include_size) {
+		char buffer[20];
+		Com_sprintf(buffer, sizeof(buffer), " (%i)", file->filesize);
+		fsc_stream_append_string(stream, buffer); } }
+
+void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,
+			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
+	fsc_stream_t stream = {buffer, 0, buffer_size};
+	fs_file_to_stream(file, &stream, include_source_dir, include_mod, include_pk3_origin, include_size); }
+
+void fs_print_file_location(const fsc_file_t *file) {
+	char name_buffer[FS_FILE_BUFFER_SIZE];
+	char source_buffer[FS_FILE_BUFFER_SIZE];
+	fs_file_to_buffer(file, name_buffer, sizeof(name_buffer), qfalse, qfalse, qfalse, qfalse);
+	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
+		fs_file_to_buffer(STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), source_buffer, sizeof(source_buffer),
+				qtrue, qtrue, qfalse, qfalse);
+		Com_Printf("File %s found in %s\n", name_buffer, source_buffer); }
+	else if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
+		fs_file_to_buffer(file, source_buffer, sizeof(source_buffer), qtrue, qtrue, qfalse, qfalse);
+		Com_Printf("File %s found at %s\n", name_buffer, source_buffer); }
+	else Com_Printf("File %s has unknown sourcetype\n", name_buffer); }
+
+/* ******************************************************************************** */
 // File Sorting Functions
 /* ******************************************************************************** */
 
@@ -232,75 +301,6 @@ int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2) {
 	write_sort_filename(file2, &stream2);
 	return fsc_memcmp(stream2.data, stream1.data,
 			stream1.position < stream2.position ? stream1.position : stream2.position); }
-
-/* ******************************************************************************** */
-// File helper functions
-/* ******************************************************************************** */
-
-char *fs_file_extension(const fsc_file_t *file) {
-	return STACKPTR(file->qp_ext_ptr); }
-
-int fs_get_source_dir_id(const fsc_file_t *file) {
-	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-		return ((const fsc_file_direct_t *)file)->source_dir_id; }
-	else if (file->sourcetype == FSC_SOURCETYPE_PK3) {
-		return ((const fsc_file_direct_t *)STACKPTR(((const fsc_file_frompk3_t *)file)->source_pk3))->source_dir_id; }
-	else return -1; }
-
-char *fs_get_source_dir_string(const fsc_file_t *file) {
-	int id = fs_get_source_dir_id(file);
-	if(id >= 0 && id < FS_SOURCEDIR_COUNT) return fs_sourcedirs[id].name;
-	return "unknown"; }
-
-qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level) {
-	// Check if a file is disabled by inactive mod settings
-	if(level < 2) {
-		// Look for active mod dir match
-		const char *file_mod_dir = fsc_get_mod_dir(file, &fs);
-		if(!Q_stricmp(file_mod_dir, com_basegame->string)) return qfalse;
-		if(*current_mod_dir && !Q_stricmp(file_mod_dir, current_mod_dir)) return qfalse;
-		if(!Q_stricmp(file_mod_dir, "basemod")) return qfalse;
-		if(level == 1) {
-			// Also look for pure list or system pak match
-			unsigned int hash = 0;
-			if(file->sourcetype == FSC_SOURCETYPE_PK3)
-				hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
-			if(file->sourcetype == FSC_SOURCETYPE_DIRECT) hash = ((fsc_file_direct_t *)file)->pk3_hash;
-			if(hash) {
-				if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
-				if(system_pk3_position(hash)) return qfalse; } }
-		return qtrue; }
-	return qfalse; }
-
-void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
-			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
-	if(include_source_dir) {
-		fsc_stream_append_string(stream, fs_get_source_dir_string(file));
-		fsc_stream_append_string(stream, "/"); }
-	fsc_file_to_stream(file, stream, &fs, include_mod, include_pk3_origin);
-
-	if(include_size) {
-		char buffer[20];
-		Com_sprintf(buffer, sizeof(buffer), " (%i)", file->filesize);
-		fsc_stream_append_string(stream, buffer); } }
-
-void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,
-			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
-	fsc_stream_t stream = {buffer, 0, buffer_size};
-	fs_file_to_stream(file, &stream, include_source_dir, include_mod, include_pk3_origin, include_size); }
-
-void fs_print_file_location(const fsc_file_t *file) {
-	char name_buffer[FS_FILE_BUFFER_SIZE];
-	char source_buffer[FS_FILE_BUFFER_SIZE];
-	fs_file_to_buffer(file, name_buffer, sizeof(name_buffer), qfalse, qfalse, qfalse, qfalse);
-	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		fs_file_to_buffer(STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), source_buffer, sizeof(source_buffer),
-				qtrue, qtrue, qfalse, qfalse);
-		Com_Printf("File %s found in %s\n", name_buffer, source_buffer); }
-	else if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-		fs_file_to_buffer(file, source_buffer, sizeof(source_buffer), qtrue, qtrue, qfalse, qfalse);
-		Com_Printf("File %s found at %s\n", name_buffer, source_buffer); }
-	else Com_Printf("File %s has unknown sourcetype\n", name_buffer); }
 
 /* ******************************************************************************** */
 // Misc Functions
