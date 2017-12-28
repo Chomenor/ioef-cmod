@@ -308,6 +308,7 @@ void fs_register_commands(void);
 
 // Download List Handling
 void fs_advance_download(void);
+void fs_print_download_list(void);
 void fs_register_download_list(const char *hash_list, const char *name_list);
 
 // Attempted Download Tracking

@@ -2425,6 +2425,8 @@ void CL_InitDownloads(void) {
 		FS_FCloseFile(clc.download);
 		clc.download = 0; }
 
+	fs_print_download_list();
+
 	CL_NextDownload();
 #else
   char missingfiles[1024];
