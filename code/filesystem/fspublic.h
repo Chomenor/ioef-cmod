@@ -363,6 +363,7 @@ int system_pk3_position(unsigned int hash);
 #define FS_FILE_BUFFER_SIZE 512
 int fs_get_source_dir_id(const fsc_file_t *file);
 char *fs_get_source_dir_string(const fsc_file_t *file);
+int fs_get_mod_dir_state(const char *mod_dir);
 qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level);
 void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size);
