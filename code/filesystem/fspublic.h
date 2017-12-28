@@ -111,6 +111,16 @@ typedef struct {
 	fs_hashtable_t ht;
 } pk3_list_t;
 
+#define FD_FLAG_CHECK_PURE 1
+#define FD_FLAG_FILELIST_QUERY 2
+
+typedef enum {
+	FD_RESULT_FILE_ENABLED,
+	FD_RESULT_FILE_INACTIVE,
+	FD_RESULT_PURE_LIST_BLOCKED,
+	FD_RESULT_INACTIVE_MOD_BLOCKED
+} file_disabled_result_t;
+
 #define STACKPTR(pointer) ( fsc_stack_retrieve(&fs.general_stack, pointer) )
 #endif
 
@@ -364,7 +374,6 @@ int system_pk3_position(unsigned int hash);
 int fs_get_source_dir_id(const fsc_file_t *file);
 char *fs_get_source_dir_string(const fsc_file_t *file);
 int fs_get_mod_dir_state(const char *mod_dir);
-qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level);
 void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size);
 void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,
@@ -374,6 +383,9 @@ char *fs_file_extension(const fsc_file_t *file);
 void fs_print_file_location(const fsc_file_t *file);
 
 #ifdef FSLOCAL
+// File disabled check
+file_disabled_result_t fs_file_disabled(const fsc_file_t *file, int flags);
+
 // File Sorting Functions
 void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list);
 int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list);

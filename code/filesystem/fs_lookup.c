@@ -131,9 +131,16 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 			!resource->server_pak_position) {
 		resource->disabled = "connected to pure server and file is not on server pak list"; }
 
-	// Disable files from inactive mods based on fs_search_inactive_mods setting
-	if(fs_inactive_mod_file_disabled(resource->file, fs_search_inactive_mods->integer)) {
-		resource->disabled = "blocking file from inactive mod dir due to fs_search_inactive_mods setting"; } }
+	// Run general file disabled check
+	switch(fs_file_disabled(resource->file, 0)) {
+		case FD_RESULT_FILE_ENABLED:
+			break;
+		case FD_RESULT_INACTIVE_MOD_BLOCKED:
+			resource->disabled = "blocking file from inactive mod dir due to fs_search_inactive_mods setting";
+			break;
+		default:
+			// Shouldn't happen
+			resource->disabled = "blocking file due to unexpected fs_file_disabled result"; } }
 
 static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_t *file,
 			int extension_index, qboolean case_mismatch, lookup_resource_t *resource) {

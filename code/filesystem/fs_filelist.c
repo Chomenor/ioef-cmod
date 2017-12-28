@@ -126,18 +126,13 @@ static qboolean check_filter(fsc_stream_t *stream, const filelist_query_t *query
 		if(!Com_FilterPath((char *)query->filter, stream->data, qfalse)) return qfalse; }
 	return qtrue; }
 
-static qboolean file_in_server_pak_list(const fsc_file_t *file) {
-	if(file->sourcetype == FSC_SOURCETYPE_PK3 && pk3_list_lookup(&connected_server_pk3_list,
-			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash, qfalse)) return qtrue;
-	return qfalse; }
-
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_query_t *query) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
-	if(!fsc_is_file_enabled(file, &fs)) return qfalse;
-	if((query->flags & FL_FLAG_USE_PURE_LIST) && fs_connected_server_pure_state() == 1 && !file_in_server_pak_list(file)) return qfalse;
+	int disabled_flags = FD_FLAG_FILELIST_QUERY;
+	if(query->flags & FL_FLAG_USE_PURE_LIST) disabled_flags |= FD_FLAG_CHECK_PURE;
+	if(fs_file_disabled(file, disabled_flags)) return qfalse;
 	if((query->flags & FL_FLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&
 			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash == 2430342401u) return qfalse;
-	if(fs_inactive_mod_file_disabled(file, query->search_inactive_mods)) return qfalse;
 	return qtrue; }
 
 static void temp_file_set_populate(const fsc_directory_t *base, const filelist_query_t *query,

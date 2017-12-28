@@ -180,7 +180,7 @@ static void FS_Path_f( void ) {
 			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 			while((hash_entry = STACKPTR(fsc_hashtable_next(&hti)))) {
 				const fsc_file_direct_t *pak = STACKPTR(hash_entry->pk3);
-				if(pak->source_dir_id == sourceid && fsc_is_file_enabled((fsc_file_t *)pak, &fs)) {
+				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak, 0)) {
 					char buffer[FS_FILE_BUFFER_SIZE];
 					fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
 					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count); } } } }
