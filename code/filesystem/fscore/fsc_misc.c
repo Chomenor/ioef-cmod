@@ -55,9 +55,9 @@ unsigned int fsc_fs_size_estimate(fsc_filesystem_t *fs) {
 // Data Stream
 /* ******************************************************************************** */
 
-int fsc_write_stream_data(fsc_stream_t *stream, void *data, int length) {
+int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length) {
 	// Returns 1 on error, 0 on success.
-	if(stream->position + length > stream->size) return 1;
+	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
 	fsc_memcpy(stream->data + stream->position, data, length);
 	stream->position += length;
 	return 0; }
@@ -65,16 +65,20 @@ int fsc_write_stream_data(fsc_stream_t *stream, void *data, int length) {
 void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
 	// If stream runs out of space, output is truncated.
 	// Stream data will always be null terminated.
+	if(stream->position >= stream->size) {
+		if(stream->size) stream->data[stream->size-1] = 0;
+		stream->overflowed = 1;
+		return; }
 	while(*string) {
 		if(stream->position >= stream->size-1) {
 			stream->overflowed = 1;
 			break; }
 		stream->data[stream->position++] = *(string++); }
-	if(stream->position < stream->size) stream->data[stream->position] = 0; }
+	stream->data[stream->position] = 0; }
 
-int fsc_read_stream_data(fsc_stream_t *stream, void *output, int length) {
+int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length) {
 	// Returns 1 on error, 0 on success.
-	if(stream->position + length > stream->size) return 1;
+	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
 	fsc_memcpy(output, stream->data + stream->position, length);
 	stream->position += length;
 	return 0; }

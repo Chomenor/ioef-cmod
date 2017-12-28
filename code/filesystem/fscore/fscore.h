@@ -61,9 +61,9 @@ typedef struct {
 	int overflowed;
 } fsc_stream_t;
 
-int fsc_write_stream_data(fsc_stream_t *stream, void *data, int length);
+int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length);
 void fsc_stream_append_string(fsc_stream_t *stream, const char *string);
-int fsc_read_stream_data(fsc_stream_t *stream, void *output, int length);
+int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length);
 
 // ***** Standard Stack *****
 
