@@ -183,7 +183,9 @@ static void FS_Path_f( void ) {
 				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak, 0)) {
 					char buffer[FS_FILE_BUFFER_SIZE];
 					fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
-					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count); } } } }
+					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count);
+					if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
+							pk3_list_lookup(&connected_server_pk3_list, pak->pk3_hash, qfalse) ? "" : "not "); } } } }
 
 	Com_Printf("\n");
 	fs_print_handle_list(); }
