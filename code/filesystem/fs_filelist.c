@@ -390,7 +390,7 @@ static int FS_GetModList(char *listbuf, int bufsize) {
 
 char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
 		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
-	filelist_query_t query = {extension, filter, FL_FLAG_USE_PURE_LIST};
+	filelist_query_t query = {extension, filter, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
 	return list_files(path, numfiles_out, &query); }
 
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
