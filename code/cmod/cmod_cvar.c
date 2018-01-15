@@ -31,6 +31,8 @@ int cvar_modifiedFlags;		// Publicly shared
 // Definitions
 /* ******************************************************************************** */
 
+#define CVAR_CREATED_FLAGS (CVAR_USER_CREATED|CVAR_VM_CREATED|CVAR_RESTRICTED_CREATED)
+
 typedef struct localCvar_s {
 	// Components shared with the rest of the game, and defined in q_shared.h
 	cvar_t s;
@@ -158,9 +160,12 @@ static void cvar_clearstring(char **target) {
 
 static qboolean cvar_valid_name(const char *s) {
 	if(!s) return qfalse;
+	if(strlen(s) > 1000) return qfalse;
 	if(strchr(s, '\"')) return qfalse;
 	if(strchr(s, '\\')) return qfalse;
 	if(strchr(s, ';')) return qfalse;
+	if(strchr(s, '\n')) return qfalse;
+	if(strchr(s, '\r')) return qfalse;
 	return qtrue; }
 
 static void cvar_check_range(localCvar_t *cvar, char **string, qboolean warn) {
@@ -334,8 +339,8 @@ static localCvar_t *cvar_system_register(const char *name, const char *value, in
 	cvar->system_flags |= flags | CVAR_SYSTEM_REGISTERED;
 	if(cvar->system_flags & CVAR_LATCH) cvar->protected_flags &= ~CVAR_LATCH;
 
-	// If setting CVAR_ROM or CVAR_CHEAT in non-cheat mode, wipe other values
-	if((cvar->system_flags & CVAR_ROM) || ((cvar->system_flags & CVAR_CHEAT) && !sv_cheats->integer)) {
+	// If setting CVAR_ROM, wipe other values
+	if(cvar->system_flags & CVAR_ROM) {
 		cvar_clearstring(&cvar->main_value);
 		cvar_clearstring(&cvar->protected_value);
 		cvar_clearstring(&cvar->protected_default); }
@@ -345,6 +350,15 @@ static localCvar_t *cvar_system_register(const char *name, const char *value, in
 		cvar_clearstring(&cvar->protected_value);
 		cvar_clearstring(&cvar->protected_default);
 		cvar->protected_flags = 0; }
+
+	// If cvar was set under restricted mode, clear values
+	if(!(cvar->system_flags & CVAR_RESTRICTED_MODIFIABLE)) {
+		if(cvar->protected_flags & CVAR_RESTRICTED_CREATED) {
+			cvar_clearstring(&cvar->protected_value);
+			cvar->protected_flags = 0; }
+		if(cvar->main_flags & CVAR_RESTRICTED_CREATED) {
+			cvar_clearstring(&cvar->main_value);
+			cvar->main_flags = 0; } }
 
 	cvar_finalize(cvar, qtrue);
 	return cvar; }
@@ -374,74 +388,95 @@ static void cvar_command_set(const char *name, const char *value, int flags, cmd
 	if(cvar->s.flags & CVAR_INIT && !init) {
 		if(verbose) Com_Printf("%s can only be set as a command line parameter.\n", name);
 		return; }
-	if(cvar->s.flags & CVAR_CHEAT && !sv_cheats->integer) {
+	if((cvar->s.flags & CVAR_CHEAT) && !sv_cheats->integer) {
 		if(verbose) Com_Printf("%s is cheat protected.\n", name);
 		return; }
 
+	// Check for skip due to restricted (autoexec.cfg) mode
+	if(mode & CMD_RESTRICTED) {
+		if((cvar->system_flags & CVAR_SYSTEM_REGISTERED) && !(cvar->system_flags & CVAR_RESTRICTED_MODIFIABLE)) {
+			return; }
+		flags |= CVAR_RESTRICTED_CREATED; }
+
 	// Set value and flags in appropriate location
-	if((mode & CMD_RESTRICTED) && (cvar->s.flags & CVAR_SYSTEM_REGISTERED) &&
-				!(cvar->s.flags & CVAR_RESTRICTED_MODIFIABLE)) {
-		return; }
 	if(mode & CMD_PROTECTED) {
-		if(!get_protected_permissions(cvar)) {
+		if(!get_protected_permissions(cvar) || (cvar->main_flags & CVAR_PROTECTED)) {
 			if(verbose) Com_Printf("%s cannot be set in protected mode.\n", name);
 			return; }
-		cvar_copystring(value, &cvar->protected_value);
+		if(value) {
+			cvar_copystring(value, &cvar->protected_value);
+			cvar->protected_flags &= ~CVAR_CREATED_FLAGS;
+			cvar->protected_flags |= CVAR_USER_CREATED; }
 		cvar->protected_flags |= flags; }
 	else {
-		cvar_copystring(value, &cvar->main_value);
-		cvar->main_flags |= flags;
-		cvar_clearstring(&cvar->protected_value); }
+		if(value) {
+			cvar_copystring(value, &cvar->main_value);
+			cvar->main_flags &= ~CVAR_CREATED_FLAGS;
+			cvar->main_flags |= CVAR_USER_CREATED;
+			cvar_clearstring(&cvar->protected_value); }
+		cvar->main_flags |= flags; }
 
 	cvar_finalize(cvar, qfalse);
 
 	// Print message latch is blocking the new value from being activated
-	if(verbose && cvar->s.latchedString) Com_Printf("%s will be changed upon restarting.\n", name); }
+	if(value && verbose && cvar->s.latchedString) Com_Printf("%s will be changed upon restarting.\n", name); }
 
-static localCvar_t *cvar_protected_register(const char *name, const char *value, int flags) {
+static void cvar_command_reset(localCvar_t *cvar, qboolean clear_flags) {
+	// User-invoked cvar reset
+	if(cvar->s.flags & (CVAR_ROM|CVAR_INIT)) return;
+	if((cvar->s.flags & CVAR_CHEAT) && !sv_cheats->integer) return;
+
+	cvar_clearstring(&cvar->main_value);
+	if(clear_flags) cvar->main_flags = 0;
+	cvar_clearstring(&cvar->protected_value);
+	if(!(cvar->s.flags & CVAR_CHEAT)) cvar_clearstring(&cvar->protected_default);
+	if(clear_flags) cvar->protected_flags &= CVAR_CHEAT;
+	cvar_finalize(cvar, qfalse); }
+
+static localCvar_t *cvar_vm_register(const char *name, const char *value, int flags) {
 	localCvar_t *cvar = get_cvar(name, qtrue);
 	int permissions;
 	if(!cvar) return 0;
 	permissions = get_protected_permissions(cvar);
+	if(!permissions) return cvar;
 
-	//Com_Printf("cvar_protected_register %s to %s\n", name, value);
+	// Set values
+	if(!(cvar->system_flags & CVAR_IGNORE_VM_DEFAULT)) {
+		cvar_copystring(value, &cvar->protected_default); }
 
-	if(permissions) {
-		// Set values
-		if(!(cvar->system_flags & CVAR_IGNORE_VM_DEFAULT)) {
-			cvar_copystring(value, &cvar->protected_default); }
-
-		// Set flags
-		cvar->protected_flags |= flags & (CVAR_USERINFO | CVAR_SERVERINFO | CVAR_SYSTEMINFO | 
+	// Set flags
+	cvar->protected_flags |= flags & (CVAR_USERINFO | CVAR_SERVERINFO | CVAR_SYSTEMINFO |
 			CVAR_LATCH | CVAR_ROM | CVAR_CHEAT | CVAR_NORESTART);
-
-		// Clear existing values in case of rom/cheat
-		if((cvar->protected_flags & CVAR_ROM) || ((cvar->protected_flags & CVAR_CHEAT) && !sv_cheats->integer)) {
-			cvar_clearstring(&cvar->main_value);
-			cvar_clearstring(&cvar->protected_value); } }
-
 	if(permissions == 2) cvar->protected_flags |= flags & CVAR_ARCHIVE;
 	if(cvar->system_flags & CVAR_LATCH) cvar->protected_flags &= ~CVAR_LATCH;
+
+	// If setting CVAR_ROM, override user value
+	if((cvar->protected_flags & CVAR_ROM) && !(flags & CVAR_INIT) && cvar->protected_default &&
+		((cvar->protected_value ? cvar->protected_flags : cvar->main_flags) & CVAR_USER_CREATED)) {
+		cvar->protected_flags &= ~CVAR_CREATED_FLAGS;
+		cvar->protected_flags |= CVAR_VM_CREATED;
+		cvar_linkstring(cvar->protected_default, &cvar->protected_value); }
 
 	cvar_finalize(cvar, cvar->protected_flags & CVAR_LATCH);
 	return cvar; }
 
-static localCvar_t *cvar_protected_set(const char *name, const char *value, int flags) {
+static localCvar_t *cvar_vm_set(const char *name, const char *value, int flags) {
 	localCvar_t *cvar = get_cvar(name, qtrue);
 	int permissions;
 	if(!cvar) return 0;
 	permissions = get_protected_permissions(cvar);
-
-	//Com_Printf("cvar_protected_set %s to %s\n", name, value);
+	if(!permissions) return cvar;
 
 	// Set values
-	if(permissions) {
-		cvar_copystring(value, &cvar->protected_value); }
+	if(!(cvar->main_flags & (CVAR_PROTECTED|CVAR_ROM)) || (cvar->protected_flags & (CVAR_ROM|CVAR_CHEAT))) {
+		cvar_copystring(value, &cvar->protected_value);
+		cvar->protected_flags &= ~CVAR_CREATED_FLAGS;
+		cvar->protected_flags |= CVAR_VM_CREATED; }
 
 	// Set flags
-	if(permissions == 2) cvar->protected_flags |= flags & CVAR_ARCHIVE;
 	cvar->protected_flags |= flags & (CVAR_USERINFO | CVAR_SERVERINFO | CVAR_SYSTEMINFO |
 			CVAR_LATCH | CVAR_ROM | CVAR_CHEAT | CVAR_NORESTART);
+	if(permissions == 2) cvar->protected_flags |= flags & CVAR_ARCHIVE;
 	if(cvar->system_flags & CVAR_LATCH) cvar->protected_flags &= ~CVAR_LATCH;
 
 	cvar_finalize(cvar, cvar->protected_flags & CVAR_LATCH);
@@ -459,12 +494,27 @@ void Cvar_CheckRange( cvar_t *var, float min, float max, qboolean integral ) {
 	cvar_finalize(cvar, qtrue); }
 
 void Cvar_SetCheatState(void) {
-	// Clear value of all cheat cvars
+	// Set default value on cheat cvars
 	localCvar_t *cvar;
 	for(cvar=cvar_first; cvar; cvar=cvar->next) {
-		if(cvar->s.flags & CVAR_CHEAT) {
-			cvar_clearstring(&cvar->main_value);
+		if((cvar->s.flags & CVAR_CHEAT) && !(cvar->protected_flags & CVAR_VM_CREATED)) {
+			cvar->protected_flags &= ~CVAR_CREATED_FLAGS;
+			cvar_linkstring(cvar->s.resetString, &cvar->protected_value);
+			cvar_finalize(cvar, qfalse); } } }
+
+void Cvar_SetDescription(cvar_t *var, const char *var_description) {
+	localCvar_t *cvar = (localCvar_t *)var;
+	cvar_copystring(var_description, &cvar->description); }
+
+void cvar_end_session(void) {
+	// Reset all non-archivable protected values
+	localCvar_t *cvar;
+	for(cvar=cvar_first; cvar; cvar=cvar->next) {
+		if((cvar->protected_flags || cvar->protected_value || cvar->protected_default) &&
+				get_protected_permissions(cvar) < 2) {
+			cvar->protected_flags = 0;
 			cvar_clearstring(&cvar->protected_value);
+			cvar_clearstring(&cvar->protected_default);
 			cvar_finalize(cvar, qfalse); } } }
 
 /* ******************************************************************************** */
@@ -505,7 +555,7 @@ void Cvar_SetLatched( const char *var_name, const char *value) {
 
 void Cvar_SetSafe( const char *var_name, const char *value ) {
 	// Called by VMs
-	cvar_protected_set(var_name, value, 0); }
+	cvar_vm_set(var_name, value, 0); }
 
 void Cvar_SetValueSafe( const char *var_name, float value ) {
 	// Called by VMs
@@ -519,45 +569,35 @@ void Cvar_SetValueSafe( const char *var_name, float value ) {
 
 void Cvar_Reset( const char *var_name ) {
 	// Called by by a UI VM call
-	// FIXME: Should maybe copy default value into protected, to deal with
-	//    modifiable-but-not-archivable cvars
 	localCvar_t *cvar = get_cvar(var_name, qfalse);
 	if(!cvar) return;
-	if(get_protected_permissions(cvar) != 2) return;
-
-	cvar_clearstring(&cvar->main_value);
-	cvar_clearstring(&cvar->protected_value);
+	if(get_protected_permissions(cvar)) {
+		cvar_linkstring(cvar->s.resetString, &cvar->protected_value); }
 	cvar_finalize(cvar, qfalse); }
 
 void Cvar_ForceReset(const char *var_name) {
-	// Called in a single place in system code
+	// Called in a couple places in system code
 	localCvar_t *cvar = get_cvar(var_name, qfalse);
 	if(!cvar) return;
-
 	cvar_clearstring(&cvar->main_value);
+	cvar->main_flags = 0;
 	cvar_clearstring(&cvar->protected_value);
-	cvar_finalize(cvar, qfalse); }
+	cvar_clearstring(&cvar->protected_default);
+	cvar->protected_flags = 0;
+	cvar_finalize(cvar, qtrue); }
 
 void Cvar_Restart(qboolean unsetVM) {
-	// This is currently only called from Com_GameRestart, and just resets everything
+	// This is currently only called from Com_GameRestart
 	localCvar_t *cvar;
 	for(cvar=cvar_first; cvar; cvar=cvar->next) {
-		cvar->protected_flags = 0;
-		cvar_clearstring(&cvar->main_value);
-		cvar_clearstring(&cvar->protected_value);
-		cvar_clearstring(&cvar->protected_default);
-		cvar_finalize(cvar, qfalse); } }
-
-void cvar_end_session(void) {
-	// Reset all non-archivable protected values
-	localCvar_t *cvar;
-	for(cvar=cvar_first; cvar; cvar=cvar->next) {
-		if((cvar->protected_flags || cvar->protected_value || cvar->protected_default) &&
-				get_protected_permissions(cvar) < 2) {
-			cvar->protected_flags = 0;
+		if((cvar->main_flags & CVAR_USER_CREATED) || (unsetVM && (cvar->main_flags & CVAR_VM_CREATED))) {
+			cvar_clearstring(&cvar->main_value);
+			cvar->main_flags = 0; }
+		if((cvar->protected_flags & CVAR_USER_CREATED) || (unsetVM && (cvar->protected_flags & CVAR_VM_CREATED))) {
 			cvar_clearstring(&cvar->protected_value);
 			cvar_clearstring(&cvar->protected_default);
-			cvar_finalize(cvar, qfalse); } } }
+			cvar->protected_flags = 0; }
+		cvar_finalize(cvar, qtrue); } }
 
 /* ******************************************************************************** */
 // Cvar Accessors
@@ -625,7 +665,7 @@ void Cvar_InfoStringBuffer( int bit, char* buff, int buffsize ) {
 	Q_strncpyz(buff,Cvar_InfoString(bit),buffsize); }
 
 void Cvar_Print(localCvar_t *cvar) {
-	char data[1000];
+	char data[MAXPRINTMSG];
 	cvar_stream_t stream = {data, 0, sizeof(data)};
 
 	ADD_TEXT("\""); ADD_TEXT(cvar->s.name); ADD_TEXT("\" is:\""); ADD_TEXT(cvar->s.string); ADD_TEXT("^7\"");
@@ -684,7 +724,7 @@ void Cvar_Update(vmCvar_t *vmCvar) {
 	vmCvar->integer = cvar->s.integer; }
 
 void Cvar_Register(vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags) {
-	localCvar_t *cvar = cvar_protected_register(varName, defaultValue, flags);
+	localCvar_t *cvar = cvar_vm_register(varName, defaultValue, flags);
 	if(!cvar || !vmCvar) return;
 
 	if(!cvar->vm_handle) {
@@ -698,10 +738,6 @@ void Cvar_Register(vmCvar_t *vmCvar, const char *varName, const char *defaultVal
 	vmCvar->handle = cvar->vm_handle;
 	vmCvar->modificationCount = -1;		// Immediately update in Cvar_Update
 	Cvar_Update(vmCvar); }
-
-void Cvar_SetDescription(cvar_t *var, const char *var_description) {
-	localCvar_t *cvar = (localCvar_t *)var;
-	cvar_copystring(var_description, &cvar->description); }
 
 /* ******************************************************************************** */
 // Commands
@@ -754,8 +790,6 @@ void cvar_vstr(cmd_mode_t mode) {
 	Cbuf_ExecuteTextByMode(EXEC_INSERT, cvar->s.string, mode); }
 
 void Cvar_CompleteCvarName( char *args, int argNum ) {
-	// This can be called directly by the command code, instead of going through Cmd_SetCommandCompletionFunc,
-	// in order to handle all the possible variants of the "set" command with different letters at the end
 	if( argNum == 2 ) {
 		// Skip "<cmd> "
 		char *p = Com_SkipTokens( args, 1, " " );
@@ -763,39 +797,45 @@ void Cvar_CompleteCvarName( char *args, int argNum ) {
 		if( p > args )
 			Field_CompleteCommand( p, qfalse, qtrue ); } }
 
-qboolean Cvar_Set_Command( cmd_mode_t mode ) {
-	// This gets called directly by the command code, instead of going through Cmd_AddProtectableCommand,
-	//    in order to handle all the possible variants with different letters at the end
-	// Returns qtrue if letters matched valid set command, qfalse otherwise
+static void cvar_flag_set_command(cmd_mode_t mode, const char *cvar_name, const char *value, char *flag_string) {
+	int flags = 0;
+	while(*flag_string) {
+		char flag = tolower(*flag_string);
+		if(flag == 'a') flags |= CVAR_ARCHIVE;
+		if(flag == 'u') flags |= CVAR_USERINFO;
+		if(flag == 's') flags |= CVAR_SERVERINFO;
+		if(flag == 'r') flags |= CVAR_ROM;
+		if(flag == 'v') flags |= CVAR_PROTECTED;
+		if(flag == 'p') mode |= CMD_PROTECTED;
+		++flag_string; }
+	cvar_command_set(cvar_name, value, flags, mode, qfalse, qtrue); }
+
+static void cvar_cmd_setf(void) {
 	int c = Cmd_Argc();
 	char *cmd = Cmd_Argv(0);
-	char *cmd_flags = cmd + 3;
-	int flags = 0;
 
-	while(*cmd_flags) {
-		int flag = 0;
-		switch(*(cmd_flags++)) {
-			case 'a': case 'A': flag = CVAR_ARCHIVE; break;
-			case 'u': case 'U': flag = CVAR_USERINFO; break;
-			case 's': case 'S': flag = CVAR_SERVERINFO; break;
-			case 'p': case 'P': mode |= CMD_PROTECTED; break;
-			default: return qfalse; }
+	if(c < 3) {
+		Com_Printf("usage: %s <variable> <flags>\n", cmd);
+		return; }
 
-		// Abort if flags are repeated, to avoid conflicts with other commands starting with 'set'
-		if(flag & flags) return qfalse;
-		flags |= flag; }
+	cvar_flag_set_command(CMD_NORMAL, Cmd_Argv(1), 0, Cmd_Argv(2)); }
 
-	if ( c < 2 ) {
-		Com_Printf ("usage: %s <variable> <value>\n", cmd);
-		return qtrue; }
-	if ( c == 2 ) {
+static void Cvar_Set_f(cmd_mode_t mode) {
+	int c = Cmd_Argc();
+	char *cmd = Cmd_Argv(0);
+
+	if(c < 2) {
+		Com_Printf("usage: %s <variable> <value>\n", cmd);
+		return; }
+	if(c == 2) {
 		Cvar_Print_f();
-		return qtrue; }
+		return; }
 
-	cvar_command_set(Cmd_Argv(1), Cmd_ArgsFrom(2), flags, mode, qfalse, qtrue);
-	return qtrue; }
+	if(!cmd[0] || !cmd[1] || !cmd[2]) return;	// Shouldn't happen
 
-void Cvar_List_f( void ) {
+	cvar_flag_set_command(mode, Cmd_Argv(1), Cmd_ArgsFrom(2), cmd + 3); }
+
+static void Cvar_List_f( void ) {
 	localCvar_t *cvar;
 	int cvar_count = 0;
 	char *match;
@@ -861,7 +901,7 @@ void Cvar_List_f( void ) {
 	Com_Printf ("\n%i total cvars\n", cvar_count);
 	Com_Printf ("%i VM indexes\n", current_index.index); }
 
-void Cvar_Toggle_f(cmd_mode_t mode) {
+static void Cvar_Toggle_f(cmd_mode_t mode) {
 	int		i, c = Cmd_Argc();
 	char		*curval;
 
@@ -895,33 +935,29 @@ void Cvar_Toggle_f(cmd_mode_t mode) {
 	// fallback
 	cvar_command_set(Cmd_Argv(1), Cmd_Argv(2), 0, mode, qfalse, qtrue); }
 
-static void reset_cvar(localCvar_t *cvar, qboolean clear_flags) {
-	if(clear_flags) cvar->main_flags = 0;
-	cvar_clearstring(&cvar->main_value);
-	if(!(cvar->protected_flags & (CVAR_ROM | CVAR_CHEAT))) cvar_clearstring(&cvar->protected_value);
-	cvar_finalize(cvar, qfalse); }
-
-void Cvar_Reset_f( void ) {
+static void Cvar_Reset_f( void ) {
 	localCvar_t *cvar;
 	if ( Cmd_Argc() != 2 ) {
 		Com_Printf ("usage: reset <variable>\n");
 		return; }
 
 	cvar = get_cvar(Cmd_Argv(1), qfalse);
-	if(cvar) reset_cvar(cvar, qfalse); }
+	if(cvar) cvar_command_reset(cvar, qfalse); }
 
-void Cvar_Unset_f(void) {
+static void Cvar_Unset_f(void) {
 	localCvar_t *cvar;
 	if ( Cmd_Argc() != 2 ) {
 		Com_Printf ("usage: unset <variable>\n");
 		return; }
 
 	cvar = get_cvar(Cmd_Argv(1), qfalse);
-	if(cvar) reset_cvar(cvar, qtrue); }
+	if(cvar) cvar_command_reset(cvar, qtrue); }
 
-void Cvar_Restart_f(void) {
+static void Cvar_Restart_f(void) {
 	localCvar_t *cvar;
-	for(cvar=cvar_first; cvar; cvar=cvar->next) reset_cvar(cvar, qtrue); }
+	for(cvar=cvar_first; cvar; cvar=cvar->next) {
+		if(cvar->s.flags & CVAR_NORESTART) continue;
+		cvar_command_reset(cvar, qtrue); } }
 
 static void cvar_flags_to_stream(int flags, cvar_stream_t *stream) {
 	int have_flag = 0;
@@ -933,18 +969,24 @@ static void cvar_flags_to_stream(int flags, cvar_stream_t *stream) {
 	RUN_FLAG(CVAR_INIT);
 	RUN_FLAG(CVAR_LATCH);
 	RUN_FLAG(CVAR_ROM);
+	RUN_FLAG(CVAR_USER_CREATED);
+	RUN_FLAG(CVAR_TEMP);
 	RUN_FLAG(CVAR_CHEAT);
 	RUN_FLAG(CVAR_NORESTART);
+	RUN_FLAG(CVAR_SERVER_CREATED);
+	RUN_FLAG(CVAR_VM_CREATED);
+	RUN_FLAG(CVAR_PROTECTED);
 	RUN_FLAG(CVAR_SYSTEM_REGISTERED);
 	RUN_FLAG(CVAR_PROTECTED_MODIFIABLE);
 	RUN_FLAG(CVAR_PROTECTED_ARCHIVABLE);
+	RUN_FLAG(CVAR_RESTRICTED_MODIFIABLE);
+	RUN_FLAG(CVAR_RESTRICTED_CREATED);
 	RUN_FLAG(CVAR_IGNORE_VM_DEFAULT);
 	RUN_FLAG(CVAR_NOARCHIVE);
 	RUN_FLAG(CVAR_NUMERIC);
-	RUN_FLAG(CVAR_RESTRICTED_MODIFIABLE);
 	if(!have_flag) ADD_TEXT2("<None>"); }
 
-void cvar_cmd_var(void) {
+static void cvar_cmd_var(void) {
 	localCvar_t *cvar = get_cvar(Cmd_Argv(1), qfalse);
 	char data[1000];
 	cvar_stream_t stream = {data, 0, sizeof(data)};
@@ -967,17 +1009,6 @@ void cvar_cmd_var(void) {
 	ADD_TEXT("protected flags: "); cvar_flags_to_stream(cvar->protected_flags, &stream); ADD_TEXT("\n");
 
 	Com_Printf("%s", stream.data); }
-
-void cvar_cmd_cvartest(void) {
-	/*
-	Cvar_Set("test", "2");
-	Cvar_Set("test", "3");
-	Cvar_Set("test", "4");
-	Com_Printf("pre alloc_count(%i)\n", alloc_count);
-	Cvar_Set("test", "5");
-	Com_Printf("post alloc_count(%i)\n", alloc_count);
-	*/
-}
 
 /* ******************************************************************************** */
 // Special Cvars
@@ -1332,11 +1363,12 @@ static int write_cvars_by_category(fileHandle_t f, int category, qboolean (enabl
 		// Don't write if it's the same as the default
 		if(cvar_matches_default(cvar, value)) continue;
 
-		// Don't write if value or name contain characters that could cause
-		// problems parsing the config file
-		if(strchr(cvar->s.name, '\n') || strchr(value, '\n')) continue;
-		if(strchr(cvar->s.name, '\r') || strchr(value, '\r')) continue;
-		if(strchr(cvar->s.name, '\"') || strchr(value, '\"')) continue;
+		// Don't write if value is super long or contains characters that could
+		// cause problems parsing the config file
+		if(strlen(value) > 65536) continue;
+		if(strchr(value, '\n')) continue;
+		if(strchr(value, '\r')) continue;
+		if(strchr(value, '\"')) continue;
 
 		// Place comment line above the first cvar in the section
 		if(!count) ADD_TEXT(prelude);
@@ -1407,9 +1439,18 @@ void Cvar_WriteVariables(fileHandle_t f) {
 /* ******************************************************************************** */
 
 void Cvar_Init(void) {
+	int i;
+	const char *set_aliases[] = {"set", "sets", "setu", "seta", "setp", "setap", "setr"};
+
 	sv_cheats = Cvar_Get("sv_cheats", "1", CVAR_ROM | CVAR_SYSTEMINFO);
 
 	register_special_cvars();
+
+	for(i=0; i<ARRAY_LEN(set_aliases); ++i) {
+		Cmd_AddProtectableCommand(set_aliases[i], Cvar_Set_f);
+		Cmd_SetCommandCompletionFunc(set_aliases[i], Cvar_CompleteCvarName ); }
+	Cmd_AddCommand("setf", cvar_cmd_setf);
+	Cmd_SetCommandCompletionFunc("setf", Cvar_CompleteCvarName);
 
 	Cmd_AddCommand("print", Cvar_Print_f);
 	Cmd_AddProtectableCommand ("toggle", Cvar_Toggle_f);
@@ -1422,7 +1463,6 @@ void Cvar_Init(void) {
 	Cmd_AddCommand ("cvarlist", Cvar_List_f);
 	Cmd_AddCommand ("cvar_restart", Cvar_Restart_f);
 
-	Cmd_AddCommand("var", cvar_cmd_var);
-	Cmd_AddCommand("cvartest", cvar_cmd_cvartest); }
+	Cmd_AddCommand("var", cvar_cmd_var); }
 
 #endif

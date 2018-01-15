@@ -941,13 +941,15 @@ default values.
 #define CVAR_VM_CREATED		0x1000	// cvar was created exclusively in one of the VMs.
 #define CVAR_PROTECTED		0x2000	// prevent modifying this var from VMs or the server
 #ifdef CMOD_CVAR_HANDLING
-#define CVAR_SYSTEM_REGISTERED	0x4000
-#define CVAR_PROTECTED_MODIFIABLE	0x8000	// allow modifying this var from VMs, but reset when session ends
-#define CVAR_PROTECTED_ARCHIVABLE	0x10000		// allow modifying this var from VMs and archiving
-#define CVAR_IGNORE_VM_DEFAULT	0x20000		// allow system default to override vm default
-#define CVAR_NOARCHIVE	0x40000		// override CVAR_ARCHIVE
-#define CVAR_NUMERIC	0x80000		// perform numeric comparison with default when deciding to write the cvar to config file
-#define CVAR_RESTRICTED_MODIFIABLE	0x100000	// allow modifying this var from restricted (autoexec) scripts
+// Additional flags for new cvar system
+#define CVAR_SYSTEM_REGISTERED	(1<<14)
+#define CVAR_PROTECTED_MODIFIABLE	(1<<15)		// allow modifying this var from VMs, but reset when session ends
+#define CVAR_PROTECTED_ARCHIVABLE	(1<<16)		// allow modifying this var from VMs and archiving
+#define CVAR_RESTRICTED_MODIFIABLE	(1<<17)		// allow modifying this var from restricted (autoexec) scripts
+#define CVAR_RESTRICTED_CREATED	(1<<18)			// created by restricted script; reset on system register
+#define CVAR_IGNORE_VM_DEFAULT	(1<<19)			// allow system default to override vm default
+#define CVAR_NOARCHIVE	(1<<20)					// override CVAR_ARCHIVE
+#define CVAR_NUMERIC	(1<<21)					// perform numeric comparison with default when deciding to write the cvar to config file
 #endif
 // These flags are only returned by the Cvar_Flags() function
 #define CVAR_MODIFIED		0x40000000	// Cvar was modified

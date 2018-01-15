@@ -563,8 +563,6 @@ modules of the program.
 void cvar_end_session(void);
 qboolean cvar_command(cmd_mode_t mode);
 void cvar_vstr(cmd_mode_t mode);
-qboolean Cvar_Set_Command( cmd_mode_t mode );
-void Cvar_CompleteCvarName( char *args, int argNum );
 void Cvar_StartupSet(const char *var_name, const char *value);
 #endif
 
@@ -636,7 +634,9 @@ void Cvar_CheckRange( cvar_t *cv, float minVal, float maxVal, qboolean shouldBeI
 void Cvar_SetDescription( cvar_t *var, const char *var_description );
 
 void	Cvar_Restart(qboolean unsetVM);
+#ifndef CMOD_CVAR_HANDLING
 void	Cvar_Restart_f( void );
+#endif
 
 void Cvar_CompleteCvarName( char *args, int argNum );
 

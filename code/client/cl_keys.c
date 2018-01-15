@@ -1081,6 +1081,13 @@ void Key_WriteBindings( fileHandle_t f ) {
 		if(!keys[i].binding) continue;
 		if(keys[i].default_binding && !Q_stricmp(keys[i].binding, keys[i].default_binding)) continue;
 
+		// Don't write if value is super long or contains characters that could
+		// cause problems parsing the config file
+		if(strlen(keys[i].binding) > 2000) continue;
+		if(strchr(keys[i].binding, '\n')) continue;
+		if(strchr(keys[i].binding, '\r')) continue;
+		if(strchr(keys[i].binding, '\"')) continue;
+
 		if(!count) FS_Printf(f, SYSTEM_NEWLINE "// Key bindings" SYSTEM_NEWLINE);
 		FS_Printf(f, "bind%s %s \"%s\"" SYSTEM_NEWLINE, (keys[i].cmd_mode & CMD_PROTECTED) ? "p" : "",
 				Key_KeynumToString(i), keys[i].binding);

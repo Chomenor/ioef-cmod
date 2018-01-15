@@ -750,12 +750,6 @@ Cmd_CompleteArgument
 void Cmd_CompleteArgument( const char *command, char *args, int argNum ) {
 	cmd_function_t	*cmd;
 
-#ifdef CMOD_CVAR_HANDLING
-	// Special case for "set" command
-	if(!Q_stricmpn(command, "set", 3)) {
-		Cvar_CompleteCvarName(args, argNum); }
-#endif
-
 	for( cmd = cmd_functions; cmd; cmd = cmd->next ) {
 		if( !Q_stricmp( command, cmd->name ) ) {
 			if ( cmd->complete ) {
@@ -782,13 +776,6 @@ void	Cmd_ExecuteString( const char *text ) {
 	if ( !Cmd_Argc() ) {
 		return;		// no tokens
 	}
-
-#ifdef CMOD_CVAR_HANDLING
-	// special case for "set" command
-	if(!Q_stricmpn( cmd_argv[0], "set", 3)) {
-		Cvar_Set_Command(CMD_NORMAL);
-		return; }
-#endif
 
 	// check registered command functions	
 	for ( prev = &cmd_functions ; *prev ; prev = &cmd->next ) {
