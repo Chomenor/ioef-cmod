@@ -205,7 +205,7 @@ static download_entry_t *create_download_entry(char *name, unsigned int hash) {
 	entry->hash = hash;
 	return entry; }
 
-static void print_download_list(void) {
+void fs_print_download_list(void) {
 	// Prints predicted needed pak list to console
 	download_entry_t *entry = next_download;
 	qboolean have_entry = qfalse;
@@ -240,9 +240,7 @@ void fs_register_download_list(const char *hash_list, const char *name_list) {
 		if(!entry) {
 			Com_Printf("WARNING: Ignoring download %s due to invalid name.\n", Cmd_Argv(i));
 			continue; }
-		fs_add_next_download(entry); }
-
-	print_download_list(); }
+		fs_add_next_download(entry); } }
 
 /* ******************************************************************************** */
 // Download List Advancement

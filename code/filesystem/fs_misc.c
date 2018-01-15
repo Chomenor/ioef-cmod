@@ -130,6 +130,103 @@ int system_pk3_position(unsigned int hash) {
 	return 0; }
 
 /* ******************************************************************************** */
+// File helper functions
+/* ******************************************************************************** */
+
+char *fs_file_extension(const fsc_file_t *file) {
+	return STACKPTR(file->qp_ext_ptr); }
+
+int fs_get_source_dir_id(const fsc_file_t *file) {
+	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
+		return ((const fsc_file_direct_t *)file)->source_dir_id; }
+	else if (file->sourcetype == FSC_SOURCETYPE_PK3) {
+		return ((const fsc_file_direct_t *)STACKPTR(((const fsc_file_frompk3_t *)file)->source_pk3))->source_dir_id; }
+	else return -1; }
+
+char *fs_get_source_dir_string(const fsc_file_t *file) {
+	int id = fs_get_source_dir_id(file);
+	if(id >= 0 && id < FS_SOURCEDIR_COUNT) return fs_sourcedirs[id].name;
+	return "unknown"; }
+
+int fs_get_mod_dir_state(const char *mod_dir) {
+	// Returns 3 for current mod, 2 for basemod, 1 for basegame, 0 for inactive mod
+	if(*current_mod_dir && !Q_stricmp(mod_dir, current_mod_dir)) return 3;
+	else if(!Q_stricmp(mod_dir, "basemod")) return 2;
+	else if(!Q_stricmp(mod_dir, com_basegame->string)) return 1;
+	return 0; }
+
+void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
+			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
+	if(include_source_dir) {
+		fsc_stream_append_string(stream, fs_get_source_dir_string(file));
+		fsc_stream_append_string(stream, "/"); }
+	fsc_file_to_stream(file, stream, &fs, include_mod, include_pk3_origin);
+
+	if(include_size) {
+		char buffer[20];
+		Com_sprintf(buffer, sizeof(buffer), " (%i)", file->filesize);
+		fsc_stream_append_string(stream, buffer); } }
+
+void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,
+			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
+	fsc_stream_t stream = {buffer, 0, buffer_size};
+	fs_file_to_stream(file, &stream, include_source_dir, include_mod, include_pk3_origin, include_size); }
+
+void fs_print_file_location(const fsc_file_t *file) {
+	char name_buffer[FS_FILE_BUFFER_SIZE];
+	char source_buffer[FS_FILE_BUFFER_SIZE];
+	fs_file_to_buffer(file, name_buffer, sizeof(name_buffer), qfalse, qfalse, qfalse, qfalse);
+	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
+		fs_file_to_buffer(STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), source_buffer, sizeof(source_buffer),
+				qtrue, qtrue, qfalse, qfalse);
+		Com_Printf("File %s found in %s\n", name_buffer, source_buffer); }
+	else if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
+		fs_file_to_buffer(file, source_buffer, sizeof(source_buffer), qtrue, qtrue, qfalse, qfalse);
+		Com_Printf("File %s found at %s\n", name_buffer, source_buffer); }
+	else Com_Printf("File %s has unknown sourcetype\n", name_buffer); }
+
+/* ******************************************************************************** */
+// File disabled check
+/* ******************************************************************************** */
+
+static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
+	// Check if a file is disabled by inactive mod settings
+	if(level < 2) {
+		// Look for active mod or basegame match
+		if(fs_get_mod_dir_state(fsc_get_mod_dir(file, &fs)) >= 1) return qfalse;
+
+		if(level == 1) {
+			// For setting 1, also look for pure list or system pak match
+			unsigned int hash = 0;
+			if(file->sourcetype == FSC_SOURCETYPE_PK3)
+				hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
+			if(file->sourcetype == FSC_SOURCETYPE_DIRECT) hash = ((fsc_file_direct_t *)file)->pk3_hash;
+			if(hash) {
+				if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
+				if(system_pk3_position(hash)) return qfalse; } }
+		return qtrue; }
+	return qfalse; }
+
+static qboolean file_in_server_pak_list(const fsc_file_t *file) {
+	if(file->sourcetype == FSC_SOURCETYPE_PK3 && pk3_list_lookup(&connected_server_pk3_list,
+			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash, qfalse)) return qtrue;
+	return qfalse; }
+
+file_disabled_result_t fs_file_disabled(const fsc_file_t *file, int flags) {
+	// Check if file is disabled in index (no longer on disk)
+	if(!fsc_is_file_enabled(file, &fs)) return FD_RESULT_FILE_INACTIVE;
+
+	// Check if file is disabled by inactive mod dir settings
+	if(inactive_mod_file_disabled(file, (flags & FD_FLAG_FILELIST_QUERY) ?
+			fs_list_inactive_mods->integer : fs_search_inactive_mods->integer)) return FD_RESULT_INACTIVE_MOD_BLOCKED;
+
+	// Check if file is blocked by connected server pure list
+	if((flags & FD_FLAG_CHECK_PURE) && fs_connected_server_pure_state() == 1 && !file_in_server_pak_list(file))
+			return FD_RESULT_PURE_LIST_BLOCKED;
+
+	return FD_RESULT_FILE_ENABLED; }
+
+/* ******************************************************************************** */
 // File Sorting Functions
 /* ******************************************************************************** */
 
@@ -157,22 +254,20 @@ static unsigned int server_pak_precedence(const fsc_file_t *file) {
 				((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash, qtrue); }
 	return 0; }
 
-static unsigned int mod_dir_precedence(const fsc_file_t *file) {
-	const char *mod_dir = fsc_get_mod_dir(file, &fs);
-	if(*current_mod_dir && !Q_stricmp(mod_dir, current_mod_dir)) return 2;
-	if(!Q_stricmp(mod_dir, "basemod")) return 1;
+static unsigned int mod_dir_precedence(int mod_dir_state) {
+	if(mod_dir_state >= 2) return mod_dir_state;
 	return 0; }
 
-static unsigned int system_pak_precedence(const fsc_file_t *file) {
-	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		return system_pk3_position(((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash); }
-	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-		return system_pk3_position(((fsc_file_direct_t *)file)->pk3_hash); }
+static unsigned int system_pak_precedence(const fsc_file_t *file, int mod_dir_state) {
+	if(mod_dir_state <= 1) {
+		if(file->sourcetype == FSC_SOURCETYPE_PK3) {
+			return system_pk3_position(((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash); }
+		if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
+			return system_pk3_position(((fsc_file_direct_t *)file)->pk3_hash); } }
 	return 0; }
 
-static unsigned int basegame_dir_precedence(const fsc_file_t *file) {
-	const char *mod_dir = fsc_get_mod_dir(file, &fs);
-	if(!Q_stricmp(mod_dir, com_basegame->string)) return 1;
+static unsigned int basegame_dir_precedence(int mod_dir_state) {
+	if(mod_dir_state == 1) return 1;
 	return 0; }
 
 static void write_sort_string(const char *string, fsc_stream_t *output) {
@@ -197,10 +292,11 @@ static void write_sort_value(unsigned int value, fsc_stream_t *output) {
 
 void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list) {
 	// This is a rough version of the lookup precedence for reference and file listing purposes
+	int mod_dir_state = fs_get_mod_dir_state(fsc_get_mod_dir(file, &fs));
 	if(use_server_pak_list) write_sort_value(server_pak_precedence(file), output);
-	write_sort_value(mod_dir_precedence(file), output);
-	write_sort_value(system_pak_precedence(file), output);
-	write_sort_value(basegame_dir_precedence(file), output);
+	write_sort_value(mod_dir_precedence(mod_dir_state), output);
+	write_sort_value(system_pak_precedence(file, mod_dir_state), output);
+	write_sort_value(basegame_dir_precedence(mod_dir_state), output);
 	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 		fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
 		write_sort_value(1, output);
@@ -232,75 +328,6 @@ int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2) {
 	write_sort_filename(file2, &stream2);
 	return fsc_memcmp(stream2.data, stream1.data,
 			stream1.position < stream2.position ? stream1.position : stream2.position); }
-
-/* ******************************************************************************** */
-// File helper functions
-/* ******************************************************************************** */
-
-char *fs_file_extension(const fsc_file_t *file) {
-	return STACKPTR(file->qp_ext_ptr); }
-
-int fs_get_source_dir_id(const fsc_file_t *file) {
-	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-		return ((const fsc_file_direct_t *)file)->source_dir_id; }
-	else if (file->sourcetype == FSC_SOURCETYPE_PK3) {
-		return ((const fsc_file_direct_t *)STACKPTR(((const fsc_file_frompk3_t *)file)->source_pk3))->source_dir_id; }
-	else return -1; }
-
-char *fs_get_source_dir_string(const fsc_file_t *file) {
-	int id = fs_get_source_dir_id(file);
-	if(id >= 0 && id < FS_SOURCEDIR_COUNT) return fs_sourcedirs[id].name;
-	return "unknown"; }
-
-qboolean fs_inactive_mod_file_disabled(const fsc_file_t *file, int level) {
-	// Check if a file is disabled by inactive mod settings
-	if(level < 2) {
-		// Look for active mod dir match
-		const char *file_mod_dir = fsc_get_mod_dir(file, &fs);
-		if(!Q_stricmp(file_mod_dir, com_basegame->string)) return qfalse;
-		if(*current_mod_dir && !Q_stricmp(file_mod_dir, current_mod_dir)) return qfalse;
-		if(!Q_stricmp(file_mod_dir, "basemod")) return qfalse;
-		if(level == 1) {
-			// Also look for pure list or system pak match
-			unsigned int hash = 0;
-			if(file->sourcetype == FSC_SOURCETYPE_PK3)
-				hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
-			if(file->sourcetype == FSC_SOURCETYPE_DIRECT) hash = ((fsc_file_direct_t *)file)->pk3_hash;
-			if(hash) {
-				if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
-				if(system_pk3_position(hash)) return qfalse; } }
-		return qtrue; }
-	return qfalse; }
-
-void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
-			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
-	if(include_source_dir) {
-		fsc_stream_append_string(stream, fs_get_source_dir_string(file));
-		fsc_stream_append_string(stream, "/"); }
-	fsc_file_to_stream(file, stream, &fs, include_mod, include_pk3_origin);
-
-	if(include_size) {
-		char buffer[20];
-		Com_sprintf(buffer, sizeof(buffer), " (%i)", file->filesize);
-		fsc_stream_append_string(stream, buffer); } }
-
-void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,
-			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
-	fsc_stream_t stream = {buffer, 0, buffer_size};
-	fs_file_to_stream(file, &stream, include_source_dir, include_mod, include_pk3_origin, include_size); }
-
-void fs_print_file_location(const fsc_file_t *file) {
-	char name_buffer[FS_FILE_BUFFER_SIZE];
-	char source_buffer[FS_FILE_BUFFER_SIZE];
-	fs_file_to_buffer(file, name_buffer, sizeof(name_buffer), qfalse, qfalse, qfalse, qfalse);
-	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		fs_file_to_buffer(STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), source_buffer, sizeof(source_buffer),
-				qtrue, qtrue, qfalse, qfalse);
-		Com_Printf("File %s found in %s\n", name_buffer, source_buffer); }
-	else if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-		fs_file_to_buffer(file, source_buffer, sizeof(source_buffer), qtrue, qtrue, qfalse, qfalse);
-		Com_Printf("File %s found at %s\n", name_buffer, source_buffer); }
-	else Com_Printf("File %s has unknown sourcetype\n", name_buffer); }
 
 /* ******************************************************************************** */
 // Misc Functions
@@ -869,8 +896,7 @@ static qboolean check_default_cfg_pk3(const char *mod, const char *filename, uns
 	fsc_hashtable_open(&fs.files, fsc_string_hash("default", 0), &hti);
 	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
 		const fsc_file_t *pk3;
-		if(!fsc_is_file_enabled(file, &fs)) continue;
-		if(fs_inactive_mod_file_disabled((fsc_file_t *)file, fs_search_inactive_mods->integer)) continue;
+		if(fs_file_disabled(file, 0)) continue;
 		if(file->sourcetype != FSC_SOURCETYPE_PK3) continue;
 		if(Q_stricmp(STACKPTR(file->qp_name_ptr), "default")) continue;
 		if(Q_stricmp(STACKPTR(file->qp_ext_ptr), "cfg")) continue;
@@ -897,8 +923,7 @@ static system_pak_state_t get_pak_state(const char *mod, const char *filename, u
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash(filename, 0), &hti);
 	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
-		if(!fsc_is_file_enabled((fsc_file_t *)file, &fs)) continue;
-		if(fs_inactive_mod_file_disabled((fsc_file_t *)file, fs_search_inactive_mods->integer)) continue;
+		if(fs_file_disabled((fsc_file_t *)file, 0)) continue;
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(Q_stricmp(STACKPTR(file->f.qp_name_ptr), filename)) continue;
 		if(Q_stricmp(STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
@@ -910,8 +935,7 @@ static system_pak_state_t get_pak_state(const char *mod, const char *filename, u
 	fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
 	while((entry = STACKPTR(fsc_hashtable_next(&hti)))) {
 		file = STACKPTR(entry->pk3);
-		if(!fsc_is_file_enabled((fsc_file_t *)file, &fs)) continue;
-		if(fs_inactive_mod_file_disabled((fsc_file_t *)file, fs_search_inactive_mods->integer)) continue;
+		if(fs_file_disabled((fsc_file_t *)file, 0)) continue;
 		if((file->pk3_hash == hash)) return (system_pak_state_t){name_match, file}; }
 
 	return (system_pak_state_t){name_match, 0}; }

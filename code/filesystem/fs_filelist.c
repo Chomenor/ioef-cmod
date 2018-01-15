@@ -32,11 +32,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 typedef struct {
 	const char *extension;
-	int extension_length;
 	const char *filter;
-	int search_inactive_mods;
 	int flags;
 } filelist_query_t;
+
+typedef struct {
+	const filelist_query_t *query;
+	int extension_length;
+	int crop_length;
+	fsc_stack_t temp_stack;
+	int file_depth;
+	int directory_depth;
+} filelist_work_t;
 
 /* ******************************************************************************** */
 // Sort key handling
@@ -63,218 +70,152 @@ static int compare_sort_keys(file_list_sort_key_t *key1, file_list_sort_key_t *k
 	return fsc_memcmp(key2->key, key1->key, key1->length < key2->length ? key1->length : key2->length); }
 
 /* ******************************************************************************** */
-// Phase 1 - Temporary file set handling
+// File list generation
 /* ******************************************************************************** */
-
-// Currently "directories" are represented by a single file from the directory,
-// and only directories with a direct file descendant will be listed. This seems
-// to be sufficient for all current usages
 
 typedef struct {
 	fs_hashtable_entry_t hte;
+	char *string;
 	const fsc_file_t *file;
 	file_list_sort_key_t *sort_key;
 } temp_file_set_entry_t;
 
-typedef struct {
-	fs_hashtable_t files;
-	fs_hashtable_t directories;
-} temp_file_set_t;
-
-static unsigned int temp_file_set_hash(const fsc_file_t *file, qboolean directory) {
-	unsigned int hash = fsc_string_hash(STACKPTR(file->qp_dir_ptr), 0);
-	if(!directory) hash |= fsc_string_hash(STACKPTR(file->qp_name_ptr), STACKPTR(file->qp_ext_ptr));
-	return hash; }
-
-static qboolean filelist_string_match(const char *string1, const char *string2) {
-	if(string1 == string2) return qtrue;
-	if(!string1 || !string2) return qfalse;
-	return Q_stricmp(string1, string2) ? qfalse : qtrue; }
-
-static void temp_file_set_insert(fs_hashtable_t *ht, const fsc_file_t *file, file_list_sort_key_t *sort_key, qboolean directory) {
-	if(ht->bucket_count) {
-		unsigned int hash = temp_file_set_hash(file, directory);
-		fs_hashtable_iterator_t it = fs_hashtable_iterate(ht, hash, qfalse);
-		temp_file_set_entry_t *entry;
-
-		while((entry = fs_hashtable_next(&it))) {
-			// Check if file is match
-			if(!filelist_string_match(STACKPTR(entry->file->qp_dir_ptr), STACKPTR(file->qp_dir_ptr))) continue;
-			if(!directory) {
-				if(!filelist_string_match(STACKPTR(entry->file->qp_name_ptr), STACKPTR(file->qp_name_ptr))) continue;
-				if(!filelist_string_match(STACKPTR(entry->file->qp_ext_ptr), STACKPTR(file->qp_ext_ptr))) continue; }
-
-			// Matching file found - replace it if new file is higher precedence
-			if(compare_sort_keys(sort_key, entry->sort_key) < 0) {
-				entry->file = file;
-				entry->sort_key = sort_key; }
-			return; }
-
-		// No matching file - create new entry
-		entry = Z_Malloc(sizeof(*entry));
-		entry->file = file;
-		entry->sort_key = sort_key;
-		fs_hashtable_insert(ht, &entry->hte, hash); } }
-
-static qboolean check_filter(fsc_stream_t *stream, const filelist_query_t *query) {
-	// Returns qtrue if path stored in stream matches filter/extension criteria, qfalse otherwise
-	if(query->extension) {
-		if(stream->position < query->extension_length) return qfalse;
-		if(Q_stricmpn(stream->data + stream->position - query->extension_length,
-				query->extension, query->extension_length)) return qfalse; }
-	if(query->filter) {
-		if(!Com_FilterPath((char *)query->filter, stream->data, qfalse)) return qfalse; }
-	return qtrue; }
-
-static qboolean file_in_server_pak_list(const fsc_file_t *file) {
-	if(file->sourcetype == FSC_SOURCETYPE_PK3 && pk3_list_lookup(&connected_server_pk3_list,
-			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash, qfalse)) return qtrue;
-	return qfalse; }
-
-static qboolean check_file_enabled(const fsc_file_t *file, const filelist_query_t *query) {
-	// Returns qtrue if file is valid to use, qfalse otherwise
-	if(!fsc_is_file_enabled(file, &fs)) return qfalse;
-	if((query->flags & FL_FLAG_USE_PURE_LIST) && fs_connected_server_pure_state() == 1 && !file_in_server_pak_list(file)) return qfalse;
-	if((query->flags & FL_FLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&
-			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash == 2430342401u) return qfalse;
-	if(fs_inactive_mod_file_disabled(file, query->search_inactive_mods)) return qfalse;
-	return qtrue; }
-
-static void temp_file_set_populate(const fsc_directory_t *base, const filelist_query_t *query,
-		temp_file_set_t *output, int file_depth, int directory_depth, fsc_stack_t *sort_key_stack) {
-	char buffer[1024];
-	fsc_stream_t stream = {buffer, 0, 0, qfalse};
-	fsc_file_t *file;
-
-	file = STACKPTR(base->sub_file);
-	while(file) {
-		if(output->directories.element_count + output->files.element_count >= MAX_FOUND_FILES) return;
-
-		if(check_file_enabled(file, query)) {
-			file_list_sort_key_t *sort_key = 0;
-
-			if(file_depth > 0 && output->files.bucket_count) {
-				stream.position = 0;
-				fs_file_to_stream(file, &stream, qfalse, qfalse, qfalse, qfalse);
-				if(check_filter(&stream, query)) {
-					if(!sort_key) sort_key = generate_sort_key(file, sort_key_stack, query);
-					temp_file_set_insert(&output->files, file, sort_key, qfalse); } }
-
-			if(directory_depth > 0 && output->directories.bucket_count && file->qp_dir_ptr) {
-				stream.position = 0;
-				fsc_stream_append_string(&stream, STACKPTR(file->qp_dir_ptr));
-				fsc_stream_append_string(&stream, "/");
-				if(check_filter(&stream, query)) {
-					if(!sort_key) sort_key = generate_sort_key(file, sort_key_stack, query);
-					temp_file_set_insert(&output->directories, file, sort_key, qtrue); } } }
-
-		file = STACKPTR(file->next_in_directory); }
-
-	if(file_depth > 1 || directory_depth > 1) {
-		fsc_directory_t *directory = STACKPTR(base->sub_directory);
-		while(directory) {
-			temp_file_set_populate(directory, query, output, file_depth - 1, directory_depth - 1, sort_key_stack);
-			directory = STACKPTR(directory->peer_directory); } } }
-
-static void temp_file_set_initialize(temp_file_set_t *file_set, qboolean search_files, qboolean search_directories) {
-	Com_Memset(file_set, 0, sizeof(*file_set));
-	if(search_files) fs_hashtable_initialize(&file_set->files, MAX_FOUND_FILES);
-	if(search_directories) fs_hashtable_initialize(&file_set->directories, MAX_FOUND_FILES/4); }
-
-static void temp_file_set_free(temp_file_set_t *file_set) {
-	fs_hashtable_free(&file_set->files, 0);
-	fs_hashtable_free(&file_set->directories, 0); }
-
-/* ******************************************************************************** */
-// Phase 2 - Temporary file list handling
-/* ******************************************************************************** */
-
-typedef struct {
-	const fsc_file_t *file;
-	qboolean directory;
-	file_list_sort_key_t *sort_key;
-} temp_file_list_element_t;
-
-typedef struct {
-	temp_file_list_element_t *elements;
-	int element_count;
-} temp_file_list_t;
-
-static void temp_file_set_to_file_list(temp_file_set_t *source, temp_file_list_t *target) {
-	fs_hashtable_iterator_t it;
-	const temp_file_set_entry_t *entry;
-	int position = 0;
-
-	target->element_count = source->files.element_count + source->directories.element_count;
-	target->elements = Z_Malloc(sizeof(*target->elements) * target->element_count);
-
-	it = fs_hashtable_iterate(&source->files, 0, qtrue);
-	while((entry = fs_hashtable_next(&it))) {
-		target->elements[position].file = entry->file;
-		target->elements[position].sort_key = entry->sort_key;
-		target->elements[position].directory = qfalse;
-		++position; }
-
-	it = fs_hashtable_iterate(&source->directories, 0, qtrue);
-	while((entry = fs_hashtable_next(&it))) {
-		target->elements[position].file = entry->file;
-		target->elements[position].sort_key = entry->sort_key;
-		target->elements[position].directory = qtrue;
-		++position; } }
-
-static int temp_file_list_compare_element(const temp_file_list_element_t *element1, const temp_file_list_element_t *element2) {
-	if(element1->file == element2->file) {
-		if(element1->directory) return -1;
-		return 1; }
-	return compare_sort_keys(element1->sort_key, element2->sort_key); }
-
-static int temp_file_list_qsort(const void *element1, const void *element2) {
-	return temp_file_list_compare_element(element1, element2); }
-
-static void temp_file_list_sort(temp_file_list_t *file_list) {
-	qsort(file_list->elements, file_list->element_count, sizeof(*file_list->elements), temp_file_list_qsort); }
-
-static void temp_file_list_free(temp_file_list_t *file_list) {
-	Z_Free(file_list->elements); }
-
-/* ******************************************************************************** */
-// Phase 3 - Output list handling
-/* ******************************************************************************** */
-
-static char *list_copystring(const char *string) {
+static char *allocate_string(const char *string) {
 	int length = strlen(string);
 	char *copy = Z_Malloc(length + 1);
 	Com_Memcpy(copy, string, length);
 	copy[length] = 0;
 	return copy; }
 
-static char **temp_file_list_to_output_list(temp_file_list_t *temp_list, int prefix_length, int *numfiles_out) {
-	char buffer[1024];
+static void temp_file_set_insert(fs_hashtable_t *ht, const fsc_file_t *file, file_list_sort_key_t *sort_key, const char *path) {
+	unsigned int hash = fsc_string_hash(path, 0);
+	fs_hashtable_iterator_t it = fs_hashtable_iterate(ht, hash, qfalse);
+	temp_file_set_entry_t *entry;
+
+	while((entry = fs_hashtable_next(&it))) {
+		// Check if file is match
+		if(strcmp(path, entry->string)) continue;
+
+		// Matching file found - replace it if new file is higher precedence
+		if(compare_sort_keys(sort_key, entry->sort_key) < 0) {
+			entry->file = file;
+			entry->sort_key = sort_key; }
+		return; }
+
+	// No matching file - create new entry
+	entry = Z_Malloc(sizeof(*entry));
+	entry->file = file;
+	entry->sort_key = sort_key;
+	entry->string = allocate_string(path);
+	fs_hashtable_insert(ht, &entry->hte, hash); }
+
+static qboolean check_path_enabled(fsc_stream_t *stream, const filelist_work_t *flw) {
+	// Returns qtrue if path stored in stream matches filter/extension criteria, qfalse otherwise
+	if(!stream->position) return qfalse;
+	if(flw->query->extension) {
+		if(stream->position < flw->extension_length) return qfalse;
+		if(Q_stricmpn(stream->data + stream->position - flw->extension_length,
+				flw->query->extension, flw->extension_length)) return qfalse; }
+	if(flw->query->filter) {
+		if(!Com_FilterPath((char *)flw->query->filter, stream->data, qfalse)) return qfalse; }
+	return qtrue; }
+
+static qboolean check_file_enabled(const fsc_file_t *file, const filelist_work_t *flw) {
+	// Returns qtrue if file is valid to use, qfalse otherwise
+	int disabled_flags = FD_FLAG_FILELIST_QUERY;
+	if(flw->query->flags & FL_FLAG_USE_PURE_LIST) disabled_flags |= FD_FLAG_CHECK_PURE;
+	if(fs_file_disabled(file, disabled_flags)) return qfalse;
+	if((flw->query->flags & FL_FLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&
+			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash == 2430342401u) return qfalse;
+	return qtrue; }
+
+static void cut_stream(const fsc_stream_t *source, fsc_stream_t *target, int start_pos, int end_pos) {
+	target->position = 0;
+	if(start_pos < end_pos) fsc_write_stream_data(target, source->data + start_pos, end_pos - start_pos);
+	fsc_stream_append_string(target, ""); }
+
+static void temp_file_set_populate(const fsc_directory_t *base, fs_hashtable_t *output, filelist_work_t *flw) {
+	char path_buffer[FS_FILE_BUFFER_SIZE];
+	fsc_stream_t path_stream = {path_buffer, 0, sizeof(path_buffer), 0};
+	char string_buffer[FS_FILE_BUFFER_SIZE];
+	fsc_stream_t string_stream = {string_buffer, 0, sizeof(string_buffer), 0};
+	fsc_file_t *file;
+	fsc_directory_t *directory;
+
+	file = STACKPTR(base->sub_file);
+	while(file) {
+		if(check_file_enabled(file, flw)) {
+			int i;
+			file_list_sort_key_t *sort_key = 0;
+			int depth = 0;
+
+			path_stream.position = 0;
+			fs_file_to_stream(file, &path_stream, qfalse, qfalse, qfalse, qfalse);
+			for(i=flw->crop_length; i<path_stream.position; ++i) {
+				if(path_stream.data[i] == '/') {
+					++depth;
+					if(depth < flw->directory_depth) {
+						// Process directory
+						cut_stream(&path_stream, &string_stream, flw->crop_length, i+1);
+						if(check_path_enabled(&string_stream, flw)) {
+							if(output->element_count >= MAX_FOUND_FILES) return;
+							if(!sort_key) sort_key = generate_sort_key(file, &flw->temp_stack, flw->query);
+							temp_file_set_insert(output, file, sort_key, string_stream.data); } } } }
+
+			if(depth < flw->file_depth) {
+				// Process file
+				cut_stream(&path_stream, &string_stream, flw->crop_length, path_stream.position);
+				if(check_path_enabled(&string_stream, flw)) {
+					if(output->element_count >= MAX_FOUND_FILES) return;
+					if(!sort_key) sort_key = generate_sort_key(file, &flw->temp_stack, flw->query);
+					temp_file_set_insert(output, file, sort_key, string_stream.data); } } }
+
+		file = STACKPTR(file->next_in_directory); }
+
+	// Process subdirectories
+	directory = STACKPTR(base->sub_directory);
+	while(directory) {
+		temp_file_set_populate(directory, output, flw);
+		directory = STACKPTR(directory->peer_directory); } }
+
+static int temp_file_list_compare_element(const temp_file_set_entry_t *element1, const temp_file_set_entry_t *element2) {
+	if(element1->file != element2->file) {
+		int sort_result = compare_sort_keys(element1->sort_key, element2->sort_key);
+		if(sort_result) return sort_result; }
+	return Q_stricmp(element1->string, element2->string); }
+
+static int temp_file_list_qsort(const void *element1, const void *element2) {
+	return temp_file_list_compare_element(*(const temp_file_set_entry_t **)element1,
+			*(const temp_file_set_entry_t **)element2); }
+
+static char **temp_file_set_to_file_list(fs_hashtable_t *file_set, int *numfiles_out) {
 	int i;
-	char **output = Z_Malloc(sizeof(char *) * (temp_list->element_count + 1));
+	fs_hashtable_iterator_t it;
+	temp_file_set_entry_t *entry;
+	int position = 0;
+	char **output = Z_Malloc(sizeof(*output) * (file_set->element_count + 1));
+	temp_file_set_entry_t **temp_list = Z_Malloc(sizeof(*temp_list) * file_set->element_count);
 
-	for(i=0; i<temp_list->element_count; ++i) {
-		fsc_stream_t stream = {buffer, 0, sizeof(buffer), qfalse};
-		if(temp_list->elements[i].directory) {
-			fsc_stream_append_string(&stream, STACKPTR(temp_list->elements[i].file->qp_dir_ptr));
-			fsc_stream_append_string(&stream, "/"); }
-		else {
-			fs_file_to_stream(temp_list->elements[i].file, &stream, qfalse, qfalse, qfalse, qfalse); }
+	// Transfer entries from file set hashtable to temporary list
+	it = fs_hashtable_iterate(file_set, 0, qtrue);
+	while((entry = fs_hashtable_next(&it))) {
+		if(position >= file_set->element_count) {
+			Com_Error(ERR_FATAL, "fs_filelist.c->temp_file_set_to_file_list element_count overflow"); }
+		temp_list[position++] = entry; }
+	if(position != file_set->element_count) {
+		Com_Error(ERR_FATAL, "fs_filelist.c->temp_file_set_to_file_list element_count underflow"); }
 
-		if(stream.position < prefix_length) output[i] = CopyString("");
-		else output[i] = list_copystring(stream.data + prefix_length); }
+	// Sort the list
+	qsort(temp_list, file_set->element_count, sizeof(*temp_list), temp_file_list_qsort);
 
-	if(numfiles_out) *numfiles_out = temp_list->element_count;
+	// Transfer strings from list to output array
+	for(i=0; i<file_set->element_count; ++i) {
+		output[i] = temp_list[i]->string; }
+	output[i] = 0;
+
+	if(numfiles_out) *numfiles_out = file_set->element_count;
+	Z_Free(temp_list);
 	return output; }
-
-void FS_FreeFileList( char **list ) {
-	int i;
-	if(!list ) return;
-
-	for(i=0; list[i]; i++) {
-		Z_Free(list[i]); }
-
-	Z_Free(list); }
 
 /* ******************************************************************************** */
 // Main file list function (list_files)
@@ -308,9 +249,8 @@ static fsc_directory_t *get_start_directory(const char *path, int length) {
 static char **list_files(const char *path, int *numfiles_out, filelist_query_t *query) {
 	int path_length = strlen(path);
 	fsc_directory_t *start_directory;
-	fsc_stack_t sort_key_stack;
-	temp_file_set_t temp_file_set;
-	temp_file_list_t temp_file_list;
+	fs_hashtable_t temp_file_set;
+	filelist_work_t flw;
 	char **result;
 	int start_time = 0;
 
@@ -319,42 +259,50 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 		Com_Printf("********** file list query **********\n");
 		Com_Printf("path: %s\nextension: %s\nfilter: %s\n", path, query->extension, query->filter); }
 
-	if(path_length && (path[path_length-1] == '/' || path[path_length-1] == '\\')) --path_length;
-	fsc_stack_initialize(&sort_key_stack);
+	// Initialize temp structures
+	Com_Memset(&flw, 0, sizeof(flw));
+	flw.query = query;
+	flw.extension_length = query->extension ? strlen(query->extension) : 0;
+	fsc_stack_initialize(&flw.temp_stack);
+	fs_hashtable_initialize(&temp_file_set, MAX_FOUND_FILES);
 
 	// Determine start directory
+	if(path_length && (path[path_length-1] == '/' || path[path_length-1] == '\\')) --path_length;
 	if(path_length) start_directory = get_start_directory(path, path_length);
 	else start_directory = get_start_directory(0, 0);
 
-	if(!start_directory) {
-		// Start directory not found; just use an empty file set
-		temp_file_set_initialize(&temp_file_set, qfalse, qfalse); }
-	else {
-		// Initialize file set; optimize by skipping file/directory iteration if blocked by extension
-		if(query->extension_length && *query->extension) {
-			if(query->extension[query->extension_length-1] == '/') temp_file_set_initialize(&temp_file_set, qfalse, qtrue);
-			else temp_file_set_initialize(&temp_file_set, qtrue, qfalse); }
-		else temp_file_set_initialize(&temp_file_set, qtrue, qtrue);
+	// Determine depths
+	flw.file_depth = flw.directory_depth = 2;
+	if(query->filter) flw.file_depth = flw.directory_depth = 256;
+	if(flw.extension_length) {
+		// Optimization to skip processing path types blocked by extension anyway
+		if(query->extension[flw.extension_length-1] == '/') flw.file_depth = 0;
+		else flw.directory_depth = 0; }
 
-		// Populate file set
-		temp_file_set_populate(start_directory, query, &temp_file_set, 2, 2, &sort_key_stack); }
+	// Determine prefix length
+	if(!query->filter && start_directory) flw.crop_length = strlen(STACKPTR(start_directory->qp_dir_ptr)) + 1;
 
 	// Generate file list
-	temp_file_set_to_file_list(&temp_file_set, &temp_file_list);
-	temp_file_set_free(&temp_file_set);
-	temp_file_list_sort(&temp_file_list);
-
-	// Generate final output
-	result = temp_file_list_to_output_list(&temp_file_list, path_length ? path_length + 1 : 0, numfiles_out);
-	temp_file_list_free(&temp_file_list);
+	if(start_directory) temp_file_set_populate(start_directory, &temp_file_set, &flw);
+	result = temp_file_set_to_file_list(&temp_file_set, numfiles_out);
 
 	if(fs_debug_filelist->integer) {
-		Com_Printf("result: %i elements\n", temp_file_list.element_count);
-		Com_Printf("key stack usage: %u\n", fsc_stack_get_export_size(&sort_key_stack));
+		Com_Printf("result: %i elements\n", temp_file_set.element_count);
+		Com_Printf("temp stack usage: %u\n", fsc_stack_get_export_size(&flw.temp_stack));
 		Com_Printf("time: %i\n", Sys_Milliseconds() - start_time); }
 
-	fsc_stack_free(&sort_key_stack);
+	fs_hashtable_free(&temp_file_set, 0);
+	fsc_stack_free(&flw.temp_stack);
 	return result; }
+
+void FS_FreeFileList( char **list ) {
+	int i;
+	if(!list ) return;
+
+	for(i=0; list[i]; i++) {
+		Z_Free(list[i]); }
+
+	Z_Free(list); }
 
 /* ******************************************************************************** */
 // Mod directory listing (FS_GetModList)
@@ -442,8 +390,7 @@ static int FS_GetModList(char *listbuf, int bufsize) {
 
 char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
 		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
-	filelist_query_t query = {extension, extension ? strlen(extension) : 0, filter,
-			fs_list_inactive_mods->integer, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
+	filelist_query_t query = {extension, filter, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
 	return list_files(path, numfiles_out, &query); }
 
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
@@ -473,7 +420,7 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 		// which doesn't handle their skin setting correctly
 		flags |= FL_FLAG_IGNORE_TAPAK0; }
 
-	query = (filelist_query_t){extension, extension ? strlen(extension) : 0, 0, fs_list_inactive_mods->integer, flags};
+	query = (filelist_query_t){extension, 0, flags};
 	pFiles = list_files(path, &nFiles, &query);
 
 	for (i =0; i < nFiles; i++) {

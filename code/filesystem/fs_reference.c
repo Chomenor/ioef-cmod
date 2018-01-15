@@ -400,10 +400,9 @@ typedef enum {
 } pakcategory_t;
 
 static pakcategory_t get_pak_category(const fsc_file_direct_t *pak) {
-	const char *pak_mod_dir = fsc_get_mod_dir((fsc_file_t *)pak, &fs);
-	if(*current_mod_dir && !Q_stricmp(pak_mod_dir, current_mod_dir)) return PAKCATEGORY_ACTIVE_MOD;
-	if(!Q_stricmp(pak_mod_dir, "basemod")) return PAKCATEGORY_BASEGAME;
-	if(!Q_stricmp(pak_mod_dir, com_basegame->string)) return PAKCATEGORY_BASEGAME;
+	int mod_dir_state = fs_get_mod_dir_state(fsc_get_mod_dir((fsc_file_t *)pak, &fs));
+	if(mod_dir_state == 3) return PAKCATEGORY_ACTIVE_MOD;
+	if(mod_dir_state >= 1) return PAKCATEGORY_BASEGAME;
 	return PAKCATEGORY_INACTIVE_MOD; }
 
 static void add_paks_by_category(reference_set_work_t *ref_work, pakcategory_t category) {
@@ -416,9 +415,8 @@ static void add_paks_by_category(reference_set_work_t *ref_work, pakcategory_t c
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 		while((hash_entry = STACKPTR(fsc_hashtable_next(&hti)))) {
 			fsc_file_direct_t *pk3 = STACKPTR(hash_entry->pk3);
-			if(!fsc_is_file_enabled((fsc_file_t *)pk3, &fs)) continue;
+			if(fs_file_disabled((fsc_file_t *)pk3, 0)) continue;
 			if(get_pak_category(pk3) != category) continue;
-			if(fs_inactive_mod_file_disabled((fsc_file_t *)pk3, fs_search_inactive_mods->integer)) continue;
 			reference_set_work_add(ref_work, pk3); } } }
 
 static void add_referenced_paks(reference_set_work_t *ref_work) {
@@ -457,8 +455,7 @@ static void add_pak_by_name(reference_set_work_t *ref_work, const char *name) {
 	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
 		if(file->sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(!((fsc_file_direct_t *)file)->pk3_hash) continue;
-		if(!fsc_is_file_enabled(file, &fs)) continue;
-		if(fs_inactive_mod_file_disabled(file, fs_search_inactive_mods->integer)) continue;
+		if(fs_file_disabled(file, 0)) continue;
 
 		if(file->qp_dir_ptr) continue;
 		if(!file->qp_ext_ptr || Q_stricmp(STACKPTR(file->qp_ext_ptr), "pk3")) continue;
