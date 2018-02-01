@@ -1,38 +1,38 @@
-# Project Overview
+This file provides additional documentation for the design and technical details of this project. It assumes you are already familiar with the content of the main readme.md file. If you need an overview of how file handling works in ioquake3 in general, skip to the appendix at the end of this document.
 
-There are thousands of high quality, community created maps available for Quake 3, as seen on sites such as [lvlworld.com](http://lvlworld.com) and [ws.q3df.org](http://ws.q3df.org). However, most of these maps get limited play in the traditional online server community, and most servers run primarily stock maps or only a small subset of user-created maps. There are several limitations of the ioquake3 engine that discourage players and servers from utilizing the full custom map libraries of Quake 3 and other games based on the same engine.
+# Project Changes
 
-1) Automatic downloads are not considered secure and are disabled by default in the client. This creates a disincentive for even well configured servers to run less common maps, because users with default settings won't be able to connect because their downloads are disabled.
+This is an overview of some of the main design changes in this project compared to the original filesystem.
 
-2) It is extremely easy for a map to cause a conflict and break other maps or the game itself. In theory if every map was properly designed this would not be a problem, but in practice conflicts are almost inevitable as you get more maps installed. Once conflicts occur it can be difficult even for experienced users to figure out which pk3 is causing them.
+**original filesystem:** Primarily based in a single source file, files.c.  
+**new filesystem:** Divided into multiple source files under the filesystem and filesystem/fscore directories. The core component handles basic file indexing and access and can be compiled separately from the game. The main component serves as an interface between the core and the game.  
+**reason for change:** The modular design and separate source files make the code easier to work with as new features and capabilities are added. Allowing the filesystem core to be compiled separately makes it useful for standalone utilities and tests.
 
-3) Both startup and map load times get longer and longer as more maps are installed, which is an annoying anti-reward for collecting more maps. Combined with the previous issue, this leads custom map fans to have to "clear out" their maps to maintain good performance even though they otherwise have disk space for them.
+**original filesystem:** Files inside and outside pk3s are handled separately, and most code that iterates over files has separate cases for both types of files.  
+**new filesystem:** All files are abstracted behind the fsc_file_t type, so for most purposes they can be treated the same regardless of how they are located.  
+**reason for change:** Easier to add support for new file storage methods and easier code maintenance in general.
 
-While it may be possible to improve on some of these issues with modifications to the existing filesystem code, the more extensive rewrite undertaken by this project allows a more thorough removal of some of the pk3 scalability bottlenecks and introduces a much more flexible and transparent resource conflict resolution system. The following are some of the main architectural changes compared to the original filesystem.
+**original filesystem:** The ordered priority of files is determined when the filesystem is refreshed.  
+**new filesystem:** The file index is unordered, and it is up to the file lookup, listing, and reference modules to resolve conflicts at call time.  
+**reason for change:** It separates the indexing and precedence handling code, allows the precedence logic to be customized for each module, and makes it easier to implement file-level precedence debugging features. It also improves load times because it is no longer necessary to resort the entire filesystem on every level change or server connection.
 
-1) The file index and state data such as the current mod and pure list are stored separately. File precedence is resolved dynamically on each file request, with no need to reindex or reorder the file index when the state changes.
+**original filesystem:** Shaders are indexed by the renderer.  
+**new filesystem:** Shaders are indexed by the filesystem, and new API calls are added to allow the renderer to access shaders by name.  
+**reason for change:** It allows shaders to be sorted with the same precedence logic used by the filesystem and compared alongside images instead of always overriding them. It also improves load times significantly because shaders don't have to be reindexed on every map change and can take advantage of the index cache file.
 
-2) The file precedence system can evaluate multiple types of resources side by side, such as tga+jpg+shaders, as opposed to the strict shaders>tga>jpg policy of the original filesystem. This helps to properly "sandbox" downloaded pk3s from the core game files and to resolve other types of conflicts.
+# Source Files
 
-3) Support for various performance improvements such as reindexing pk3s by checking size and timestamp instead of reloading every file, writing the file index to a cache file to reduce startup time, and using a single hashtable for file lookups instead of one for every pk3. These changes help keep load times minimal even with large installed pk3 loads.
+The source code of this project is divided into the following files and sections, under the code/filesystem directory:
 
-This project strives to be suitable for integration with ioquake3 and downstream ioquake3-based projects as well. The following design goals were taken to support these integration requirements.
+- fscore/*.c: Contains the core file indexing and reading functionality, OS interface functions, and some utility functions.
 
-1) The filesystem code is largely self contained and has minimal direct dependencies on other parts of the game code. When porting to a new project, it should be easy to get the filesystem itself to build, and you can focus on changing other parts of the code to use the new filesystem.
-
-2) The new filesystem supports almost all the functionality of the original filesystem so most code written for the original filesystem will work with little or no modification. Many of the changes made outside the filesystem code are done for the sake of improvements or bug fixes but are not actually essential to compile and run the game. The process of porting a project to the new filesystem can be done incrementally without the need to get every feature working at once.
-
-The new filesystem code is divided into logically distinct source files located in the "filesystem" directory. All the parts together roughly replace the functionality of "files.c" in the original filesystem. Even though the new filesystem is larger by line count due to more features and optimizations, the more discrete nature of the components makes it easier to work with in many cases.
-
-- fscore/*.c: Contains the core file indexing and reading functionality, cache file support, and some utility functions. It can be compiled separately from the rest of ioq3 for the sake of testing and utilities.
-
-- fs_main.c: Handles the filesystem initialization and primary state (file index, current mod, pure list, cvars, etc.)
+- fs_main.c: Handles the filesystem initialization and shared state data (file index, current mod, pure list, cvars, etc.)
 
 - fs_lookup.c: Locates game resources (files and shaders) using the file index, resolving precedence when necessary.
 
 - fs_fileio.c: Handles reading and writing of files on the disk.
 
-- fs_download.c: Handles parts of the client-side download process, particularly determining which files need to be downloaded and performing the final save operation after the download completes. The download itself is still handled in the client code.
+- fs_download.c: Handles parts of the client-side download process, such as determining which files need to be downloaded and performing the final save operation after the download completes. The download itself is still handled in the client code.
 
 - fs_filelist.c: Supports directory listing functions. Primarily used to populate map/model menus in the UI.
 
@@ -42,23 +42,9 @@ The new filesystem code is divided into logically distinct source files located 
 
 - fs_misc.c: Utility functions used by the rest of the filesystem.
 
-# File Handling Review
-
-This is a review of how the ioq3 filesystem works and some of the terminology used in this project.
-
-Ioq3 file handling is based on one or more "source directories". This includes the basepath, which is typically the location containing the ioq3 executable, and the homepath, which is typically located in the user's home directory. The specific locations can be modified from the command line by setting cvars such as fs_homepath and fs_basepath. Only one directory (typically homepath) is used for writing things like config files and automatic downloads; the others are read-only.
-
-Each source directory can contain any number of "mod directories". The original implementation sometimes uses the term "game directory" instead; this refers to the same thing. A specific directory ("baseq3" by default in ioq3) will be loaded by default. One additional directory can be specified by the client or server as the "current mod" via the fs_game cvar, which will be loaded on top of baseq3 and take precedence over it.
-
-Game asset files can be placed directly on the disk within each mod directory, or in a pk3 file (a zip file with .pk3 extension) at the root level of the mod directory. When the game code queries a path (sometimes called a "qpath"), the filesystem will attempt to locate the file both inside pk3s and directly on the disk, under both the current mod and baseq3 directories, under each source directory. The game code normally doesn't specify a mod, source directory, or pk3 for a file; it is up to the filesystem to locate it.
-
-Each pk3 has a 32-bit hash used to identify it. "Pure" servers will send a list of hashes (sv_paks) which tells clients to only load pk3s on the list, and in the order specified by the list (first pk3 in the list has highest precedence). This is used for both security and compatibility purposes, although the security aspect is usually not relevant by itself anymore. Download-enabled servers also send a list of pk3s that clients should download if they don't have them already, where sv_referencedPaks represents the hashes of the needed files and sv_referencedPakNames represents the names of the files to use for the download query.
-
-Shaders are defined in files with qpaths of the form "scripts/*.shader", which usually contain multiple shaders per file. In the original filesystem these files are not handled specially by the filesystem and the renderer indexes and parses these files itself. However the new filesystem has special shader handling support which enables improvements over the old system.
-
 # Filesystem Core
 
-The core component of the filesystem handles the basic file indexing support, and can be compiled and used separately from the rest of ioq3. The fsc_filesystem_t structure holds the filesystem core state, based on hashtables that can be used to locate various game resources.
+The primary role of this component is file indexing, which allows iterating all the files accessible to the game both on the disk and in pk3s, as well as additional resources such as shaders. The file index is stored in the fsc_filesystem_t structure.
 
 ```
 typedef struct fsc_filesystem_s {
@@ -92,7 +78,7 @@ typedef struct fsc_filesystem_s {
 } fsc_filesystem_t;
 ```
 
-- general_stack: Handles the memory allocation for the filesystem index. All fsc_stackptr_t pointers used throughout the index need to be dereferenced against this structure by calling the fsc_stack_retrieve function. This is usually abbreviated via the STACKPTR macro, which under fscore generally references an fsc_filesystem_t local function parameter, and in the main filesystem references the global "fs" variable defined in fs_main.c.
+- general_stack: Handles the memory allocation for the filesystem index. All fsc_stackptr_t pointers used throughout the index need to be dereferenced against this structure by calling the fsc_stack_retrieve function. This is usually abbreviated via the STACKPTR macro, which under fscore typically references an "fs" variable local to the calling function, and in the main filesystem references the global "fs" variable defined in fs_main.c.
 
 - string_repository: Used to allocate string storage from the general_stack, but in a deduplicated fashion so the same string is only stored once.
 
@@ -104,11 +90,11 @@ typedef struct fsc_filesystem_s {
 
 - shaders: Stores an index of all shaders available in the game. The hash is based on the name of the shader.
 
-- crosshairs: Stores a list of crosshairs available in the game. This structure is currently not used, but may be useful for future features.
+- crosshairs: Stores a list of crosshairs available in the game. This structure is currently not used, but may be useful for future features or derived projects.
 
 - pk3_hash_lookup: Stores an index of pk3 files based on the pk3 hash. Pk3 files are listed in the regular files hashtable as well, but this structure makes it faster and more convenient to find them by hash.
 
-- custom_sourcetypes: Rudimentary support for adding files from custom sources, such as from a custom download manager system. May be useful for future features.
+- custom_sourcetypes: Rudimentary support for adding files from custom sources, such as from a custom download manager system. May be useful for future features or derived projects.
 
 - total_stats, active_stats, new_stats: File tallies that can be used for things like info messages and to optimize hashtable sizes.
 
@@ -116,7 +102,7 @@ You should be able to find plenty of examples of how these fields are used and t
 
 ## File Objects
 
-Files are represented by the fsc_file_t structure, defined in fscore.h. It contains the qpath, which is broken into directory, name, and extension components to save memory and make it easier to work with.
+Files are represented by the fsc_file_t structure, defined in fscore.h. It contains the qpath, which is divided into directory, name, and extension components to save memory and make it easier to work with.
 
 There are two basic types of files, those directly on the disk and those inside pk3s. The sourcetype field in fsc_file_t indicates the type. FSC_SOURCETYPE_DIRECT files can be cast to fsc_file_direct_t to access more fields and FSC_SOURCETYPE_PK3 files can be cast to fsc_file_frompk3_t. Note that many attributes are not defined directly in fsc_file_frompk3_t since they can to be obtained from the parent pk3 using the source_pk3 field.
 
@@ -165,7 +151,7 @@ This performs very quickly because pk3s already in the index, matched by name, s
 
 ## Index Cache
 
-The index cache system works by creating a memory image of all the filesystem structures which can be written out to a file and loaded back on subsequent startups. Files are then matched to the cache data using the normal refresh process. This approach has extremely high performance on startup, since it is simply a direct dump from the cache file into memory, and low complexity since it reuses most of the existing filesystem structures and refresh system.
+The index cache system works by creating a memory image of all the filesystem structures which can be written out to a file and loaded back on subsequent startups. Files are then matched to the cache data using the normal refresh process. This approach has very good performance on startup, since it is simply a direct dump from the cache file into memory.
 
 To use the index cache, follow these steps:
 
@@ -211,7 +197,7 @@ When fs_mod_settings is enabled, settings are loaded from the config file in the
 
 - Through Com_GameRestart->fs_set_mod_dir.
 
-- Through FS_ConditionalRestart->fs_set_mod_dir, but only if fs_mod_settings is disabled. If fs_mod_settings is enabled it will revert to Com_GameRestart.
+- Through FS_ConditionalRestart->fs_set_mod_dir, but only if fs_mod_settings is disabled. If fs_mod_settings is enabled it will go through Com_GameRestart instead of calling fs_set_mod_dir directly.
 
 # File Lookup (fs_lookup.c)
 
@@ -223,15 +209,15 @@ The file lookup system handles most requests for game content. It uses two main 
 
 - Resource construction: This section is used to convert a file or shader to a "lookup resource" (lookup_resource_t) which contains extra data used to sort the element.
 
-- Selection: The perform_selection function takes a single lookup_query_t as an input, finds all the elements that match the criteria, converts them to lookup resources, and adds them to the target selection_output_t. The selection_output_t is basically an auto-resizing array of lookup resources.
+- Selection: The perform_selection function takes a single lookup_query_t as an input, finds all the elements that match the criteria, converts them to lookup resources, and adds them to the target selection_output_t. The selection_output_t is basically an auto-expanding array of lookup resources.
 
-- Precedence: This section provides the comparison and sorting functions to select the best element from a list of lookup resources. Most of the resource prioritization logic takes place in this section.
+- Precedence: This section provides the comparison and sorting functions to select the best element from a list of lookup resources.
 
 ## Precedence Design
 
-The precedence rules and other file handling logic are based on some of the following considerations.
+This section describes some of the design considerations for the precedence system and rules.
 
-- Historically the basegame (e.g. baseq3) directory is used to store both the system paks (e.g. pak0-pak8 in Quake 3) as well as most user content pk3s, like maps and models, that don't belong to a specific mod. Since the engine makes no distinction it is very easy for a rogue pk3 to override the system paks and have unwanted effects on the game. To make the game more stable without any compatibility-breaking directory structure changes, we want to give the system paks as identified by hash special priority regardless of filename.
+- Historically the basegame (e.g. baseq3) directory is used to store both the system paks (e.g. pak0-pak8 in Quake 3) as well as user content pk3s, like maps and models, that don't belong to a specific mod. Since the engine makes no distinction it is very easy for a rogue pk3, such as a low-quality map conversion or misplaced pk3 that is meant to be part of a mod, to override the system paks and have unwanted effects on the rest of the game. To make the game more stable without any compatibility-breaking directory structure changes, we want to give the system paks as identified by hash special priority regardless of filename.
 
 - Since users can no longer override the system paks by placing an alphabetically higher pak in baseq3, the concept of the "basemod" folder is created. This lets users (but not automatic downloads) intentionally override the system paks. It basically acts like an always-active mod.
 
@@ -239,11 +225,11 @@ The precedence rules and other file handling logic are based on some of the foll
 
 - Shaders can be either explicitly defined (in a .shader file) or default shaders (from an image file like .tga or .jpg). In the original filesystem explicitly defined shaders always take precedence. This is often desirable, but it would be better if explicitly defined shaders didn't break the system pak, current map pak, and download folder policies. If a system pak only provides an image, we probably don't want any random pak with an explicit shader to override it, and the same with map paks. Maps won't have a problem unless they depend on an external shader AND provide an image with the same name, which shouldn't happen.
 
-- Images come in multiple formats (.tga, .jpg, .png, etc.) In the original filesystem a .tga anywhere in the filesystem always overrides a .jpg anywhere else, which can easily be undesirable. In the new filesystem we want most precedence rules to apply regardless of whether images have different formats.
+- Images come in multiple formats (.tga, .jpg, .png, etc.) In the original filesystem a .tga anywhere in the filesystem always overrides a .jpg anywhere else, which can be undesirable in some circumstances. In the new filesystem we want most precedence rules to apply regardless of whether images have different formats.
 
 - In the original filesystem, only one shader file per .shader filename is loaded, and conflicts are resolved through filesystem precedence. In other words, somefile.shader in pak1.pk3 takes precedence over somefile.shader in pak0.pk3, as you'd expect. However among the shader files that do get loaded, the precedence is exactly the opposite of filesystem precedence, so anything loaded in pak0.pk3 will override pak1.pk3. This pattern doesn't make any sense and causes all sorts of trouble, so we opt to just take the shader from the higher precedence pk3 regardless of .shader filename. This delivers the behavior most map and mod authors already expect, and in testing fixes far more problems than it causes even with existing maps and mods.
 
-- In the original filesystem source directory (homepath/basepath) has higher priority than pk3 name precedence. For example, if a mod is split between homepath and basepath, pak0.pk3 from homepath would override pak1.pk3 from basepath. This tends to be undesirable, so we want to prioritize by pk3 filename first, i.e. pak1.pk3 always overrides pak0.pk3.
+- In the original filesystem source directory (homepath/basepath) overrides pk3 name precedence. For example, if a mod is split between homepath and basepath, pak0.pk3 from homepath would override pak1.pk3 from basepath. This tends to be undesirable, so we want to prioritize by pk3 filename first, i.e. pak1.pk3 always overrides pak0.pk3.
 
 ## Precedence Rules
 
@@ -257,25 +243,25 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 - basemod_or_current_mod_dir: Prioritizes current_mod_dir (which generally corresponds to fs_game) and basemod over other mods.
 
-- dll_over_qvm: Prioritzes game dlls over qvms, but does not apply to dlls that are in inactive mod dirs. This rule is intentionally defined ahead of the system_paks rule to emulate the original q3 behavior where a game dll in baseq3 overrides the ID paks. Note that this rule only applies if vm_game, vm_cgame, or vm_ui is set to 0 (VMI_NATIVE), as otherwise dlls will not be part of the query.
-
 - system_paks: Prioritizes the system paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
 
 - current_map_pak: Prioritizes the pak, if any, where the current map was loaded from. That value is stored under current_map_pk3 in fs_main.c.
 
-- inactive_mod_dir: De-prioritizes resources from inactive mod dirs; i.e. random mod dirs that are not com_basepath, basemod, or the current mod dir.
+- inactive_mod_dir: De-prioritizes resources from inactive mod dirs; i.e. random mod dirs that are not com_basegame, basemod, or the current mod dir.
 
 - downloads_folder: De-prioritizes resources from paks within a "downloads" folder.
 
 - shader_over_image: Prioritizes explicit shaders over default shader images. Note the placement behind the system_paks, current_map_pak, inactive_mod_dir, and downloads_folder rules, as those are cases where it is desirable to let images override shaders.
 
+- dll_over_qvm: Prioritizes game dlls over qvms. Note that this rule is only relevant if vm_game, vm_cgame, or vm_ui is set to 0 (VMI_NATIVE), as otherwise dlls will not be part of the query.
+
 - direct_over_pk3: Prioritizes resources directly on disk (i.e. not in a pk3) over ones in a pk3.
 
-- pk3_name_precedence: Handles the alphabetical precedence of pk3s. Paks with names starting with z have higher precedence than those starting with a.
+- pk3_name_precedence: Handles the alphabetical precedence of pk3s. Paks with names starting with z have higher precedence than those starting with a. The exact character precedence is defined in get_string_sort_table in fs_misc.c.
 
 - extension_precedence: Prioritizes tga files over jpg, wav over mp3, etc. The actual order is determined by the order in the query, so refer to the order the extensions are listed in shader_or_image_lookup and fs_sound_lookup.
 
-- source_dir_precedence: Prioritizes the source dirs (e.g. homepath, basepath, etc.). The write directory has first priority, other directories are prioritized according to the order they appear in the fs_dirs cvar.
+- source_dir_precedence: Prioritizes the source dirs (e.g. homepath, basepath, etc.) according to their position in fs_sourcedirs.
 
 - intra_pk3_position: Prioritizes resources with a higher offset in the pk3 file, to support existing conventions for shaders defined multiple times in different shader files within the same pk3.
 
@@ -341,39 +327,41 @@ The download system stores two sets of hashes, attempted_downloads and attempted
 
 Here are some download situations/test cases that should be handled by the download system.
 
-Scenario: Downloads enabled on client but not server.  
-Original FS: Attempt UDP download anyway, resulting in error code from server and ERR_DROP  
-New FS: Skip download and continue with connection.
+**Scenario:** Downloads enabled on client but not server.  
+**Original FS:** Attempt UDP download anyway, resulting in error code from server and ERR_DROP  
+**New FS:** Skip download and continue with connection.
 
-Scenario: cURL download fails.  
-Original FS: Throws ERR_DROP  
-New FS: Attempt UDP download if available, and continue with connection.
+**Scenario:** cURL download fails.  
+**Original FS:** Throws ERR_DROP  
+**New FS:** Attempt UDP download if available, and continue with connection.
 
-Scenario: cURL download has wrong hash.  
-Original FS: Throws ERR_DROP, or possible download loop  
-New FS: Save file if and only if it doesn't match an existing hash, attempt UDP download if available, and continue with connection.
+**Scenario:** cURL download has wrong hash.  
+**Original FS:** Throws ERR_DROP, or possible download loop  
+**New FS:** Save file if and only if it doesn't match an existing hash, attempt UDP download if available, and continue with connection.
 
-Scenario: VM/default.cfg missing until download completes due to pure server settings.  
-Original FS: Throws ERR_DROP  
-New FS: Works because there is no restart or default.cfg check until after downloads complete.
+**Scenario:** VM/default.cfg missing until download completes due to pure server settings.  
+**Original FS:** Throws ERR_DROP  
+**New FS:** Works because there is no restart or default.cfg check until after downloads complete.
 
-Keep in mind that downloads are not always essential, so it's a good idea to keep trying to connect even if a download fails. Even on a pure server you do not necessarily need to have every pak on the server, you just can't load paks that aren't on the server.
+Keep in mind that downloads are not always essential, so it's usually desirable to keep trying to connect even if downloads fail. Even on a pure server you do not necessarily need to have every pak on the server, you just can't load paks that aren't on the server.
 
 # File Listing (fs_filelist.c)
 
-Like file lookups, file listing operations are performed in several stages.
+This component handles file list requests, which are used primarily by UI menus and debug commands. The file listing process works in roughly these steps:
 
-- File set stage: The temp_file_set_populate functions populates a temp_file_set_t structure with files and directories matching the query. Directories are really stored as files, but the filename part will be discarded and only qp_dir will be used. A sort key is also stored along with each element.
+- A shared function such as FS_ListFilteredFiles or FS_GetFileList is called, which creates a filelist_query_t object and calls list_files.
 
-- File list stage: The temp_file_set_to_file_list converts a temp_file_set_t to a temp_file_list_t (a sortable list structure).
+- The "start directory" in the directory index is determined. This allows only files and subfiles under the directory specified in the query to be iterated, instead of having to iterate every file in the index like the original filesystem.
 
-- Output list stage: The temp_file_list_to_output_list function converts the temp_file_list_t to an array of strings which can be received by the game code.
+- The file depths are calculated. This is to emulate the behavior of the original filesystem, which typically only lists files 2 directories deep from the base directory.
 
-File listing is primarily used to populate UI menus, not to load actual game content, so the ordering is generally not as critical as with the lookup functions.
+- A temporary file set is initialized and temp_file_set_populate is called. It iterates every file under the determined start directory, converts the file (and subdirectories) to strings, checks if the string matches the query criteria, and if so adds it to the file set. A sort key is stored with each file set entry, and duplicate entries are resolved to use the highest precedence sort key.
+
+- temp_file_set_to_file_list is called to sort the file set using the included sort keys and convert it to the array format used by the game.
 
 # Pk3 Reference Handling (fs_reference.c)
 
-This component handles constructing the pure and download lists when hosting a server, and generating the pure validation string which is necessary when connecting to an original filesystem pure server. The main sections are as follows.
+This component handles constructing the pure and download lists when hosting a server, and generating the pure validation string which is necessary when connecting to an original filesystem pure server. The main sections are as follows:
 
 - Reference set: This is a hashtable-based temporary structure for storing paks. Only a single pk3 is stored for a given hash, and conflicts are resolved by selecting the pk3 with the higher filesystem precedence. A position field is also stored, which is used by the dash separator feature in manifest strings to alter the reference list sort order.
 
@@ -381,20 +369,57 @@ This component handles constructing the pure and download lists when hosting a s
 
 - Reference string building: Used to convert a reference list to the hash/filename pure/download strings that are sent to clients.
 
-- Pure validation: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because of a server with some nonstandard validation behavior, you can enable it with the fs_full_pure_validation setting.
+- Pure validation: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because you suspect a server may use some nonstandard validation behavior, you can enable it with the fs_full_pure_validation setting.
 
 - Referenced paks: This section is used to record which paks have been accessed by the game. It is used for pure validation when fs_full_pure_validation is set to 1, and for the *referenced_paks selector rule for the download list. Neither feature is essential, so referenced pak tracking could be considered for deprecation in the future.
 
 - Download / pure list building: This section is used to convert both download and pure list manifest strings into reference sets.
 
-- Server download list handling: The fs_set_download_list is called from SV_SpawnServer during server initialization, which populates the download_paks structure and sets the "sv_referencedPaks" and "sv_referencedPakNames" cvars accordingly. When a download request is received from the client, fs_open_download_pak is called to open the read handle. It searches the download_paks reference set for a file matching the client request and retrieves the real path from the reference set entry. This is safer than opening the path directly and it correctly handles cases where the pk3 name was changed by path sanitization or the pk3 is located in the downloads folder on the server.
+- Server download list handling: The fs_set_download_list function is called from SV_SpawnServer during server initialization, which populates the download_paks structure and sets the "sv_referencedPaks" and "sv_referencedPakNames" cvars accordingly. When a download request is received from the client, fs_open_download_pak is called to open the read handle. It searches the download_paks reference set for a file matching the client request and retrieves the real path from the reference set entry. This is safer than opening the path directly and it correctly handles cases where the pk3 name was changed by path sanitization or the pk3 is located in the downloads folder on the server.
 
-- Pure list handling: When hosting a pure server, the pure list is set through SV_SetPureList in sv_init.c, which calls FS_LoadedPakChecksums and FS_LoadedPakNames in fs_reference.c. SV_SetPureList checks for overflow conditions in either individual pure list strings or the systeminfo configstring. If an overflow occurs it will first try skipping sv_pakNames, since it is only used for informational purposes. If that isn't sufficient it will set sv_pure to 0.
+- Server pure list handling: The fs_set_pure_list function is called from SV_SpawnServer during server initialization, which sets the "sv_paks" and "sv_pakNames" cvars. If an overflow occurs it will first try skipping sv_pakNames, since it is only used for informational purposes. If that isn't sufficient it will set sv_pure to 0.
+
+# FAQ
+
+**Q:** Why is the new filesystem so much larger (in terms of lines/source files)?  
+**A:** Some of the increase is due to new features, performance optimizations, and bugfixes. Other increases are due to design decisions that make the code more modular and maintainable at the expense of line count.
+
+**Q:** Could the improvements of this project be added in ioquake3 incrementally?  
+**A:** Most of the changes need to be done at the same time because they require changing the underlying data structures of the file index.
+
+**Q:** Since some new filesystem features can bypass problems with maps, will it cause map developers to release broken maps?  
+**A:** Map developers should already test maps before release using a clean install of both ioquake3 and original Quake 3. As long as map developers follow existing good practices there should be no problems.
+
+**Q:** Will the index cache reduce the stability of the game, and can it be corrupted?  
+**A:** So far the cache has been extremely stable. At the time of writing I haven't found a single bug or problem that traced to it in over a year since the initial release of this project. Still, if this project were to be integrated in ioquake3 it would make sense to default fs_index_cache to 0 during the initial testing phase just to rule out the cache as a source of problems.
+
+**Q:** How hard is this project to merge with other ioquake3-based projects?  
+**A:** It will be some degree of a task, but for projects using a files.c relatively close to ioquake3 it shouldn't be too hard. Most of the code is under the filesystem directory and can just be copied in. I think the improvements are well worth the trouble, especially if people tend to run your game with downloads enabled or a lot of pk3s installed.
+
+**Q:** Why is SV_VerifyPaks_f removed?  
+**A:** This function was used as an extra check to make certain kinds of hacks a little bit more difficult in the early days of Quake 3, when it was still closed source. It's not necessary or useful anymore so has been removed to reduce complexity.
+
+**Q:** Is it a good idea to change resource/shader precedence when the current system has been accepted for so long?  
+**A:** Compatibility is an important factor here, but I believe the changes are well worthwhile in this case. The original precedence system is outdated and has a lot of weird quirks that cause many unnecessary conflicts. The new system achieves much lower conflict error rates with almost no compatibility impact on existing content. It also has much clearer code, new debug commands, and support for features like download folder restriction. 
 
 # Conclusion
 
-If you have any corrections, questions, etc. feel free to email me: chomenor@gmail.com
+If you have any questions feel free to email me at chomenor@gmail.com.
 
 This project is dedicated to the creators, mapping, and modding communities of Quake 3, Elite Force, and similar games. Thank you for all your amazing work!
 
 Thank you to everybody who has helped with testing and feedback!
+
+# Appendix: File Handling Review
+
+This is a review of how the standard ioquake3 filesystem works and some of the terminology used in this project.
+
+File handling in ioquake3 is based on one or more "source directories". This includes the basepath, which is typically the location containing the game executable, and the homepath, which is typically located in the user's home directory. The specific locations can be modified from the command line by setting cvars such as fs_homepath and fs_basepath. Only one directory (typically homepath) is used for writing things like config files and automatic downloads; the others are read-only.
+
+Each source directory can contain any number of "mod directories". The original implementation sometimes uses the term "game directory" instead; this refers to the same thing. A specific directory ("baseq3" by default in ioquake3) will be loaded by default. One additional directory can be specified by the client or server as the "current mod" via the fs_game cvar, which will be loaded on top of baseq3 and take precedence over it.
+
+Game asset files can be placed directly on the disk within each mod directory, or in a pk3 file (a zip file with .pk3 extension) at the root level of the mod directory. When the game code queries a path (sometimes called a "qpath"), the filesystem will attempt to locate the file both inside pk3s and directly on the disk, under both the current mod and baseq3 directories, under each source directory. The game code normally doesn't specify a mod, source directory, or pk3 for a file; it is up to the filesystem to locate it.
+
+Each pk3 has a 32-bit hash used to identify it. "Pure" servers will send a list of hashes (sv_paks) which tells clients to only load pk3s on the list, and in the order specified by the list (first pk3 in the list has highest priority). This is used for both security and compatibility purposes, although the security aspect is usually not relevant by itself anymore. Download-enabled servers also send a list of pk3s that clients should download if they don't have them already, where sv_referencedPaks represents the hashes of the needed files and sv_referencedPakNames represents the names of the files to use for the download query.
+
+Shaders are defined in files with qpaths of the form "scripts/*.shader", which usually contain multiple shaders per file. In the original filesystem these files are not handled specially by the filesystem and the renderer indexes and parses these files itself. However the new filesystem has special shader handling support which enables improvements over the old system.
