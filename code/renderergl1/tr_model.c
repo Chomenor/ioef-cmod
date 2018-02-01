@@ -46,7 +46,8 @@ qhandle_t R_RegisterMD3(const char *name, model_t *mod)
 	char filename[MAX_QPATH], namebuf[MAX_QPATH+20];
 	char *fext, defex[] = "md3";
 #ifdef NEW_FILESYSTEM
-	int			max_lods;
+	const fsc_file_t	*base_lod;
+	const fsc_file_t	*current_lod;
 #endif
 
 	numLoaded = 0;
@@ -63,12 +64,37 @@ qhandle_t R_RegisterMD3(const char *name, model_t *mod)
 	}
 
 #ifdef NEW_FILESYSTEM
-	if(tr.new_filesystem) max_lods = ri.fs_valid_md3_lods(MD3_MAX_LODS, filename, fext);
-	else max_lods = MD3_MAX_LODS;
-	for(lod=0; lod<max_lods; ++lod)
+	for(lod=0; lod<MD3_MAX_LODS; ++lod)
+	{
+		if(!lod)
+		{
+			// Load first (high-detail) lod
+			Com_sprintf(namebuf, sizeof(namebuf), "%s.%s", filename, fext);
+			if(tr.new_filesystem)
+			{
+				base_lod = ri.fs_general_lookup(namebuf, 0, qfalse);
+				if(!base_lod) break;
+			}
+		}
+		else
+		{
+			// Only load subsequent (low-detail) lods if they are from same pk3 as first
+			Com_sprintf(namebuf, sizeof(namebuf), "%s_%d.%s", filename, lod, fext);
+			if(tr.new_filesystem)
+			{
+				current_lod = ri.fs_general_lookup(namebuf, 0, qfalse);
+				if(!current_lod || !ri.fs_files_from_same_pk3(base_lod, current_lod))
+				{
+					ri.Printf(PRINT_DEVELOPER, "R_RegisterMD3: Skipping lod %i for %s due to different source paks\n", lod, name);
+					break;
+				}
+			}
+		}
+
+		ri.FS_ReadFile( namebuf, &buf.v );
+		if(!buf.u) break;
 #else
 	for (lod = MD3_MAX_LODS - 1 ; lod >= 0 ; lod--)
-#endif
 	{
 		if(lod)
 			Com_sprintf(namebuf, sizeof(namebuf), "%s_%d.%s", filename, lod, fext);
@@ -77,9 +103,6 @@ qhandle_t R_RegisterMD3(const char *name, model_t *mod)
 
 		ri.FS_ReadFile( namebuf, &buf.v );
 		if(!buf.u)
-#ifdef NEW_FILESYSTEM
-			break;
-#else
 			continue;
 #endif
 		
