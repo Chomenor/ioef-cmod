@@ -406,7 +406,7 @@ void CL_SystemInfoChanged( void ) {
 		if (!Q_stricmp(key, "fs_game"))
 		{
 #ifndef NEW_FILESYSTEM
-			if(FS_CheckDirTraversal(value))
+			if(FS_InvalidGameDir(value))
 			{
 				Com_Printf(S_COLOR_YELLOW "WARNING: Server sent invalid fs_game value %s\n", value);
 				continue;
