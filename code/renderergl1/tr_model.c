@@ -83,7 +83,8 @@ qhandle_t R_RegisterMD3(const char *name, model_t *mod)
 			if(tr.new_filesystem)
 			{
 				current_lod = ri.fs_general_lookup(namebuf, 0, qfalse);
-				if(!current_lod || !ri.fs_files_from_same_pk3(base_lod, current_lod))
+				if(!current_lod) break;
+				if(!ri.fs_files_from_same_pk3(base_lod, current_lod))
 				{
 					ri.Printf(PRINT_DEVELOPER, "R_RegisterMD3: Skipping lod %i for %s due to different source paks\n", lod, name);
 					break;
