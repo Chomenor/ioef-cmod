@@ -253,6 +253,7 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 	filelist_work_t flw;
 	char **result;
 	int start_time = 0;
+	int default_depth = 2;	// Emulate original filesystem max depth (max slash-separated sections in output)
 
 	if(fs_debug_filelist->integer) {
 		start_time = Sys_Milliseconds();
@@ -267,23 +268,32 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 	fs_hashtable_initialize(&temp_file_set, MAX_FOUND_FILES);
 
 	// Determine start directory
-	if(path_length && (path[path_length-1] == '/' || path[path_length-1] == '\\')) --path_length;
-	if(path_length) start_directory = get_start_directory(path, path_length);
-	else start_directory = get_start_directory(0, 0);
+	if(path_length && (path[path_length-1] == '/' || path[path_length-1] == '\\')) {
+		--path_length;
+		++default_depth; }
+	if(path_length) {
+		start_directory = get_start_directory(path, path_length); }
+	else {
+		start_directory = get_start_directory(0, 0);
+		++default_depth; }
 
-	// Determine depths
-	flw.file_depth = flw.directory_depth = 2;
-	if(query->filter) flw.file_depth = flw.directory_depth = 256;
-	if(flw.extension_length) {
-		// Optimization to skip processing path types blocked by extension anyway
-		if(query->extension[flw.extension_length-1] == '/') flw.file_depth = 0;
-		else flw.directory_depth = 0; }
+	if(start_directory) {
+		// Determine depths
+		flw.file_depth = flw.directory_depth = default_depth;
+		if(query->filter) flw.file_depth = flw.directory_depth = 256;
+		if(flw.extension_length) {
+			// Optimization to skip processing path types blocked by extension anyway
+			if(query->extension[flw.extension_length-1] == '/') flw.file_depth = 0;
+			else flw.directory_depth = 0; }
 
-	// Determine prefix length
-	if(!query->filter && start_directory) flw.crop_length = strlen(STACKPTR(start_directory->qp_dir_ptr)) + 1;
+		// Determine prefix length
+		if(!query->filter && start_directory->qp_dir_ptr) {
+			flw.crop_length = strlen(STACKPTR(start_directory->qp_dir_ptr)) + 1; }
+
+		// Populate file set
+		temp_file_set_populate(start_directory, &temp_file_set, &flw); }
 
 	// Generate file list
-	if(start_directory) temp_file_set_populate(start_directory, &temp_file_set, &flw);
 	result = temp_file_set_to_file_list(&temp_file_set, numfiles_out);
 
 	if(fs_debug_filelist->integer) {
