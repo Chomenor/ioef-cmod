@@ -306,13 +306,13 @@ void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qbo
 	write_sort_value(basegame_dir_precedence(mod_dir_state), output);
 	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 		fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-		write_sort_value(1, output);
 		write_sort_value((source_pk3->f.flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
+		write_sort_value(0, output);
 		write_sort_filename((fsc_file_t *)source_pk3, output);
 		write_sort_value(~((fsc_file_frompk3_t *)file)->header_position, output); }
 	else {
-		write_sort_value(0, output);
-		write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output); }
+		write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
+		write_sort_value(1, output); }
 	write_sort_filename(file, output);
 	write_sort_value(fs_get_source_dir_id(file), output); }
 
