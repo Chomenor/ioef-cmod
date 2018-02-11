@@ -407,10 +407,17 @@ void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((for
 #ifdef FSLOCAL
 // QVM Hash Verification
 qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output);
-qboolean fs_check_trusted_vm_hash(unsigned char *hash);
 qboolean fs_check_trusted_vm_file(const fsc_file_t *file);
 void sha256_to_stream(unsigned char *sha, fsc_stream_t *output);
 
 // System Pak Verification
 void fs_check_system_paks(void);
+#endif
+
+/* ******************************************************************************** */
+// Trusted VMs
+/* ******************************************************************************** */
+
+#ifdef FSLOCAL
+qboolean fs_check_trusted_vm_hash(unsigned char *hash);
 #endif

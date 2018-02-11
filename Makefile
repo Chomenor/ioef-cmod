@@ -1750,7 +1750,8 @@ Q3OBJ = \
   $(B)/client/fs_lookup.o \
   $(B)/client/fs_main.o \
   $(B)/client/fs_misc.o \
-  $(B)/client/fs_reference.o
+  $(B)/client/fs_reference.o \
+  $(B)/client/fs_trusted_vms.o
 
 ifdef MINGW
   Q3OBJ += \
@@ -2307,7 +2308,8 @@ Q3DOBJ = \
   $(B)/ded/fs_lookup.o \
   $(B)/ded/fs_main.o \
   $(B)/ded/fs_misc.o \
-  $(B)/ded/fs_reference.o
+  $(B)/ded/fs_reference.o \
+  $(B)/ded/fs_trusted_vms.o
 
 ifeq ($(ARCH),x86)
   Q3DOBJ += \

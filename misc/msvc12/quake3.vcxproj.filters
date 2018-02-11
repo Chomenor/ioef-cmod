@@ -594,6 +594,9 @@
     <ClCompile Include="..\..\code\filesystem\fs_reference.c">
       <Filter>filesystem</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\filesystem\fs_trusted_vms.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_main.c">
       <Filter>filesystem\fscore</Filter>
     </ClCompile>

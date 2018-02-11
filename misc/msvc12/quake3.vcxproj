@@ -488,6 +488,7 @@
     <ClCompile Include="..\..\code\filesystem\fs_main.c" />
     <ClCompile Include="..\..\code\filesystem\fs_misc.c" />
     <ClCompile Include="..\..\code\filesystem\fs_reference.c" />
+    <ClCompile Include="..\..\code\filesystem\fs_trusted_vms.c" />
     <ClCompile Include="..\..\code\opus-1.1.4\celt\bands.c" />
     <ClCompile Include="..\..\code\opus-1.1.4\celt\celt.c" />
     <ClCompile Include="..\..\code\opus-1.1.4\celt\celt_decoder.c" />
