@@ -22,7 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #ifdef CMOD_SETTINGS
+#ifndef DEDICATED
 CVAR_DEF(cmod_restrict_autoexec, "1", CVAR_ARCHIVE)
+#endif
 #endif
 
 #ifdef CMOD_FONT_SCALING

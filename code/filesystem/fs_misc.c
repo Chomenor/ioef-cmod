@@ -389,11 +389,13 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 #endif
 
 #ifdef CMOD_SETTINGS
+#ifndef DEDICATED
 	if(cmod_restrict_autoexec->integer && config_type == FS_CONFIGTYPE_SETTINGS && !Q_stricmp(name, "autoexec.cfg")) {
 		Com_Printf("NOTE: Running autoexec.cfg file in restricted mode to avoid compatibility issues. This "
 			"may cause some commands not to work. If you know your autoexec.cfg file is compatible with cMod, "
 			"set cmod_restrict_autoexec to 0 to enable full command support.\n");
 		mode |= CMD_RESTRICTED; }
+#endif
 #endif
 
 	fs_write_journal_data(data, size);
