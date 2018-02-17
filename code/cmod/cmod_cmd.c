@@ -690,6 +690,7 @@ static const char *base_protectable_commands[] = {
 	"vid_restart",
 	"connect",
 	"disconnect",
+	"kick",
 	"rcon",
 	"globalservers",
 	"ping",
