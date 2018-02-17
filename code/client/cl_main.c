@@ -1371,8 +1371,10 @@ void CL_MapLoading( void ) {
 		clc.lastPacketSentTime = -9999;
 		SCR_UpdateScreen();
 	} else {
+#ifndef CMOD_NO_ENGINE_NEXTMAP_SET
 		// clear nextmap so the cinematic shutdown doesn't execute it
 		Cvar_Set( "nextmap", "" );
+#endif
 		CL_Disconnect( qtrue );
 		Q_strncpyz( clc.servername, "localhost", sizeof(clc.servername) );
 		clc.state = CA_CHALLENGING;		// so the connect screen is drawn

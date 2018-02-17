@@ -459,10 +459,12 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	// server has changed
 	svs.snapFlagServerBit ^= SNAPFLAG_SERVERCOUNT;
 
+#ifndef CMOD_NO_ENGINE_NEXTMAP_SET
 	// set nextmap to the same map, but it may be overriden
 	// by the game startup or another console command
 	Cvar_Set( "nextmap", "map_restart 0");
 //	Cvar_Set( "nextmap", va("map %s", server) );
+#endif
 
 	for (i=0 ; i<sv_maxclients->integer ; i++) {
 		// save when the server started for each client already connected
@@ -706,7 +708,11 @@ void SV_Init (void)
 #endif
 	sv_timeout = Cvar_Get ("sv_timeout", "200", CVAR_TEMP );
 	sv_zombietime = Cvar_Get ("sv_zombietime", "2", CVAR_TEMP );
+#ifdef CMOD_NO_ENGINE_NEXTMAP_SET
+	Cvar_Get ("nextmap", "map_restart 0", CVAR_TEMP );
+#else
 	Cvar_Get ("nextmap", "", CVAR_TEMP );
+#endif
 
 	sv_allowDownload = Cvar_Get ("sv_allowDownload", "0", CVAR_SERVERINFO);
 	Cvar_Get ("sv_dlURL", "", CVAR_SERVERINFO | CVAR_ARCHIVE);
