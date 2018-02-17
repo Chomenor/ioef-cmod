@@ -416,6 +416,7 @@ void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qb
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size);
 #endif
 char *fs_file_extension(const fsc_file_t *file);
+qboolean fs_files_from_same_pk3(const fsc_file_t *file1, const fsc_file_t *file2);
 void fs_print_file_location(const fsc_file_t *file);
 
 #ifdef FSLOCAL
@@ -433,7 +434,6 @@ qboolean FS_idPak(char *pak, char *base, int numPaks);
 void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbufExec_t exec_type, qboolean quiet);
 void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)(int, ...),
 			intptr_t (QDECL *systemcalls)(intptr_t, ...));
-int fs_valid_md3_lods(int max_lods, const char *name, const char *extension);
 void FS_GetModDescription(const char *modDir, char *description, int descriptionLen);
 void FS_FilenameCompletion( const char *dir, const char *ext,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk );
@@ -443,10 +443,17 @@ void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((for
 #ifdef FSLOCAL
 // QVM Hash Verification
 qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output);
-qboolean fs_check_trusted_vm_hash(unsigned char *hash);
 qboolean fs_check_trusted_vm_file(const fsc_file_t *file);
 void sha256_to_stream(unsigned char *sha, fsc_stream_t *output);
 
 // System Pak Verification
 void fs_check_system_paks(void);
+#endif
+
+/* ******************************************************************************** */
+// Trusted VMs
+/* ******************************************************************************** */
+
+#ifdef FSLOCAL
+qboolean fs_check_trusted_vm_hash(unsigned char *hash);
 #endif

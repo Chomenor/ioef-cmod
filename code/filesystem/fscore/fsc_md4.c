@@ -199,7 +199,6 @@ static void mdfour(byte *out, byte *in, int n)
 
 //===================================================================
 
-// Watch out, this doesn't look very thread safe
 unsigned int fsc_block_checksum(const void *buffer, int length)
 {
 	int				digest[4];

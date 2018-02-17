@@ -428,8 +428,15 @@ ifeq ($(PLATFORM),darwin)
     MACOSX_VERSION_MIN=10.7
   endif
 
-  # Multiply by 100 and then remove decimal. 10.7 -> 1070.0 -> 1070
-  MAC_OS_X_VERSION_MIN_REQUIRED=$(shell echo '$(MACOSX_VERSION_MIN) * 100' | bc | cut -d. -f1)
+  MACOSX_MAJOR=$(shell echo $(MACOSX_VERSION_MIN) | cut -d. -f1)
+  MACOSX_MINOR=$(shell echo $(MACOSX_VERSION_MIN) | cut -d. -f2)
+  ifeq ($(shell test $(MACOSX_MINOR) -gt 9; echo $$?),0)
+    # Multiply and then remove decimal. 10.10 -> 101000.0 -> 101000
+    MAC_OS_X_VERSION_MIN_REQUIRED=$(shell echo "$(MACOSX_MAJOR) * 10000 + $(MACOSX_MINOR) * 100" | bc | cut -d. -f1)
+  else
+    # Multiply by 100 and then remove decimal. 10.7 -> 1070.0 -> 1070
+    MAC_OS_X_VERSION_MIN_REQUIRED=$(shell echo "$(MACOSX_VERSION_MIN) * 100" | bc | cut -d. -f1)
+  endif
 
   LDFLAGS += -mmacosx-version-min=$(MACOSX_VERSION_MIN)
   BASE_CFLAGS += -mmacosx-version-min=$(MACOSX_VERSION_MIN) \
@@ -1741,7 +1748,8 @@ Q3OBJ = \
   $(B)/client/fs_lookup.o \
   $(B)/client/fs_main.o \
   $(B)/client/fs_misc.o \
-  $(B)/client/fs_reference.o
+  $(B)/client/fs_reference.o \
+  $(B)/client/fs_trusted_vms.o
 
 Q3OBJ += \
   $(B)/client/cmod_brightshift.o \
@@ -2325,7 +2333,8 @@ Q3DOBJ = \
   $(B)/ded/fs_lookup.o \
   $(B)/ded/fs_main.o \
   $(B)/ded/fs_misc.o \
-  $(B)/ded/fs_reference.o
+  $(B)/ded/fs_reference.o \
+  $(B)/ded/fs_trusted_vms.o
 
 Q3DOBJ += \
   $(B)/ded/cmod_cmd.o \

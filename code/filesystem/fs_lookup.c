@@ -329,16 +329,6 @@ PC_DEBUG(basemod_or_current_mod_dir) {
 		ADD_STRING("the 'basemod' directory"); }
 	ADD_STRING(va(" and resource %i is not. ", low_num)); }
 
-PC_COMPARE(dll_over_qvm) {
-	// Dlls in inactive mod directories are exempt from this rule
-	#define QUALIFYING_DLL(resource) ((resource->flags & RESFLAG_FROM_DLL_QUERY) && resource->mod_dir_match)
-	if(QUALIFYING_DLL(r1) && !QUALIFYING_DLL(r2)) return -1;
-	if(QUALIFYING_DLL(r2) && !QUALIFYING_DLL(r1)) return 1;
-	return 0; }
-
-PC_DEBUG(dll_over_qvm) {
-	ADD_STRING(va("Resource %i was selected because it is a dll and resource %i is not a dll.", high_num, low_num)); }
-
 PC_COMPARE(system_paks) {
 	if(r1->system_pak_priority > r2->system_pak_priority) return -1;
 	if(r2->system_pak_priority > r1->system_pak_priority) return 1;
@@ -380,6 +370,15 @@ PC_COMPARE(shader_over_image) {
 
 PC_DEBUG(shader_over_image) {
 	ADD_STRING(va("Resource %i was selected because it is a shader and resource %i is not a shader.", high_num, low_num)); }
+
+PC_COMPARE(dll_over_qvm) {
+	#define QUALIFYING_DLL(resource) (resource->flags & RESFLAG_FROM_DLL_QUERY)
+	if(QUALIFYING_DLL(r1) && !QUALIFYING_DLL(r2)) return -1;
+	if(QUALIFYING_DLL(r2) && !QUALIFYING_DLL(r1)) return 1;
+	return 0; }
+
+PC_DEBUG(dll_over_qvm) {
+	ADD_STRING(va("Resource %i was selected because it is a dll and resource %i is not a dll.", high_num, low_num)); }
 
 PC_COMPARE(direct_over_pk3) {
 	if(r1->file->sourcetype == FSC_SOURCETYPE_DIRECT && r2->file->sourcetype != FSC_SOURCETYPE_DIRECT) return -1;
@@ -465,12 +464,12 @@ static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(special_shaders),
 	ADD_CHECK(server_pak_position),
 	ADD_CHECK(basemod_or_current_mod_dir),
-	ADD_CHECK(dll_over_qvm),
 	ADD_CHECK(system_paks),
 	ADD_CHECK(current_map_pak),
 	ADD_CHECK(inactive_mod_dir),
 	ADD_CHECK(downloads_folder),
 	ADD_CHECK(shader_over_image),
+	ADD_CHECK(dll_over_qvm),
 	ADD_CHECK(direct_over_pk3),
 	ADD_CHECK(pk3_name_precedence),
 	ADD_CHECK(extension_precedence),

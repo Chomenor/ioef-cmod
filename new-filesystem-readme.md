@@ -1,16 +1,16 @@
 This is an updated file handling system for the ioquake3 project. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with almost all existing maps, mods, and configurations.
 
 Here are the key features:
-- Improved resource conflict negotiation. Broken textures/shaders and other issues from conflicting pk3s are greatly reduced.
-- Improved load times, especially with lots of pk3s installed. Close to clean install performance with thousands of pk3s installed!
-- Broad security improvements, safer downloading options, and fixes for multiple VM-based vulnerabilities.
-- Improved download handling, especially when downloading from poorly configured servers.
-- Ability to use resources in mods that aren't loaded, such as missionpack maps and textures when team arena mode isn't active.
-- New debugging commands to trace file/shader origins.
-- Ability to customize the download and pure lists when hosting servers.
-- Fixed server-side pure list overflow issues.
-- Semi-pure server support.
-- Numerous minor bug fixes and tweaks.
+- Improved resource precedence system which prevents unnecessary resource conflicts
+- Greatly improved load times, especially with lots of pk3s installed
+- Safer downloading options and other security improvements
+- Improved download handling, especially when downloading from poorly configured servers
+- Ability to use resources in mods that aren't loaded, such as missionpack maps and textures when team arena mode isn't active
+- New debugging commands to trace file/shader origins
+- Ability to customize the download and pure lists when hosting servers
+- Fixed server-side pure list overflow issues
+- Semi-pure server support
+- Various other improvements and bugfixes
 
 Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
@@ -36,9 +36,9 @@ In general regular maps and skins will work fine in baseq3, but things that work
 
 # Mod Settings Option
 
-Currently ioq3 stores a separate copy of the game settings for every mod. Whenever the mod changes, either by a user action or connection to a server, the settings are reset using the q3config.cfg from the new mod directory. This can lead to unexpected effects for users, such as graphics settings going haywire and changing resolutions when connecting to a server. This can be especially frustrating given that many mods are mostly server side and don't need any custom settings anyway.
+Currently ioquake3 stores a separate copy of the game settings for every mod. Whenever the mod changes, either by a user action or connection to a server, the settings are reset using the q3config.cfg from the new mod directory. This can lead to unexpected effects for users, such as graphics settings going haywire and changing resolutions when connecting to a server. This can be especially frustrating given that many mods are mostly server side and don't need any custom settings anyway.
 
-The new filesystem introduces a command line cvar called "fs_mod_settings", with the following effects:
+This project introduces a command line cvar called "fs_mod_settings", with the following effects:
 - fs_mod_settings 0: All settings are loaded and saved in the q3config.cfg in baseq3, regardless of the current mod. Every mod uses the same settings. This is closer to the original q3 behavior.
 - fs_mod_settings 1: Existing ioquake3 behavior, with separately stored settings for each mod.
 
@@ -89,13 +89,15 @@ Both cvars support the following settings:
 
 # Cache Mechanisms
 
-The new filesystem uses a file called "fscache.dat" to store pk3 index data and reduce startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.
+This project adds two types of caches to improve load times, an index cache and a memory cache.
 
-The new filesystem also uses a memory cache to keep previously accessed files in memory for faster access. This helps speed up load times between maps. The size of this buffer is controlled by the "fs_read_cache_megs" cvar. The default is currently 64 for the client and 4 for the dedicated server. This value can be set to 0 to disable the cache altogether.
+The index cache stores pk3 index data in a file called fscache.dat to reduce the initial game startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.
+
+The memory cache is used to keep previously accessed files in memory for faster access and reduce load times between levels. The size of this buffer is controlled by the "fs_read_cache_megs" cvar. The default is currently 64 for the client and 4 for the dedicated server. This value can be set to 0 to disable the cache altogether.
 
 # Download / Pure List Configuration
 
-Two new cvars, "fs_download_manifest" and "fs_pure_manifest", can be used to customize which pk3s are added to the download and pure lists when running a server. Both cvars use a space-seperated list of selector rules that can be either specific pk3 names or one of the following keywords:
+Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow customizing which pk3s are added to the download and pure lists when running a server. Both cvars use a space-seperated list of selector rules that can be either specific pk3 names or one of the following keywords:
 
 - *mod_paks - Selects all paks from the current active mod.
 - *base_paks - Selects all paks from com_basegame (baseq3).
@@ -140,15 +142,17 @@ In theory this option will work with servers running any filesystem version, but
 
 # Shader Precedence
 
-This section concerns map and mod developers who work with shaders, specifically regarding cases where the same shader is defined differently in different pk3 files.
+In this project, shader precedence follows the same rules as normal filesystem precedence, e.g. a shader in pak2.pk3 will override a shader in pak1.pk3, and a shader in a mod will override a shader in baseq3. However, the original filesystem uses the opposite precedence when shaders are defined in .shader files with different names, which can make things confusing for mod authors. Here are some tips for mod authors working with shader definitions:
 
-To start with an example, suppose you have a shader called "textures/myshader", in the file "scripts/myshaders.shader", located in "pak0.pk3" of your mod. Now suppose you want to release an update "pak1.pk3" that replaces this shader with an updated version. The correct way is to duplicate the file "scripts/myshaders.shader" into pak1.pk3 and then update the shader within that file. Due to filesystem precedence this will override the version of the file from pak0.pk3 so it doesn't get loaded at all, ensuring only the shaders from the updated file will be used.
+- To update shaders in an existing pak from your mod to a new version, copy the .shader file from the earlier pak to the new pak, keeping the same filename. Then modify the shader(s) in the new file. The original filesystem will only load the newer file, so make sure it contains all the shaders from the original file as well.
 
-Now suppose you were to name the updated shader file "scripts/myshaders2.shader". Both the old and new shader files will get loaded, since they have different names, leading to behavior that can be confusing and inconsistent across different versions of Quake 3. In the original filesystem the shader precedence tends to be the opposite of the filesystem precedence, so the shader from pak0.pk3 will usually take precedence over the one from pak1.pk3. But in the new filesystem, shaders are taken from the higher precedence pk3, regardless of the .shader filename. This is a much more robust approach in general, but it means that in rare cases mods that actually depend on the old backwards precedence behavior could break. Mods doing shader replacements should apply the .shader override technique if they want consistent behavior on both the original and new filesystems.
+- If you wish to override a shader from paks in baseq3, such as the ID paks, you need to copy the most recent version of every .shader file containing that shader into your mod, then modify the shader within those files. If you simply define the shader without following these steps, it will work on the new filesystem, but not the original filesystem.
+
+- Conversely, make sure you don't accidentally define unwanted shaders that conflict with the ID paks or earlier paks from your mod in arbitrary .shader files. These will be overridden in the original filesystem but will take effect on the new filesystem, which could lead to problems.
 
 # Debugging Cvars
 
-There are some new cvars that can be set to 1 to enable debug prints.
+This project introduces some new cvars that can be set to 1 to enable debug prints.
 
 - fs_debug_state: logs changes to the primary filesystem state such as the current mod dir and server pak list
 - fs_debug_refresh: logs warnings that come up during file indexing phase; best set from the command line and combined with fs_index_cache 0
@@ -170,12 +174,14 @@ Once you run one of the above commands, you can use the "compare" command to fin
 
 # Known Issues
 
-- Little testing has been done on less common platforms and build environments, or on big endian systems. Fortunately most of the issues that could come up should be limited to a few places like fsc_os.c.
+This project is fairly well developed at this point, so there are few significant known issues. If you find any new issues, feel free to email me or open an issue on GitHub.
 
-- Only the makefile and msvc12 project files are updated to use the new filesystem. Some of the other project files and build scripts aren't updated yet. I figure somebody with more experience with those components would be better suited to make the changes.
-
-- The code conventions used for the filesystem are a bit different from the main ioq3 codebase in terms of stuff like function capitilization and brace placement.
-
-- The server-side pure validation function SV_VerifyPaks_f is no longer supported, since it has no security value in modern conditions. All other pure server functionality is supported and cross-compatible with existing clients and servers.
+- This is currently an engine only modification, and does not remove limits in the UI on the number of maps and models that can appear in the menus. The UI code will need to be changed in mods to raise these limits. You can still load maps and models through the console or by connecting to a server even if they don't appear in the menu.
 
 - The pk3dir feature is currently not supported, as I'm not sure it's worth the complexity to include it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you have a use case that this doesn't cover sufficiently, let me know and I'll look into adding the full pk3dir functionality.
+
+- The code style (e.g. capitalization and brace placement) used in this project are different than typical ioquake3 conventions. This mostly applies to code under the filesystem directory; code integrated with existing source files follows the conventions in those files more closely.
+
+- Limited testing has been done on less common platforms and build environments or on big endian systems. Testing help and feedback for such platforms is appreciated.
+
+- Only the makefile and msvc12 project files are updated to use the new filesystem. Some of the other project files and build scripts aren't updated yet. It appears most of these files are in an unmaintained state in ioquake3 anyway.
