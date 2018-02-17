@@ -159,7 +159,7 @@ static void cvar_clearstring(char **target) {
 /* ******************************************************************************** */
 
 static qboolean cvar_valid_name(const char *s) {
-	if(!s) return qfalse;
+	if(!s || !*s) return qfalse;
 	if(strlen(s) > 1000) return qfalse;
 	if(strchr(s, '\"')) return qfalse;
 	if(strchr(s, '\\')) return qfalse;
