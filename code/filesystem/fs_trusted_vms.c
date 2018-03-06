@@ -180,9 +180,27 @@ static const unsigned int trusted_vms[][8] = {
 	SHA(00b31196,e46717cb,0fd238ee,2c48120b,22ebb95e,4cbdda57,19b0b038,8723e395),	// z-xp-2_0a.pk3 qagame
 
 	// Excessive Dawn (edawn-mod.org)
+	SHA(fcbca7d3,b3dbf15a,b13e9735,9cf57ed3,5a8428ee,b7b3f822,51784ab7,69b1d74b),	// z-edawn-1_6_1.pk3 cgame
+	SHA(ebd474f4,1c524cb4,3d46838e,4dae7706,4ee5b2ea,200796bd,34f62c66,064f2749),	// z-edawn-1_6_1.pk3 ui
+	SHA(ea2315f6,e2e2a7ec,011b9423,927297fe,6e5793ad,82159bd5,f458f99b,f2bdc794),	// z-edawn-1_6_1.pk3 qagame
+	SHA(9bdbb62f,65c1029e,1a0b5448,1f1f17e7,51e15718,c98146ab,7e0badbc,c38d5bb4),	// z-edawn-1_6_0.pk3 cgame
+	SHA(9ce6bd3d,ea2e8a51,ec975adb,66c2467c,8419c7c9,e477ac4b,71b14f9f,02205edf),	// z-edawn-1_6_0.pk3 ui
+	SHA(228dc026,89ff82f2,83b4843b,e0b0d7bf,345b1391,c308542b,1a9f2aa4,e5514c28),	// z-edawn-1_6_0.pk3 qagame
+	SHA(42dbb85f,efa29712,29b8f0a0,7f9e2e1d,f27b25ff,32f2c35f,508cddd6,774cd8fe),	// z-edawn-1_5_2.pk3 cgame
+	SHA(0183be28,bc6d7ab9,642bfafe,6d2245ce,1855db15,0bf531fa,cace82b1,6a335ef7),	// z-edawn-1_5_2.pk3 ui
+	SHA(597effa9,1008f483,2a71f195,35183f1d,956d6796,675e4d41,be9db980,1a854521),	// z-edawn-1_5_2.pk3 qagame
+	SHA(9a4ddeed,c2719c28,1e4cb08b,25341087,4ff0beb0,805b3ea8,436e5477,8ab48829),	// z-edawn-1_5_1.pk3 cgame
+	SHA(c4cb7504,00e6d960,8beac8bc,1655c921,1c31168c,ed8ff62b,df5140f0,5eb457ae),	// z-edawn-1_5_1.pk3 ui
+	SHA(e9f3495e,3fff3cb6,e7c020e0,67e10394,15d89f47,f964050e,f45bf710,f3aa6dab),	// z-edawn-1_5_1.pk3 qagame
 	SHA(ba4471e7,4b57d05d,6ff474d0,76b7f161,59a27e40,b0424f65,cfec561c,1fa1fc6a),	// z-edawn-1_5_0.pk3 cgame
 	SHA(49ca495a,13b9bc21,c7e6a4e5,7feca87f,08253187,8d306757,e1968536,e8b52caa),	// z-edawn-1_5_0.pk3 ui
 	SHA(f21140a6,41400e66,efc89c15,417dbdc1,e39408e7,e52208c4,6da2d1b5,207eb846),	// z-edawn-1_5_0.pk3 qagame
+	SHA(8155ba68,c101afd8,37f6144f,386534c4,9c8ef3fe,45581b43,9583bbf4,d9cd57a4),	// z-edawn-1_4_5.pk3 cgame
+	SHA(c7f747ad,0c90921b,60ccf3fc,6084ac85,493bfa8f,eae558f7,05d873d2,1cd1ddcb),	// z-edawn-1_4_5.pk3 ui
+	SHA(2bd54dae,6d1af4bd,08c834bf,943dee9a,3ee4c9b6,6234b7dd,d0bb73f9,40e532f3),	// z-edawn-1_4_5.pk3 qagame
+	SHA(b9ef494f,584a2475,0bc48381,de973703,2c256765,6fc1f570,e67317a5,f107ff2a),	// z-edawn-1_4_1.pk3 cgame
+	SHA(d51dd432,4a47ab98,859a2983,d12c7a2d,754fd89d,de1afae9,7affd7a4,ec01bbe2),	// z-edawn-1_4_1.pk3 ui
+	SHA(5169ee13,c93fb8ce,b135fc2e,9a80fd81,e62f1e38,c122f7fe,b9cbb5c7,290e4176),	// z-edawn-1_4_1.pk3 qagame
 	SHA(bfc6035d,6ef78bcd,dfa160c2,fdcff061,d55320cc,9d9a1b06,b61b9f90,ca16eb7f),	// z-edawn-1_4_0.pk3 cgame
 	SHA(0fb1fb2e,00ea5c42,3a381f05,1c94b2be,0cfcfa96,4788d5b0,80eefaef,e59cea50),	// z-edawn-1_4_0.pk3 ui
 	SHA(25145a1b,d6a072f1,d11085e3,bea7edaf,aede8897,fe7a57c0,b6d4758c,fd6811d6),	// z-edawn-1_4_0.pk3 qagame
@@ -294,6 +312,20 @@ static const unsigned int trusted_vms[][8] = {
 	SHA(ea706460,01cf5d9e,d4166c37,62daab83,099c3647,64430086,69a39a42,26041b12),	// reaction1.pk3 cgame
 	SHA(935c37ac,c683a77f,4ee1fabd,c832d5f8,8a95c27a,525717d2,08f6cb39,d1b53dcb),	// reaction1.pk3 ui
 	SHA(c55dac68,36e685ae,016fd0ed,b4148be0,9c70e0f9,92688fb9,1ed10ff9,720fc094),	// reaction1.pk3 qagame
+
+	// Generations Arena (wireheadstudios.org)
+	SHA(67b25e2f,f86baf94,bd4874a7,2677ab0a,11e8e86e,ab9edc8a,99bb2d05,027ef919),	// pak9_vm_1.pk3 qagame
+	SHA(9a4a8035,8e469578,90314c5b,eab5c415,65e5d6eb,a3434515,20ae380c,e743a85c),	// pak9_genv99f.pk3 cgame
+	SHA(0ad23c52,6c374935,cf22ce6c,c6cb9710,79f86a6c,ffd820b2,9eb06437,45b60701),	// pak9_genv99f.pk3 ui
+	SHA(cb0a5aaa,451712f0,5c334187,c6c8c6f7,0c9de16e,76445b6a,fa1c497d,43b2f390),	// pak9_genv99f.pk3 qagame
+	SHA(694478c9,6d34e144,3c3856ef,0eba207d,0fe36a3f,bbd5fe0e,24853d65,f5028c19),	// pak9_genv99e.pk3 cgame
+	SHA(3969f078,0d160315,7679863d,16a971ba,11e3785c,7174e64e,3d0cf2a5,b241ae57),	// pak9_genv99e.pk3 ui
+	SHA(cc2a6763,0b473550,e0911ab9,d7a43c0a,8cc58db9,bc03c901,b663ba85,a9820a81),	// pak9_genv99e.pk3 qagame
+
+	// CorkScrew Mod
+	SHA(0370caba,bb1245d8,27190f6a,c944ae44,f7bb4964,01b07012,c64ddaf9,85eb6897),	// CorkScrew_216.pk3 cgame
+	SHA(e805c1d5,4a2b1fe2,33f0bb02,2e4c1a18,98ad6248,a7a3101a,1b233a11,6f2290c7),	// CorkScrew_216.pk3 ui
+	SHA(aaa3c7df,8656d11d,8caae055,b09a0759,4f99f840,410e6848,015d5fe2,6a498d9c),	// CorkScrew_216.pk3 qagame
 };
 
 qboolean fs_check_trusted_vm_hash(unsigned char *hash) {
