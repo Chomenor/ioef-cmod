@@ -1,7 +1,7 @@
 This is an updated file handling system for the ioquake3 project. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with almost all existing maps, mods, and configurations.
 
 Here are the key features:
-- Improved resource precedence system which prevents unnecessary resource conflicts
+- Improved resource precedence system which significantly reduces conflicts between pk3s
 - Greatly improved load times, especially with lots of pk3s installed
 - Safer downloading options and other security improvements
 - Improved download handling, especially when downloading from poorly configured servers
@@ -10,7 +10,7 @@ Here are the key features:
 - Ability to customize the download and pure lists when hosting servers
 - Fixed server-side pure list overflow issues
 - Semi-pure server support
-- Various other improvements and bugfixes
+- Various other fixes and improvements
 
 Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
@@ -28,11 +28,9 @@ There are some changes to the renderer dlls in the new filesystem. If you mix a 
 
 # ID Pak Precedence
 
-In the original filesystem the ID paks, pak0.pk3 - pak8.pk3, are treated with the same alphabetical precedence as any other pak. This means any pak in baseq3 that happens to have a higher alphabetical rank, such as "qpak.pk3", will override the ID paks if there are any resource conflicts. This can lead to unwanted effects if any misplaced or incompatible pk3s are present in baseq3.
+In this project, the ID paks, pak0.pk3 - pak8.pk3, automatically take precedence over other paks in baseq3. This is one of the key features that makes this project more stable than the original filesystem, because it prevents pk3s that are only intended to add maps or models from breaking the core game assets.
 
-In the new filesystem the ID paks, or whichever core paks were defined by hash when the game was compiled, are given automatic precedence over other paks in baseq3. If you want to intentionally override the ID paks without explicitly loading a mod, you can create a directory named "basemod" alongside baseq3 and place your mod paks in it. This way they will take precedence over anything in baseq3, even the ID paks.
-
-In general regular maps and skins will work fine in baseq3, but things that work by overriding existing game assets, such as crosshairs, will need to be moved to basemod to take effect.
+To allow users to intentionally modify the game, a new directory called "basemod" is supported. Files in this directory will always override files in baseq3, including the ID paks. In general regular maps and models will work fine in baseq3, but things that work by overriding existing game assets, such as crosshairs, enhanced texture mods, and VMs, will need to be moved to basemod to take effect.
 
 # Mod Settings Option
 
@@ -56,8 +54,6 @@ There are two new settings that can be used to control automatic downloads.
 	* setting 2: Config files and all qvm files will be blocked.
 
 These settings can increase security, but may break compatibility with some servers unless you manually move files out of the downloads folder.
-
-Based on ideas from github.com/ioquake/ioq3/issues/130
 
 # Source Directory Options
 
@@ -136,9 +132,9 @@ Note that if the same pk3 is selected by multiple rules, its position will be ac
 
 # Semi-Pure Server
 
-This option causes clients to prioritize data from paks on the server like a normal pure server, but also allows loading content from other paks when it is not available from the pure list paks. For example, it lets clients use custom models that are not on the server. To enable, set sv_pure to 2 on the server. This setting only affects clients using the new filesystem; clients using the original filesystem will function the same as if sv_pure is 1.
+This option causes clients to prioritize data from paks on the server like a normal pure server, but also allows loading content from other paks when it is not available from the pure list paks. For example, it lets clients use custom models that are not on the server. To enable, set sv_pure to 2 on the server.
 
-In theory this option will work with servers running any filesystem version, but it is recommended to use with the new filesystem if possible.
+This a client-side feature, so it only affects clients using the new filesystem. Clients using the original filesystem will function the same as if sv_pure is 1.
 
 # Shader Precedence
 
