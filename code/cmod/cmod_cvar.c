@@ -784,7 +784,7 @@ void cvar_vstr(cmd_mode_t mode) {
 	cvar = get_cvar(Cmd_Argv(1), qfalse);
 	if(!cvar) return;
 
-	if(!Q_stricmp(cvar->s.name, "nextmap")) mode &= ~CMD_PROTECTED;
+	mode &= ~CMD_PROTECTED;
 	if(cvar->protected_value) mode |= CMD_PROTECTED;
 	else if(!Q_stricmp(cvar->s.name, "fs_game")) mode |= CMD_PROTECTED;
 
