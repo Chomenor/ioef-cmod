@@ -5,8 +5,8 @@ This file provides additional documentation for the design and technical details
 This is an overview of some of the main design changes in this project compared to the original filesystem.
 
 **original filesystem:** Primarily based in a single source file, files.c.  
-**new filesystem:** Divided into multiple source files under the filesystem and filesystem/fscore directories. The core component handles basic file indexing and access and can be compiled separately from the game. The main component serves as an interface between the core and the game.  
-**reason for change:** The modular design and separate source files make the code easier to work with as new features and capabilities are added. Allowing the filesystem core to be compiled separately makes it useful for standalone utilities and tests.
+**new filesystem:** Divided into multiple source files under the filesystem and filesystem/fscore directories. The core component handles basic file indexing and access and can be compiled separately from the game. The main component implements the functions used by the game on top of the filesystem core.  
+**reason for change:** The modular design and separate source files make the code easier to work with as new features and capabilities are added. Allowing the filesystem core to be compiled separately helps make it more stable and allows it to be used for standalone utilities and tests.
 
 **original filesystem:** Files inside and outside pk3s are handled separately, and most code that iterates over files has separate cases for both types of files.  
 **new filesystem:** All files are abstracted behind the fsc_file_t type, so for most purposes they can be treated the same regardless of how they are located.  
@@ -14,7 +14,7 @@ This is an overview of some of the main design changes in this project compared 
 
 **original filesystem:** The ordered priority of files is determined when the filesystem is refreshed.  
 **new filesystem:** The file index is unordered, and it is up to the file lookup, listing, and reference modules to resolve conflicts at call time.  
-**reason for change:** It separates the indexing and precedence handling code, allows the precedence logic to be customized for each module, and makes it easier to implement file-level precedence debugging features. It also improves load times because it is no longer necessary to resort the entire filesystem on every level change or server connection.
+**reason for change:** It separates the indexing and precedence handling code, allows the precedence logic to be customized for each module, and makes it easier to implement precedence debugging features. It also improves load times because it is no longer necessary to resort the entire filesystem on every level change or server connection.
 
 **original filesystem:** Shaders are indexed by the renderer.  
 **new filesystem:** Shaders are indexed by the filesystem, and new API calls are added to allow the renderer to access shaders by name.  
@@ -213,24 +213,6 @@ The file lookup system handles most requests for game content. It uses two main 
 
 - Precedence: This section provides the comparison and sorting functions to select the best element from a list of lookup resources.
 
-## Precedence Design
-
-This section describes some of the design considerations for the precedence system and rules.
-
-- Historically the basegame (e.g. baseq3) directory is used to store both the system paks (e.g. pak0-pak8 in Quake 3) as well as user content pk3s, like maps and models, that don't belong to a specific mod. Since the engine makes no distinction it is very easy for a rogue pk3, such as a low-quality map conversion or misplaced pk3 that is meant to be part of a mod, to override the system paks and have unwanted effects on the rest of the game. To make the game more stable without any compatibility-breaking directory structure changes, we want to give the system paks as identified by hash special priority regardless of filename.
-
-- Since users can no longer override the system paks by placing an alphabetically higher pak in baseq3, the concept of the "basemod" folder is created. This lets users (but not automatic downloads) intentionally override the system paks. It basically acts like an always-active mod.
-
-- We want to give the pk3 that the current map is loaded from elevated precedence, to avoid conflicts from other maps. The current mod, basemod, and system paks still get top priority, but let the current map pk3 override other random pk3s for most purposes. This way map authors get more deterministic behavior and don't have to worry about a future pk3 with a higher alphabetical name coming along and overriding their assets.
-
-- Shaders can be either explicitly defined (in a .shader file) or default shaders (from an image file like .tga or .jpg). In the original filesystem explicitly defined shaders always take precedence. This is often desirable, but it would be better if explicitly defined shaders didn't break the system pak, current map pak, and download folder policies. If a system pak only provides an image, we probably don't want any random pak with an explicit shader to override it, and the same with map paks. Maps won't have a problem unless they depend on an external shader AND provide an image with the same name, which shouldn't happen.
-
-- Images come in multiple formats (.tga, .jpg, .png, etc.) In the original filesystem a .tga anywhere in the filesystem always overrides a .jpg anywhere else, which can be undesirable in some circumstances. In the new filesystem we want most precedence rules to apply regardless of whether images have different formats.
-
-- In the original filesystem, only one shader file per .shader filename is loaded, and conflicts are resolved through filesystem precedence. In other words, somefile.shader in pak1.pk3 takes precedence over somefile.shader in pak0.pk3, as you'd expect. However among the shader files that do get loaded, the precedence is exactly the opposite of filesystem precedence, so anything loaded in pak0.pk3 will override pak1.pk3. This pattern doesn't make any sense and causes all sorts of trouble, so we opt to just take the shader from the higher precedence pk3 regardless of .shader filename. This delivers the behavior most map and mod authors already expect, and in testing fixes far more problems than it causes even with existing maps and mods.
-
-- In the original filesystem source directory (homepath/basepath) overrides pk3 name precedence. For example, if a mod is split between homepath and basepath, pak0.pk3 from homepath would override pak1.pk3 from basepath. This tends to be undesirable, so we want to prioritize by pk3 filename first, i.e. pak1.pk3 always overrides pak0.pk3.
-
 ## Precedence Rules
 
 This is a list of the precedence rules ordered from highest to lowest priority. The first rule that has a non-neutral result determines the result of a comparison between two resources.
@@ -241,7 +223,7 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 - server_pak_position: Prioritizes paks according to the order of the server pak list (sv_paks) when connected to a pure or semi-pure server.
 
-- basemod_or_current_mod_dir: Prioritizes current_mod_dir (which generally corresponds to fs_game) and basemod over other mods.
+- basemod_or_current_mod_dir: Prioritizes current_mod_dir (which generally corresponds to fs_game) and basemod over com_basegame and inactive mods.
 
 - system_paks: Prioritizes the system paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
 
@@ -399,12 +381,12 @@ This component handles constructing the pure and download lists when hosting a s
 **Q:** Why is SV_VerifyPaks_f removed?  
 **A:** This function was used as an extra check to make certain kinds of hacks a little bit more difficult in the early days of Quake 3, when it was still closed source. It's not necessary or useful anymore so has been removed to reduce complexity.
 
-**Q:** Is it a good idea to change resource/shader precedence when the current system has been accepted for so long?  
-**A:** Compatibility is an important factor here, but I believe the changes are well worthwhile in this case. The original precedence system is outdated and has a lot of weird quirks that cause many unnecessary conflicts. The new system achieves much lower conflict error rates with almost no compatibility impact on existing content. It also has much clearer code, new debug commands, and support for features like download folder restriction. 
+**Q:** If it's a good idea to change the backwards shader precedence, why has it not been done in the original filesystem?  
+**A:** Forward shader precedence is much better in general, but there are a couple of issues that prevent it from being trivially changed in the original filesystem. First, some maps, especially low-quality conversions from other games, erroneously define shaders that conflict with the ID paks, and rely on the backwards shader precedence and having a filename alphabetically higher than 'p' to not override them. In the new filesystem the ID paks have precedence regardless of filename, so backwards shader precedence is no longer necessary. The second issue is with shaders that conflict with other shaders inside the *same* pk3 file. If the shader precedence was naively reversed, the intra-pk3 precedence would be reversed as well, which would lead to potential compatibility issues with all existing pk3s including the ID paks. The new filesystem solves this problem by explicitly emulating the original precedence conventions for shaders inside the same pk3.
 
 # Conclusion
 
-If you have any questions feel free to email me at chomenor@gmail.com.
+If you have any questions feel free to email me at <chomenor@gmail.com>.
 
 This project is dedicated to the creators, mapping, and modding communities of Quake 3, Elite Force, and similar games. Thank you for all your amazing work!
 

@@ -2286,11 +2286,7 @@ void CL_BeginDownload( const char *localName, const char *remoteName ) {
 #endif
 
 	// Set so UI gets access to it
-#ifdef NEW_FILESYSTEM
-	Cvar_Set( "cl_downloadName", localName );
-#else
 	Cvar_Set( "cl_downloadName", remoteName );
-#endif
 	Cvar_Set( "cl_downloadSize", "0" );
 	Cvar_Set( "cl_downloadCount", "0" );
 	Cvar_SetValue( "cl_downloadTime", cls.realtime );
@@ -2356,7 +2352,8 @@ void CL_NextDownload(void)
 			else {
 				// Begin cURL Download
 				fs_register_current_download_attempt(qtrue);
-				CL_cURL_BeginDownload(localName, va("%s/%s", clc.sv_dlURL, remoteName));
+				// Using remoteName instead of localName for UI purposes
+				CL_cURL_BeginDownload(remoteName, va("%s/%s", clc.sv_dlURL, remoteName));
 				if(!clc.cURLDisconnected) clc.downloadRestart = qtrue;
 				return; } }
 
