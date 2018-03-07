@@ -1,16 +1,14 @@
 # Project Description
 
-cMod is a client and server for Star Trek: Voyager - Elite Force, intended to add new features and fix bugs and limitations in the standard ioEF implementation.
+cMod is an ioEF-based multiplayer client and server for Star Trek: Voyager - Elite Force, intended to add new features and fix bugs and limitations in the standard ioEF implementation.
 
 Author: Noah Metzger <chomenor@gmail.com>
 
-Feel free to contact me if you have any questions, feedback or bug reports!
-
-This project is based on ioEF by Thilo Schulz.
+Feel free to contact me if you have any questions, feedback or bug reports.
 
 # Client
 
-To use this project, download the latest release zip, unzip it into your Elite Force install directory, and run the application.
+To use the client, download the latest release zip, unzip it into your Elite Force install directory, and run the ioEF-cMod* application. In most cases your existing EF client will continue to work without conflicts, but if you want to be extra safe, make a backup of your EF directory before installing cMod.
 
 ## Console Key Notes
 
@@ -18,21 +16,11 @@ There are currently some issues with the console-opening key on non-English keyb
 
 If this doesn't work or you would prefer a single-key fix, send me an email and I'll try to find a fix that works for your keyboard layout.
 
-## Settings Handling
+## Graphics Detail Settings
 
-The settings for the cMod client are stored in the cmod.cfg file, located directly in the install directory. This file is separate from the hmconfig.cfg files most other versions of EF use, which allows cMod to use its own default settings without interfering with the settings of other EF versions.
+By default, cMod uses higher graphics settings than the original version of EF. These settings work best on newer computers and those with at least low end gaming-grade video cards. Check your video card/GPU model at [videocardbenchmark.net](http://videocardbenchmark.net). I recommend a score of 600 minimum, and 1200+ ideally, to run EF at full detail and 1080p resolution. If your hardware scores below these numbers you might consider upgrading your PC/video card.
 
-The cmod.cfg file is designed to be human-editable, so feel free to open it in a text editor and make changes.
-
-By default, cMod restricts which settings can be loaded from autoexec.cfg files. This is to protect against config files designed for earlier versions of EF and not fully compatible with cMod, especially config files from online templates or third-party apps. To disable this protection, set cmod_restrict_autoexec to 0 (in the console, not in the autoexec.cfg itself).
-
-I don't recommend directly executing an hmconfig.cfg file from other versions of EF in cMod, as this can also lead to problems and sub-optimal performance. For best results I recommend manually transferring settings you want to cMod on a case-by-case basis, then making a backup of cmod.cfg in case you need to restore your settings later.
-
-## Directory Handling
-
-By default, cMod will use the install location as the read/write directory, like the original version of Elite Force. This allows you to have multiple EF installations that use separate settings. The ioEF homepath location, which is %appdata%\STVEF on Windows, is used as a secondary read location in case you have any files left over there from a previous ioEF installation.
-
-If cMod is run from a location where it does not have write permissions, such as under Program Files on Windows, it will revert to the standard ioEF behavior and use the homepath as the write location.
+If you are having trouble with framerates in cMod you can try lowering the graphics quality settings. Two of the most significant settings that might increase framerates (at the expense of graphics quality) are r_picmip 1 and r_ext_texture_filter_anisotropic 0. You can also try reducing the resolution using the options in the following section.
 
 ## Resolution Handling
 
@@ -47,11 +35,21 @@ The most common values which you can use for these settings are as follows:
 - -1: Uses the resolution specified by r_customWidth and r_customHeight.
 - 3: Uses a 640x480 resolution (the original EF default).
 
-## Graphics Detail Settings
+## Directory Handling
 
-By default, cMod uses higher graphics settings than the original version of EF. These settings work best on newer computers and those with at least low end gaming-grade video cards. Check your video card/GPU model at videocardbenchmark.net. I recommend a score of 600 minimum, and 1200+ ideally, to run EF at full detail and 1080p resolution. If your hardware scores below these numbers you might consider upgrading your PC/video card.
+By default, cMod will use the install location as the read/write directory, like the original version of Elite Force. This allows you to have multiple EF installations that use separate settings. The ioEF homepath location, which is %appdata%\STVEF on Windows, is used as a secondary read location in case you have any files left over there from a previous ioEF installation.
 
-If you are having trouble with framerates in cMod you can try lowering the graphics quality settings. Two of the most significant settings that might increase framerates (at the expense of graphics quality) are r_picmip 1 and r_ext_texture_filter_anisotropic 0. You can also try reducing the resolution using the settings in the previous section.
+If cMod is run from a location where it does not have write permissions, such as under Program Files on Windows, it will revert to the standard ioEF behavior and use the homepath as the write location.
+
+## Settings Handling
+
+The settings for the cMod client are stored in the cmod.cfg file, located directly in the install directory. This file is separate from the hmconfig.cfg files most other versions of EF use, which allows cMod to use its own default settings without interfering with the settings of other EF versions.
+
+The cmod.cfg file is designed to be human-editable, so feel free to open it in a text editor and make changes.
+
+By default, cMod restricts which settings can be loaded from autoexec.cfg files. This is to protect against config files designed for earlier versions of EF and not fully compatible with cMod, especially config files from online templates or third-party apps. To disable this protection, set cmod_restrict_autoexec to 0 (in the console, not in the autoexec.cfg itself).
+
+I don't recommend directly executing an hmconfig.cfg file from other versions of EF in cMod, as this can also lead to problems and sub-optimal performance. For best results I recommend manually transferring settings you want to cMod on a case-by-case basis, then making a backup of cmod.cfg in case you need to restore your settings later.
 
 ## Crosshair Handling
 
@@ -84,3 +82,13 @@ This feature allows admins to spectate players on the server without joining the
 To enable this feature, set admin_spectator_enabled to 1 and admin_spectator_password to a password of your choosing on the server.
 
 To connect to the server in spectator mode, set "password" on the client to "spect_" plus the password on the server. For example if admin_spectator_password is set to "xyz" on the server, then set the password value on the client to "spect_xyz" before connecting to the server in order to enter spectator mode.
+
+# Compiling
+
+You should be able to compile this project using the ioquake3 steps [here](http://wiki.ioquake3.org/Building_ioquake3), substituting the cMod files/git address for the ioquake3 ones. If this doesn't work send me an email.
+
+# Credits
+
+- Thilo Schulz - ioEF
+- id Software and ioquake3 project - base engine
+- Raven Software - Elite Force
