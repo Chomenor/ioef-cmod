@@ -390,7 +390,7 @@ file_disabled_result_t fs_file_disabled(const fsc_file_t *file, int flags);
 // File Sorting Functions
 void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list);
 int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list);
-int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2);
+int fs_compare_pk3_source(const fsc_file_t *file1, const fsc_file_t *file2);
 
 // Misc Functions
 qboolean FS_idPak(char *pak, char *base, int numPaks);

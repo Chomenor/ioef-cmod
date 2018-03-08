@@ -174,8 +174,6 @@ This project is fairly well developed at this point, so there are few significan
 
 - This is currently an engine only modification, and does not remove limits in the UI on the number of maps and models that can appear in the menus. The UI code will need to be changed in mods to raise these limits. You can still load maps and models through the console or by connecting to a server even if they don't appear in the menu.
 
-- The pk3dir feature is currently not supported, as I'm not sure it's worth the complexity to include it. Since all mod dirs are loaded by default now, you can usually just place the test files in a mod dir instead. If you have a use case that this doesn't cover sufficiently, let me know and I'll look into adding the full pk3dir functionality.
-
 - The code style (e.g. capitalization and brace placement) used in this project are different than typical ioquake3 conventions. This mostly applies to code under the filesystem directory; code integrated with existing source files follows the conventions in those files more closely.
 
 - Limited testing has been done on less common platforms and build environments or on big endian systems. Testing help and feedback for such platforms is appreciated.

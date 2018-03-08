@@ -381,8 +381,10 @@ PC_DEBUG(dll_over_qvm) {
 	ADD_STRING(va("Resource %i was selected because it is a dll and resource %i is not a dll.", high_num, low_num)); }
 
 PC_COMPARE(direct_over_pk3) {
-	if(r1->file->sourcetype == FSC_SOURCETYPE_DIRECT && r2->file->sourcetype != FSC_SOURCETYPE_DIRECT) return -1;
-	if(r2->file->sourcetype == FSC_SOURCETYPE_DIRECT && r1->file->sourcetype != FSC_SOURCETYPE_DIRECT) return 1;
+	#define PK3_LIKE_FILE(file) (file->sourcetype == FSC_SOURCETYPE_PK3 || \
+			(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr))
+	if(!PK3_LIKE_FILE(r1->file) && PK3_LIKE_FILE(r2->file)) return -1;
+	if(!PK3_LIKE_FILE(r2->file) && PK3_LIKE_FILE(r1->file)) return 1;
 	return 0; }
 
 PC_DEBUG(direct_over_pk3) {
@@ -390,11 +392,7 @@ PC_DEBUG(direct_over_pk3) {
 			high_num, low_num)); }
 
 PC_COMPARE(pk3_name_precedence) {
-	if(r1->file->sourcetype != FSC_SOURCETYPE_PK3 || r2->file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
-	fsc_file_t *pak1 = STACKPTR(((fsc_file_frompk3_t *)(r1->file))->source_pk3);
-	fsc_file_t *pak2 = STACKPTR(((fsc_file_frompk3_t *)(r2->file))->source_pk3);
-
-	return fs_compare_file_name(pak1, pak2); }
+	return fs_compare_pk3_source(r1->file, r2->file); }
 
 PC_DEBUG(pk3_name_precedence) {
 	ADD_STRING(va("Resource %i was selected because the pk3 containing it has lexicographically higher precedence "

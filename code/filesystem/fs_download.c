@@ -185,7 +185,7 @@ static download_entry_t *create_download_entry(char *name, unsigned int hash) {
 	char filename[MAX_DOWNLOAD_NAME + 1];
 
 	// Generate mod_dir and filename
-	if(!fsc_process_mod_dir(name, temp_mod_dir, &temp_filename)) return 0;
+	if(!fsc_get_leading_directory(name, temp_mod_dir, sizeof(temp_mod_dir), &temp_filename)) return 0;
 	if(!temp_filename) return 0;
 	if(!fs_generate_path(temp_mod_dir, 0, 0, 0, 0, 0, mod_dir, sizeof(mod_dir))) return 0;
 	if(!fs_generate_path(temp_filename, 0, 0, 0, 0, 0, filename, sizeof(filename))) return 0;

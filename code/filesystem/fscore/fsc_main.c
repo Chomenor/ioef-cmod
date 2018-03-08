@@ -96,16 +96,20 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 		FSC_ADD_STRING(mod_dir);
 		FSC_ADD_STRING("/"); }
 
-	if(include_pk3_origin && file->sourcetype == FSC_SOURCETYPE_PK3) {
-		fsc_file_t *pk3_file = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-		if(pk3_file->qp_dir_ptr) {
-			FSC_ADD_STRING(STACKPTR(pk3_file->qp_dir_ptr));
-			FSC_ADD_STRING("/"); }
-		FSC_ADD_STRING(STACKPTR(pk3_file->qp_name_ptr));
-		if(pk3_file->qp_ext_ptr) {
-			FSC_ADD_STRING(".");
-			FSC_ADD_STRING(STACKPTR(pk3_file->qp_ext_ptr)); }
-		FSC_ADD_STRING("->"); }
+	if(include_pk3_origin) {
+		if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
+			FSC_ADD_STRING(STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr));
+			FSC_ADD_STRING(".pk3dir->"); }
+		else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
+			fsc_file_t *pk3_file = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+			if(pk3_file->qp_dir_ptr) {
+				FSC_ADD_STRING(STACKPTR(pk3_file->qp_dir_ptr));
+				FSC_ADD_STRING("/"); }
+			FSC_ADD_STRING(STACKPTR(pk3_file->qp_name_ptr));
+			if(pk3_file->qp_ext_ptr) {
+				FSC_ADD_STRING(".");
+				FSC_ADD_STRING(STACKPTR(pk3_file->qp_ext_ptr)); }
+			FSC_ADD_STRING("->"); } }
 
 	if(file->qp_dir_ptr) {
 		FSC_ADD_STRING(STACKPTR(file->qp_dir_ptr));
@@ -164,6 +168,14 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 	fsc_file_direct_t *file;
 	fsc_hashtable_iterator_t hti;
 
+	char qp_buffer[FSC_MAX_QPATH];
+	char qp_mod[FSC_MAX_MODDIR];
+	char *qpath_start = 0;
+
+	int pk3dir_active = 0;
+	char pk3dir_buffer[FSC_MAX_QPATH];
+	char *pk3dir_remainder = 0;
+
 	char *qp_dir, *qp_name, *qp_ext;
 	fsc_stackptr_t qp_mod_ptr, qp_dir_ptr, qp_name_ptr, qp_ext_ptr;
 
@@ -173,16 +185,22 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 	int unindexed_file = 0;	// File was not present in the index at all
 	int new_file = 0;	// File was not present in last refresh, but may have been in the index
 
-	char qp_buffer[FSC_MAX_QPATH];
-	char qp_mod[FSC_MAX_MODDIR];
-	char *qpath_without_mod_dir;
-
-	// Determine path attributes
-	if(!fsc_process_mod_dir(qpath_with_mod_dir, qp_mod, &qpath_without_mod_dir)) return;
+	// Get mod directory
+	if(!fsc_get_leading_directory(qpath_with_mod_dir, qp_mod, sizeof(qp_mod), &qpath_start)) return;
+	if(!qpath_start) return;
 	if(fsc_app_extension(qp_mod)) return;	// Don't index mac app bundles as mods
-	if(!qpath_without_mod_dir) return;
-	if(!fsc_process_qpath(qpath_without_mod_dir, qp_buffer, &qp_dir, &qp_name, &qp_ext)) return;
 
+	// Process pk3dir files
+	if(fsc_get_leading_directory(qpath_start, pk3dir_buffer, sizeof(pk3dir_buffer), &pk3dir_remainder)) {
+		if(pk3dir_remainder) {
+			int length = fsc_strlen(pk3dir_buffer);
+			if(length >= 7 && !fsc_stricmp(pk3dir_buffer + length - 7, ".pk3dir")) {
+				pk3dir_buffer[length - 7] = 0;
+				pk3dir_active = 1;
+				qpath_start = pk3dir_remainder; } } }
+
+	// Process qpath
+	if(!fsc_process_qpath(qpath_start, qp_buffer, &qp_dir, &qp_name, &qp_ext)) return;
 	qp_mod_ptr = fsc_string_repository_getstring(qp_mod, 1, &fs->string_repository, &fs->general_stack);
 	qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
 	qp_name_ptr = fsc_string_repository_getstring(qp_name, 1, &fs->string_repository, &fs->general_stack);
@@ -205,6 +223,8 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		if(file->f.qp_ext_ptr != qp_ext_ptr) continue;
 		if(fsc_get_mod_dir((fsc_file_t *)file, fs) != STACKPTR(qp_mod_ptr)) continue;
 		if(file->os_path_ptr && fsc_compare_os_path(STACKPTR(file->os_path_ptr), os_path)) continue;
+		if(file->pk3dir_ptr && (!pk3dir_active || fsc_strcmp(STACKPTR(file->pk3dir_ptr), pk3dir_buffer))) continue;
+		if(!file->pk3dir_ptr && pk3dir_active) continue;
 		if(file->f.filesize != filesize || file->os_timestamp != os_timestamp) {
 			if(!filename_contents && file->os_path_ptr) {
 				// Reuse the same file object to save memory
@@ -236,6 +256,8 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		file->f.qp_dir_ptr = qp_dir_ptr;
 		file->f.qp_ext_ptr = qp_ext_ptr;
 		file->qp_mod_ptr = qp_mod_ptr;
+		if(pk3dir_active) file->pk3dir_ptr = fsc_string_repository_getstring(pk3dir_buffer, 1,
+				&fs->string_repository, &fs->general_stack);
 		file->f.filesize = filesize;
 		file->os_timestamp = os_timestamp;
 		file->refresh_count = fs->refresh_count;
@@ -258,7 +280,7 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		fsc_hashtable_insert(file_ptr, fs_hash, &fs->files);
 		fsc_iteration_register_file(file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack);
 
-		if(filename_contents & (FSC_CONTENTS_PK3|FSC_CONTENTS_DLPK3)) {
+		if((filename_contents & (FSC_CONTENTS_PK3|FSC_CONTENTS_DLPK3)) && !pk3dir_active) {
 			fsc_load_pk3(STACKPTR(file->os_path_ptr), fs, file_ptr, eh, 0, 0); }
 		if(filename_contents & FSC_CONTENTS_SHADER) {
 			file->shader_file_count = 1;

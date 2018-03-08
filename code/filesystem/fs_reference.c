@@ -440,7 +440,7 @@ static void add_pak_by_name(reference_set_work_t *ref_work, const char *name) {
 	char filename[FSC_MAX_QPATH];
 	char *remainder;
 
-	fsc_process_mod_dir(name, mod_dir, &remainder);
+	fsc_get_leading_directory(name, mod_dir, sizeof(mod_dir), &remainder);
 	if(remainder) {
 		if(!fs_generate_path(remainder, 0, 0, 0, 0, 0, filename, sizeof(filename))) return; }
 	else {
