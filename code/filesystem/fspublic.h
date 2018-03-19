@@ -201,8 +201,9 @@ const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboo
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups. Must match value in tr_public.h!
 #define LOOKUPFLAG_IGNORE_PURE_LIST 2
 #define LOOKUPFLAG_IGNORE_CURRENT_MAP 4
-#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 8
-#define LOOKUPFLAG_PK3_SOURCE_ONLY 16
+#define LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE 8
+#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16
+#define LOOKUPFLAG_PK3_SOURCE_ONLY 32
 
 const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug);
 const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolean debug);

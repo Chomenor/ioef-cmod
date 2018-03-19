@@ -91,7 +91,8 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		const fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)(resource->file))->source_pk3);
 		// Don't calculate system pak priority for mod dirs so any system paks mixed in get normal precedence internally
 		if(resource->mod_dir_match <= 1) resource->system_pak_priority = system_pk3_position(source_pk3->pk3_hash);
-		resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
+		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
+			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
 		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && source_pk3 == current_map_pk3)
 			resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; }
@@ -127,8 +128,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->disabled = "blocking config file in downloaded pk3 due to fs_restrict_dlfolder setting"; }
 
 	// Disable files not on server pak list if connected to a pure server
-	if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) && fs_connected_server_pure_state() == 1 &&
-			!resource->server_pak_position) {
+	if(!resource->server_pak_position && fs_connected_server_pure_state() == 1 &&
+			!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) &&
+			!((query->lookup_flags & LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
 		resource->disabled = "connected to pure server and file is not on server pak list"; }
 
 	// Run general file disabled check
