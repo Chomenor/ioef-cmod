@@ -1189,7 +1189,7 @@ static fileHandle_t open_write_handle_path_gen(const char *mod_dir, const char *
 
 #ifdef CMOD_RESTRICT_CFG_FILES
 fileHandle_t FS_FOpenConfigFileWrite(const char *filename) {
-	return open_write_handle_with_mod_dir(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
+	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
 #endif
 
 fileHandle_t FS_FOpenFileWrite(const char *filename) {
