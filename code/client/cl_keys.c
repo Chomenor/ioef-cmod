@@ -1707,8 +1707,6 @@ default_bind_t default_binds[] = {
 	{".", "+moveright"},
 
 	{"\\", "+mlook"},
-	{"~", "toggleconsole"},
-	{"`", "toggleconsole"},
 	{"TAB", "+info"},
 	{"F1", "vote yes"},
 	{"F2", "vote no"},

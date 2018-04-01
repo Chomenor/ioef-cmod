@@ -120,6 +120,10 @@ static qboolean IN_IsConsoleKey( keyNum_t key, int character )
 	static int numConsoleKeys = 0;
 	int i;
 
+#ifdef CMOD_CONSOLE_KEY_FIXES
+	if(cmod_console_mode->integer & 2) return qfalse;
+#endif
+
 	// Only parse the variable when it changes
 	if( cl_consoleKeys->modified )
 	{
@@ -313,6 +317,10 @@ static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, qboolean down )
 		// Console keys can't be bound or generate characters
 		key = K_CONSOLE;
 	}
+
+#ifdef CMOD_CONSOLE_KEY_FIXES
+	if((cmod_console_mode->integer & 1) && keysym->scancode == 0x35) key = K_CONSOLE;
+#endif
 
 	return key;
 }
@@ -1049,6 +1057,10 @@ static void IN_ProcessEvents( void )
 							c++;
 						}
 
+#ifdef CMOD_CONSOLE_KEY_FIXES
+						if(in_keyboardDebug->integer) Com_Printf("  Text: 0x%02x(%s)\n", utf32, Key_KeynumToString(utf32));
+#endif
+
 						if( utf32 != 0 )
 						{
 							if( IN_IsConsoleKey( 0, utf32 ) )
@@ -1227,7 +1239,11 @@ void IN_Init( void *windowData )
 
 	Com_DPrintf( "\n------- Input Initialization -------\n" );
 
+#ifdef CMOD_CMOD_CONSOLE_KEY_TWEAKS
+	in_keyboardDebug = Cvar_Get( "in_keyboardDebug", "0", 0 );
+#else
 	in_keyboardDebug = Cvar_Get( "in_keyboardDebug", "0", CVAR_ARCHIVE );
+#endif
 
 	// mouse variables
 	in_mouse = Cvar_Get( "in_mouse", "1", CVAR_ARCHIVE );
