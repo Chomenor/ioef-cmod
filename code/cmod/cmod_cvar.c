@@ -1391,7 +1391,7 @@ static int write_cvars_by_category(fileHandle_t f, int category, qboolean (enabl
 
 		// cvar value
 		ADD_TEXT(" ");
-		if(strchr(value, ' ') || strchr(value, ';')) {
+		if(!*value || strchr(value, ' ') || strchr(value, ';')) {
 			ADD_TEXT("\"");
 			ADD_TEXT(value);
 			ADD_TEXT("\""); }
