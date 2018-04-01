@@ -228,8 +228,9 @@ const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboo
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups. Must match value in tr_public.h!
 #define LOOKUPFLAG_IGNORE_PURE_LIST 2
 #define LOOKUPFLAG_IGNORE_CURRENT_MAP 4
-#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 8
-#define LOOKUPFLAG_PK3_SOURCE_ONLY 16
+#define LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE 8
+#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16
+#define LOOKUPFLAG_PK3_SOURCE_ONLY 32
 
 const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug);
 const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolean debug);
@@ -426,7 +427,7 @@ file_disabled_result_t fs_file_disabled(const fsc_file_t *file, int flags);
 // File Sorting Functions
 void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list);
 int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list);
-int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2);
+int fs_compare_pk3_source(const fsc_file_t *file1, const fsc_file_t *file2);
 
 // Misc Functions
 qboolean FS_idPak(char *pak, char *base, int numPaks);

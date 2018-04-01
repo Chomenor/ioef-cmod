@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Definitions
 /* ******************************************************************************** */
 
-#define FSC_CACHE_VERSION 5
+#define FSC_CACHE_VERSION 6
 
 #define FSC_MAX_QPATH 256	// Buffer size including null terminator
 #define FSC_MAX_MODDIR 32	// Buffer size including null terminator
@@ -134,7 +134,7 @@ fsc_stackptr_t fsc_string_repository_getstring(const char *input, int allocate, 
 
 const char *fsc_get_qpath_conversion_table(void);
 int fsc_process_qpath(const char *input, char *buffer, char **qp_dir, char **qp_name, char **qp_ext);
-int fsc_process_mod_dir(const char *input, char *output, char **remainder);
+int fsc_get_leading_directory(const char *input, char *output, int buffer_length, char **remainder);
 
 // ***** Error Handling *****
 
@@ -252,6 +252,7 @@ typedef struct {
 	fsc_stackptr_t os_path_ptr;
 	unsigned int os_timestamp;
 	fsc_stackptr_t qp_mod_ptr;
+	fsc_stackptr_t pk3dir_ptr;
 
 	// Only relevant if this file is a pk3
 	unsigned int pk3_hash;

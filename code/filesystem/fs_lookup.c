@@ -91,7 +91,8 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		const fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)(resource->file))->source_pk3);
 		// Don't calculate system pak priority for mod dirs so any system paks mixed in get normal precedence internally
 		if(resource->mod_dir_match <= 1) resource->system_pak_priority = system_pk3_position(source_pk3->pk3_hash);
-		resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
+		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
+			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
 		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && source_pk3 == current_map_pk3)
 			resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; }
@@ -127,8 +128,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->disabled = "blocking config file in downloaded pk3 due to fs_restrict_dlfolder setting"; }
 
 	// Disable files not on server pak list if connected to a pure server
-	if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) && fs_connected_server_pure_state() == 1 &&
-			!resource->server_pak_position) {
+	if(!resource->server_pak_position && fs_connected_server_pure_state() == 1 &&
+			!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) &&
+			!((query->lookup_flags & LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
 		resource->disabled = "connected to pure server and file is not on server pak list"; }
 
 	// Run general file disabled check
@@ -381,8 +383,10 @@ PC_DEBUG(dll_over_qvm) {
 	ADD_STRING(va("Resource %i was selected because it is a dll and resource %i is not a dll.", high_num, low_num)); }
 
 PC_COMPARE(direct_over_pk3) {
-	if(r1->file->sourcetype == FSC_SOURCETYPE_DIRECT && r2->file->sourcetype != FSC_SOURCETYPE_DIRECT) return -1;
-	if(r2->file->sourcetype == FSC_SOURCETYPE_DIRECT && r1->file->sourcetype != FSC_SOURCETYPE_DIRECT) return 1;
+	#define PK3_LIKE_FILE(file) (file->sourcetype == FSC_SOURCETYPE_PK3 || \
+			(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr))
+	if(!PK3_LIKE_FILE(r1->file) && PK3_LIKE_FILE(r2->file)) return -1;
+	if(!PK3_LIKE_FILE(r2->file) && PK3_LIKE_FILE(r1->file)) return 1;
 	return 0; }
 
 PC_DEBUG(direct_over_pk3) {
@@ -390,11 +394,7 @@ PC_DEBUG(direct_over_pk3) {
 			high_num, low_num)); }
 
 PC_COMPARE(pk3_name_precedence) {
-	if(r1->file->sourcetype != FSC_SOURCETYPE_PK3 || r2->file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
-	fsc_file_t *pak1 = STACKPTR(((fsc_file_frompk3_t *)(r1->file))->source_pk3);
-	fsc_file_t *pak2 = STACKPTR(((fsc_file_frompk3_t *)(r2->file))->source_pk3);
-
-	return fs_compare_file_name(pak1, pak2); }
+	return fs_compare_pk3_source(r1->file, r2->file); }
 
 PC_DEBUG(pk3_name_precedence) {
 	ADD_STRING(va("Resource %i was selected because the pk3 containing it has lexicographically higher precedence "

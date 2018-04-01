@@ -284,9 +284,19 @@ static void write_sort_string(const char *string, fsc_stream_t *output) {
 	if(output->position < output->size) output->data[output->position++] = 0; }
 
 static void write_sort_filename(const fsc_file_t *file, fsc_stream_t *output) {
+	// Write sort key of the file itself
 	char buffer[FS_FILE_BUFFER_SIZE];
 	fs_file_to_buffer(file, buffer, sizeof(buffer), qfalse, qfalse, qfalse, qfalse);
 	write_sort_string(buffer, output); }
+
+static void write_sort_pk3_source_filename(const fsc_file_t *file, fsc_stream_t *output) {
+	// Write sort key of the pk3 file or pk3dir the file came from
+	if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
+		write_sort_string(STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output); }
+	else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
+		fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+		write_sort_string(STACKPTR(source_pk3->f.qp_name_ptr), output); }
+	else write_sort_string("", output); }
 
 static void write_sort_value(unsigned int value, fsc_stream_t *output) {
 	static volatile int test = 1;
@@ -304,12 +314,12 @@ void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qbo
 	write_sort_value(mod_dir_precedence(mod_dir_state), output);
 	write_sort_value(system_pak_precedence(file, mod_dir_state), output);
 	write_sort_value(basegame_dir_precedence(mod_dir_state), output);
-	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-		write_sort_value((source_pk3->f.flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
+	if(file->sourcetype == FSC_SOURCETYPE_PK3 ||
+			(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr)) {
+		write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
 		write_sort_value(0, output);
-		write_sort_filename((fsc_file_t *)source_pk3, output);
-		write_sort_value(~((fsc_file_frompk3_t *)file)->header_position, output); }
+		write_sort_pk3_source_filename(file, output);
+		write_sort_value((file->sourcetype == FSC_SOURCETYPE_PK3) ? ~((fsc_file_frompk3_t *)file)->header_position : ~0u, output); }
 	else {
 		write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
 		write_sort_value(1, output); }
@@ -326,13 +336,13 @@ int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean u
 	return fsc_memcmp(stream2.data, stream1.data,
 			stream1.position < stream2.position ? stream1.position : stream2.position); }
 
-int fs_compare_file_name(const fsc_file_t *file1, const fsc_file_t *file2) {
+int fs_compare_pk3_source(const fsc_file_t *file1, const fsc_file_t *file2) {
 	char buffer1[1024];
 	char buffer2[1024];
 	fsc_stream_t stream1 = {buffer1, 0, sizeof(buffer1), qfalse};
 	fsc_stream_t stream2 = {buffer2, 0, sizeof(buffer2), qfalse};
-	write_sort_filename(file1, &stream1);
-	write_sort_filename(file2, &stream2);
+	write_sort_pk3_source_filename(file1, &stream1);
+	write_sort_pk3_source_filename(file2, &stream2);
 	return fsc_memcmp(stream2.data, stream1.data,
 			stream1.position < stream2.position ? stream1.position : stream2.position); }
 

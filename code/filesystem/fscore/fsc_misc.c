@@ -392,16 +392,16 @@ int fsc_process_qpath(const char *input, char *buffer, char **qp_dir, char **qp_
 
 	return i; }
 
-int fsc_process_mod_dir(const char *input, char *buffer, char **remainder) {
-	// Writes mod dir to buffer which should be length FSC_MAX_MODDIR
-	// Writes pointer to remaining qpath (in input) to remainder, or null if not found
+int fsc_get_leading_directory(const char *input, char *buffer, int buffer_length, char **remainder) {
+	// Writes leading directory (text before first slash) to buffer
+	// Writes pointer to remaining (post-slash) string to remainder, or null if not found
 	// Returns number of chars written to output (NOT including null terminator)
 	int i;
 	int slash_pos = 0;
 	const char *conversion_table = fsc_get_qpath_conversion_table();
 
 	// Write buffer; get slash_pos
-	for(i=0; i<FSC_MAX_MODDIR-1; ++i) {
+	for(i=0; i<buffer_length-1; ++i) {
 		buffer[i] = conversion_table[*(unsigned char *)(input + i)];
 		if(!buffer[i]) break;
 		if(buffer[i] == '/') {

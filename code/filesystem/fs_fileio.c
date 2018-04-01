@@ -1129,29 +1129,38 @@ fileHandle_t fs_open_global_settings_file_write(const char *filename) {
 // Misc Handle Operations
 /* ******************************************************************************** */
 
-static long FS_FOpenFileRead2(const char *filename, fileHandle_t *file, qboolean allow_direct_handle) {
+static long open_index_read_handle(const char *filename, fileHandle_t *handle, int lookup_flags, qboolean allow_direct_handle) {
+	// Can be called with a null filehandle pointer for a size/existance check
 	const fsc_file_t *fscfile;
-	unsigned int size;
+	unsigned int size = 0;
 
 	// Get the file
-	fscfile = fs_general_lookup(filename, 0, qfalse);
-	if(!fscfile) {
-		*file = 0;
+	fscfile = fs_general_lookup(filename, lookup_flags, qfalse);
+	if(!fscfile || (long)(fscfile->filesize) <= 0) {
+		if(handle) *handle = 0;
 		return -1; }
+	if(!handle) return (long)(fscfile->filesize);
 
 	// Get the handle
 	if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_PK3 && fscfile->filesize > 65536) {
-		*file = fs_pk3_read_handle_open(fscfile);
+		*handle = fs_pk3_read_handle_open(fscfile);
 		size = fscfile->filesize; }
 	else if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_DIRECT && fscfile->filesize > 65536) {
-		*file = fs_direct_read_handle_open(fscfile, 0, &size); }
+		*handle = fs_direct_read_handle_open(fscfile, 0, &size); }
 	else {
-		*file = fs_cache_read_handle_open(fscfile, 0, &size); }
-	if(!*file) return -1;
-	return size; }
+		*handle = fs_cache_read_handle_open(fscfile, 0, &size); }
+	if(!*handle) return -1;
+
+	// Verify size is valid
+	if((long)size <= 0) {
+		fs_free_handle(*handle);
+		*handle = 0;
+		return -1; }
+
+	return (long)size; }
 
 long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) {
-	return FS_FOpenFileRead2(filename, file, qfalse); }
+	return open_index_read_handle(filename, file, 0, qfalse); }
 
 long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	int i;
@@ -1167,8 +1176,8 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	if(!*fp) return -1;
 	return size; }
 
-static fileHandle_t open_write_handle_with_mod_dir(const char *mod_dir, const char *path,
-			qboolean append, qboolean sync, int flags) {
+static fileHandle_t open_write_handle_path_gen(const char *mod_dir, const char *path, qboolean append,
+		qboolean sync, int flags) {
 	// Includes directory creation and sanity checks
 	// Returns handle on success, null on error
 	char full_path[FS_MAX_PATH];
@@ -1184,51 +1193,80 @@ fileHandle_t FS_FOpenConfigFileWrite(const char *filename) {
 #endif
 
 fileHandle_t FS_FOpenFileWrite(const char *filename) {
-	return open_write_handle_with_mod_dir(FS_GetCurrentGameDir(), filename, qfalse, qfalse, 0); }
+	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qfalse, qfalse, 0); }
 
 fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
-	return open_write_handle_with_mod_dir(0, filename, qfalse, qfalse, 0); }
+	return open_write_handle_path_gen(0, filename, qfalse, qfalse, 0); }
 
 fileHandle_t FS_FOpenFileAppend(const char *filename) {
-	return open_write_handle_with_mod_dir(FS_GetCurrentGameDir(), filename, qtrue, qfalse, 0); }
+	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qtrue, qfalse, 0); }
 
 int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
-	// This can be called with a null filehandle for a size/existance check
-	int size;
+	// Can be called with a null filehandle pointer for a size/existance check
+	int size = 0;
+	fileHandle_t handle = 0;
 
-	if(!f) {
-		const fsc_file_t *fscfile = fs_general_lookup(qpath, 0, qfalse);
-		if(fscfile) return fscfile->filesize;
-		return -1; }
+	if(!f && mode != FS_READ) {
+		Com_Error(ERR_DROP, "FS_FOpenFileByMode: null handle pointer with non-read mode"); }
 
 	if(mode == FS_READ) {
-		*f = 0;
 		if(owner != FS_HANDLEOWNER_SYSTEM) {
-			// Try to read directly from disk first, because mods sometimes try to read
-			// files that haven't been indexed yet or do weird stuff that doesn't work with cache handles
-			char path[FS_MAX_PATH];
-			if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_SLASH,
-					path, sizeof(path))) {
-				*f = fs_direct_read_handle_open(0, path, (unsigned int *)&size); }
+			int lookup_flags = 0;
+			if(owner == FS_HANDLEOWNER_QAGAME) {
+				// Ignore pure list for server VM. This prevents the server mod from being affected
+				// by the pure list in a local game. Since the initial qagame init is done before the
+				// pure list setup, the behavior would be inconsistent anyway.
+				lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST; }
+			else {
+				// For other VMs, allow some of the extensions from the list in the original FS_FOpenFileReadDir
+				// to access direct sourcetype files regardless of pure mode, for compatibility purposes
+				// NOTE: Consider enabling this regardless of extension?
+				if(COM_CompareExtension(qpath, ".cfg") || COM_CompareExtension(qpath, ".menu") ||
+						COM_CompareExtension(qpath, ".game") || COM_CompareExtension(qpath, ".dat"))
+					lookup_flags |= LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE; }
 
-			// Use read with direct handle option, to deal with mods like UI Enhanced that do bulk
-			// .bsp handle opens on startup which would be very slow using normal cache handles
-			if(!*f) size = FS_FOpenFileRead2(qpath, f, qtrue); }
-		else size = FS_FOpenFileRead2(qpath, f, qfalse); }
+			if((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE)) ||
+					fs_connected_server_pure_state() != 1) {
+				// Try to read directly from disk first, because some mods do weird things involving
+				// files that were just written/currently open that don't work with cache handles
+				char path[FS_MAX_PATH];
+				if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_SLASH,
+						path, sizeof(path))) {
+					handle = fs_direct_read_handle_open(0, path, (unsigned int *)&size); } }
+
+			// Use read with direct handle support option, to optimize for mods like UI Enhanced that do
+			// bulk .bsp handle opens on startup which would be very slow using normal cache handles
+			if(!handle) size = open_index_read_handle(qpath, f ? &handle : 0, lookup_flags, qtrue); }
+
+		// Engine reads don't do anything fancy so just use the basic method
+		else size = open_index_read_handle(qpath, f ? &handle : 0, 0, qfalse);
+
+		// Verify size is valid
+		if(size <= 0) {
+			if(handle) fs_free_handle(handle);
+			handle = 0;
+			size = -1; } }
 	else if(mode == FS_WRITE) {
-		*f = FS_FOpenFileWrite(qpath); }
+		handle = open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qfalse, qfalse, 0); }
 	else if(mode == FS_APPEND_SYNC) {
-		*f = open_write_handle_with_mod_dir(FS_GetCurrentGameDir(), qpath, qtrue, qtrue, 0); }
+		handle = open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qtrue, 0); }
 	else if(mode == FS_APPEND) {
-		*f = FS_FOpenFileAppend( qpath ); }
+		handle = open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qfalse, 0); }
 	else {
-		Com_Error(ERR_FATAL, "FS_FOpenFileByMode: bad mode"); }
+		Com_Error(ERR_DROP, "FS_FOpenFileByMode: bad mode"); }
 
-	if(*f) {
-		fs_handle_set_owner(*f, owner);
-		if(mode != FS_READ) size = 0;
-		return size; }
-	return -1; }
+	if(f) {
+		// Caller wants to keep the handle
+		*f = handle;
+		if(handle) {
+			fs_handle_set_owner(handle, owner);
+			return size; }
+		else {
+			return -1; } }
+	else {
+		// Size check only
+		if(handle) fs_free_handle(handle);
+		return size; } }
 
 int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
 	return FS_FOpenFileByModeOwner(qpath, f, mode, FS_HANDLEOWNER_SYSTEM); }

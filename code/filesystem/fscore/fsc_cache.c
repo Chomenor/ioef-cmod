@@ -131,6 +131,7 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 	if(source_file->sourcetype == FSC_SOURCETYPE_DIRECT) {
 		fsc_file_direct_t *export_file_typed = (fsc_file_direct_t *)export_file;
 		export_file_typed->qp_mod_ptr = convert_string(export_file_typed->qp_mod_ptr, xw);
+		export_file_typed->pk3dir_ptr = convert_string(export_file_typed->pk3dir_ptr, xw);
 		export_file_typed->refresh_count = 0;
 		export_file_typed->source_dir_id = 0;
 		// We can leave this null and let fsc_load_file patch it back in
