@@ -46,11 +46,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #ifdef ELITEFORCE
-#ifdef CMOD_SETTINGS
-#define Q3CONFIG_CFG "cmod.cfg"
-#else
 #define Q3CONFIG_CFG "hmconfig.cfg"
-#endif
 #else
 #ifdef DEDICATED
 #	define Q3CONFIG_CFG "q3config_server.cfg"
@@ -90,6 +86,7 @@ typedef enum {
 #endif
 #ifdef CMOD_SETTINGS
 	,FS_CONFIGTYPE_GLOBAL_SETTINGS
+	,FS_CONFIGTYPE_RESTRICTED_IMPORT
 #endif
 } fs_config_type_t;
 

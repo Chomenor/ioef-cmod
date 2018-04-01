@@ -384,7 +384,7 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 
 #ifdef CMOD_SETTINGS
 void Com_WriteGlobalSettings(void) {
-	fileHandle_t f = fs_open_global_settings_file_write(Q3CONFIG_CFG);
+	fileHandle_t f = fs_open_global_settings_file_write("cmod.cfg");
 
 	FS_Printf(f, "// This file is loaded when Elite Force starts and saved when it exits." SYSTEM_NEWLINE
 			"// Only settings that are different from the default are saved." SYSTEM_NEWLINE
@@ -2417,7 +2417,7 @@ void Com_ExecuteCfg(void)
 #ifndef DEDICATED
 	if(!Com_SafeMode()) {
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
-		fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_GLOBAL_SETTINGS, EXEC_APPEND, qfalse);
+		fs_execute_config_file("cmod.cfg", FS_CONFIGTYPE_GLOBAL_SETTINGS, EXEC_APPEND, qfalse);
 		Cbuf_Execute();
 		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
 		Cbuf_Execute(); }

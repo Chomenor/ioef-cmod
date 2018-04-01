@@ -356,7 +356,10 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 #ifdef CMOD_COMMAND_INTERPRETER
 	cmd_mode_t mode = 0;
 	if(config_type == FS_CONFIGTYPE_PROTECTED) mode |= CMD_PROTECTED;
-	else if(config_type == FS_CONFIGTYPE_DEFAULT) mode |= CMD_PROTECTED;
+	if(config_type == FS_CONFIGTYPE_DEFAULT) mode |= CMD_PROTECTED;
+#endif
+#ifdef CMOD_SETTINGS
+	if(config_type == FS_CONFIGTYPE_RESTRICTED_IMPORT) mode |= CMD_RESTRICTED;
 #endif
 
 	if(com_journalDataFile && com_journal->integer == 2) {
@@ -369,12 +372,12 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	else if(config_type == FS_CONFIGTYPE_GLOBAL_SETTINGS) {
 		data = 0;
 		char path[FS_MAX_PATH];
-		if(!quiet) Com_Printf("execing <%s>\n", name);
+		if(!quiet) Com_Printf("execing global %s\n", name);
 		if(fs_generate_path_sourcedir(0, name, 0, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof(path))) {
 			data = fs_read_data(0, path, 0); }
 		if(!data) {
-			Com_Printf("couldn't exec %s - failed to read global config file\n", name);
-			fs_write_journal_data(0, 0);
+			Com_Printf("loading %s failed; attempting to import settings from " Q3CONFIG_CFG "\n", name);
+			fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_RESTRICTED_IMPORT, EXEC_APPEND, qfalse);
 			return; } }
 #endif
 	else {
