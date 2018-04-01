@@ -1662,6 +1662,7 @@ typedef struct {
 } default_bind_t;
 
 default_bind_t default_binds[] = {
+	{"0", "weapon 0"},
 	{"1", "weapon 1"},
 	{"2", "weapon 2"},
 	{"3", "weapon 3"},
@@ -1678,8 +1679,8 @@ default_bind_t default_binds[] = {
 	{"[", "weapprev"},
 	{"]", "weapnext"},
 	{"ENTER", "+button2"},
-	{"mwheelup", "weapnext"},
-	{"mwheeldown", "weapprev"},
+	{"mwheelup", "weapprev"},
+	{"mwheeldown", "weapnext"},
 
 	{"CTRL", "+attack"},
 	{"ALT", "+altattack"},
