@@ -89,13 +89,15 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
 		const fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)(resource->file))->source_pk3);
-		// Don't calculate system pak priority for mod dirs so any system paks mixed in get normal precedence internally
-		if(resource->mod_dir_match <= 1) resource->system_pak_priority = system_pk3_position(source_pk3->pk3_hash);
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
 			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
 		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
-		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && source_pk3 == current_map_pk3)
-			resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; }
+
+		if(resource->mod_dir_match <= 1) {
+			// Don't sort system paks or the current map pak specially if they are part of a mod
+			resource->system_pak_priority = system_pk3_position(source_pk3->pk3_hash);
+			if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && source_pk3 == current_map_pk3)
+				resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; } }
 
 	// Check mod dir for case mismatched current or basegame directory
 	if((!Q_stricmp(resource_mod_dir, FS_GetCurrentGameDir()) && strcmp(resource_mod_dir, FS_GetCurrentGameDir()))
