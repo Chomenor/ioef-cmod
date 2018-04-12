@@ -283,6 +283,11 @@ void fs_finalize_download(void) {
 	char target_path[FS_MAX_PATH];
 	unsigned int actual_hash;
 
+	if(!current_download) {
+		// Shouldn't happen
+		Com_Printf("^3WARNING: fs_finalize_download called with no current download\n");
+		return; }
+
 	if(!fs_generate_path_writedir("download.temp", 0, 0, 0, tempfile_path, sizeof(tempfile_path))) {
 		Com_Printf("ERROR: Failed to get tempfile path for download\n");
 		return; }
