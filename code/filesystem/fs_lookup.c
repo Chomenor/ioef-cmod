@@ -29,13 +29,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 typedef struct {
 	// File lookup
-	char *qp_name;	// null to disable file lookup
-	char *qp_dir;
-	char **qp_exts;
+	const char *qp_name;	// null to disable file lookup
+	const char *qp_dir;
+	const char **qp_exts;
 	int extension_count;
 
 	// Shader lookup
-	char *shader_name;	// null to disable shader lookup
+	const char *shader_name;	// null to disable shader lookup
 
 	// Lookup flags
 	int lookup_flags;
@@ -88,7 +88,8 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
-		const fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)(resource->file))->source_pk3);
+		const fsc_file_direct_t *source_pk3 =
+				(const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)(resource->file))->source_pk3);
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
 			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
 		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
@@ -158,7 +159,7 @@ static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_
 static void shader_to_lookup_resource(const lookup_query_t *query, fsc_shader_t *shader,
 			lookup_resource_t *resource) {
 	fsc_memset(resource, 0, sizeof(*resource));
-	resource->file = STACKPTR(shader->source_file_ptr);
+	resource->file = (const fsc_file_t *)STACKPTR(shader->source_file_ptr);
 	resource->shader = shader;
 	configure_lookup_resource(query, resource); }
 
@@ -171,7 +172,7 @@ static void shader_to_lookup_resource(const lookup_query_t *query, fsc_shader_t 
 static void initialize_selection_output(selection_output_t *output) {
 	// Initialize output structure
 	fsc_memset(output, 0, sizeof(*output));
-	output->resources = Z_Malloc(20 * sizeof(*output->resources));
+	output->resources = (lookup_resource_t *)Z_Malloc(20 * sizeof(*output->resources));
 	output->resource_count = 0;
 	output->resource_allocation = 20; }
 
@@ -181,7 +182,7 @@ static void free_selection_output(selection_output_t *output) {
 static lookup_resource_t *allocate_lookup_resource(selection_output_t *output) {
 	if(output->resource_count >= output->resource_allocation) {
 		// No more slots - double the allocation size
-		lookup_resource_t *new_resources = Z_Malloc(output->resource_count * 2 * sizeof(*output->resources));
+		lookup_resource_t *new_resources = (lookup_resource_t *)Z_Malloc(output->resource_count * 2 * sizeof(*output->resources));
 		fsc_memcpy(new_resources, output->resources, output->resource_count * sizeof(*output->resources));
 		Z_Free(output->resources);
 		output->resources = new_resources;
@@ -197,16 +198,16 @@ static qboolean string_match(const char *string1, const char *string2, qboolean 
 		return qtrue; }
 	return qfalse; }
 
-static int is_file_selected(fsc_file_t *file, const lookup_query_t *query, int *extension_index_out, qboolean *case_mismatch_out) {
+static int is_file_selected(const fsc_file_t *file, const lookup_query_t *query, int *extension_index_out, qboolean *case_mismatch_out) {
 	// Returns 1 if selected, 0 otherwise
 	int i;
 	if(!fsc_is_file_enabled(file, &fs)) return 0;
-	if(!string_match(query->qp_name, STACKPTR(file->qp_name_ptr), case_mismatch_out)) return 0;
-	if(!string_match(query->qp_dir, STACKPTR(file->qp_dir_ptr), case_mismatch_out)) return 0;
+	if(!string_match(query->qp_name, (const char *)STACKPTR(file->qp_name_ptr), case_mismatch_out)) return 0;
+	if(!string_match(query->qp_dir, (const char *)STACKPTR(file->qp_dir_ptr), case_mismatch_out)) return 0;
 
 	if(!query->extension_count) return 1;
 	for(i=0; i<query->extension_count; ++i) {
-		if(string_match(query->qp_exts[i], STACKPTR(file->qp_ext_ptr), case_mismatch_out)) {
+		if(string_match(query->qp_exts[i], (const char *)STACKPTR(file->qp_ext_ptr), case_mismatch_out)) {
 			*extension_index_out = i + 1;
 			return 1; } }
 	return 0; }
@@ -218,7 +219,7 @@ static void perform_file_selection(const lookup_query_t *query, selection_output
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash(query->qp_name, query->qp_dir), &hti);
 	while((file_ptr = fsc_hashtable_next(&hti))) {
-		fsc_file_t *file = STACKPTR(file_ptr);
+		const fsc_file_t *file = (const fsc_file_t *)STACKPTR(file_ptr);
 		int extension_index = 0;
 		qboolean case_mismatch = qfalse;
 		if(is_file_selected(file, query, &extension_index, &case_mismatch)) {
@@ -229,7 +230,7 @@ static void perform_file_selection(const lookup_query_t *query, selection_output
 
 static int is_shader_selected(fsc_stackptr_t shader_name_ptr, fsc_shader_t *shader) {
 	if(shader->shader_name_ptr != shader_name_ptr) return 0;
-	if(!fsc_is_file_enabled(STACKPTR(shader->source_file_ptr), &fs)) return 0;
+	if(!fsc_is_file_enabled((const fsc_file_t *)STACKPTR(shader->source_file_ptr), &fs)) return 0;
 	return 1; }
 
 static void perform_shader_selection(const lookup_query_t *query, selection_output_t *output) {
@@ -248,7 +249,7 @@ static void perform_shader_selection(const lookup_query_t *query, selection_outp
 
 	fsc_hashtable_open(&fs.shaders, fsc_string_hash(shader_name_lower, 0), &hti);
 	while((shader_ptr = fsc_hashtable_next(&hti))) {
-		shader = STACKPTR(shader_ptr);
+		shader = (fsc_shader_t *)STACKPTR(shader_ptr);
 		if(is_shader_selected(shader_name_ptr, shader)) {
 			resource = allocate_lookup_resource(output);
 			shader_to_lookup_resource(query, shader, resource); } } }
@@ -272,7 +273,7 @@ static void resource_to_stream(const lookup_resource_t *resource, fsc_stream_t *
 
 	if(resource->shader) {
 		ADD_STRING("->");
-		ADD_STRING(STACKPTR(resource->shader->shader_name_ptr)); } }
+		ADD_STRING((const char *)STACKPTR(resource->shader->shader_name_ptr)); } }
 
 /* *** Precedence Rule Definitions *** */
 
@@ -292,8 +293,10 @@ PC_DEBUG(resource_disabled) {
 	ADD_STRING(va("Resource %i was selected because resource %i is disabled: %s", high_num, low_num, low->disabled)); }
 
 PC_COMPARE(special_shaders) {
-	qboolean r1_special = r1->shader && (r1->mod_dir_match > 1 || r1->system_pak_priority || r1->server_pak_position);
-	qboolean r2_special = r2->shader && (r2->mod_dir_match > 1 || r2->system_pak_priority || r2->server_pak_position);
+	qboolean r1_special = (r1->shader &&
+			(r1->mod_dir_match > 1 || r1->system_pak_priority || r1->server_pak_position)) ? qtrue : qfalse;
+	qboolean r2_special = (r2->shader &&
+			(r2->mod_dir_match > 1 || r2->system_pak_priority || r2->server_pak_position)) ? qtrue : qfalse;
 
 	if(r1_special && !r2_special) return -1;
 	if(r2_special && !r1_special) return 1;
@@ -454,7 +457,7 @@ PC_DEBUG(case_match) {
 /* *** Precedence List & Sorting *** */
 
 typedef struct {
-	char *identifier;
+	const char *identifier;
 	int (*comparator)(const lookup_resource_t *r1, const lookup_resource_t *r2);
 	void (*debugfunction)(const lookup_resource_t *high, const lookup_resource_t *low, int high_num, int low_num,
 				fsc_stream_t *stream);
@@ -490,7 +493,7 @@ static int precedence_comparator(const lookup_resource_t *resource1, const looku
 	return resource1 < resource2 ? -1 : 1; }
 
 static int precedence_comparator_qsort(const void *e1, const void *e2) {
-	return precedence_comparator(e1, e2); }
+	return precedence_comparator((const lookup_resource_t *)e1, (const lookup_resource_t *)e2); }
 
 static void selection_sort(selection_output_t *selection_output) {
 	qsort(selection_output->resources, selection_output->resource_count, sizeof(*selection_output->resources),
@@ -611,7 +614,7 @@ static void debug_lookup(const lookup_query_t *queries, int query_count, qboolea
 			sha256_to_stream(hash, &stream);
 
 			if(debug_selection.resources[i].file->qp_ext_ptr &&
-					!Q_stricmp(STACKPTR(debug_selection.resources[i].file->qp_ext_ptr), "qvm")) {
+					!Q_stricmp((const char *)STACKPTR(debug_selection.resources[i].file->qp_ext_ptr), "qvm")) {
 				ADD_STRINGL(va("\ntrusted: %s", fs_check_trusted_vm_hash(hash) ? "yes" :
 						"no; blocked in download folder if fs_restrict_dlfolder set")); } }
 
@@ -702,7 +705,7 @@ static void lookup_print_debug_file(const fsc_file_t *file) {
 const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) {
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
-	char *ext;
+	const char *ext = 0;
 	query_result_t lookup_result;
 
 	Com_Memset(&query, 0, sizeof(query));
@@ -734,7 +737,7 @@ static void shader_or_image_lookup(const char *name, qboolean image_only, int lo
 	// Input name should be extension-free (call COM_StripExtension first)
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
-	char *exts[] = {"dds", "png", "tga", "jpg", "jpeg", "pcx", "bmp"};
+	const char *exts[] = {"dds", "png", "tga", "jpg", "jpeg", "pcx", "bmp"};
 
 	Com_Memset(&query, 0, sizeof(query));
 	query.lookup_flags = lookup_flags;
@@ -778,7 +781,7 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
-	char *exts[] = {
+	const char *exts[] = {
 		"wav",
 #ifdef USE_CODEC_VORBIS
 		"ogg",
@@ -812,6 +815,8 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) {
 	// Returns a qvm or game dll file, or null if not found
 	// May throw ERR_DROP due to fs_restrict_dlfolder checks
+	const char *qvm_exts[] = {"qvm"};
+	const char *dll_exts[] = {DLL_EXT+1};
 	lookup_query_t queries[2];
 	int query_count = qvm_only ? 1 : 2;
 	char qpath_buffers[2][FSC_MAX_QPATH];
@@ -820,14 +825,14 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 	Com_Memset(queries, 0, sizeof(queries));
 	queries[0].lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;
 	fsc_process_qpath(va("vm/%s", name), qpath_buffers[0], &queries[0].qp_dir, &queries[0].qp_name, 0);
-	queries[0].qp_exts = (char *[]){"qvm"};
-	queries[0].extension_count = 1;
+	queries[0].qp_exts = qvm_exts;
+	queries[0].extension_count = ARRAY_LEN(qvm_exts);
 
 	if(!qvm_only) {
 		queries[1].lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;
 		fsc_process_qpath(va("%s" ARCH_STRING, name), qpath_buffers[1], &queries[1].qp_dir, &queries[1].qp_name, 0);
-		queries[1].qp_exts = (char *[]){DLL_EXT+1};
-		queries[1].extension_count = 1;
+		queries[1].qp_exts = dll_exts;
+		queries[1].extension_count = ARRAY_LEN(dll_exts);
 		queries[1].dll_query = qtrue; }
 
 	if(debug) {
@@ -843,13 +848,13 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 
 	// Not elegant but should be adequate
 	if(is_dll_out) *is_dll_out = lookup_result.file &&
-			!Q_stricmp(STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT+1) ? qtrue : qfalse;
+			!Q_stricmp((const char *)STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT+1) ? qtrue : qfalse;
 	return lookup_result.file; }
 
 const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug) {
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
-	char *ext;
+	const char *ext = 0;
 	query_result_t lookup_result;
 
 	Com_Memset(&query, 0, sizeof(query));

@@ -47,14 +47,14 @@ static qboolean reference_set_add(reference_set_t *reference_set, fsc_file_direc
 
 	if(reference_set->element_count >= MAX_REFERENCE_SET_ENTRIES) return qfalse;
 
-	while((entry = fs_hashtable_next(&it))) {
+	while((entry = (reference_set_entry_t *)fs_hashtable_next(&it))) {
 		if(entry->pak->pk3_hash == pak->pk3_hash) {
 			// File with same hash - only keep the higher precedence file
 			if(entry->pak != pak && position == entry->position &&
 					fs_compare_file((fsc_file_t *)entry->pak, (fsc_file_t *)pak, qfalse) > 0) entry->pak = pak;
 			return qfalse; } }
 
-	entry = S_Malloc(sizeof(reference_set_entry_t));
+	entry = (reference_set_entry_t *)S_Malloc(sizeof(reference_set_entry_t));
 	entry->pak = pak;
 	entry->position = position;
 	fs_hashtable_insert(reference_set, (fs_hashtable_entry_t *)entry, pak->pk3_hash);
@@ -80,9 +80,9 @@ static void reference_set_to_reference_list(fs_hashtable_t *reference_set, refer
 	int count = 0;
 
 	reference_list->entry_count = reference_set->element_count;
-	reference_list->entries = Z_Malloc(reference_list->entry_count * sizeof(*reference_list->entries));
+	reference_list->entries = (reference_list_entry_t *)Z_Malloc(reference_list->entry_count * sizeof(*reference_list->entries));
 
-	while((entry = fs_hashtable_next(&it))) {
+	while((entry = (reference_set_entry_t *)fs_hashtable_next(&it))) {
 		if(count >= reference_list->entry_count) Com_Error(ERR_FATAL, "reference_set_to_reference_list overflow");
 		reference_list->entries[count].position = entry->position;
 		reference_list->entries[count].pak = entry->pak;
@@ -99,10 +99,10 @@ static int compare_reference_entry(const reference_list_entry_t *entry1, const r
 	return fs_compare_file((fsc_file_t *)entry1->pak, (fsc_file_t *)entry2->pak, use_pure_list); }
 
 static int compare_reference_entry_qsort_pure(const void *entry1, const void *entry2) {
-	return compare_reference_entry(entry1, entry2, qtrue); }
+	return compare_reference_entry((const reference_list_entry_t *)entry1, (const reference_list_entry_t *)entry2, qtrue); }
 
 static int compare_reference_entry_qsort_nonpure(const void *entry1, const void *entry2) {
-	return compare_reference_entry(entry1, entry2, qfalse); }
+	return compare_reference_entry((const reference_list_entry_t *)entry1, (const reference_list_entry_t *)entry2, qfalse); }
 
 static void sort_reference_list(reference_list_t *reference_list, qboolean use_pure_list) {
 	qsort(reference_list->entries, reference_list->entry_count, sizeof(*reference_list->entries),
@@ -113,7 +113,7 @@ static void sort_reference_list(reference_list_t *reference_list, qboolean use_p
 /* ******************************************************************************** */
 
 static void reference_name_string(fsc_file_direct_t *pak, fsc_stream_t *stream) {
-	const char *mod_dir = pak->qp_mod_ptr ? STACKPTR(pak->qp_mod_ptr) : com_basegame->string;
+	const char *mod_dir = pak->qp_mod_ptr ? (const char *)STACKPTR(pak->qp_mod_ptr) : com_basegame->string;
 
 	// Replace basemod with com_basegame to avoid issues
 	// Servers should avoid using basemod for download-enabled paks if possible
@@ -125,7 +125,7 @@ static void reference_name_string(fsc_file_direct_t *pak, fsc_stream_t *stream) 
 
 	fsc_stream_append_string(stream, mod_dir);
 	fsc_stream_append_string(stream, "/");
-	fsc_stream_append_string(stream, STACKPTR(pak->f.qp_name_ptr)); }
+	fsc_stream_append_string(stream, (const char *)STACKPTR(pak->f.qp_name_ptr)); }
 
 static void reference_hash_string(fsc_file_direct_t *pak, fsc_stream_t *stream) {
 	char buffer[20];
@@ -140,7 +140,7 @@ static void reference_list_to_stream(reference_list_t *reference_list, fsc_strea
 		data_function(reference_list->entries[i].pak, stream);
 		if(stream->overflowed) break; } }
 
-static qboolean reference_list_to_buffer(reference_list_t *reference_list, char *output, int output_size,
+static qboolean reference_list_to_buffer(reference_list_t *reference_list, char *output, unsigned int output_size,
 			void (data_function)(fsc_file_direct_t *pak, fsc_stream_t *stream)) {
 	// Returns qtrue on success, qfalse on overflow
 	fsc_stream_t stream = {output, 0, output_size, 0};
@@ -165,8 +165,8 @@ typedef struct {
 } pure_checksum_entry_t;
 
 static void get_pure_checksum_entry_callback(void *context, char *data, int size) {
-	pure_checksum_entry_t **entry = context;
-	*entry = fsc_malloc(sizeof(pure_checksum_entry_t) + size);
+	pure_checksum_entry_t **entry = (pure_checksum_entry_t **)context;
+	*entry = (pure_checksum_entry_t *)fsc_malloc(sizeof(pure_checksum_entry_t) + size);
 	(*entry)->data_size = size;
 	Com_Memcpy((char *)&(*entry)->checksum_feed + 4, data, size); }
 
@@ -214,7 +214,7 @@ static int get_pure_checksum_for_pk3(const fsc_file_direct_t *pk3, int checksum_
 		node = deletion_node;
 		if(node->entry) fsc_free(node->entry); }
 	else {
-		node = S_Malloc(sizeof(*node));
+		node = (pure_checksum_node_t *)S_Malloc(sizeof(*node));
 		node->next = pure_checksum_cache;
 		pure_checksum_cache = node; }
 
@@ -228,7 +228,7 @@ static int get_pure_checksum_for_pk3(const fsc_file_direct_t *pk3, int checksum_
 static int get_pure_checksum_for_file(const fsc_file_t *file, int checksum_feed) {
 	if(!file) return 0;
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
-	return get_pure_checksum_for_pk3(STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), checksum_feed); }
+	return get_pure_checksum_for_pk3((const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), checksum_feed); }
 
 // Pure validation string building
 
@@ -258,7 +258,7 @@ static void add_referenced_pure_pk3s(fsc_stream_t *stream, fs_hashtable_t *refer
 
 	free_reference_list(&reference_list); }
 
-static void build_pure_validation_string(char *output, int output_size, fs_hashtable_t *referenced_paks) {
+static void build_pure_validation_string(char *output, unsigned int output_size, fs_hashtable_t *referenced_paks) {
 	fsc_stream_t stream = {output, 0, output_size, 0};
 	char buffer[50];
 	int cgame_checksum = get_pure_checksum_for_file(fs_general_lookup("vm/cgame.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse), checksum_feed);
@@ -296,22 +296,22 @@ void fs_register_reference(const fsc_file_t *file) {
 	if(file->qp_ext_ptr) {
 		int i;
 		static const char *special_extensions[] = {"shader", "txt", "cfg", "config", "bot", "arena", "menu"};
-		const char *extension = STACKPTR(file->qp_ext_ptr);
+		const char *extension = (const char *)STACKPTR(file->qp_ext_ptr);
 		for(i=0; i<ARRAY_LEN(special_extensions); ++i) {
 			if(!Q_stricmp(extension, special_extensions[i])) return; } }
 
 	// Don't register reference in certain special cases
-	if(!Q_stricmp(STACKPTR(file->qp_name_ptr), "qagame") &&
-			file->qp_ext_ptr && !Q_stricmp(STACKPTR(file->qp_ext_ptr), "qvm") &&
-			file->qp_dir_ptr && !Q_stricmp(STACKPTR(file->qp_dir_ptr), "vm")) return;
-	if(file->qp_dir_ptr && !Q_stricmp(STACKPTR(file->qp_dir_ptr), "levelshots")) return;
+	if(!Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), "qagame") &&
+			file->qp_ext_ptr && !Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "qvm") &&
+			file->qp_dir_ptr && !Q_stricmp((const char *)STACKPTR(file->qp_dir_ptr), "vm")) return;
+	if(file->qp_dir_ptr && !Q_stricmp((const char *)STACKPTR(file->qp_dir_ptr), "levelshots")) return;
 
 	// Initialize referenced_paks if it isn't already
 	if(!referenced_paks.bucket_count) {
 		fs_hashtable_initialize(&referenced_paks, 32); }
 
 	// Add the reference
-	if(reference_set_add(&referenced_paks, STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), 0)) {
+	if(reference_set_add(&referenced_paks, (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), 0)) {
 		if(fs_debug_references->integer) {
 			char temp[FS_FILE_BUFFER_SIZE];
 			fs_file_to_buffer(file, temp, sizeof(temp), qtrue, qtrue, qtrue, qfalse);
@@ -409,8 +409,8 @@ static void add_paks_by_category(reference_set_work_t *ref_work, pakcategory_t c
 
 	for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-		while((hash_entry = STACKPTR(fsc_hashtable_next(&hti)))) {
-			fsc_file_direct_t *pk3 = STACKPTR(hash_entry->pk3);
+		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
 			if(fs_file_disabled((fsc_file_t *)pk3, 0)) continue;
 			if(get_pak_category(pk3) != category) continue;
 			reference_set_work_add(ref_work, pk3); } } }
@@ -419,7 +419,7 @@ static void add_referenced_paks(reference_set_work_t *ref_work) {
 	// Add all current referenced paks to the reference set
 	fs_hashtable_iterator_t it = fs_hashtable_iterate(&referenced_paks, 0, qtrue);
 	reference_set_entry_t *entry;
-	while((entry = fs_hashtable_next(&it))) {
+	while((entry = (reference_set_entry_t *)fs_hashtable_next(&it))) {
 		reference_set_work_add(ref_work, entry->pak); } }
 
 static void add_pak_containing_file(reference_set_work_t *ref_work, const char *name) {
@@ -429,7 +429,7 @@ static void add_pak_containing_file(reference_set_work_t *ref_work, const char *
 		Com_Printf("WARNING: %s list rule %s failed to locate pk3\n",
 				ref_work->download ? "Download" : "Pure", ref_work->rule_name);
 		return; }
-	reference_set_work_add(ref_work, STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3)); }
+	reference_set_work_add(ref_work, (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3)); }
 
 static void add_pak_by_name(reference_set_work_t *ref_work, const char *name) {
 	// Add all paks matching the specified filename to the reference set
@@ -438,7 +438,7 @@ static void add_pak_by_name(reference_set_work_t *ref_work, const char *name) {
 	const fsc_file_t *file;
 	char mod_dir[FSC_MAX_MODDIR];
 	char filename[FSC_MAX_QPATH];
-	char *remainder;
+	const char *remainder = 0;
 
 	fsc_get_leading_directory(name, mod_dir, sizeof(mod_dir), &remainder);
 	if(remainder) {
@@ -448,14 +448,14 @@ static void add_pak_by_name(reference_set_work_t *ref_work, const char *name) {
 		if(!fs_generate_path(name, 0, 0, 0, 0, 0, filename, sizeof(filename))) return; }
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash(filename, 0), &hti);
-	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((file = (const fsc_file_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
 		if(file->sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(!((fsc_file_direct_t *)file)->pk3_hash) continue;
 		if(fs_file_disabled(file, 0)) continue;
 
 		if(file->qp_dir_ptr) continue;
-		if(!file->qp_ext_ptr || Q_stricmp(STACKPTR(file->qp_ext_ptr), "pk3")) continue;
-		if(Q_stricmp(STACKPTR(file->qp_name_ptr), filename)) continue;
+		if(!file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "pk3")) continue;
+		if(Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), filename)) continue;
 		if(*mod_dir && Q_stricmp(fsc_get_mod_dir(file, &fs), mod_dir)) continue;
 
 		reference_set_work_add(ref_work, (fsc_file_direct_t *)file);
@@ -544,7 +544,7 @@ fileHandle_t fs_open_download_pak(const char *path, unsigned int *size_out) {
 	reference_set_entry_t *entry;
 
 	// Search all the current referenced paks to find one with a matching path
-	while((entry = fs_hashtable_next(&it))) {
+	while((entry = (reference_set_entry_t *)fs_hashtable_next(&it))) {
 		fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
 		reference_name_string(entry->pak, &stream);
 		fsc_stream_append_string(&stream, ".pk3");

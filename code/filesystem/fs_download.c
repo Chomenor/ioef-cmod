@@ -103,8 +103,8 @@ static qboolean entry_match_in_index(download_entry_t *entry, fsc_file_direct_t 
 	fsc_pk3_hash_map_entry_t *hashmap_entry;
 
 	fsc_hashtable_open(&fs.pk3_hash_lookup, entry->hash, &hti);
-	while((hashmap_entry = STACKPTR(fsc_hashtable_next(&hti)))) {
-		fsc_file_direct_t *pk3 = STACKPTR(hashmap_entry->pk3);
+	while((hashmap_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+		fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hashmap_entry->pk3);
 		if(!fsc_is_file_enabled((fsc_file_t *)pk3, &fs)) continue;
 		if(pk3->pk3_hash != entry->hash) continue;
 		if(fs_redownload_across_mods->integer &&
@@ -175,12 +175,12 @@ static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int reche
 // Download List Creation
 /* ******************************************************************************** */
 
-static download_entry_t *create_download_entry(char *name, unsigned int hash) {
+static download_entry_t *create_download_entry(const char *name, unsigned int hash) {
 	// Returns new entry on success, null on error.
 	// Download entries should be freed by fs_free_download_entry.
 	download_entry_t *entry;
 	char temp_mod_dir[FSC_MAX_MODDIR];
-	char *temp_filename;
+	const char *temp_filename = 0;
 	char mod_dir[FSC_MAX_MODDIR];
 	char filename[MAX_DOWNLOAD_NAME + 1];
 
@@ -195,7 +195,7 @@ static download_entry_t *create_download_entry(char *name, unsigned int hash) {
 	if(!Q_stricmp(mod_dir, FS_GetCurrentGameDir())) Q_strncpyz(mod_dir, FS_GetCurrentGameDir(), sizeof(mod_dir));
 
 	// Set the download entry strings
-	entry = Z_Malloc(sizeof(*entry));
+	entry = (download_entry_t *)Z_Malloc(sizeof(*entry));
 	entry->local_name = CopyString(va("%s/%s%s.pk3", mod_dir, fs_saveto_dlfolder->integer ? "downloads/" : "", filename));
 	entry->remote_name = CopyString(va("%s.pk3", name));
 	entry->mod_dir = CopyString(mod_dir);
@@ -313,7 +313,7 @@ void fs_finalize_download(void) {
 			Com_Printf("WARNING: Downloaded pk3 %s has unexpected hash.\n", current_download->local_name); } }
 
 	if(FS_FileInPathExists(target_path)) {
-		char *new_name = va("%s/%s%s.%08x.pk3", current_download->mod_dir, fs_saveto_dlfolder->integer ? "downloads/" : "",
+		const char *new_name = va("%s/%s%s.%08x.pk3", current_download->mod_dir, fs_saveto_dlfolder->integer ? "downloads/" : "",
 				current_download->filename, actual_hash);
 		Com_Printf("WARNING: Downloaded pk3 %s conflicts with existing file. Using name %s instead.\n",
 				current_download->local_name, new_name);

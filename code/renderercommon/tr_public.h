@@ -191,7 +191,7 @@ typedef struct {
 	const fsc_file_t *(*fs_image_lookup)(const char *name, int lookup_flags, qboolean debug);
 	const fsc_shader_t *(*fs_shader_lookup)(const char *name, int lookup_flags, qboolean debug);
 	char *(*fs_read_shader)(const fsc_shader_t *shader);
-	char *(*fs_file_extension)(const fsc_file_t *file);
+	const char *(*fs_file_extension)(const fsc_file_t *file);
 	qboolean (*fs_files_from_same_pk3)(const fsc_file_t *file1, const fsc_file_t *file2);
 #endif
 } refimport_t;

@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 void fs_hashtable_initialize(fs_hashtable_t *hashtable, int bucket_count) {
 	// Valid for an uninitialized hash table
 	hashtable->bucket_count = bucket_count;
-	hashtable->buckets = Z_Malloc(sizeof(fs_hashtable_entry_t *) * bucket_count);
+	hashtable->buckets = (fs_hashtable_entry_t **)Z_Malloc(sizeof(fs_hashtable_entry_t *) * bucket_count);
 	hashtable->element_count = 0; }
 
 void fs_hashtable_insert(fs_hashtable_t *hashtable, fs_hashtable_entry_t *entry, unsigned int hash) {
@@ -66,8 +66,8 @@ static void fs_hashtable_free_entries(fs_hashtable_t *hashtable, void (*free_ent
 	// Valid for an initialized or uninitialized (zeroed) hashtable
 	fs_hashtable_iterator_t it = fs_hashtable_iterate(hashtable, 0, qtrue);
 	fs_hashtable_entry_t *entry;
-	if(free_entry) while((entry = fs_hashtable_next(&it))) free_entry(entry);
-	else while((entry = fs_hashtable_next(&it))) Z_Free(entry); }
+	if(free_entry) while((entry = (fs_hashtable_entry_t *)fs_hashtable_next(&it))) free_entry(entry);
+	else while((entry = (fs_hashtable_entry_t *)fs_hashtable_next(&it))) Z_Free(entry); }
 
 void fs_hashtable_free(fs_hashtable_t *hashtable, void (*free_entry)(fs_hashtable_entry_t *entry)) {
 	// Valid for an initialized or uninitialized (zeroed) hashtable
@@ -89,7 +89,7 @@ void pk3_list_initialize(pk3_list_t *pk3_list, unsigned int bucket_count) {
 	fs_hashtable_initialize(&pk3_list->ht, bucket_count); }
 
 void pk3_list_insert(pk3_list_t *pk3_list, unsigned int hash) {
-	pk3_list_entry_t *new_entry = S_Malloc(sizeof(pk3_list_entry_t));
+	pk3_list_entry_t *new_entry = (pk3_list_entry_t *)S_Malloc(sizeof(pk3_list_entry_t));
 	fs_hashtable_insert(&pk3_list->ht, &new_entry->hte, hash);
 	new_entry->hash = hash;
 	new_entry->position = pk3_list->ht.element_count; }
@@ -97,7 +97,7 @@ void pk3_list_insert(pk3_list_t *pk3_list, unsigned int hash) {
 int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash, qboolean reverse) {
 	fs_hashtable_iterator_t it = fs_hashtable_iterate((fs_hashtable_t *)&pk3_list->ht, hash, qfalse);
 	pk3_list_entry_t *entry;
-	while((entry = fs_hashtable_next(&it))) {
+	while((entry = (pk3_list_entry_t *)fs_hashtable_next(&it))) {
 		if(entry->hash == hash) {
 			if(reverse) return pk3_list->ht.element_count - entry->position + 1;
 			return entry->position; } }
@@ -133,8 +133,8 @@ int system_pk3_position(unsigned int hash) {
 // File helper functions
 /* ******************************************************************************** */
 
-char *fs_file_extension(const fsc_file_t *file) {
-	return STACKPTR(file->qp_ext_ptr); }
+const char *fs_file_extension(const fsc_file_t *file) {
+	return (const char *)STACKPTR(file->qp_ext_ptr); }
 
 qboolean fs_files_from_same_pk3(const fsc_file_t *file1, const fsc_file_t *file2) {
 	// Returns qtrue if both files are located in the same pk3, qfalse otherwise
@@ -150,7 +150,7 @@ int fs_get_source_dir_id(const fsc_file_t *file) {
 		return ((const fsc_file_direct_t *)STACKPTR(((const fsc_file_frompk3_t *)file)->source_pk3))->source_dir_id; }
 	else return -1; }
 
-char *fs_get_source_dir_string(const fsc_file_t *file) {
+const char *fs_get_source_dir_string(const fsc_file_t *file) {
 	int id = fs_get_source_dir_id(file);
 	if(id >= 0 && id < FS_SOURCEDIR_COUNT) return fs_sourcedirs[id].name;
 	return "unknown"; }
@@ -174,7 +174,7 @@ void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean in
 		Com_sprintf(buffer, sizeof(buffer), " (%i)", file->filesize);
 		fsc_stream_append_string(stream, buffer); } }
 
-void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,
+void fs_file_to_buffer(const fsc_file_t *file, char *buffer, unsigned int buffer_size, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
 	fsc_stream_t stream = {buffer, 0, buffer_size};
 	fs_file_to_stream(file, &stream, include_source_dir, include_mod, include_pk3_origin, include_size); }
@@ -184,7 +184,7 @@ void fs_print_file_location(const fsc_file_t *file) {
 	char source_buffer[FS_FILE_BUFFER_SIZE];
 	fs_file_to_buffer(file, name_buffer, sizeof(name_buffer), qfalse, qfalse, qfalse, qfalse);
 	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		fs_file_to_buffer(STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), source_buffer, sizeof(source_buffer),
+		fs_file_to_buffer((const fsc_file_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), source_buffer, sizeof(source_buffer),
 				qtrue, qtrue, qfalse, qfalse);
 		Com_Printf("File %s found in %s\n", name_buffer, source_buffer); }
 	else if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
@@ -292,10 +292,10 @@ static void write_sort_filename(const fsc_file_t *file, fsc_stream_t *output) {
 static void write_sort_pk3_source_filename(const fsc_file_t *file, fsc_stream_t *output) {
 	// Write sort key of the pk3 file or pk3dir the file came from
 	if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
-		write_sort_string(STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output); }
+		write_sort_string((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output); }
 	else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-		write_sort_string(STACKPTR(source_pk3->f.qp_name_ptr), output); }
+		fsc_file_direct_t *source_pk3 = (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+		write_sort_string((const char *)STACKPTR(source_pk3->f.qp_name_ptr), output); }
 	else write_sort_string("", output); }
 
 static void write_sort_value(unsigned int value, fsc_stream_t *output) {
@@ -414,7 +414,7 @@ void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)
 	return dll_handle; }
 
 void FS_GetModDescription(const char *modDir, char *description, int descriptionLen) {
-	char *descPath = va("%s/description.txt", modDir);
+	const char *descPath = va("%s/description.txt", modDir);
 	fileHandle_t descHandle;
 	int descLen = FS_SV_FOpenFileRead(descPath, &descHandle);
 	if(descLen > 0 && descHandle) {
@@ -488,7 +488,7 @@ void QDECL FS_Printf(fileHandle_t h, const char *fmt, ...) {
 	FS_Write(msg, strlen(msg), h);
 }
 
-qboolean FS_idPak(char *pak, char *base, int numPaks)
+qboolean FS_idPak(const char *pak, const char *base, int numPaks)
 {
 	int i;
 
@@ -551,18 +551,18 @@ static qboolean check_default_cfg_pk3(const char *mod, const char *filename, uns
 	fsc_file_t *file;
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash("default", 0), &hti);
-	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((file = (fsc_file_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
 		const fsc_file_t *pk3;
 		if(fs_file_disabled(file, 0)) continue;
 		if(file->sourcetype != FSC_SOURCETYPE_PK3) continue;
-		if(Q_stricmp(STACKPTR(file->qp_name_ptr), "default")) continue;
-		if(Q_stricmp(STACKPTR(file->qp_ext_ptr), "cfg")) continue;
+		if(Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), "default")) continue;
+		if(Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "cfg")) continue;
 		if(file->qp_dir_ptr) continue;
 
-		pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+		pk3 = (const fsc_file_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
 		if(((fsc_file_direct_t *)pk3)->pk3_hash == hash) return qtrue;
 		if(mod && Q_stricmp(fsc_get_mod_dir(pk3, &fs), mod)) continue;
-		if(!Q_stricmp(STACKPTR(pk3->qp_name_ptr), filename)) return qtrue; }
+		if(!Q_stricmp((const char *)STACKPTR(pk3->qp_name_ptr), filename)) return qtrue; }
 
 	return qfalse; }
 
@@ -579,23 +579,28 @@ static system_pak_state_t get_pak_state(const char *mod, const char *filename, u
 	const fsc_file_direct_t *file;
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash(filename, 0), &hti);
-	while((file = STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((file = (const fsc_file_direct_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
 		if(fs_file_disabled((fsc_file_t *)file, 0)) continue;
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
-		if(Q_stricmp(STACKPTR(file->f.qp_name_ptr), filename)) continue;
-		if(Q_stricmp(STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
+		if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), filename)) continue;
+		if(Q_stricmp((const char *)STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
 		if(file->f.qp_dir_ptr) continue;
 		if(mod && Q_stricmp(fsc_get_mod_dir((fsc_file_t *)file, &fs), mod)) continue;
-		if(file->pk3_hash == hash) return (system_pak_state_t){file, file};
+		if(file->pk3_hash == hash) {
+			system_pak_state_t result = {file, file};
+			return result; }
 		name_match = file; }
 
 	fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
-	while((entry = STACKPTR(fsc_hashtable_next(&hti)))) {
-		file = STACKPTR(entry->pk3);
+	while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+		file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
 		if(fs_file_disabled((fsc_file_t *)file, 0)) continue;
-		if((file->pk3_hash == hash)) return (system_pak_state_t){name_match, file}; }
+		if((file->pk3_hash == hash)) {
+			system_pak_state_t result = {name_match, file};
+			return result; } }
 
-	return (system_pak_state_t){name_match, 0}; }
+	{ system_pak_state_t result = {name_match, 0};
+	return result; } }
 
 static void generate_pak_warnings(const char *mod, const char *filename, system_pak_state_t *state,
 		fsc_stream_t *warning_popup_stream) {

@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh) {
 	// Returns 1 on success, 0 otherwise.
-	fsc_file_t *source_file = STACKPTR(source_file_ptr);
+	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
 	unsigned int hash;
 
 	char *data = fsc_extract_file_allocated(fs, source_file, 0);
@@ -45,7 +45,7 @@ int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_er
 	fsc_free(data);
 
  {	fsc_stackptr_t new_crosshair_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_crosshair_t));
-	fsc_crosshair_t *new_crosshair = STACKPTR(new_crosshair_ptr);
+	fsc_crosshair_t *new_crosshair = (fsc_crosshair_t *)STACKPTR(new_crosshair_ptr);
 
 	new_crosshair->hash = hash;
 	new_crosshair->source_file_ptr = source_file_ptr;
@@ -58,6 +58,6 @@ int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_er
 /* ******************************************************************************** */
 
 int is_crosshair_enabled(fsc_filesystem_t *fs, fsc_crosshair_t *crosshair) {
-	return fsc_is_file_enabled(STACKPTR(crosshair->source_file_ptr), fs); }
+	return fsc_is_file_enabled((const fsc_file_t *)STACKPTR(crosshair->source_file_ptr), fs); }
 
 #endif	// NEW_FILESYSTEM

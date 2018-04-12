@@ -61,7 +61,7 @@ static file_list_sort_key_t *generate_sort_key(const fsc_file_t *file, fsc_stack
 
 	fs_generate_file_sort_key(file, &stream, (query->flags & FL_FLAG_USE_PURE_LIST) ? qtrue : qfalse);
 
-	key = fsc_stack_retrieve(stack, fsc_stack_allocate(stack, sizeof(*key) + stream.position));
+	key = (file_list_sort_key_t *)fsc_stack_retrieve(stack, fsc_stack_allocate(stack, sizeof(*key) + stream.position));
 	key->length = stream.position;
 	fsc_memcpy(key->key, stream.data, stream.position);
 	return key; }
@@ -82,7 +82,7 @@ typedef struct {
 
 static char *allocate_string(const char *string) {
 	int length = strlen(string);
-	char *copy = Z_Malloc(length + 1);
+	char *copy = (char *)Z_Malloc(length + 1);
 	Com_Memcpy(copy, string, length);
 	copy[length] = 0;
 	return copy; }
@@ -92,7 +92,7 @@ static void temp_file_set_insert(fs_hashtable_t *ht, const fsc_file_t *file, fil
 	fs_hashtable_iterator_t it = fs_hashtable_iterate(ht, hash, qfalse);
 	temp_file_set_entry_t *entry;
 
-	while((entry = fs_hashtable_next(&it))) {
+	while((entry = (temp_file_set_entry_t *)fs_hashtable_next(&it))) {
 		// Check if file is match
 		if(strcmp(path, entry->string)) continue;
 
@@ -103,7 +103,7 @@ static void temp_file_set_insert(fs_hashtable_t *ht, const fsc_file_t *file, fil
 		return; }
 
 	// No matching file - create new entry
-	entry = Z_Malloc(sizeof(*entry));
+	entry = (temp_file_set_entry_t *)Z_Malloc(sizeof(*entry));
 	entry->file = file;
 	entry->sort_key = sort_key;
 	entry->string = allocate_string(path);
@@ -142,7 +142,7 @@ static void temp_file_set_populate(const fsc_directory_t *base, fs_hashtable_t *
 	fsc_file_t *file;
 	fsc_directory_t *directory;
 
-	file = STACKPTR(base->sub_file);
+	file = (fsc_file_t *)STACKPTR(base->sub_file);
 	while(file) {
 		if(check_file_enabled(file, flw)) {
 			int i;
@@ -170,13 +170,13 @@ static void temp_file_set_populate(const fsc_directory_t *base, fs_hashtable_t *
 					if(!sort_key) sort_key = generate_sort_key(file, &flw->temp_stack, flw->query);
 					temp_file_set_insert(output, file, sort_key, string_stream.data); } } }
 
-		file = STACKPTR(file->next_in_directory); }
+		file = (fsc_file_t *)STACKPTR(file->next_in_directory); }
 
 	// Process subdirectories
-	directory = STACKPTR(base->sub_directory);
+	directory = (fsc_directory_t *)STACKPTR(base->sub_directory);
 	while(directory) {
 		temp_file_set_populate(directory, output, flw);
-		directory = STACKPTR(directory->peer_directory); } }
+		directory = (fsc_directory_t *)STACKPTR(directory->peer_directory); } }
 
 static int temp_file_list_compare_element(const temp_file_set_entry_t *element1, const temp_file_set_entry_t *element2) {
 	if(element1->file != element2->file) {
@@ -193,12 +193,12 @@ static char **temp_file_set_to_file_list(fs_hashtable_t *file_set, int *numfiles
 	fs_hashtable_iterator_t it;
 	temp_file_set_entry_t *entry;
 	int position = 0;
-	char **output = Z_Malloc(sizeof(*output) * (file_set->element_count + 1));
-	temp_file_set_entry_t **temp_list = Z_Malloc(sizeof(*temp_list) * file_set->element_count);
+	char **output = (char **)Z_Malloc(sizeof(*output) * (file_set->element_count + 1));
+	temp_file_set_entry_t **temp_list = (temp_file_set_entry_t **)Z_Malloc(sizeof(*temp_list) * file_set->element_count);
 
 	// Transfer entries from file set hashtable to temporary list
 	it = fs_hashtable_iterate(file_set, 0, qtrue);
-	while((entry = fs_hashtable_next(&it))) {
+	while((entry = (temp_file_set_entry_t *)fs_hashtable_next(&it))) {
 		if(position >= file_set->element_count) {
 			Com_Error(ERR_FATAL, "fs_filelist.c->temp_file_set_to_file_list element_count overflow"); }
 		temp_list[position++] = entry; }
@@ -237,9 +237,9 @@ static fsc_directory_t *get_start_directory(const char *path, int length) {
 	// Look for directory entry
 	fsc_hashtable_open(&fs.directories, path ? fsc_string_hash(path2, 0) : 0, &hti);
 	while((directory_ptr = fsc_hashtable_next(&hti))) {
-		directory = STACKPTR(directory_ptr);
+		directory = (fsc_directory_t *)STACKPTR(directory_ptr);
 		if(path) {
-			if(!Q_stricmp(STACKPTR(directory->qp_dir_ptr), path2)) break;}
+			if(!Q_stricmp((const char *)STACKPTR(directory->qp_dir_ptr), path2)) break;}
 		else {
 			if(directory->qp_dir_ptr == 0) break; } }
 
@@ -288,7 +288,7 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 
 		// Determine prefix length
 		if(!query->filter && start_directory->qp_dir_ptr) {
-			flw.crop_length = strlen(STACKPTR(start_directory->qp_dir_ptr)) + 1; }
+			flw.crop_length = strlen((const char *)STACKPTR(start_directory->qp_dir_ptr)) + 1; }
 
 		// Populate file set
 		temp_file_set_populate(start_directory, &temp_file_set, &flw); }
@@ -336,7 +336,7 @@ static void generate_mod_dir_list2(fsc_directory_t *base, mod_dir_list_t *list) 
 	fsc_directory_t *directory;
 	const char *last_mod_dir = 0;
 
-	file = STACKPTR(base->sub_file);
+	file = (fsc_file_t *)STACKPTR(base->sub_file);
 	while(file) {
 		if(file->sourcetype == FSC_SOURCETYPE_DIRECT && fsc_is_file_enabled(file, &fs)) {
 			const char *mod_dir = fsc_get_mod_dir(file, &fs);
@@ -344,12 +344,12 @@ static void generate_mod_dir_list2(fsc_directory_t *base, mod_dir_list_t *list) 
 				add_mod_dir_to_list(list, fsc_get_mod_dir(file, &fs));
 				last_mod_dir = mod_dir; } }
 
-		file = STACKPTR(file->next_in_directory); }
+		file = (fsc_file_t *)STACKPTR(file->next_in_directory); }
 
-	directory = STACKPTR(base->sub_directory);
+	directory = (fsc_directory_t *)STACKPTR(base->sub_directory);
 	while(directory) {
 		generate_mod_dir_list2(directory, list);
-		directory = STACKPTR(directory->peer_directory); } }
+		directory = (fsc_directory_t *)STACKPTR(directory->peer_directory); } }
 
 static int mod_list_qsort(const void *element1, const void *element2) {
 	return Q_stricmp(*(const char **)element1, *(const char **)element2); }
@@ -408,7 +408,6 @@ char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
 
 int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize ) {
 	int i;
-	filelist_query_t query;
 	int flags = FL_FLAG_USE_PURE_LIST;
 	int nFiles = 0;
 	int nTotal = 0;
@@ -430,8 +429,10 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 		// which doesn't handle their skin setting correctly
 		flags |= FL_FLAG_IGNORE_TAPAK0; }
 
-	query = (filelist_query_t){extension, 0, flags};
-	pFiles = list_files(path, &nFiles, &query);
+	{
+		filelist_query_t query = {extension, 0, flags};
+		pFiles = list_files(path, &nFiles, &query);
+	}
 
 	for (i =0; i < nFiles; i++) {
 		nLen = strlen(pFiles[i]) + 1;

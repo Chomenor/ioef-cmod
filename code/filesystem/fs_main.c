@@ -99,7 +99,7 @@ int fs_connected_server_pure_state(void) {
 void fs_register_current_map(const char *name) {
 	const fsc_file_t *bsp_file = fs_general_lookup(name, LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse);
 	if(!bsp_file || bsp_file->sourcetype != FSC_SOURCETYPE_PK3) current_map_pk3 = 0;
-	else current_map_pk3 = STACKPTR(((fsc_file_frompk3_t *)bsp_file)->source_pk3);
+	else current_map_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)bsp_file)->source_pk3);
 
 	if(fs_debug_state->integer) {
 		char buffer[FS_FILE_BUFFER_SIZE];
@@ -221,14 +221,14 @@ static qboolean prepare_writable_directory(char *directory) {
 	fs_delete_file(path);
 	return qtrue; }
 
-static char *fs_default_homepath(void) {
+static const char *fs_default_homepath(void) {
 	// Default homepath but it returns empty string in place of null
 	char *homepath = Sys_DefaultHomePath();
 	if(!homepath) return "";
 	return homepath; }
 
 typedef struct {
-	char *name;
+	const char *name;
 	cvar_t *path_cvar;
 	int fs_dirs_position;	// 0 = inactive, otherwise lower means higher priority
 	qboolean write_dir;
@@ -244,7 +244,7 @@ static int compare_temp_source_dirs(const temp_source_directory_t *dir1, const t
 	return 1; }
 
 static int compare_temp_source_dirs_qsort(const void *dir1, const void *dir2) {
-	return compare_temp_source_dirs(dir1, dir2); }
+	return compare_temp_source_dirs((const temp_source_directory_t *)dir1, (const temp_source_directory_t *)dir2); }
 
 void fs_initialize_sourcedirs(void) {
 	int i;
@@ -310,7 +310,7 @@ void fs_initialize_sourcedirs(void) {
 // Filesystem Refresh
 /* ******************************************************************************** */
 
-static void refresh_errorhandler(int id, char *msg, void *current_element, void *context) {
+static void refresh_errorhandler(int id, const char *msg, void *current_element, void *context) {
 	if(fs_debug_refresh->integer) {
 		const char *type = "general";
 		if(id == FSC_ERROR_PK3FILE) type = "pk3";

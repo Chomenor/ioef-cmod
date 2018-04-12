@@ -71,7 +71,7 @@ typedef unsigned int fsc_stackptr_t;
 
 typedef struct {
 	unsigned int position;
-	char data[];
+	// data added after structure
 } fsc_stack_bucket_t;
 
 typedef struct {
@@ -123,8 +123,7 @@ int fsc_hashtable_import(fsc_hashtable_t *ht, fsc_stack_t *stack, fsc_stream_t *
 typedef struct stringrepository_entry_s {
 	// Hash table compliance
 	fsc_hashtable_entry_t hte;
-
-	char string[];
+	// data added after structure
 } stringrepository_entry_t;
 
 fsc_stackptr_t fsc_string_repository_getentry(const char *input, int allocate, fsc_hashtable_t *string_repository, fsc_stack_t *stack);	// stringrepository_entry_t
@@ -133,8 +132,8 @@ fsc_stackptr_t fsc_string_repository_getstring(const char *input, int allocate, 
 // ***** Qpath Handling *****
 
 const char *fsc_get_qpath_conversion_table(void);
-int fsc_process_qpath(const char *input, char *buffer, char **qp_dir, char **qp_name, char **qp_ext);
-int fsc_get_leading_directory(const char *input, char *output, int buffer_length, char **remainder);
+int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, const char **qp_name, const char **qp_ext);
+int fsc_get_leading_directory(const char *input, char *output, int buffer_length, const char **remainder);
 
 // ***** Error Handling *****
 
@@ -145,13 +144,13 @@ int fsc_get_leading_directory(const char *input, char *output, int buffer_length
 #define FSC_ERROR_CROSSHAIRFILE 4	// current_element: fsc_file_t
 
 typedef struct {
-	void (*handler)(int id, char *msg, void *current_element, void *context);
+	void (*handler)(int id, const char *msg, void *current_element, void *context);
 	void *context;
 } fsc_errorhandler_t;
 
 void fsc_initialize_errorhandler(fsc_errorhandler_t *errorhandler,
-		void (*handler)(int id, char *msg, void *current_element, void *context), void *context);
-void fsc_report_error(fsc_errorhandler_t *errorhandler, int id, char *msg, void *current_element);
+		void (*handler)(int id, const char *msg, void *current_element, void *context), void *context);
+void fsc_report_error(fsc_errorhandler_t *errorhandler, int id, const char *msg, void *current_element);
 
 /* ******************************************************************************** */
 // Game Parsing Support (fsc_gameparse.c)
@@ -208,7 +207,7 @@ void fsc_memcpy(void *dst, const void *src, unsigned int size);
 int fsc_memcmp(const void *str1, const void *str2, unsigned int size);
 void fsc_memset(void *dst, int value, unsigned int size);
 void fsc_strncpy(char *dst, const char *src, unsigned int size);
-void fsc_strncpy_lower(char *dst, char *src, unsigned int size);
+void fsc_strncpy_lower(char *dst, const char *src, unsigned int size);
 int fsc_strcmp(const char *str1, const char *str2);
 int fsc_stricmp(const char *str1, const char *str2);
 int fsc_strlen(const char *str);

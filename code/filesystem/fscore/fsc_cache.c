@@ -72,7 +72,8 @@ unsigned int integer_hash(unsigned int value) {
 fsc_stackptr_t convert_string(fsc_stackptr_t source_string, export_work_t *xw) {
 	// Converts a string from the standard string repository to the export repository
 	if(!source_string) return 0;
-	return fsc_string_repository_getstring(STACKPTR_SRC(source_string), 1, &xw->export_string_repository, &xw->export_stack); }
+	return fsc_string_repository_getstring((const char *)STACKPTR_SRC(source_string), 1,
+			&xw->export_string_repository, &xw->export_stack); }
 
 fsc_stackptr_t file_map_lookup(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 	// Converts stackptr in general stack to stackptr in export stack
@@ -83,7 +84,7 @@ fsc_stackptr_t file_map_lookup(fsc_stackptr_t source_file_ptr, export_work_t *xw
 
 	fsc_hashtable_open(&xw->filemap, hash, &hti);
 	while((filemap_entry_ptr = fsc_hashtable_next(&hti))) {
-		filemap_entry = fsc_stack_retrieve(&xw->filemap_stack, filemap_entry_ptr);
+		filemap_entry = (filemap_entry_t *)fsc_stack_retrieve(&xw->filemap_stack, filemap_entry_ptr);
 		if(filemap_entry->source_file_ptr == source_file_ptr) return filemap_entry->export_file_ptr; }
 
 	return 0; }
@@ -94,14 +95,14 @@ void file_map_insert(fsc_stackptr_t source_file_ptr, fsc_stackptr_t export_file_
 	filemap_entry_t *filemap_entry;
 
 	filemap_entry_ptr = fsc_stack_allocate(&xw->filemap_stack, sizeof(filemap_entry_t));
-	filemap_entry = fsc_stack_retrieve(&xw->filemap_stack, filemap_entry_ptr);
+	filemap_entry = (filemap_entry_t *)fsc_stack_retrieve(&xw->filemap_stack, filemap_entry_ptr);
 
 	filemap_entry->source_file_ptr = source_file_ptr;
 	filemap_entry->export_file_ptr = export_file_ptr;
 	fsc_hashtable_insert(filemap_entry_ptr, hash, &xw->filemap); }
 
 fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
-	fsc_file_t *source_file = STACKPTR_SRC(source_file_ptr);
+	fsc_file_t *source_file = (fsc_file_t *)STACKPTR_SRC(source_file_ptr);
 	fsc_stackptr_t export_file_ptr;
 	fsc_file_t *export_file;
 	int file_size;
@@ -118,7 +119,7 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 
 	// Generate copy of file in export_stack
 	export_file_ptr = fsc_stack_allocate(&xw->export_stack, file_size);
-	export_file = fsc_stack_retrieve(&xw->export_stack, export_file_ptr);
+	export_file = (fsc_file_t *)fsc_stack_retrieve(&xw->export_stack, export_file_ptr);
 	fsc_memcpy(export_file, source_file, file_size);
 
 	// Perform conversions
@@ -144,8 +145,8 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 
 	// Insert file into filemap, hash table, and iteration system
 	file_map_insert(source_file_ptr, export_file_ptr, xw);
-	fsc_hashtable_insert(export_file_ptr, fsc_string_hash(STACKPTR_SRC(source_file->qp_name_ptr),
-			STACKPTR_SRC(source_file->qp_dir_ptr)), &xw->export_files);
+	fsc_hashtable_insert(export_file_ptr, fsc_string_hash((const char *)STACKPTR_SRC(source_file->qp_name_ptr),
+			(const char *)STACKPTR_SRC(source_file->qp_dir_ptr)), &xw->export_files);
 	fsc_iteration_register_file(export_file_ptr, &xw->export_directories, &xw->export_string_repository, &xw->export_stack);
 
 	return export_file_ptr; }
@@ -173,7 +174,7 @@ void fscache_build_filesystem(export_work_t *xw) {
 	for(i=0; i<xw->source_fs->files.bucket_count; ++i) {
 		fsc_hashtable_open(&xw->source_fs->files, i, &hti);
 		while((source_file_ptr = fsc_hashtable_next(&hti))) {
-			fsc_file_t *source_file = STACKPTR_SRC(source_file_ptr);
+			fsc_file_t *source_file = (fsc_file_t *)STACKPTR_SRC(source_file_ptr);
 			if(!fsc_is_file_enabled(source_file, xw->source_fs)) continue;		// Process only active files
 			if(source_file->sourcetype != FSC_SOURCETYPE_PK3) continue;		// Process only pk3 sourcetype files
 
@@ -199,12 +200,12 @@ void fscache_build_shaders(export_work_t *xw) {
 	for(i=0; i<xw->source_fs->shaders.bucket_count; ++i) {
 		fsc_hashtable_open(&xw->source_fs->shaders, i, &hti);
 		while((source_shader_ptr = fsc_hashtable_next(&hti))) {
-			fsc_shader_t *source_shader = STACKPTR_SRC(source_shader_ptr);
+			fsc_shader_t *source_shader = (fsc_shader_t *)STACKPTR_SRC(source_shader_ptr);
 			if(!is_shader_enabled(xw->source_fs, source_shader)) continue;		// Process only active shaders
 
 			// Allocate new shader
 			export_shader_ptr = fsc_stack_allocate(&xw->export_stack, sizeof(fsc_shader_t));
-			export_shader = fsc_stack_retrieve(&xw->export_stack, export_shader_ptr);
+			export_shader = (fsc_shader_t *)fsc_stack_retrieve(&xw->export_stack, export_shader_ptr);
 			fsc_memcpy(export_shader, source_shader, sizeof(fsc_shader_t));
 
 			// Convert stackptrs within the shader
@@ -212,7 +213,7 @@ void fscache_build_shaders(export_work_t *xw) {
 			export_shader->source_file_ptr = convert_file(export_shader->source_file_ptr, xw);
 
 			// Add shader to export hashtable
-			hash = fsc_string_hash(STACKPTR_SRC(source_shader->shader_name_ptr), 0);
+			hash = fsc_string_hash((const char *)STACKPTR_SRC(source_shader->shader_name_ptr), 0);
 			fsc_hashtable_insert(export_shader_ptr, hash, &xw->export_shaders); } } }
 
 void fscache_build_crosshairs(export_work_t *xw) {
@@ -230,12 +231,12 @@ void fscache_build_crosshairs(export_work_t *xw) {
 	for(i=0; i<xw->source_fs->crosshairs.bucket_count; ++i) {
 		fsc_hashtable_open(&xw->source_fs->crosshairs, i, &hti);
 		while((source_crosshair_ptr = fsc_hashtable_next(&hti))) {
-			fsc_crosshair_t *source_crosshair = STACKPTR_SRC(source_crosshair_ptr);
+			fsc_crosshair_t *source_crosshair = (fsc_crosshair_t *)STACKPTR_SRC(source_crosshair_ptr);
 			if(!is_crosshair_enabled(xw->source_fs, source_crosshair)) continue;		// Process only active crosshairs
 
 			// Allocate new crosshair
 			export_crosshair_ptr = fsc_stack_allocate(&xw->export_stack, sizeof(fsc_crosshair_t));
-			export_crosshair = fsc_stack_retrieve(&xw->export_stack, export_crosshair_ptr);
+			export_crosshair = (fsc_crosshair_t *)fsc_stack_retrieve(&xw->export_stack, export_crosshair_ptr);
 			fsc_memcpy(export_crosshair, source_crosshair, sizeof(fsc_crosshair_t));
 
 			// Convert stackptrs within the crosshair
@@ -261,8 +262,8 @@ void fscache_build_pk3_hash_lookup(export_work_t *xw) {
 		fsc_hashtable_open(&xw->source_fs->pk3_hash_lookup, i, &hti);
 		while((source_entry_ptr = fsc_hashtable_next(&hti))) {
 			fsc_stackptr_t output_pk3_file;
-			fsc_pk3_hash_map_entry_t *source_entry = STACKPTR_SRC(source_entry_ptr);
-			fsc_file_direct_t *source_pk3_file = STACKPTR_SRC(source_entry->pk3);
+			fsc_pk3_hash_map_entry_t *source_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR_SRC(source_entry_ptr);
+			fsc_file_direct_t *source_pk3_file = (fsc_file_direct_t *)STACKPTR_SRC(source_entry->pk3);
 			if(!fsc_is_file_enabled((fsc_file_t *)source_pk3_file, xw->source_fs)) continue;
 
 			output_pk3_file = convert_file(source_entry->pk3, xw);
@@ -296,7 +297,7 @@ static int fsc_cache_export_data(fsc_filesystem_t *source_fs, fsc_stream_t *stre
 			+ fsc_hashtable_get_export_size(&xw.export_shaders)
 			+ fsc_hashtable_get_export_size(&xw.export_crosshairs)
 			+ fsc_hashtable_get_export_size(&xw.export_pk3_hash_lookup);
-	stream->data = fsc_malloc(stream->size);
+	stream->data = (char *)fsc_malloc(stream->size);
 	stream->position = 0;
 
 	// Write export data to stream
@@ -396,7 +397,7 @@ int fsc_cache_import_file(void *os_path, fsc_filesystem_t *target_fs, fsc_errorh
 		return 1; }
 
 	// Read compressed data and close file
-	stream.data = fsc_malloc(header.size);
+	stream.data = (char *)fsc_malloc(header.size);
 	if(fsc_fread(stream.data, header.size, fp) != header.size) {
 		fsc_report_error(eh, FSC_ERROR_GENERAL, "error reading cache file data", 0);
 		return 1; }

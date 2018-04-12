@@ -34,10 +34,10 @@ typedef unsigned char byte;
 #define Com_Memset fsc_memset
 #define Com_Memcpy fsc_memcpy
 
-struct mdfour {
+typedef struct mdfour {
 	uint32_t A, B, C, D;
 	uint32_t totalN;
-};
+} mdfour_t;
 
 
 /* NOTE: This code makes no attempt to be fast!
@@ -45,7 +45,7 @@ struct mdfour {
    It assumes that a int is at least 32 bits long
 */
 
-static struct mdfour *m;
+static mdfour_t *m;
 
 #define F(X,Y,Z) (((X)&(Y)) | ((~(X))&(Z)))
 #define G(X,Y,Z) (((X)&(Y)) | ((X)&(Z)) | ((Y)&(Z)))
@@ -159,7 +159,7 @@ static void mdfour_tail(byte *in, int n)
 	}
 }
 
-static void mdfour_update(struct mdfour *md, byte *in, int n)
+static void mdfour_update(mdfour_t *md, byte *in, int n)
 {
 	uint32_t M[16];
 
@@ -179,7 +179,7 @@ static void mdfour_update(struct mdfour *md, byte *in, int n)
 }
 
 
-static void mdfour_result(struct mdfour *md, byte *out)
+static void mdfour_result(mdfour_t *md, byte *out)
 {
 	m = md;
 
@@ -191,7 +191,7 @@ static void mdfour_result(struct mdfour *md, byte *out)
 
 static void mdfour(byte *out, byte *in, int n)
 {
-	struct mdfour md;
+	mdfour_t md;
 	mdfour_begin(&md);
 	mdfour_update(&md, in, n);
 	mdfour_result(&md, out);

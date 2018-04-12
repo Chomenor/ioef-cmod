@@ -115,7 +115,7 @@ static void stack_add_bucket(fsc_stack_t *stack) {
 		new_size = stack->buckets_size * 2;
 		if(new_size > STACK_MAX_BUCKETS) new_size = STACK_MAX_BUCKETS;
 
-		new_allocation = fsc_malloc(new_size * sizeof(fsc_stack_bucket_t *));
+		new_allocation = (fsc_stack_bucket_t **)fsc_malloc(new_size * sizeof(fsc_stack_bucket_t *));
 		fsc_memcpy(new_allocation, stack->buckets, (stack->buckets_position+1)*sizeof(fsc_stack_bucket_t *));
 		fsc_free(stack->buckets);
 		stack->buckets = new_allocation;
@@ -123,13 +123,13 @@ static void stack_add_bucket(fsc_stack_t *stack) {
 
 	// Stack allocations are assumed to be zeroed
 	// so it needs to be accounted for if you change the allocation method here
-	stack->buckets[stack->buckets_position] = fsc_calloc(STACK_BUCKET_SIZE);
+	stack->buckets[stack->buckets_position] = (fsc_stack_bucket_t *)fsc_calloc(STACK_BUCKET_SIZE);
 	stack->buckets[stack->buckets_position]->position = 0; }
 
 void fsc_stack_initialize(fsc_stack_t *stack) {
 	stack->buckets_position = -1;	// stack_add_bucket will increment to 0
 	stack->buckets_size = STACK_INITIAL_BUCKETS;
-	stack->buckets = fsc_malloc(stack->buckets_size * sizeof(fsc_stack_bucket_t *));
+	stack->buckets = (fsc_stack_bucket_t **)fsc_malloc(stack->buckets_size * sizeof(fsc_stack_bucket_t *));
 	stack_add_bucket(stack); }
 
 int fsc_stack_validate(const fsc_stack_t *stack, const fsc_stackptr_t pointer) {
@@ -171,7 +171,7 @@ fsc_stackptr_t fsc_stack_allocate(fsc_stack_t *stack, unsigned int size) {
 		aligned_position = (bucket->position + 3) & ~3; }
 
 	// Allocate the entry
-	output = &bucket->data[aligned_position];
+	output = (char *)bucket + sizeof(*bucket) + aligned_position;
 	bucket->position = aligned_position + size;
 
 	return stack->buckets_position * STACK_BUCKET_SIZE + (unsigned int)(output - (char *)bucket); }
@@ -205,7 +205,8 @@ int fsc_stack_export(fsc_stack_t *stack, fsc_stream_t *stream) {
 	// Write each bucket (current position followed by data)
 	for(i=0; i<=stack->buckets_position; ++i) {
 		if(fsc_write_stream_data(stream, &stack->buckets[i]->position, 4)) return 1;
-		if(fsc_write_stream_data(stream, &stack->buckets[i]->data, stack->buckets[i]->position)) return 1; }
+		if(fsc_write_stream_data(stream, (char *)stack->buckets[i] + sizeof(stack->buckets[i]),
+				stack->buckets[i]->position)) return 1; }
 
 	return 0; }
 
@@ -220,14 +221,15 @@ int fsc_stack_import(fsc_stack_t *stack, fsc_stream_t *stream) {
 	// Allocate bucket array
 	stack->buckets_size = stack->buckets_position + 1;
 	if(stack->buckets_size < STACK_INITIAL_BUCKETS) stack->buckets_size = STACK_INITIAL_BUCKETS;
-	stack->buckets = fsc_calloc(stack->buckets_size * sizeof(fsc_stack_bucket_t *));
+	stack->buckets = (fsc_stack_bucket_t **)fsc_calloc(stack->buckets_size * sizeof(fsc_stack_bucket_t *));
 
 	// Read data for each bucket
 	for(i=0; i<=stack->buckets_position; ++i) {
-		stack->buckets[i] = fsc_calloc(STACK_BUCKET_SIZE);
+		stack->buckets[i] = (fsc_stack_bucket_t *)fsc_calloc(STACK_BUCKET_SIZE);
 		if(fsc_read_stream_data(stream, &stack->buckets[i]->position, 4)) goto error;
 		if(stack->buckets[i]->position >= STACK_BUCKET_SIZE) goto error;
-		if(fsc_read_stream_data(stream, &stack->buckets[i]->data, stack->buckets[i]->position)) goto error; }
+		if(fsc_read_stream_data(stream, (char *)stack->buckets[i] + sizeof(stack->buckets[i]),
+				stack->buckets[i]->position)) goto error; }
 	return 0;
 
 	error:
@@ -242,7 +244,7 @@ void fsc_hashtable_initialize(fsc_hashtable_t *ht, fsc_stack_t *stack, int bucke
 	if(bucket_count < 1) bucket_count = 1;
 	if(bucket_count > FSC_HASHTABLE_MAX_BUCKETS) bucket_count = FSC_HASHTABLE_MAX_BUCKETS;
 	ht->bucket_count = bucket_count;
-	ht->buckets = fsc_calloc(sizeof(fsc_stackptr_t) * bucket_count);
+	ht->buckets = (fsc_stackptr_t *)fsc_calloc(sizeof(fsc_stackptr_t) * bucket_count);
 	ht->utilization = 0;
 	ht->stack = stack; }
 
@@ -257,7 +259,7 @@ fsc_stackptr_t fsc_hashtable_next(fsc_hashtable_iterator_t *iterator) {
 
 void fsc_hashtable_insert(fsc_stackptr_t entry_ptr, unsigned int hash, fsc_hashtable_t *ht) {
 	// entry_ptr must be castable to fsc_hashtable_entry_t.
-	fsc_hashtable_entry_t *entry = fsc_stack_retrieve(ht->stack, entry_ptr);
+	fsc_hashtable_entry_t *entry = (fsc_hashtable_entry_t *)fsc_stack_retrieve(ht->stack, entry_ptr);
 	fsc_stackptr_t *bucket = &ht->buckets[hash % ht->bucket_count];
 	entry->next = *bucket;
 	*bucket = entry_ptr;
@@ -283,7 +285,7 @@ int fsc_hashtable_import(fsc_hashtable_t *ht, fsc_stack_t *stack, fsc_stream_t *
 	if(fsc_read_stream_data(stream, &ht->bucket_count, 4)) return 1;
 	if(ht->bucket_count < 1 || ht->bucket_count > FSC_HASHTABLE_MAX_BUCKETS) return 1;
 	if(fsc_read_stream_data(stream, &ht->utilization, 4)) return 1;
-	ht->buckets = fsc_malloc(ht->bucket_count * sizeof(*ht->buckets));
+	ht->buckets = (fsc_stackptr_t *)fsc_malloc(ht->bucket_count * sizeof(*ht->buckets));
 	if(fsc_read_stream_data(stream, ht->buckets, ht->bucket_count * sizeof(*ht->buckets))) {
 		fsc_hashtable_free(ht);
 		return 1; }
@@ -305,15 +307,15 @@ fsc_stackptr_t fsc_string_repository_getentry(const char *input, int allocate, f
 	// Get entry
 	fsc_hashtable_open(string_repository, hash, &hti);
 	while((sre_ptr = fsc_hashtable_next(&hti))) {
-		sre = STACKPTRL(sre_ptr);
-		if(!fsc_strcmp(sre->string, input)) break; }
+		sre = (stringrepository_entry_t *)STACKPTRL(sre_ptr);
+		if(!fsc_strcmp((char *)sre + sizeof(*sre), input)) break; }
 
 	if(!sre_ptr && allocate) {
 		// Allocate new entry
 		int length = fsc_strlen(input) + 1;		// Include null terminator
 		sre_ptr = fsc_stack_allocate(stack, sizeof(stringrepository_entry_t) + length);
-		sre = STACKPTRL(sre_ptr);
-		fsc_memcpy(sre->string, input, length);
+		sre = (stringrepository_entry_t *)STACKPTRL(sre_ptr);
+		fsc_memcpy((char *)sre + sizeof(*sre), input, length);
 		fsc_hashtable_insert(sre_ptr, hash, string_repository); }
 
 	return sre_ptr; }
@@ -353,7 +355,7 @@ const char *fsc_get_qpath_conversion_table(void) {
 	qpath_conversion_table_initialized = 1;
 	return qpath_conversion_table; }
 
-int fsc_process_qpath(const char *input, char *buffer, char **qp_dir, char **qp_name, char **qp_ext) {
+int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, const char **qp_name, const char **qp_ext) {
 	// Breaks input path into sanitized directory, name, and extension sections.
 	// Buffer is used to store the separated path data and should be length FSC_MAX_QPATH.
 	// Output qp_dir and qp_ext may be null if no directory or extension is available.
@@ -392,7 +394,7 @@ int fsc_process_qpath(const char *input, char *buffer, char **qp_dir, char **qp_
 
 	return i; }
 
-int fsc_get_leading_directory(const char *input, char *buffer, int buffer_length, char **remainder) {
+int fsc_get_leading_directory(const char *input, char *buffer, int buffer_length, const char **remainder) {
 	// Writes leading directory (text before first slash) to buffer
 	// Writes pointer to remaining (post-slash) string to remainder, or null if not found
 	// Returns number of chars written to output (NOT including null terminator)
@@ -419,12 +421,12 @@ int fsc_get_leading_directory(const char *input, char *buffer, int buffer_length
 // Error Handling
 /* ******************************************************************************** */
 
-void fsc_report_error(fsc_errorhandler_t *errorhandler, int id, char *msg, void *current_element) {
+void fsc_report_error(fsc_errorhandler_t *errorhandler, int id, const char *msg, void *current_element) {
 	if(!errorhandler) return;
 	errorhandler->handler(id, msg, current_element, errorhandler->context); }
 
 void fsc_initialize_errorhandler(fsc_errorhandler_t *errorhandler,
-		void (*handler)(int id, char *msg, void *current_element, void *context), void *context) {
+		void (*handler)(int id, const char *msg, void *current_element, void *context), void *context) {
 	errorhandler->handler = handler;
 	errorhandler->context = context; }
 

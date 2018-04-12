@@ -69,7 +69,7 @@ typedef enum {
 
 #ifdef FSLOCAL
 typedef struct {
-	char *name;
+	const char *name;
 	cvar_t *path_cvar;
 	qboolean active;
 } fs_source_directory_t;
@@ -210,13 +210,13 @@ DEF_PUBLIC( int	FS_GetFileList(  const char *path, const char *extension, char *
 #define FS_ALLOW_SPECIAL_CFG 64
 
 // Path Generation Functions
-DEF_LOCAL( int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
-		int path1_flags, int path2_flags, char *target, int target_size) )
-DEF_PUBLIC( int fs_generate_path(const char *path1, const char *path2, const char *path3,
+DEF_LOCAL( unsigned int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
+		int path1_flags, int path2_flags, char *target, unsigned int target_size) )
+DEF_PUBLIC( unsigned int fs_generate_path(const char *path1, const char *path2, const char *path3,
 		int path1_flags, int path2_flags, int path3_flags,
-		char *target, int target_size) )
-DEF_PUBLIC( int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
-		char *target, int target_size) )
+		char *target, unsigned int target_size) )
+DEF_PUBLIC( unsigned int fs_generate_path_writedir(const char *path1, const char *path2,
+		int path1_flags, int path2_flags, char *target, unsigned int target_size) )
 
 // Direct file access
 DEF_LOCAL( void *fs_open_file(const char *path, const char *mode) )
@@ -349,14 +349,14 @@ DEF_LOCAL( int system_pk3_position(unsigned int hash) )
 #define FS_FILE_BUFFER_SIZE 512
 #endif
 
-DEF_PUBLIC( char *fs_file_extension(const fsc_file_t *file) )
+DEF_PUBLIC( const char *fs_file_extension(const fsc_file_t *file) )
 DEF_PUBLIC( qboolean fs_files_from_same_pk3(const fsc_file_t *file1, const fsc_file_t *file2) )
 DEF_LOCAL( int fs_get_source_dir_id(const fsc_file_t *file) )
-DEF_LOCAL( char *fs_get_source_dir_string(const fsc_file_t *file) )
+DEF_LOCAL( const char *fs_get_source_dir_string(const fsc_file_t *file) )
 DEF_LOCAL( int fs_get_mod_dir_state(const char *mod_dir) )
 DEF_LOCAL( void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) )
-DEF_LOCAL( void fs_file_to_buffer(const fsc_file_t *file, char *buffer, int buffer_size, qboolean include_source_dir,
+DEF_LOCAL( void fs_file_to_buffer(const fsc_file_t *file, char *buffer, unsigned int buffer_size, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) )
 DEF_PUBLIC( void fs_print_file_location(const fsc_file_t *file) )
 
@@ -390,7 +390,7 @@ DEF_PUBLIC( void FS_FilenameCompletion( const char *dir, const char *ext,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk ) )
 DEF_PUBLIC( qboolean FS_FilenameCompare( const char *s1, const char *s2 ) )
 DEF_PUBLIC( void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3))) )
-DEF_LOCAL( qboolean FS_idPak(char *pak, char *base, int numPaks) )
+DEF_LOCAL( qboolean FS_idPak(const char *pak, const char *base, int numPaks) )
 
 // QVM Hash Verification
 DEF_LOCAL( qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output) )
