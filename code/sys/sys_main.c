@@ -516,12 +516,9 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 
 	// Extra sanity check - this check shouldn't be security critical because it shouldn't be possible
 	//    to get an arbitrary file written to the dll search locations, regardless of extension
-	// Skip it on mac because some libraries might not have the right extension (e.g. ALDRIVER_DEFAULT)
-#ifndef __APPLE__
 	if(!Sys_DllExtension(name)) {
 		Com_Printf("Refusing to attempt to load library \"%s\": Extension not allowed.\n", name);
 		return NULL; }
-#endif
 
 	if(useSystemLib) {
 		Com_Printf("Trying to load \"%s\"...\n", name);
