@@ -256,7 +256,11 @@ void fs_initialize_sourcedirs(void) {
 		{"homepath",  Cvar_Get("fs_homepath", fs_default_homepath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
 		{"basepath", Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
 		{"steampath", Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
-		{"gogpath", Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse} };
+		{"gogpath", Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+#ifdef __APPLE__
+		{"apppath", Cvar_Get("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+#endif
+};
 
 	// Configure temp_dirs based on fs_dirs entries
 	fs_dirs_ptr = fs_dirs->string;
@@ -429,7 +433,11 @@ void fs_startup(void) {
 	// Initial startup, should only be called once
 	Com_Printf("\n----- fs_startup -----\n");
 
+#ifdef __APPLE__
+	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath apppath", CVAR_INIT|CVAR_PROTECTED);
+#else
 	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
+#endif
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_INIT);
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
 	fs_search_inactive_mods = Cvar_Get("fs_search_inactive_mods", "2", CVAR_ARCHIVE);
