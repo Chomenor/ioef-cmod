@@ -396,9 +396,9 @@ typedef enum {
 } pakcategory_t;
 
 static pakcategory_t get_pak_category(const fsc_file_direct_t *pak) {
-	int mod_dir_state = fs_get_mod_dir_state(fsc_get_mod_dir((fsc_file_t *)pak, &fs));
-	if(mod_dir_state == 3) return PAKCATEGORY_ACTIVE_MOD;
-	if(mod_dir_state >= 1) return PAKCATEGORY_BASEGAME;
+	int mod_type = fs_get_mod_type(fsc_get_mod_dir((fsc_file_t *)pak, &fs));
+	if(mod_type >= MODTYPE_CURRENT_MOD) return PAKCATEGORY_ACTIVE_MOD;
+	if(mod_type >= MODTYPE_BASE) return PAKCATEGORY_BASEGAME;
 	return PAKCATEGORY_INACTIVE_MOD; }
 
 static void add_paks_by_category(reference_set_work_t *ref_work, pakcategory_t category) {

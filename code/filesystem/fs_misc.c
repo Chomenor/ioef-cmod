@@ -107,7 +107,7 @@ void pk3_list_free(pk3_list_t *pk3_list) {
 	fs_hashtable_free(&pk3_list->ht, 0); }
 
 /* ******************************************************************************** */
-// System pk3 checks
+// Pk3 precedence functions
 /* ******************************************************************************** */
 
 // These are used to rank paks according to the definitions in fspublic.h
@@ -128,6 +128,12 @@ int system_pk3_position(unsigned int hash) {
 	PROCESS_PAKS(FS_SYSTEM_PAKS)
 	#endif
 	return 0; }
+
+fs_modtype_t fs_get_mod_type(const char *mod_dir) {
+	if(*current_mod_dir && !Q_stricmp(mod_dir, current_mod_dir)) return MODTYPE_CURRENT_MOD;
+	else if(!Q_stricmp(mod_dir, "basemod")) return MODTYPE_OVERRIDE_DIRECTORY;
+	else if(!Q_stricmp(mod_dir, com_basegame->string)) return MODTYPE_BASE;
+	return MODTYPE_INACTIVE; }
 
 /* ******************************************************************************** */
 // File helper functions
@@ -154,13 +160,6 @@ const char *fs_get_source_dir_string(const fsc_file_t *file) {
 	int id = fs_get_source_dir_id(file);
 	if(id >= 0 && id < FS_MAX_SOURCEDIRS && fs_sourcedirs[id].active) return fs_sourcedirs[id].name;
 	return "unknown"; }
-
-int fs_get_mod_dir_state(const char *mod_dir) {
-	// Returns 3 for current mod, 2 for basemod, 1 for basegame, 0 for inactive mod
-	if(*current_mod_dir && !Q_stricmp(mod_dir, current_mod_dir)) return 3;
-	else if(!Q_stricmp(mod_dir, "basemod")) return 2;
-	else if(!Q_stricmp(mod_dir, com_basegame->string)) return 1;
-	return 0; }
 
 void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
@@ -200,7 +199,7 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 	// Check if a file is disabled by inactive mod settings
 	if(level < 2) {
 		// Look for active mod or basegame match
-		if(fs_get_mod_dir_state(fsc_get_mod_dir(file, &fs)) >= 1) return qfalse;
+		if(fs_get_mod_type(fsc_get_mod_dir(file, &fs)) >= MODTYPE_BASE) return qfalse;
 
 		if(level == 1) {
 			// For setting 1, also look for pure list or system pak match
@@ -261,23 +260,23 @@ static unsigned int server_pak_precedence(const fsc_file_t *file) {
 				((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash, qtrue); }
 	return 0; }
 
-static unsigned int mod_dir_precedence(int mod_dir_state) {
-	if(mod_dir_state >= 2) return mod_dir_state;
+static unsigned int mod_dir_precedence(fs_modtype_t mod_type) {
+	if(mod_type >= MODTYPE_OVERRIDE_DIRECTORY) return (unsigned int)mod_type;
 	return 0; }
 
-static unsigned int system_pak_precedence(const fsc_file_t *file, int mod_dir_state) {
-	if(mod_dir_state <= 1) {
+static unsigned int system_pak_precedence(const fsc_file_t *file, fs_modtype_t mod_type) {
+	if(mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
 		if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 			return system_pk3_position(((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash); }
 		if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
 			return system_pk3_position(((fsc_file_direct_t *)file)->pk3_hash); } }
 	return 0; }
 
-static unsigned int basegame_dir_precedence(int mod_dir_state) {
-	if(mod_dir_state == 1) return 1;
+static unsigned int basegame_dir_precedence(fs_modtype_t mod_type) {
+	if(mod_type == MODTYPE_BASE) return 1;
 	return 0; }
 
-static void write_sort_string(const char *string, fsc_stream_t *output) {
+void fs_write_sort_string(const char *string, fsc_stream_t *output) {
 	const unsigned char *sort_table = get_string_sort_table();
 	while(*string && output->position < output->size) {
 		output->data[output->position++] = (char)sort_table[*(unsigned char *)(string++)]; }
@@ -287,18 +286,18 @@ static void write_sort_filename(const fsc_file_t *file, fsc_stream_t *output) {
 	// Write sort key of the file itself
 	char buffer[FS_FILE_BUFFER_SIZE];
 	fs_file_to_buffer(file, buffer, sizeof(buffer), qfalse, qfalse, qfalse, qfalse);
-	write_sort_string(buffer, output); }
+	fs_write_sort_string(buffer, output); }
 
 static void write_sort_pk3_source_filename(const fsc_file_t *file, fsc_stream_t *output) {
 	// Write sort key of the pk3 file or pk3dir the file came from
 	if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
-		write_sort_string((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output); }
+		fs_write_sort_string((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output); }
 	else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 		fsc_file_direct_t *source_pk3 = (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-		write_sort_string((const char *)STACKPTR(source_pk3->f.qp_name_ptr), output); }
-	else write_sort_string("", output); }
+		fs_write_sort_string((const char *)STACKPTR(source_pk3->f.qp_name_ptr), output); }
+	else fs_write_sort_string("", output); }
 
-static void write_sort_value(unsigned int value, fsc_stream_t *output) {
+void fs_write_sort_value(unsigned int value, fsc_stream_t *output) {
 	static volatile int test = 1;
 	if(*(char *)&test) {
 		value = ((value << 8) & 0xFF00FF00) | ((value >> 8) & 0xFF00FF);
@@ -309,22 +308,22 @@ static void write_sort_value(unsigned int value, fsc_stream_t *output) {
 
 void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list) {
 	// This is a rough version of the lookup precedence for reference and file listing purposes
-	int mod_dir_state = fs_get_mod_dir_state(fsc_get_mod_dir(file, &fs));
-	if(use_server_pak_list) write_sort_value(server_pak_precedence(file), output);
-	write_sort_value(mod_dir_precedence(mod_dir_state), output);
-	write_sort_value(system_pak_precedence(file, mod_dir_state), output);
-	write_sort_value(basegame_dir_precedence(mod_dir_state), output);
+	fs_modtype_t mod_type = fs_get_mod_type(fsc_get_mod_dir(file, &fs));
+	if(use_server_pak_list) fs_write_sort_value(server_pak_precedence(file), output);
+	fs_write_sort_value(mod_dir_precedence(mod_type), output);
+	fs_write_sort_value(system_pak_precedence(file, mod_type), output);
+	fs_write_sort_value(basegame_dir_precedence(mod_type), output);
 	if(file->sourcetype == FSC_SOURCETYPE_PK3 ||
 			(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr)) {
-		write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
-		write_sort_value(0, output);
+		fs_write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
+		fs_write_sort_value(0, output);
 		write_sort_pk3_source_filename(file, output);
-		write_sort_value((file->sourcetype == FSC_SOURCETYPE_PK3) ? ~((fsc_file_frompk3_t *)file)->header_position : ~0u, output); }
+		fs_write_sort_value((file->sourcetype == FSC_SOURCETYPE_PK3) ? ~((fsc_file_frompk3_t *)file)->header_position : ~0u, output); }
 	else {
-		write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
-		write_sort_value(1, output); }
+		fs_write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
+		fs_write_sort_value(1, output); }
 	write_sort_filename(file, output);
-	write_sort_value(fs_get_source_dir_id(file), output); }
+	fs_write_sort_value(fs_get_source_dir_id(file), output); }
 
 int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list) {
 	char buffer1[1024];

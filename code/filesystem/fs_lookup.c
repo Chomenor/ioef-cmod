@@ -58,7 +58,7 @@ typedef struct {
 	int system_pak_priority;
 	int server_pak_position;
 	int extension_position;
-	int mod_dir_match;	// 3 = current mod dir, 2 = 'basemod' dir, 1 = base dir, 0 = no match
+	fs_modtype_t mod_type;
 	int flags;
 
 	// Can be set to an error explanation to disable the resource during selection but still
@@ -84,7 +84,7 @@ typedef struct {
 static void configure_lookup_resource(const lookup_query_t *query, lookup_resource_t *resource) {
 	// Determine mod dir match level
 	const char *resource_mod_dir = fsc_get_mod_dir(resource->file, &fs);
-	resource->mod_dir_match = fs_get_mod_dir_state(resource_mod_dir);
+	resource->mod_type = fs_get_mod_type(resource_mod_dir);
 
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
@@ -94,8 +94,8 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
 		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 
-		if(resource->mod_dir_match <= 1) {
-			// Don't sort system paks or the current map pak specially if they are part of a mod
+		if(resource->mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
+			// Sort system paks or the current map pak specially unless they are mixed into an active mod directory
 			resource->system_pak_priority = system_pk3_position(source_pk3->pk3_hash);
 			if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && source_pk3 == current_map_pk3)
 				resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; } }
@@ -109,9 +109,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if(query->config_query == FS_CONFIGTYPE_SETTINGS) {
 		if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
 			resource->disabled = "settings config file can't be loaded from pk3"; }
-		if(fs_mod_settings->integer && resource->mod_dir_match != 1 && resource->mod_dir_match != 3) {
+		if(fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE && resource->mod_type != MODTYPE_CURRENT_MOD) {
 			resource->disabled = "settings config file can only be loaded from com_basegame or current mod dir"; }
-		if(!fs_mod_settings->integer && resource->mod_dir_match != 1) {
+		if(!fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE) {
 			resource->disabled = "settings config file can only be loaded from com_basegame dir"; } }
 
 	// Dll query handling
@@ -293,10 +293,10 @@ PC_DEBUG(resource_disabled) {
 	ADD_STRING(va("Resource %i was selected because resource %i is disabled: %s", high_num, low_num, low->disabled)); }
 
 PC_COMPARE(special_shaders) {
-	qboolean r1_special = (r1->shader &&
-			(r1->mod_dir_match > 1 || r1->system_pak_priority || r1->server_pak_position)) ? qtrue : qfalse;
-	qboolean r2_special = (r2->shader &&
-			(r2->mod_dir_match > 1 || r2->system_pak_priority || r2->server_pak_position)) ? qtrue : qfalse;
+	qboolean r1_special = (r1->shader && (r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
+			r1->system_pak_priority || r1->server_pak_position)) ? qtrue : qfalse;
+	qboolean r2_special = (r2->shader && (r2->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
+			r2->system_pak_priority || r2->server_pak_position)) ? qtrue : qfalse;
 
 	if(r1_special && !r2_special) return -1;
 	if(r2_special && !r1_special) return 1;
@@ -323,14 +323,14 @@ PC_DEBUG(server_pak_position) {
 				high_num, high->server_pak_position, low_num, low->server_pak_position)); } }
 
 PC_COMPARE(basemod_or_current_mod_dir) {
-	if(r1->mod_dir_match >= 2 || r2->mod_dir_match >= 2) {
-		if(r1->mod_dir_match > r2->mod_dir_match) return -1;
-		if(r2->mod_dir_match > r1->mod_dir_match) return 1; }
+	if(r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY || r2->mod_type >= MODTYPE_OVERRIDE_DIRECTORY) {
+		if(r1->mod_type > r2->mod_type) return -1;
+		if(r2->mod_type > r1->mod_type) return 1; }
 	return 0; }
 
 PC_DEBUG(basemod_or_current_mod_dir) {
 	ADD_STRING(va("Resource %i was selected because it is from ", high_num));
-	if(high->mod_dir_match == 3) {
+	if(high->mod_type == MODTYPE_CURRENT_MOD) {
 		ADD_STRING(va("the current mod directory (%s)", fsc_get_mod_dir(high->file, &fs))); }
 	else {
 		ADD_STRING("the 'basemod' directory"); }
@@ -353,8 +353,8 @@ PC_DEBUG(current_map_pak) {
 	ADD_STRING(va("Resource %i was selected because it is from the same pk3 as the current map and %i is not.", high_num, low_num)); }
 
 PC_COMPARE(inactive_mod_dir) {
-	if(r1->mod_dir_match && !r2->mod_dir_match) return -1;
-	if(r2->mod_dir_match && !r1->mod_dir_match) return 1;
+	if(r1->mod_type > MODTYPE_INACTIVE && r2->mod_type <= MODTYPE_INACTIVE) return -1;
+	if(r2->mod_type > MODTYPE_INACTIVE && r1->mod_type <= MODTYPE_INACTIVE) return 1;
 	return 0; }
 
 PC_DEBUG(inactive_mod_dir) {

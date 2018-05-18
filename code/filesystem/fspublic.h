@@ -341,8 +341,17 @@ DEF_LOCAL( void pk3_list_insert(pk3_list_t *pk3_list, unsigned int hash) )
 DEF_LOCAL( int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash, qboolean reverse) )
 DEF_LOCAL( void pk3_list_free(pk3_list_t *pk3_list) )
 
-// System pk3 checks
+// Pk3 precedence functions
+#ifdef FSLOCAL
+typedef enum {
+	MODTYPE_INACTIVE,
+	MODTYPE_BASE,
+	MODTYPE_OVERRIDE_DIRECTORY,
+	MODTYPE_CURRENT_MOD
+} fs_modtype_t;
+#endif
 DEF_LOCAL( int system_pk3_position(unsigned int hash) )
+DEF_LOCAL( fs_modtype_t fs_get_mod_type(const char *mod_dir) )
 
 // File helper functions
 #ifdef FSLOCAL
@@ -353,7 +362,6 @@ DEF_PUBLIC( const char *fs_file_extension(const fsc_file_t *file) )
 DEF_PUBLIC( qboolean fs_files_from_same_pk3(const fsc_file_t *file1, const fsc_file_t *file2) )
 DEF_LOCAL( int fs_get_source_dir_id(const fsc_file_t *file) )
 DEF_LOCAL( const char *fs_get_source_dir_string(const fsc_file_t *file) )
-DEF_LOCAL( int fs_get_mod_dir_state(const char *mod_dir) )
 DEF_LOCAL( void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) )
 DEF_LOCAL( void fs_file_to_buffer(const fsc_file_t *file, char *buffer, unsigned int buffer_size, qboolean include_source_dir,
@@ -377,6 +385,8 @@ typedef enum {
 DEF_LOCAL( file_disabled_result_t fs_file_disabled(const fsc_file_t *file, int flags) )
 
 // File Sorting Functions
+DEF_LOCAL( void fs_write_sort_string(const char *string, fsc_stream_t *output) )
+DEF_LOCAL( void fs_write_sort_value(unsigned int value, fsc_stream_t *output) )
 DEF_LOCAL( void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list) )
 DEF_LOCAL( int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list) )
 DEF_LOCAL( int fs_compare_pk3_source(const fsc_file_t *file1, const fsc_file_t *file2) )
