@@ -363,11 +363,8 @@ This component handles constructing the pure and download lists when hosting a s
 
 # FAQ
 
-**Q:** Why is the new filesystem so much larger (in terms of lines/source files)?  
-**A:** Some of the increase is due to new features, performance optimizations, and bugfixes. Other increases are due to design decisions that make the code more modular and maintainable at the expense of line count.
-
-**Q:** Could the improvements of this project be added in ioquake3 incrementally?  
-**A:** Most of the changes need to be done at the same time because they require changing the underlying data structures of the file index.
+**Q:** Why is the new filesystem larger (in terms of lines/source files)?  
+**A:** Some increase is due to new features and optimizations, but one main reason the line count is larger is because the filesystem is divided into two parts, the core component and the regular game component. The core component can be compiled independently and has no dependencies on ioquake3 code. This increases the line count, because certain things have to be reimplemented in the core that already exist in ioq3, but ultimately is easier to maintain because of the flexibility to make changes in ioq3 without concern about breaking anything in the filesystem core.
 
 **Q:** Since some new filesystem features can bypass problems with maps, will it cause map developers to release broken maps?  
 **A:** Map developers should already test maps before release using a clean install of both ioquake3 and original Quake 3. As long as map developers follow existing good practices there should be no problems.
@@ -380,6 +377,12 @@ This component handles constructing the pure and download lists when hosting a s
 
 **Q:** Why is SV_VerifyPaks_f removed?  
 **A:** This function was used as an extra check to make certain kinds of hacks a little bit more difficult in the early days of Quake 3, when it was still closed source. It's not necessary or useful anymore so has been removed to reduce complexity.
+
+**Q:** Is it bad to change file precedence because it could break existing content?  
+**A:** If you assume a clean game directory with only a few pk3s installed, there would be no need to make precedence changes. However, in practical usage with server downloads, map download packages, and base directories with hundreds of pk3s, the existing precedence system is very unstable. It is based strictly on filename and has quirks that violate even the filename precedence under certain conditions. The precedence system in this project isolates the ID pak and current map pk3 from other base pk3s, and after that follows the traditional mod and alphabetical ordering without unpredictable quirks. As a result the game is much more stable and better at loading the assets actually intended by content authors when there are large numbers of pk3s installed.
+
+**Q:** Why are all mod dirs including inactive ones indexed at startup? It seems weird/inefficient.  
+**A:** This design simplifies the filesystem code because there is no need to maintain multiple hashtables for different mod directories, or detect and perform reindexing when the mod changes. It also allows instantaneous mod switching with no indexing overhead and makes it easier to support features that work beyond the single fs_game model. The filesystem is designed so that even though inactive mods are indexed in memory they do not have any effect on the game unless a feature intentionally accesses them, and the load time impact of indexing the extra files is generally negligible due to the index cache.
 
 **Q:** If it's a good idea to change the backwards shader precedence, why has it not been done in the original filesystem?  
 **A:** Forward shader precedence is much better in general, but there are a couple of issues that prevent it from being trivially changed in the original filesystem. First, some maps, especially low-quality conversions from other games, erroneously define shaders that conflict with the ID paks, and rely on the backwards shader precedence and having a filename alphabetically higher than 'p' to not override them. In the new filesystem the ID paks have precedence regardless of filename, so backwards shader precedence is no longer necessary. The second issue is with shaders that conflict with other shaders inside the *same* pk3 file. If the shader precedence was naively reversed, the intra-pk3 precedence would be reversed as well, which would lead to potential compatibility issues with all existing pk3s including the ID paks. The new filesystem solves this problem by explicitly emulating the original precedence conventions for shaders inside the same pk3.
