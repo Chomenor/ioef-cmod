@@ -125,7 +125,7 @@ set fs_pure_manifest *mod_paks baseq3/pak8 baseq3/pak7 baseq3/pak6 baseq3/pak5 b
 
 ## Advanced Features
 
-It is possible to specify pk3s by hash, to support conditions where the file may not physically exist in the server or may exist under a different name. If the file does not physically exist it can't be used for UDP downloads, but it can be used for pure lists and download lists on HTTP-only servers (with sv_dlURL active and sv_allowDownload set to 0). To use this feature, specify paks using the format <mod>/<name>:<hash>. The hash can be specified in either signed or unsigned integer format.
+It is possible to specify pk3s by hash, to support conditions where the file may not physically exist on the server or may exist under a different name. If the file does not physically exist it can't be used for UDP downloads, but it can be used for pure lists and download lists on HTTP-only servers (with sv_dlURL active and sv_allowDownload set to 0). To use this feature, specify paks using the format [mod]/[name]:[hash]. The hash can be specified in either signed or unsigned integer format.
 ```
 set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks baseq3/md3-bender:-722067772 baseq3/md3-laracroft:1134218139 baseq3/md3-spongebob:-871946717
 ```
