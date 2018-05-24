@@ -345,21 +345,15 @@ This component handles file list requests, which are used primarily by UI menus 
 
 This component handles constructing the pure and download lists when hosting a server, and generating the pure validation string which is necessary when connecting to an original filesystem pure server. The main sections are as follows:
 
-- Reference set: This is a hashtable-based temporary structure for storing paks. Only a single pk3 is stored for a given hash, and conflicts are resolved by selecting the pk3 with the higher filesystem precedence. A position field is also stored, which is used by the dash separator feature in manifest strings to alter the reference list sort order.
-
-- Reference list: The reference list is a sortable pak list structure that is generated from a reference set.
-
-- Reference string building: Used to convert a reference list to the hash/filename pure/download strings that are sent to clients.
-
 - Pure validation: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because you suspect a server may use some nonstandard validation behavior, you can enable it with the fs_full_pure_validation setting.
 
-- Referenced paks: This section is used to record which paks have been accessed by the game. It is used for pure validation when fs_full_pure_validation is set to 1, and for the *referenced_paks selector rule for the download list. Neither feature is essential, so referenced pak tracking could be considered for deprecation in the future.
+- Manifest processing: This section is used to convert a pure or download manifest into a set of "reference set entries". Each reference set entry represents one pk3 and contains sorting and debug information. Only one reference set entry is created per pk3 hash, and conflicts are resolved to use the higher precedence pk3.
 
-- Download / pure list building: This section is used to convert both download and pure list manifest strings into reference sets.
+- Download map handling: This section is used to match a client download request to a physical file. In some cases the filename in the download list, and by extension the client request, may not match the physical filename on the server, so the download map is used to resolve the correct file.
 
-- Server download list handling: The fs_set_download_list function is called from SV_SpawnServer during server initialization, which populates the download_paks structure and sets the "sv_referencedPaks" and "sv_referencedPakNames" cvars accordingly. When a download request is received from the client, fs_open_download_pak is called to open the read handle. It searches the download_paks reference set for a file matching the client request and retrieves the real path from the reference set entry. This is safer than opening the path directly and it correctly handles cases where the pk3 name was changed by path sanitization or the pk3 is located in the downloads folder on the server.
+- Reference string generation: This section invokes the manifest processing functions to generate a reference set, then converts it into the output hash and name list format used by the server.
 
-- Server pure list handling: The fs_set_pure_list function is called from SV_SpawnServer during server initialization, which sets the "sv_paks" and "sv_pakNames" cvars. If an overflow occurs it will first try skipping sv_pakNames, since it is only used for informational purposes. If that isn't sufficient it will set sv_pure to 0.
+- General functions: This section includes shared functions called by the server to set the download and pure lists.
 
 # FAQ
 

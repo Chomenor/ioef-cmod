@@ -123,12 +123,22 @@ Pure servers with a large number of pk3s in baseq3 (300+) can run into problems 
 set fs_pure_manifest *mod_paks baseq3/pak8 baseq3/pak7 baseq3/pak6 baseq3/pak5 baseq3/pak4 baseq3/pak3 baseq3/pak2 baseq3/pak1 baseq3/pak0 *currentmap_pak
 ```
 
-The order of the pure list determines the precedence of files on clients. Normally the files in the pure list are sorted according to the filesystem precedence on the server, rather than the order in the pure manifest. It is possible to force a certain order in the pure manifest by separating sections with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering.
+## Advanced Features
+
+It is possible to specify pk3s by hash, to support conditions where the file may not physically exist in the server or may exist under a different name. If the file does not physically exist it can't be used for UDP downloads, but it can be used for pure lists and download lists on HTTP-only servers (with sv_dlURL active and sv_allowDownload set to 0). To use this feature, specify paks using the format <mod>/<name>:<hash>. The hash can be specified in either signed or unsigned integer format.
+```
+set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks baseq3/md3-bender:-722067772 baseq3/md3-laracroft:1134218139 baseq3/md3-spongebob:-871946717
+```
+
+The order of the pure list determines the precedence of files on clients. Normally the pure list is sorted according to filesystem precedence conventions, rather than the order in the pure manifest, but there may be special conditions where it is useful to force a certain order in the pure list. This can be accomplished by separating sections in the pure manifest with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering. Note that if the same pk3 is selected by multiple rules, its position will be determined by the first rule that selected it.
 ```
 set fs_pure_manifest baseq3/somefile - *mod_paks *base_paks *currentmap_pak
 ```
 
-Note that if the same pk3 is selected by multiple rules, its position will be according to the first rule that selected it.
+In some cases it can be convenient to exclude a certain pk3 that would otherwise be selected by one or more rules within a manifest. This can be accomplished by using the "&exclude" command followed by a normal selector rule. All pk3s selected by the rule will be blocked, based on hash, from being selected by any subsequent rules. In this example, the "mod/somemap.pk3" file can be selected by the *currentmap_pak rule, but not subsequent rules such as *mod_paks because they come after the exclude command.
+```
+set fs_download_manifest *currentmap_pak &exclude mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
+```
 
 # Semi-Pure Server
 
