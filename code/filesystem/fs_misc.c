@@ -118,14 +118,14 @@ void pk3_list_free(pk3_list_t *pk3_list) {
 	for(i=0; i<ARRAY_LEN(hashes); ++i) { \
 		if(hash == hashes[i]) return i + 1; } }
 
-int system_pk3_position(unsigned int hash) {
-	#ifdef FS_SYSTEM_PAKS_TEAMARENA
+int default_pk3_position(unsigned int hash) {
+	#ifdef FS_DEFAULT_PAKS_TEAMARENA
 	if(!Q_stricmp(FS_GetCurrentGameDir(), BASETA)) {
-		PROCESS_PAKS(FS_SYSTEM_PAKS_TEAMARENA)
+		PROCESS_PAKS(FS_DEFAULT_PAKS_TEAMARENA)
 		return 0; }
 	#endif
-	#ifdef FS_SYSTEM_PAKS
-	PROCESS_PAKS(FS_SYSTEM_PAKS)
+	#ifdef FS_DEFAULT_PAKS
+	PROCESS_PAKS(FS_DEFAULT_PAKS)
 	#endif
 	return 0; }
 
@@ -202,14 +202,14 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 		if(fs_get_mod_type(fsc_get_mod_dir(file, &fs)) >= MODTYPE_BASE) return qfalse;
 
 		if(level == 1) {
-			// For setting 1, also look for pure list or system pak match
+			// For setting 1, also look for pure list or default pak match
 			unsigned int hash = 0;
 			if(file->sourcetype == FSC_SOURCETYPE_PK3)
 				hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
 			if(file->sourcetype == FSC_SOURCETYPE_DIRECT) hash = ((fsc_file_direct_t *)file)->pk3_hash;
 			if(hash) {
 				if(pk3_list_lookup(&connected_server_pk3_list, hash, qfalse)) return qfalse;
-				if(system_pk3_position(hash)) return qfalse; } }
+				if(default_pk3_position(hash)) return qfalse; } }
 		return qtrue; }
 	return qfalse; }
 
@@ -264,12 +264,12 @@ static unsigned int mod_dir_precedence(fs_modtype_t mod_type) {
 	if(mod_type >= MODTYPE_OVERRIDE_DIRECTORY) return (unsigned int)mod_type;
 	return 0; }
 
-static unsigned int system_pak_precedence(const fsc_file_t *file, fs_modtype_t mod_type) {
+static unsigned int default_pak_precedence(const fsc_file_t *file, fs_modtype_t mod_type) {
 	if(mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
 		if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			return system_pk3_position(((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash); }
+			return default_pk3_position(((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash); }
 		if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-			return system_pk3_position(((fsc_file_direct_t *)file)->pk3_hash); } }
+			return default_pk3_position(((fsc_file_direct_t *)file)->pk3_hash); } }
 	return 0; }
 
 static unsigned int basegame_dir_precedence(fs_modtype_t mod_type) {
@@ -311,7 +311,7 @@ void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qbo
 	fs_modtype_t mod_type = fs_get_mod_type(fsc_get_mod_dir(file, &fs));
 	if(use_server_pak_list) fs_write_sort_value(server_pak_precedence(file), output);
 	fs_write_sort_value(mod_dir_precedence(mod_type), output);
-	fs_write_sort_value(system_pak_precedence(file, mod_type), output);
+	fs_write_sort_value(default_pak_precedence(file, mod_type), output);
 	fs_write_sort_value(basegame_dir_precedence(mod_type), output);
 	if(file->sourcetype == FSC_SOURCETYPE_PK3 ||
 			(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr)) {
@@ -531,7 +531,7 @@ void sha256_to_stream(unsigned char *sha, fsc_stream_t *output) {
 		fsc_stream_append_string(output, buffer); } }
 
 /* ******************************************************************************** */
-// System Pak Verification
+// Default Pak Verification
 /* ******************************************************************************** */
 
 // This section is used to verify the system (ID) paks on startup, and produce
@@ -568,9 +568,9 @@ static qboolean check_default_cfg_pk3(const char *mod, const char *filename, uns
 typedef struct {
 	const fsc_file_direct_t *name_match;
 	const fsc_file_direct_t *hash_match;
-} system_pak_state_t;
+} default_pak_state_t;
 
-static system_pak_state_t get_pak_state(const char *mod, const char *filename, unsigned int hash) {
+static default_pak_state_t get_pak_state(const char *mod, const char *filename, unsigned int hash) {
 	// Locates name and hash matches for a given pak
 	const fsc_file_direct_t *name_match = 0;
 	fsc_hashtable_iterator_t hti;
@@ -586,7 +586,7 @@ static system_pak_state_t get_pak_state(const char *mod, const char *filename, u
 		if(file->f.qp_dir_ptr) continue;
 		if(mod && Q_stricmp(fsc_get_mod_dir((fsc_file_t *)file, &fs), mod)) continue;
 		if(file->pk3_hash == hash) {
-			system_pak_state_t result = {file, file};
+			default_pak_state_t result = {file, file};
 			return result; }
 		name_match = file; }
 
@@ -595,13 +595,13 @@ static system_pak_state_t get_pak_state(const char *mod, const char *filename, u
 		file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
 		if(fs_file_disabled((fsc_file_t *)file, 0)) continue;
 		if((file->pk3_hash == hash)) {
-			system_pak_state_t result = {name_match, file};
+			default_pak_state_t result = {name_match, file};
 			return result; } }
 
-	{ system_pak_state_t result = {name_match, 0};
+	{ default_pak_state_t result = {name_match, 0};
 	return result; } }
 
-static void generate_pak_warnings(const char *mod, const char *filename, system_pak_state_t *state,
+static void generate_pak_warnings(const char *mod, const char *filename, default_pak_state_t *state,
 		fsc_stream_t *warning_popup_stream) {
 	// Prints console warning messages and appends warning popup string for a given pak
 	if(state->hash_match) {
@@ -625,10 +625,10 @@ static void generate_pak_warnings(const char *mod, const char *filename, system_
 			Com_Printf("WARNING: %s/%s.pk3 not found\n", mod, filename);
 			fsc_stream_append_string(warning_popup_stream, va("%s/%s.pk3: not found\n", mod, filename)); } } }
 
-void fs_check_system_paks(void) {
+void fs_check_default_paks(void) {
 	int i;
-	system_pak_state_t core_states[ARRAY_LEN(core_hashes)];
-	system_pak_state_t missionpack_states[ARRAY_LEN(missionpack_hashes)];
+	default_pak_state_t core_states[ARRAY_LEN(core_hashes)];
+	default_pak_state_t missionpack_states[ARRAY_LEN(missionpack_hashes)];
 	qboolean missionpack_installed = qfalse;	// Any missionpack paks detected
 	char warning_popup_buffer[1024];
 	fsc_stream_t warning_popup_stream = {warning_popup_buffer, 0, sizeof(warning_popup_buffer), qfalse};

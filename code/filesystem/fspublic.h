@@ -34,10 +34,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifndef STANDALONE
 // These paks get special precedence. Can be non-defined to disable.
-#define FS_SYSTEM_PAKS {2430342401u, 511014160u, 2662638993u, 1438664554u, \
+#define FS_DEFAULT_PAKS {2430342401u, 511014160u, 2662638993u, 1438664554u, \
 		1566731103u, 298122907u, 412165236u, 2991495316u, 1197932710u, \
 		4087071573u, 3709064859u, 908855077u, 977125798u}
-#define FS_SYSTEM_PAKS_TEAMARENA {1566731103u, 298122907u, 412165236u, 2991495316u, \
+#define FS_DEFAULT_PAKS_TEAMARENA {1566731103u, 298122907u, 412165236u, 2991495316u, \
 		1197932710u, 4087071573u, 3709064859u, 908855077u, 977125798u, \
 		2430342401u, 511014160u, 2662638993u, 1438664554u}
 
@@ -350,7 +350,7 @@ typedef enum {
 	MODTYPE_CURRENT_MOD
 } fs_modtype_t;
 #endif
-DEF_LOCAL( int system_pk3_position(unsigned int hash) )
+DEF_LOCAL( int default_pk3_position(unsigned int hash) )
 DEF_LOCAL( fs_modtype_t fs_get_mod_type(const char *mod_dir) )
 
 // File helper functions
@@ -407,8 +407,8 @@ DEF_LOCAL( qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char 
 DEF_LOCAL( qboolean fs_check_trusted_vm_file(const fsc_file_t *file) )
 DEF_LOCAL( void sha256_to_stream(unsigned char *sha, fsc_stream_t *output) )
 
-// System Pak Verification
-DEF_LOCAL( void fs_check_system_paks(void) )
+// Default Pak Verification
+DEF_LOCAL( void fs_check_default_paks(void) )
 
 /* ******************************************************************************** */
 // Trusted VMs

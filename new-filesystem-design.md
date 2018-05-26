@@ -219,13 +219,13 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 - resource_disabled: There are several conditions, such as a file not on the pure list, where resources are deemed to unusable in the selection process. Instead of just skipping these resources outright they are assigned a "disabled" string in the lookup resource, which allows them to go through the precedence process and appear in the debug outputs. This rule ensures such resources get sorted to the bottom of the resource list.
 
-- special_shaders: Prioritizes "special" shaders (those from a system pak, server pak list, current mod dir, or basemod dir). Resources in these locations normally override resources outside them anyway, but this rule causes explicit shaders to override images when they are both in one of these locations. This is helpful in some special cases. For example, suppose the system paks provide a shader and image both with the same name, in which the shader invokes the image, and a mod provides a modified version of the image only. By itself, the basemod_or_current_mod_dir rule would cause the mod image to override the shader instead of just the image, which is probably not the mod author's intention nor the original filesystem behavior. This rule increases the areas where shaders override images to better handle these kind of conditions.
+- special_shaders: Prioritizes "special" shaders (those from a default pak, server pak list, current mod dir, or basemod dir). Resources in these locations normally override resources outside them anyway, but this rule causes explicit shaders to override images when they are both in one of these locations. This is helpful in some special cases. For example, suppose the default paks provide a shader and image both with the same name, in which the shader invokes the image, and a mod provides a modified version of the image only. By itself, the basemod_or_current_mod_dir rule would cause the mod image to override the shader instead of just the image, which is probably not the mod author's intention nor the original filesystem behavior. This rule increases the areas where shaders override images to better handle these kind of conditions.
 
 - server_pak_position: Prioritizes paks according to the order of the server pak list (sv_paks) when connected to a pure or semi-pure server.
 
 - basemod_or_current_mod_dir: Prioritizes current_mod_dir (which generally corresponds to fs_game) and basemod over com_basegame and inactive mods.
 
-- system_paks: Prioritizes the system paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
+- system_paks: Prioritizes the default paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
 
 - current_map_pak: Prioritizes the pak, if any, where the current map was loaded from. That value is stored under current_map_pk3 in fs_main.c.
 
