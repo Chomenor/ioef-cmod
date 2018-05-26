@@ -291,11 +291,12 @@ static void write_sort_filename(const fsc_file_t *file, fsc_stream_t *output) {
 static void write_sort_pk3_source_filename(const fsc_file_t *file, fsc_stream_t *output) {
 	// Write sort key of the pk3 file or pk3dir the file came from
 	if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
-		fs_write_sort_string((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output); }
+		fs_write_sort_string((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output);
+		fs_write_sort_value(1, output); }
 	else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 		fsc_file_direct_t *source_pk3 = (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-		fs_write_sort_string((const char *)STACKPTR(source_pk3->f.qp_name_ptr), output); }
-	else fs_write_sort_string("", output); }
+		fs_write_sort_string((const char *)STACKPTR(source_pk3->f.qp_name_ptr), output);
+		fs_write_sort_value(0, output); } }
 
 void fs_write_sort_value(unsigned int value, fsc_stream_t *output) {
 	static volatile int test = 1;
