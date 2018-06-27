@@ -195,12 +195,6 @@ qboolean SNDDMA_Init(void)
 	if (snd_inited)
 		return qtrue;
 
-#ifdef CMOD_SDL_DRIVER_FIX
-#ifdef WIN32
-	SDL_setenv("SDL_AUDIODRIVER", "directsound", 1);
-#endif
-#endif
-
 	if (!s_sdlBits) {
 		s_sdlBits = Cvar_Get("s_sdlBits", "16", CVAR_ARCHIVE);
 		s_sdlSpeed = Cvar_Get("s_sdlSpeed", "0", CVAR_ARCHIVE);
