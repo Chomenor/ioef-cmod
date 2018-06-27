@@ -34,3 +34,7 @@ CVAR_DEF(cmod_font_scaling, "1", CVAR_ARCHIVE)
 #ifdef CMOD_CONSOLE_KEY_FIXES
 CVAR_DEF(cmod_console_mode, "0", CVAR_ARCHIVE)
 #endif
+
+#ifdef CMOD_MAP_SCRIPT
+CVAR_DEF(map_script, "startmap", CVAR_NORESTART)
+#endif

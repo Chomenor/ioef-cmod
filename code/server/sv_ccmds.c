@@ -218,8 +218,10 @@ static void SV_Map_f( void ) {
 	// and thus nuke the arguments of the map command
 	Q_strncpyz(mapname, map, sizeof(mapname));
 
+#ifndef CMOD_MAP_SCRIPT
 	// start up the map
 	SV_SpawnServer( mapname, killBots );
+#endif
 
 	// set the cheat value
 	// if the level was started with "map <levelname>", then
@@ -230,7 +232,17 @@ static void SV_Map_f( void ) {
 	} else {
 		Cvar_Set( "sv_cheats", "0" );
 	}
+#ifdef CMOD_MAP_SCRIPT
+	Cvar_Set("mapname", map);
+	Cvar_Set("sv_map_killbots", killBots ? "1" : "0");
+	Cbuf_ExecuteText(EXEC_INSERT, "vstr map_script");
+#endif
 }
+
+#ifdef CMOD_MAP_SCRIPT
+static void SV_Startmap_f( void ) {
+	SV_SpawnServer( sv_mapname->string, Cvar_VariableIntegerValue("sv_map_killbots") ? qtrue : qfalse ); }
+#endif
 
 /*
 ================
@@ -1587,6 +1599,9 @@ void SV_AddOperatorCommands( void ) {
 	Cmd_AddCommand("bandel", SV_BanDel_f);
 	Cmd_AddCommand("exceptdel", SV_ExceptDel_f);
 	Cmd_AddCommand("flushbans", SV_FlushBans_f);
+#ifdef CMOD_MAP_SCRIPT
+	Cmd_AddCommand("startmap", SV_Startmap_f);
+#endif
 }
 
 /*

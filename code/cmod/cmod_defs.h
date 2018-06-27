@@ -73,6 +73,9 @@
 	#define CMOD_DEDICATED_SOURCEDIRS
 #endif
 
+// Allow the "map_script" cvar to customize behavior when map command is called
+#define CMOD_MAP_SCRIPT
+
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */
