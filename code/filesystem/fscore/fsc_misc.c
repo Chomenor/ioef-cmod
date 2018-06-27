@@ -205,7 +205,7 @@ int fsc_stack_export(fsc_stack_t *stack, fsc_stream_t *stream) {
 	// Write each bucket (current position followed by data)
 	for(i=0; i<=stack->buckets_position; ++i) {
 		if(fsc_write_stream_data(stream, &stack->buckets[i]->position, 4)) return 1;
-		if(fsc_write_stream_data(stream, (char *)stack->buckets[i] + sizeof(stack->buckets[i]),
+		if(fsc_write_stream_data(stream, (char *)stack->buckets[i] + sizeof(fsc_stack_bucket_t),
 				stack->buckets[i]->position)) return 1; }
 
 	return 0; }
@@ -228,7 +228,7 @@ int fsc_stack_import(fsc_stack_t *stack, fsc_stream_t *stream) {
 		stack->buckets[i] = (fsc_stack_bucket_t *)fsc_calloc(STACK_BUCKET_SIZE);
 		if(fsc_read_stream_data(stream, &stack->buckets[i]->position, 4)) goto error;
 		if(stack->buckets[i]->position >= STACK_BUCKET_SIZE) goto error;
-		if(fsc_read_stream_data(stream, (char *)stack->buckets[i] + sizeof(stack->buckets[i]),
+		if(fsc_read_stream_data(stream, (char *)stack->buckets[i] + sizeof(fsc_stack_bucket_t),
 				stack->buckets[i]->position)) goto error; }
 	return 0;
 

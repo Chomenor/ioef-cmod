@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Definitions
 /* ******************************************************************************** */
 
-#define FSC_CACHE_VERSION 6
+#define FSC_CACHE_VERSION 7
 
 #define FSC_MAX_QPATH 256	// Buffer size including null terminator
 #define FSC_MAX_MODDIR 32	// Buffer size including null terminator
