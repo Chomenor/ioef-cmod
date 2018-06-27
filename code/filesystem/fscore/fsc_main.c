@@ -33,7 +33,7 @@ static int fsc_direct_is_file_active(const fsc_file_t *file, const fsc_filesyste
 	return ((fsc_file_direct_t *)file)->refresh_count == fs->refresh_count; }
 
 static const char *fsc_direct_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return STACKPTR(((fsc_file_direct_t *)file)->qp_mod_ptr); }
+	return (const char *)STACKPTR(((fsc_file_direct_t *)file)->qp_mod_ptr); }
 
 static int fsc_direct_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	void *fp;
@@ -84,7 +84,7 @@ const char *fsc_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) 
 	return fsc_get_sourcetype(file, fs)->get_mod_dir(file, fs); }
 
 int fsc_file_hash(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return fsc_string_hash(STACKPTR(file->qp_name_ptr), STACKPTR(file->qp_dir_ptr)); }
+	return fsc_string_hash((const char *)STACKPTR(file->qp_name_ptr), (const char *)STACKPTR(file->qp_dir_ptr)); }
 
 #define FSC_ADD_STRING(string) fsc_stream_append_string(stream, string)
 
@@ -98,33 +98,33 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 
 	if(include_pk3_origin) {
 		if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
-			FSC_ADD_STRING(STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr));
+			FSC_ADD_STRING((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr));
 			FSC_ADD_STRING(".pk3dir->"); }
 		else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			fsc_file_t *pk3_file = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+			fsc_file_t *pk3_file = (fsc_file_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
 			if(pk3_file->qp_dir_ptr) {
-				FSC_ADD_STRING(STACKPTR(pk3_file->qp_dir_ptr));
+				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_dir_ptr));
 				FSC_ADD_STRING("/"); }
-			FSC_ADD_STRING(STACKPTR(pk3_file->qp_name_ptr));
+			FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_name_ptr));
 			if(pk3_file->qp_ext_ptr) {
 				FSC_ADD_STRING(".");
-				FSC_ADD_STRING(STACKPTR(pk3_file->qp_ext_ptr)); }
+				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_ext_ptr)); }
 			FSC_ADD_STRING("->"); } }
 
 	if(file->qp_dir_ptr) {
-		FSC_ADD_STRING(STACKPTR(file->qp_dir_ptr));
+		FSC_ADD_STRING((const char *)STACKPTR(file->qp_dir_ptr));
 		FSC_ADD_STRING("/"); }
-	FSC_ADD_STRING(STACKPTR(file->qp_name_ptr));
+	FSC_ADD_STRING((const char *)STACKPTR(file->qp_name_ptr));
 	if(file->qp_ext_ptr) {
 		FSC_ADD_STRING(".");
-		FSC_ADD_STRING(STACKPTR(file->qp_ext_ptr)); } }
+		FSC_ADD_STRING((const char *)STACKPTR(file->qp_ext_ptr)); } }
 
 char *fsc_extract_file_allocated(fsc_filesystem_t *fs, fsc_file_t *file, fsc_errorhandler_t *eh) {
 	// Returns data on success, 0 on failure
 	// Caller is responsible for calling fsc_free on extracted data
 	char *data;
 	if(file->filesize + 1 < file->filesize) return 0;
-	data = fsc_malloc(file->filesize + 1);
+	data = (char *)fsc_malloc(file->filesize + 1);
 	if(fsc_extract_file(file, data, fs, eh)) {
 		fsc_free(data);
 		return 0; }
@@ -170,13 +170,13 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 
 	char qp_buffer[FSC_MAX_QPATH];
 	char qp_mod[FSC_MAX_MODDIR];
-	char *qpath_start = 0;
+	const char *qpath_start = 0;
 
 	int pk3dir_active = 0;
 	char pk3dir_buffer[FSC_MAX_QPATH];
-	char *pk3dir_remainder = 0;
+	const char *pk3dir_remainder = 0;
 
-	char *qp_dir, *qp_name, *qp_ext;
+	const char *qp_dir, *qp_name, *qp_ext;
 	fsc_stackptr_t qp_mod_ptr, qp_dir_ptr, qp_name_ptr, qp_ext_ptr;
 
 	unsigned int fs_hash;
@@ -216,14 +216,14 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 	// Search filesystem to see if a sufficiently equivalent entry already exists
 	fsc_hashtable_open(&fs->files, fs_hash, &hti);
 	while((file_ptr = fsc_hashtable_next(&hti))) {
-		file = STACKPTR(file_ptr);
+		file = (fsc_file_direct_t *)STACKPTR(file_ptr);
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(file->f.qp_name_ptr != qp_name_ptr) continue;
 		if(file->f.qp_dir_ptr != qp_dir_ptr) continue;
 		if(file->f.qp_ext_ptr != qp_ext_ptr) continue;
 		if(fsc_get_mod_dir((fsc_file_t *)file, fs) != STACKPTR(qp_mod_ptr)) continue;
 		if(file->os_path_ptr && fsc_compare_os_path(STACKPTR(file->os_path_ptr), os_path)) continue;
-		if(file->pk3dir_ptr && (!pk3dir_active || fsc_strcmp(STACKPTR(file->pk3dir_ptr), pk3dir_buffer))) continue;
+		if(file->pk3dir_ptr && (!pk3dir_active || fsc_strcmp((const char *)STACKPTR(file->pk3dir_ptr), pk3dir_buffer))) continue;
 		if(!file->pk3dir_ptr && pk3dir_active) continue;
 		if(file->f.filesize != filesize || file->os_timestamp != os_timestamp) {
 			if(!filename_contents && file->os_path_ptr) {
@@ -248,7 +248,7 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 	else {
 		// Create a new entry
 		file_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(*file));
-		file = STACKPTR(file_ptr);
+		file = (fsc_file_direct_t *)STACKPTR(file_ptr);
 
 		// Set up fields (other fields are zeroed by default due to stack allocation)
 		file->f.sourcetype = FSC_SOURCETYPE_DIRECT;
@@ -316,7 +316,7 @@ typedef struct {
 } iterate_context_t;
 
 static void load_file_from_iteration(iterate_data_t *file_data, void *iterate_context) {
-	iterate_context_t *iterate_context2 = iterate_context;
+	iterate_context_t *iterate_context2 = (iterate_context_t *)iterate_context;
 	fsc_load_file(iterate_context2->source_dir_id, file_data->os_path, file_data->qpath_with_mod_dir,
 			file_data->os_timestamp, file_data->filesize, iterate_context2->fs, iterate_context2->eh); }
 

@@ -119,9 +119,9 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 
 	return qtrue; }
 
-int fs_generate_path(const char *path1, const char *path2, const char *path3,
+unsigned int fs_generate_path(const char *path1, const char *path2, const char *path3,
 		int path1_flags, int path2_flags, int path3_flags,
-		char *target, int target_size) {
+		char *target, unsigned int target_size) {
 	// Concatenates paths, adding '/' character as seperator, with sanitization
 	//    and directory creation based on flags
 	// Returns output length on success, 0 on error (overflow or sanitize fail)
@@ -144,15 +144,15 @@ int fs_generate_path(const char *path1, const char *path2, const char *path3,
 		return 0; }
 	return stream.position; }
 
-int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
-		int path1_flags, int path2_flags, char *target, int target_size) {
+unsigned int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
+		int path1_flags, int path2_flags, char *target, unsigned int target_size) {
 	// Generates path prefixed by source directory
 	if(!fs_sourcedirs[source_dir_id].active) return 0;
 	return fs_generate_path(fs_sourcedirs[source_dir_id].path_cvar->string, path1, path2, FS_NO_SANITIZE,
 				path1_flags, path2_flags, target, target_size); }
 
-int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
-		char *target, int target_size) {
+unsigned int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
+		char *target, unsigned int target_size) {
 	// Generates path prefixed by write directory
 	if(fs_read_only) return 0;
 	return fs_generate_path_sourcedir(0, path1, path2, path1_flags, path2_flags, target, target_size); }
@@ -230,7 +230,7 @@ static cache_entry_t *cache_lookup_table[CACHE_LOOKUP_TABLE_SIZE];
 
 static unsigned int cache_hash(const fsc_file_t *file) {
 	if(!file) return 0;
-	return fsc_string_hash(STACKPTR(file->qp_name_ptr), STACKPTR(file->qp_dir_ptr)); }
+	return fsc_string_hash((const char *)STACKPTR(file->qp_name_ptr), (const char *)STACKPTR(file->qp_dir_ptr)); }
 
 static void cache_lookup_table_register(cache_entry_t *entry) {
 	int position = entry->lookup_hash % CACHE_LOOKUP_TABLE_SIZE;
@@ -350,7 +350,7 @@ void fs_cache_initialize(void) {
 	if(cache_megs > 1024) cache_megs = 1024;
 
 	cache_size = cache_megs << 20;
-	base_entry = fsc_malloc(cache_size);
+	base_entry = (cache_entry_t *)fsc_malloc(cache_size);
 	head_entry = 0; }
 
 void fs_advance_cache_stage(void) {
@@ -500,7 +500,7 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 	if(cache_entry) {
 		++cache_entry->lock_count;
 		data = CACHE_ENTRY_DATA(cache_entry); }
-	else data = fsc_malloc(size + 1);
+	else data = (char *)fsc_malloc(size + 1);
 
 	// Extract data into buffer
 	if(fsc_file_handle) {
@@ -541,10 +541,10 @@ char *fs_read_shader(const fsc_shader_t *shader) {
 	char *shader_data;
 
 	if(size > 10000) return 0;
-	source_data = fs_read_data(STACKPTR(shader->source_file_ptr), 0, 0);
+	source_data = fs_read_data((const fsc_file_t *)STACKPTR(shader->source_file_ptr), 0, 0);
 	if(!source_data) return 0;
 
-	shader_data = Z_Malloc(size + 1);
+	shader_data = (char *)Z_Malloc(size + 1);
 	fsc_memcpy(shader_data, source_data + shader->start_position, size);
 	shader_data[size] = 0;
 	fs_free_data(source_data);
@@ -622,7 +622,7 @@ static fileHandle_t fs_allocate_handle(fs_handle_type_t type) {
 		default: Com_Error(ERR_DROP, "fs_allocate_handle with invalid type"); }
 
 	// Allocate
-	handles[index] = Z_Malloc(size);
+	handles[index] = (fs_handle_t *)Z_Malloc(size);
 	handles[index]->type = type;
 	handles[index]->owner = FS_HANDLEOWNER_SYSTEM;
 	return index + 1; }
@@ -1025,10 +1025,10 @@ static void fs_handle_set_owner(fileHandle_t handle, fs_handle_owner_t owner) {
 
 fs_handle_owner_t fs_handle_get_owner(fileHandle_t handle) {
 	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) return 0;
+	if(!handle_entry) return FS_HANDLEOWNER_SYSTEM;
 	return handle_entry->owner; }
 
-static char *identify_handle_type(fs_handle_type_t type) {
+static const char *identify_handle_type(fs_handle_type_t type) {
 	if(type == FS_HANDLE_CACHE_READ) return "cache read";
 	if(type == FS_HANDLE_DIRECT_READ) return "direct read";
 	if(type == FS_HANDLE_PK3_READ) return "pk3 read";
@@ -1036,7 +1036,7 @@ static char *identify_handle_type(fs_handle_type_t type) {
 	if(type == FS_HANDLE_PIPE) return "pipe";
 	return "unknown"; }
 
-static char *identify_handle_owner(fs_handle_owner_t owner) {
+static const char *identify_handle_owner(fs_handle_owner_t owner) {
 	if(owner == FS_HANDLEOWNER_SYSTEM) return "system";
 	if(owner == FS_HANDLEOWNER_CGAME) return "cgame";
 	if(owner == FS_HANDLEOWNER_UI) return "ui";
@@ -1090,7 +1090,7 @@ char *fs_read_journal_data(void) {
 		if(cache_entry) {
 			++cache_entry->lock_count;
 			data = CACHE_ENTRY_DATA(cache_entry); }
-		else data = fsc_malloc(length + 1); }
+		else data = (char *)fsc_malloc(length + 1); }
 
 	// Attempt to read data
 	r = FS_Read(data, length, com_journalDataFile);
@@ -1136,10 +1136,14 @@ static long open_index_read_handle(const char *filename, fileHandle_t *handle, i
 
 	// Get the file
 	fscfile = fs_general_lookup(filename, lookup_flags, qfalse);
+	if(!handle) {
+		// Size check only; modify size as per original FS_FOpenFileReadDir
+		if(!fscfile || (long)(fscfile->filesize) < 0) return 0;
+		if((long)(fscfile->filesize) == 0) return 1;
+		return (long)(fscfile->filesize); }
 	if(!fscfile || (long)(fscfile->filesize) <= 0) {
-		if(handle) *handle = 0;
+		*handle = 0;
 		return -1; }
-	if(!handle) return (long)(fscfile->filesize);
 
 	// Get the handle
 	if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_PK3 && fscfile->filesize > 65536) {
@@ -1168,7 +1172,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	unsigned int size = -1;
 	*fp = 0;
 
-	for(i=0; i<FS_SOURCEDIR_COUNT; ++i) {
+	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_SLASH, 0, path, sizeof(path))) {
 			*fp = fs_cache_read_handle_open(0, path, &size);
 			if(*fp) break; } }
@@ -1264,8 +1268,10 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 		else {
 			return -1; } }
 	else {
-		// Size check only
+		// Size check only; modify size as per original FS_FOpenFileReadDir
 		if(handle) fs_free_handle(handle);
+		if(size < 0) return 0;
+		if(size == 0) return 1;
 		return size; } }
 
 int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
@@ -1278,18 +1284,18 @@ void FS_FCloseFile(fileHandle_t f) {
 	fs_handle_close(f); }
 
 int FS_Read(void *buffer, int len, fileHandle_t f) {
-	return fs_handle_read(buffer, len, f); }
+	return fs_handle_read((char *)buffer, len, f); }
 
 int FS_Read2(void *buffer, int len, fileHandle_t f) {
 	// This seems pretty much identical to FS_Read in the original filesystem as well
 	return FS_Read(buffer, len, f); }
 
 int FS_Write(const void *buffer, int len, fileHandle_t h) {
-	fs_write_handle_write(h, buffer, len);
+	fs_write_handle_write(h, (const char *)buffer, len);
 	return len; }
 
 int FS_Seek(fileHandle_t f, long offset, int origin) {
-	return fs_handle_seek(f, offset, origin); }
+	return fs_handle_seek(f, offset, (fsOrigin_t)origin); }
 
 int FS_FTell(fileHandle_t f) {
 	return fs_handle_ftell(f); }
@@ -1337,7 +1343,7 @@ long FS_ReadFile(const char *qpath, void **buffer) {
 	return (long)len; }
 
 void FS_FreeFile(void *buffer) {
-	fs_free_data(buffer); }
+	fs_free_data((char *)buffer); }
 
 void FS_WriteFile( const char *qpath, const void *buffer, int size ) {
 	// Copy from original filesystem

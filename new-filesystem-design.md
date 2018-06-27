@@ -219,13 +219,13 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 - resource_disabled: There are several conditions, such as a file not on the pure list, where resources are deemed to unusable in the selection process. Instead of just skipping these resources outright they are assigned a "disabled" string in the lookup resource, which allows them to go through the precedence process and appear in the debug outputs. This rule ensures such resources get sorted to the bottom of the resource list.
 
-- special_shaders: Prioritizes "special" shaders (those from a system pak, server pak list, current mod dir, or basemod dir). Resources in these locations normally override resources outside them anyway, but this rule causes explicit shaders to override images when they are both in one of these locations. This is helpful in some special cases. For example, suppose the system paks provide a shader and image both with the same name, in which the shader invokes the image, and a mod provides a modified version of the image only. By itself, the basemod_or_current_mod_dir rule would cause the mod image to override the shader instead of just the image, which is probably not the mod author's intention nor the original filesystem behavior. This rule increases the areas where shaders override images to better handle these kind of conditions.
+- special_shaders: Prioritizes "special" shaders (those from a default pak, server pak list, current mod dir, or basemod dir). Resources in these locations normally override resources outside them anyway, but this rule causes explicit shaders to override images when they are both in one of these locations. This is helpful in some special cases. For example, suppose the default paks provide a shader and image both with the same name, in which the shader invokes the image, and a mod provides a modified version of the image only. By itself, the basemod_or_current_mod_dir rule would cause the mod image to override the shader instead of just the image, which is probably not the mod author's intention nor the original filesystem behavior. This rule increases the areas where shaders override images to better handle these kind of conditions.
 
 - server_pak_position: Prioritizes paks according to the order of the server pak list (sv_paks) when connected to a pure or semi-pure server.
 
 - basemod_or_current_mod_dir: Prioritizes current_mod_dir (which generally corresponds to fs_game) and basemod over com_basegame and inactive mods.
 
-- system_paks: Prioritizes the system paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
+- system_paks: Prioritizes the default paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
 
 - current_map_pak: Prioritizes the pak, if any, where the current map was loaded from. That value is stored under current_map_pk3 in fs_main.c.
 
@@ -345,29 +345,20 @@ This component handles file list requests, which are used primarily by UI menus 
 
 This component handles constructing the pure and download lists when hosting a server, and generating the pure validation string which is necessary when connecting to an original filesystem pure server. The main sections are as follows:
 
-- Reference set: This is a hashtable-based temporary structure for storing paks. Only a single pk3 is stored for a given hash, and conflicts are resolved by selecting the pk3 with the higher filesystem precedence. A position field is also stored, which is used by the dash separator feature in manifest strings to alter the reference list sort order.
-
-- Reference list: The reference list is a sortable pak list structure that is generated from a reference set.
-
-- Reference string building: Used to convert a reference list to the hash/filename pure/download strings that are sent to clients.
-
 - Pure validation: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because you suspect a server may use some nonstandard validation behavior, you can enable it with the fs_full_pure_validation setting.
 
-- Referenced paks: This section is used to record which paks have been accessed by the game. It is used for pure validation when fs_full_pure_validation is set to 1, and for the *referenced_paks selector rule for the download list. Neither feature is essential, so referenced pak tracking could be considered for deprecation in the future.
+- Manifest processing: This section is used to convert a pure or download manifest into a set of "reference set entries". Each reference set entry represents one pk3 and contains sorting and debug information. Only one reference set entry is created per pk3 hash, and conflicts are resolved to use the higher precedence pk3.
 
-- Download / pure list building: This section is used to convert both download and pure list manifest strings into reference sets.
+- Download map handling: This section is used to match a client download request to a physical file. In some cases the filename in the download list, and by extension the client request, may not match the physical filename on the server, so the download map is used to resolve the correct file.
 
-- Server download list handling: The fs_set_download_list function is called from SV_SpawnServer during server initialization, which populates the download_paks structure and sets the "sv_referencedPaks" and "sv_referencedPakNames" cvars accordingly. When a download request is received from the client, fs_open_download_pak is called to open the read handle. It searches the download_paks reference set for a file matching the client request and retrieves the real path from the reference set entry. This is safer than opening the path directly and it correctly handles cases where the pk3 name was changed by path sanitization or the pk3 is located in the downloads folder on the server.
+- Reference string generation: This section invokes the manifest processing functions to generate a reference set, then converts it into the output hash and name list format used by the server.
 
-- Server pure list handling: The fs_set_pure_list function is called from SV_SpawnServer during server initialization, which sets the "sv_paks" and "sv_pakNames" cvars. If an overflow occurs it will first try skipping sv_pakNames, since it is only used for informational purposes. If that isn't sufficient it will set sv_pure to 0.
+- General functions: This section includes shared functions called by the server to set the download and pure lists.
 
 # FAQ
 
-**Q:** Why is the new filesystem so much larger (in terms of lines/source files)?  
-**A:** Some of the increase is due to new features, performance optimizations, and bugfixes. Other increases are due to design decisions that make the code more modular and maintainable at the expense of line count.
-
-**Q:** Could the improvements of this project be added in ioquake3 incrementally?  
-**A:** Most of the changes need to be done at the same time because they require changing the underlying data structures of the file index.
+**Q:** Why is the new filesystem larger (in terms of lines/source files)?  
+**A:** Some increase is due to new features and optimizations, but one main reason the line count is larger is because the filesystem is divided into two parts, the core component and the regular game component. The core component can be compiled independently and has no dependencies on ioquake3 code. This increases the line count, because certain things have to be reimplemented in the core that already exist in ioq3, but ultimately is easier to maintain because of the flexibility to make changes in ioq3 without concern about breaking anything in the filesystem core.
 
 **Q:** Since some new filesystem features can bypass problems with maps, will it cause map developers to release broken maps?  
 **A:** Map developers should already test maps before release using a clean install of both ioquake3 and original Quake 3. As long as map developers follow existing good practices there should be no problems.
@@ -380,6 +371,12 @@ This component handles constructing the pure and download lists when hosting a s
 
 **Q:** Why is SV_VerifyPaks_f removed?  
 **A:** This function was used as an extra check to make certain kinds of hacks a little bit more difficult in the early days of Quake 3, when it was still closed source. It's not necessary or useful anymore so has been removed to reduce complexity.
+
+**Q:** Is it bad to change file precedence because it could break existing content?  
+**A:** If you assume a clean game directory with only a few pk3s installed, there would be no need to make precedence changes. However, in practical usage with server downloads, map download packages, and base directories with hundreds of pk3s, the existing precedence system is very unstable. It is based strictly on filename and has quirks that violate even the filename precedence under certain conditions. The precedence system in this project isolates the ID pak and current map pk3 from other base pk3s, and after that follows the traditional mod and alphabetical ordering without unpredictable quirks. As a result the game is much more stable and better at loading the assets actually intended by content authors when there are large numbers of pk3s installed.
+
+**Q:** Why are all mod dirs including inactive ones indexed at startup? It seems weird/inefficient.  
+**A:** This design simplifies the filesystem code because there is no need to maintain multiple hashtables for different mod directories, or detect and perform reindexing when the mod changes. It also allows instantaneous mod switching with no indexing overhead and makes it easier to support features that work beyond the single fs_game model. The filesystem is designed so that even though inactive mods are indexed in memory they do not have any effect on the game unless a feature intentionally accesses them, and the load time impact of indexing the extra files is generally negligible due to the index cache.
 
 **Q:** If it's a good idea to change the backwards shader precedence, why has it not been done in the original filesystem?  
 **A:** Forward shader precedence is much better in general, but there are a couple of issues that prevent it from being trivially changed in the original filesystem. First, some maps, especially low-quality conversions from other games, erroneously define shaders that conflict with the ID paks, and rely on the backwards shader precedence and having a filename alphabetically higher than 'p' to not override them. In the new filesystem the ID paks have precedence regardless of filename, so backwards shader precedence is no longer necessary. The second issue is with shaders that conflict with other shaders inside the *same* pk3 file. If the shader precedence was naively reversed, the intra-pk3 precedence would be reversed as well, which would lead to potential compatibility issues with all existing pk3s including the ID paks. The new filesystem solves this problem by explicitly emulating the original precedence conventions for shaders inside the same pk3.

@@ -75,8 +75,8 @@ static void cmd_indexcache_write(void) {
 	fs_indexcache_write(); }
 
 static void FS_Dir_f( void ) {
-	char	*path;
-	char	*extension;
+	const char	*path;
+	const char	*extension;
 	char	**dirnames;
 	int		ndirs;
 	int		i;
@@ -106,7 +106,7 @@ static void FS_Dir_f( void ) {
 }
 
 static void FS_NewDir_f( void ) {
-	char	*filter;
+	const char	*filter;
 	char	**dirnames;
 	int		ndirs;
 	int		i;
@@ -133,7 +133,7 @@ static void FS_NewDir_f( void ) {
 static void FS_Which_f( void ) {
 	// The lookup functions are more powerful, but this is kept for
 	// users who are familiar with it
-	char *filename = Cmd_Argv(1);
+	const char *filename = Cmd_Argv(1);
 	const fsc_file_t *file;
 
 	if ( !filename[0] ) {
@@ -172,18 +172,19 @@ static void FS_Path_f( void ) {
 	int sourceid;
 	int i;
 
-	for(sourceid=0; sourceid<FS_SOURCEDIR_COUNT; ++sourceid) {
+	for(sourceid=0; sourceid<FS_MAX_SOURCEDIRS; ++sourceid) {
 		if(!fs_sourcedirs[sourceid].active) continue;
 		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path_cvar->string);
 
 		for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-			while((hash_entry = STACKPTR(fsc_hashtable_next(&hti)))) {
-				const fsc_file_direct_t *pak = STACKPTR(hash_entry->pk3);
+			while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+				const fsc_file_direct_t *pak = (const fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
 				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak, 0)) {
 					char buffer[FS_FILE_BUFFER_SIZE];
 					fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
 					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count);
+					Com_Printf("    hash(%i) default_pk3_position(%i)\n", (int)pak->pk3_hash, default_pk3_position(pak->pk3_hash));
 					if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
 							pk3_list_lookup(&connected_server_pk3_list, pak->pk3_hash, qfalse) ? "" : "not "); } } } }
 

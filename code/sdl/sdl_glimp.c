@@ -270,7 +270,7 @@ static qboolean GLimp_GetProcAddresses( void ) {
 		sscanf( version, "%d.%d", &qglMajorVersion, &qglMinorVersion );
 	}
 
-	if ( QGL_VERSION_ATLEAST( 1, 1 ) ) {
+	if ( QGL_VERSION_ATLEAST( 1, 2 ) ) {
 		QGL_1_1_PROCS;
 		QGL_DESKTOP_1_1_PROCS;
 	} else if ( qglesMajorVersion == 1 && qglesMinorVersion >= 1 ) {
@@ -455,6 +455,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	for (i = 0; i < 16; i++)
 	{
 		int testColorBits, testDepthBits, testStencilBits;
+		int realColorBits[3];
 
 		// 0 - default
 		// 1 - minus colorBits
@@ -644,6 +645,8 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			if( ( SDL_glContext = SDL_GL_CreateContext( SDL_window ) ) == NULL )
 			{
 				ri.Printf( PRINT_DEVELOPER, "SDL_GL_CreateContext failed: %s\n", SDL_GetError( ) );
+				SDL_DestroyWindow( SDL_window );
+				SDL_window = NULL;
 				continue;
 			}
 
@@ -668,9 +671,13 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			ri.Printf( PRINT_DEVELOPER, "SDL_GL_SetSwapInterval failed: %s\n", SDL_GetError( ) );
 		}
 
-		glConfig.colorBits = testColorBits;
-		glConfig.depthBits = testDepthBits;
-		glConfig.stencilBits = testStencilBits;
+		SDL_GL_GetAttribute( SDL_GL_RED_SIZE, &realColorBits[0] );
+		SDL_GL_GetAttribute( SDL_GL_GREEN_SIZE, &realColorBits[1] );
+		SDL_GL_GetAttribute( SDL_GL_BLUE_SIZE, &realColorBits[2] );
+		SDL_GL_GetAttribute( SDL_GL_DEPTH_SIZE, &glConfig.depthBits );
+		SDL_GL_GetAttribute( SDL_GL_STENCIL_SIZE, &glConfig.stencilBits );
+
+		glConfig.colorBits = realColorBits[0] + realColorBits[1] + realColorBits[2];
 
 		ri.Printf( PRINT_ALL, "Using %d color bits, %d depth, %d stencil display.\n",
 				glConfig.colorBits, glConfig.depthBits, glConfig.stencilBits );

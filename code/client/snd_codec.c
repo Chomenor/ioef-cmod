@@ -67,7 +67,7 @@ static void *S_CodecGetSound(const char *filename, snd_info_t *info)
 #ifdef NEW_FILESYSTEM
 	char localName[MAX_QPATH];
 	const fsc_file_t *file;
-	char *extension;
+	const char *extension;
 	snd_codec_t *codec;
 
 	COM_StripExtension(filename, localName, MAX_QPATH);

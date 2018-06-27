@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static int index_shader_file_data(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, char *data, fsc_errorhandler_t *eh) {
 	// Returns number of shaders indexed from file.
-	fsc_file_t *source_file = STACKPTR(source_file_ptr);
+	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
 	int shader_count = 0;
 	char *current_position = data;
 	int prefix_tokens;
@@ -80,7 +80,7 @@ static int index_shader_file_data(fsc_filesystem_t *fs, fsc_stackptr_t source_fi
 		// Allocate new shader
 		++shader_count;
 		new_shader_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_shader_t));
-		new_shader = STACKPTR(new_shader_ptr);
+		new_shader = (fsc_shader_t *)STACKPTR(new_shader_ptr);
 
 		// Copy data to new shader
 		new_shader->shader_name_ptr = fsc_string_repository_getstring(shader_name, 1, &fs->string_repository, &fs->general_stack);
@@ -96,7 +96,7 @@ static int index_shader_file_data(fsc_filesystem_t *fs, fsc_stackptr_t source_fi
 
 int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh) {
 	// Returns number of shaders indexed from file.
-	fsc_file_t *source_file = STACKPTR(source_file_ptr);
+	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
 	int shader_count;
 
 	char *data = fsc_extract_file_allocated(fs, source_file, 0);
@@ -113,6 +113,6 @@ int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_
 /* ******************************************************************************** */
 
 int is_shader_enabled(fsc_filesystem_t *fs, fsc_shader_t *shader) {
-	return fsc_is_file_enabled(STACKPTR(shader->source_file_ptr), fs); }
+	return fsc_is_file_enabled((const fsc_file_t *)STACKPTR(shader->source_file_ptr), fs); }
 
 #endif	// NEW_FILESYSTEM

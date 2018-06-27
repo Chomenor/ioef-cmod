@@ -120,7 +120,7 @@ static int get_pk3_central_directory_fp(void *fp, unsigned int file_length, cent
 		if(cd_position_reported > cd_position) return 1;	// cd_position is already the maximum valid position
 		output->zip_offset = cd_position - cd_position_reported; }
 
-	output->data = fsc_malloc(output->cd_length);
+	output->data = (char *)fsc_malloc(output->cd_length);
 
 	{	unsigned int buffer_file_position = file_length - buffer_read_size;		// Position in file where buffered data begins
 		unsigned int unbuffered_read_length = 0;	// Amount of non-buffered data read
@@ -172,21 +172,21 @@ static int get_pk3_central_directory_path(void *os_path, central_directory_t *ou
 	return 0; }
 
 void register_pk3_hash_lookup_entry(fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t *pk3_hash_lookup, fsc_stack_t *stack) {
-	fsc_file_direct_t *pk3_file = STACKPTRL(pk3_file_ptr);
+	fsc_file_direct_t *pk3_file = (fsc_file_direct_t *)STACKPTRL(pk3_file_ptr);
 	fsc_stackptr_t hash_map_entry_ptr = fsc_stack_allocate(stack, sizeof(fsc_pk3_hash_map_entry_t));
-	fsc_pk3_hash_map_entry_t *hash_map_entry = STACKPTRL(hash_map_entry_ptr);
+	fsc_pk3_hash_map_entry_t *hash_map_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRL(hash_map_entry_ptr);
 	hash_map_entry->pk3 = pk3_file_ptr;
 	fsc_hashtable_insert(hash_map_entry_ptr, pk3_file->pk3_hash, pk3_hash_lookup); }
 
 static void register_file_from_pk3(fsc_filesystem_t *fs, char *filename, int filename_length,
 			fsc_stackptr_t sourcefile_ptr, unsigned int header_position, unsigned int compressed_size,
 			unsigned int uncompressed_size, short compression_method, fsc_errorhandler_t *eh) {
-	fsc_file_direct_t *sourcefile = STACKPTR(sourcefile_ptr);
+	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTR(sourcefile_ptr);
 	fsc_stackptr_t file_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_file_frompk3_t));
-	fsc_file_frompk3_t *file = STACKPTR(file_ptr);
+	fsc_file_frompk3_t *file = (fsc_file_frompk3_t *)STACKPTR(file_ptr);
 
 	char buffer[FSC_MAX_QPATH];
-	char *qp_dir, *qp_name, *qp_ext;
+	const char *qp_dir, *qp_name, *qp_ext;
 	unsigned int fs_hash;
 	int filename_contents;
 
@@ -228,7 +228,7 @@ void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile
 				void (receive_hash_data)(void *context, char *data, int size), void *receive_hash_data_context ) {
 	// In normal usage, this is used to load pk3 files into the index. It can also be called with
 	//    receive_hash_data set to generate pk3 hash data without indexing anything.
-	fsc_file_direct_t *sourcefile = STACKPTR(sourcefile_ptr);
+	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTR(sourcefile_ptr);
 	central_directory_t cd;
 	int entry_position = 0;		// Position of current entry relative to central directory data
 	int entry_counter = 0;		// Number of current entry
@@ -248,7 +248,7 @@ void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile
 
 	// Try to use the stack buffer, but if it's not big enough resort to malloc
 	if(cd.entry_count > sizeof(crcs_for_hash_buffer) / sizeof(*crcs_for_hash_buffer)) {
-		crcs_for_hash = fsc_malloc((cd.entry_count + 1) * 4); }
+		crcs_for_hash = (int *)fsc_malloc((cd.entry_count + 1) * 4); }
 	else crcs_for_hash = crcs_for_hash_buffer;
 
 	// Process each file
@@ -334,7 +334,7 @@ typedef struct {
 static int fsc_pk3_handle_open2(pk3_handle_t *handle, const fsc_file_frompk3_t *file, int input_buffer_size,
 		const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Returns 1 on error, 0 otherwise
-	const fsc_file_direct_t *source_pk3 = STACKPTR(file->source_pk3);
+	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR(file->source_pk3);
 	char localheader[30];
 	unsigned int data_position;
 
@@ -367,7 +367,7 @@ static int fsc_pk3_handle_open2(pk3_handle_t *handle, const fsc_file_frompk3_t *
 
 		handle->compression_method = 8;
 		handle->input_buffer_size = input_buffer_size;
-		handle->input_buffer = fsc_malloc(input_buffer_size); }
+		handle->input_buffer = (char *)fsc_malloc(input_buffer_size); }
 	else if(file->compression_method != 0) {
 		fsc_report_error(eh, FSC_ERROR_EXTRACT, "pk3_handle_open - unknown compression method", 0);
 		return 1; }
@@ -376,7 +376,7 @@ static int fsc_pk3_handle_open2(pk3_handle_t *handle, const fsc_file_frompk3_t *
 
 void *fsc_pk3_handle_open(const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Returns handle on success, null on error
-	pk3_handle_t *handle = fsc_calloc(sizeof(*handle));
+	pk3_handle_t *handle = (pk3_handle_t *)fsc_calloc(sizeof(*handle));
 	if(fsc_pk3_handle_open2(handle, file, input_buffer_size, fs, eh)) {
 		if(handle->input_handle) fsc_fclose(handle->input_handle);
 		fsc_free(handle);
@@ -420,12 +420,12 @@ unsigned int fsc_pk3_handle_read(void *handle, char *buffer, unsigned int length
 /* ******************************************************************************** */
 
 static int fsc_pk3_is_file_active(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	const fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
 	return source_pk3->refresh_count == fs->refresh_count; }
 
 static const char *fsc_pk3_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	const fsc_file_direct_t *source_pk3 = STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-	return STACKPTR(source_pk3->qp_mod_ptr); }
+	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
+	return (const char *)STACKPTR(source_pk3->qp_mod_ptr); }
 
 static int fsc_pk3_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Returns 0 on success, 1 on failure

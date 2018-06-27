@@ -50,7 +50,7 @@ cvar_t *fs_debug_lookup;
 cvar_t *fs_debug_references;
 cvar_t *fs_debug_filelist;
 
-fs_source_directory_t fs_sourcedirs[FS_SOURCEDIR_COUNT];
+fs_source_directory_t fs_sourcedirs[FS_MAX_SOURCEDIRS];
 qboolean fs_read_only;	// If false, fs_sourcedirs[0] is write directory
 
 fsc_filesystem_t fs;
@@ -99,7 +99,7 @@ int fs_connected_server_pure_state(void) {
 void fs_register_current_map(const char *name) {
 	const fsc_file_t *bsp_file = fs_general_lookup(name, LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse);
 	if(!bsp_file || bsp_file->sourcetype != FSC_SOURCETYPE_PK3) current_map_pk3 = 0;
-	else current_map_pk3 = STACKPTR(((fsc_file_frompk3_t *)bsp_file)->source_pk3);
+	else current_map_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)bsp_file)->source_pk3);
 
 	if(fs_debug_state->integer) {
 		char buffer[FS_FILE_BUFFER_SIZE];
@@ -224,7 +224,7 @@ static qboolean prepare_writable_directory(char *directory) {
 	return qtrue; }
 
 #ifndef CMOD_DEDICATED_SOURCEDIRS
-static char *fs_default_homepath(void) {
+static const char *fs_default_homepath(void) {
 	// Default homepath but it returns empty string in place of null
 	char *homepath = Sys_DefaultHomePath();
 	if(!homepath) return "";
@@ -232,7 +232,7 @@ static char *fs_default_homepath(void) {
 #endif
 
 typedef struct {
-	char *name;
+	const char *name;
 	cvar_t *path_cvar;
 	int fs_dirs_position;	// 0 = inactive, otherwise lower means higher priority
 	qboolean write_dir;
@@ -248,7 +248,7 @@ static int compare_temp_source_dirs(const temp_source_directory_t *dir1, const t
 	return 1; }
 
 static int compare_temp_source_dirs_qsort(const void *dir1, const void *dir2) {
-	return compare_temp_source_dirs(dir1, dir2); }
+	return compare_temp_source_dirs((const temp_source_directory_t *)dir1, (const temp_source_directory_t *)dir2); }
 
 void fs_initialize_sourcedirs(void) {
 	int i;
@@ -256,7 +256,7 @@ void fs_initialize_sourcedirs(void) {
 	int current_position = 0;
 	char *fs_dirs_ptr;
 	char *token;
-	temp_source_directory_t temp_dirs[FS_SOURCEDIR_COUNT] = {
+	temp_source_directory_t temp_dirs[] = {
 #ifdef ELITEFORCE
 #ifdef CMOD_DEDICATED_SOURCEDIRS
 		{"dir1", Cvar_Get("fs_dir1", ".", CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
@@ -272,7 +272,11 @@ void fs_initialize_sourcedirs(void) {
 		{"homepath",  Cvar_Get("fs_homepath", fs_default_homepath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
 		{"basepath", Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
 		{"steampath", Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
-		{"gogpath", Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse} };
+		{"gogpath", Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+#ifdef __APPLE__
+		{"apppath", Cvar_Get("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
+#endif
+};
 #endif
 
 	// Configure temp_dirs based on fs_dirs entries
@@ -287,8 +291,8 @@ void fs_initialize_sourcedirs(void) {
 			write_dir = qtrue;
 			++token; }
 
-		for(i=0; i<FS_SOURCEDIR_COUNT; ++i) if(!Q_stricmp(token, temp_dirs[i].name)) break;
-		if(i >= FS_SOURCEDIR_COUNT) continue;	// Invalid source dir name
+		for(i=0; i<ARRAY_LEN(temp_dirs); ++i) if(!Q_stricmp(token, temp_dirs[i].name)) break;
+		if(i >= ARRAY_LEN(temp_dirs)) continue;	// Invalid source dir name
 		if(!*temp_dirs[i].path_cvar->string) continue;	// No path set
 		if(temp_dirs[i].fs_dirs_position) continue;		// Source dir already initialized
 
@@ -304,7 +308,7 @@ void fs_initialize_sourcedirs(void) {
 				Com_Printf("Not writable due to failed write test.\n"); } } }
 
 	// Sort temp_dirs
-	qsort(temp_dirs, FS_SOURCEDIR_COUNT, sizeof(*temp_dirs), compare_temp_source_dirs_qsort);
+	qsort(temp_dirs, ARRAY_LEN(temp_dirs), sizeof(*temp_dirs), compare_temp_source_dirs_qsort);
 
 	// Check for read-only mode
 	if(temp_dirs[0].write_dir) {
@@ -315,19 +319,22 @@ void fs_initialize_sourcedirs(void) {
 		Com_Printf("WARNING: No write directory selected. Filesystem in read-only mode.\n"); }
 
 	// Transfer data from temp_dirs to fs_sourcedirs
-	for(i=0; i<FS_SOURCEDIR_COUNT; ++i) {
+	Com_Memset(fs_sourcedirs, 0, sizeof(fs_sourcedirs));
+	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
+		if(i >= ARRAY_LEN(temp_dirs) || !temp_dirs[i].fs_dirs_position) continue;
+
 		fs_sourcedirs[i].name = temp_dirs[i].name;
 		fs_sourcedirs[i].path_cvar = temp_dirs[i].path_cvar;
-		fs_sourcedirs[i].active = temp_dirs[i].fs_dirs_position ? qtrue : qfalse;
+		fs_sourcedirs[i].active = qtrue;
 
-		if(fs_sourcedirs[i].active) Com_Printf("Source directory %i: %s (%s)\n", i+1, fs_sourcedirs[i].name,
+		Com_Printf("Source directory %i: %s (%s)\n", i+1, fs_sourcedirs[i].name,
 				fs_sourcedirs[i].path_cvar->string); } }
 
 /* ******************************************************************************** */
 // Filesystem Refresh
 /* ******************************************************************************** */
 
-static void refresh_errorhandler(int id, char *msg, void *current_element, void *context) {
+static void refresh_errorhandler(int id, const char *msg, void *current_element, void *context) {
 	if(fs_debug_refresh->integer) {
 		const char *type = "general";
 		if(id == FSC_ERROR_PK3FILE) type = "pk3";
@@ -371,7 +378,7 @@ void fs_refresh(qboolean quiet) {
 
 	fsc_filesystem_reset(&fs);
 
-	for(i=0; i<FS_SOURCEDIR_COUNT; ++i) {
+	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		if(!fs_sourcedirs[i].active) continue;
 		if(!quiet) Com_Printf("Indexing %s...\n", fs_sourcedirs[i].name);
 		index_directory(fs_sourcedirs[i].path_cvar->string, i, quiet); }
@@ -450,7 +457,11 @@ void fs_startup(void) {
 	fs_dirs = Cvar_Get("fs_dirs", "*basepath *homepath", CVAR_INIT|CVAR_PROTECTED);
 #endif
 #else
+#ifdef __APPLE__
+	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath apppath", CVAR_INIT|CVAR_PROTECTED);
+#else
 	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
+#endif
 #endif
 #ifdef CMOD_SETTINGS
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_ROM);
@@ -493,7 +504,7 @@ void fs_startup(void) {
 	fs_initialized = qtrue;
 
 #ifndef STANDALONE
-	fs_check_system_paks();
+	fs_check_default_paks();
 #endif
 }
 

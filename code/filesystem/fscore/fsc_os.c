@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Headers / Definitions
 /* ******************************************************************************** */
 
-#ifdef WIN32
+#ifdef _WIN32
 // Windows defines
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
@@ -52,30 +52,30 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 int fsc_rename_file(void *source_os_path, void *target_os_path) {
 	// Returns 1 on error, 0 on success
-#ifdef WIN32
-	if(!MoveFile(source_os_path, target_os_path)) return 1;
+#ifdef _WIN32
+	if(!MoveFile((LPCTSTR)source_os_path, (LPCTSTR)target_os_path)) return 1;
 #else
-	if(rename(source_os_path, target_os_path)) return 1;
+	if(rename((const char *)source_os_path, (const char *)target_os_path)) return 1;
 #endif
 	return 0; }
 
 int fsc_delete_file(void *os_path) {
 	// Returns 1 on error, 0 on success
-	#ifdef WIN32
+	#ifdef _WIN32
 		// Can we just use remove instead?
-		if(!DeleteFile(os_path)) return 1;
+		if(!DeleteFile((LPCTSTR)os_path)) return 1;
 	#else
-		if(!remove(os_path)) return 1;
+		if(!remove((const char *)os_path)) return 1;
 	#endif
 	return 0; }
 
 int fsc_mkdir(void *os_path) {
 	// Returns 1 on error, 0 on success or directory already exists
-	#ifdef WIN32
-		if(CreateDirectory(os_path, 0)) return 0;
+	#ifdef _WIN32
+		if(CreateDirectory((LPCTSTR)os_path, 0)) return 0;
 		return GetLastError() != ERROR_ALREADY_EXISTS;
 	#else
-		if(mkdir(os_path, 0750)) return errno != EEXIST;
+		if(mkdir((const char *)os_path, 0750)) return errno != EEXIST;
 	#endif
 	return 0; }
 
@@ -87,29 +87,29 @@ void *fsc_open_file(const void *os_path, const char *mode) {
 			mode_wide[i] = mode[i];
 			if(!mode[i]) break; }
 		mode_wide[9] = 0;
-		return _wfopen(os_path, mode_wide);
+		return _wfopen((const wchar_t *)os_path, mode_wide);
 	#else
-		return fopen(os_path, mode);
+		return fopen((const char *)os_path, mode);
 	#endif
 }
 
 void fsc_fclose(void *fp) {
-	fclose(fp); }
+	fclose((FILE *)fp); }
 
 unsigned int fsc_fread(void *dest, int size, void *fp) {
-	return fread(dest, 1, size, fp); }
+	return fread(dest, 1, size, (FILE *)fp); }
 
 unsigned int fsc_fwrite(const void *src, int size, void *fp) {
-	return fwrite(src, 1, size, fp); }
+	return fwrite(src, 1, size, (FILE *)fp); }
 
 void fsc_fflush(void *fp) {
-	fflush(fp); }
+	fflush((FILE *)fp); }
 
 int fsc_fseek(void *fp, int offset, fsc_seek_type_t type) {
 	int os_type = SEEK_SET;
 	if(type == FSC_SEEK_CUR) os_type = SEEK_CUR;
 	if(type == FSC_SEEK_END) os_type = SEEK_END;
-	return fseek(fp, offset, os_type); }
+	return fseek((FILE *)fp, offset, os_type); }
 
 int fsc_fseek_set(void *fp, unsigned int offset) {
 	// Returns 1 on error, 0 otherwise
@@ -125,10 +125,10 @@ int fsc_fseek_set(void *fp, unsigned int offset) {
 
 unsigned int fsc_ftell(void *fp) {
 	// Returns 4294967295 on error or overflow
-	#ifdef WIN32
-		long long value = _ftelli64(fp);
+	#ifdef _WIN32
+		long long value = _ftelli64((FILE *)fp);
 	#else
-		off_t value = ftello(fp);
+		off_t value = ftello((FILE *)fp);
 	#endif
 		if(value < 0 || value > 4294967295u) return 4294967295u;
 		return (unsigned int)value; }
@@ -147,7 +147,7 @@ void fsc_strncpy(char *dst, const char *src, unsigned int size) {
 	strncpy(dst, src, size);
 	if(size) dst[size-1] = 0; }
 
-void fsc_strncpy_lower(char *dst, char *src, unsigned int size) {
+void fsc_strncpy_lower(char *dst, const char *src, unsigned int size) {
 	if(size) {
 		while(--size) *(dst++) = tolower(*(src++));
 		*dst = 0; } }
@@ -156,7 +156,7 @@ int fsc_strcmp(const char *str1, const char *str2) {
 	return strcmp(str1, str2); }
 
 int fsc_stricmp(const char *str1, const char *str2) {
-#ifdef WIN32
+#ifdef _WIN32
 	return _stricmp(str1, str2);
 #else
 	return strcasecmp(str1, str2);
@@ -195,11 +195,11 @@ void *fsc_string_to_os_path(const char *path) {
 		int length = MultiByteToWideChar(CP_UTF8, 0, path, -1, 0, 0);
 		if(!length) return 0;
 
-		buffer = fsc_malloc(length * sizeof(wchar_t));
+		buffer = (FSC_CHAR *)fsc_malloc(length * sizeof(wchar_t));
 		MultiByteToWideChar(CP_UTF8, 0, path, -1, buffer, length);
 	#else
 		int length = strlen(path);
-		buffer = fsc_malloc(length+1);
+		buffer = (char *)fsc_malloc(length+1);
 		fsc_memcpy(buffer, path, length+1);
 	#endif
 	return buffer; }
@@ -209,14 +209,14 @@ char *fsc_os_path_to_string(const void *os_path) {
 	// WARNING: Result must be freed by caller using fsc_free!!!
 	char *buffer;
 	#ifdef WIN_UNICODE
-		int length = WideCharToMultiByte(CP_UTF8, 0, os_path, -1, 0, 0, 0, 0);
+		int length = WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR)os_path, -1, 0, 0, 0, 0);
 		if(!length) return 0;
 
-		buffer = fsc_malloc(length);
-		WideCharToMultiByte(CP_UTF8, 0, os_path, -1, buffer, length, 0, 0);
+		buffer = (char *)fsc_malloc(length);
+		WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR)os_path, -1, buffer, length, 0, 0);
 	#else
-		int length = strlen(os_path);
-		buffer = fsc_malloc(length+1);
+		int length = strlen((const char *)os_path);
+		buffer = (char *)fsc_malloc(length+1);
 		fsc_memcpy(buffer, os_path, length+1);
 	#endif
 	return buffer; }
@@ -247,18 +247,18 @@ static char *fsc_os_path_to_qpath(void *os_path, char *output) {
 int fsc_os_path_size(const void *os_path) {
 	// Length in bytes
 #ifdef WIN_UNICODE
-	return 2 * wcslen(os_path) + 2;
+	return 2 * wcslen((const wchar_t *)os_path) + 2;
 #else
-	return strlen(os_path) + 1;
+	return strlen((const char *)os_path) + 1;
 #endif
 }
 
 int fsc_compare_os_path(const void *path1, const void *path2) {
 	// Returns 0 if paths are equal
 #ifdef WIN_UNICODE
-	return wcscmp(path1, path2);
+	return wcscmp((const wchar_t *)path1, (const wchar_t *)path2);
 #else
-	return strcmp(path1, path2);
+	return strcmp((const char *)path1, (const char *)path2);
 #endif
 }
 
@@ -280,7 +280,7 @@ typedef struct {
 } iterate_work_t;
 
 // Returns 0 on overflow, 1 on success
-static int iterate_append_path(iterate_work_t *iw, FSC_CHAR *path) {
+static int iterate_append_path(iterate_work_t *iw, const FSC_CHAR *path) {
 	while(iw->path_position < SEARCH_PATH_LIMIT) {
 		iw->path[iw->path_position] = *path;
 		if(!*(path++)) return 1;
@@ -294,7 +294,7 @@ static void iterate_set_position(iterate_work_t *iw, int position) {
 	iw->path_position = position;
 	iw->path[position] = 0; }
 
-#ifdef WIN32
+#ifdef _WIN32
 static void iterate_directory2(iterate_work_t *iw, int junction_allowed) {
 	int old_position = iw->path_position;
 	WIN32_FIND_DATA FindFileData;
@@ -377,7 +377,7 @@ void iterate_directory(void *search_os_path, void (operation)(iterate_data_t *fi
 	iw.operation = operation;
 	iw.iterate_context = iterate_context;
 
-	iterate_append_path(&iw, search_os_path);
+	iterate_append_path(&iw, (const FSC_CHAR *)search_os_path);
 	iw.base_length = iw.path_position;
 
 	iterate_directory2(&iw, 0); }
