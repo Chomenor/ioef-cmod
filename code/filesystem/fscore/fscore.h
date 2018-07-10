@@ -231,8 +231,8 @@ typedef struct fsc_file_s {
 	fsc_hashtable_entry_t hte;
 
 	// Identification
-	fsc_stackptr_t qp_dir_ptr;
-	fsc_stackptr_t qp_name_ptr;
+	fsc_stackptr_t qp_dir_ptr;		// null for no directory
+	fsc_stackptr_t qp_name_ptr;		// should not be null
 	fsc_stackptr_t qp_ext_ptr;		// null for no extension
 
 	unsigned int filesize;
@@ -251,10 +251,9 @@ typedef struct {
 	fsc_stackptr_t os_path_ptr;
 	unsigned int os_timestamp;
 	fsc_stackptr_t qp_mod_ptr;
-	fsc_stackptr_t pk3dir_ptr;
 
-	// Only relevant if this file is a pk3
-	unsigned int pk3_hash;
+	fsc_stackptr_t pk3dir_ptr;		// null if file is not part of a pk3dir
+	unsigned int pk3_hash;			// null if file is not a valid pk3
 
 	// For resource tallies
 	unsigned int pk3_subfile_count;
