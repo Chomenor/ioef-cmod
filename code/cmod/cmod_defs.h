@@ -50,6 +50,7 @@
 #define CMOD_GLIMP_SHUTDOWN_FIX
 #define CMOD_FONT_SCALING
 #define CMOD_CHAT_FIELD_SIZE
+#define CMOD_FOGFACTOR_FIX
 
 /* ******************************************************************************** */
 // Version Identification

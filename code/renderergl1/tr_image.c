@@ -1171,6 +1171,11 @@ and for each vertex of transparent shaders in fog dynamically
 float	R_FogFactor( float s, float t ) {
 	float	d;
 
+#ifdef CMOD_FOGFACTOR_FIX
+	// Check for possible crash issue
+	if(Q_isnan(s) || Q_isnan(t)) return;
+#endif
+
 	s -= 1.0/512;
 	if ( s < 0 ) {
 		return 0;
