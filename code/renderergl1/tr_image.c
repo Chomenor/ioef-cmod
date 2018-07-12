@@ -1173,7 +1173,7 @@ float	R_FogFactor( float s, float t ) {
 
 #ifdef CMOD_FOGFACTOR_FIX
 	// Check for possible crash issue
-	if(Q_isnan(s) || Q_isnan(t)) return;
+	if(Q_isnan(s) || Q_isnan(t)) return 0;
 #endif
 
 	s -= 1.0/512;
