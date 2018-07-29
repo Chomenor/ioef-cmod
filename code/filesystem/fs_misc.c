@@ -236,6 +236,10 @@ file_disabled_result_t fs_file_disabled(const fsc_file_t *file, int flags) {
 // File Sorting Functions
 /* ******************************************************************************** */
 
+// The lookup, file list, and reference modules have their own sorting systems due
+//   to differences in requirements. Some sorting logic and functions that are shared
+//   between multiple modules are included here.
+
 static const unsigned char *get_string_sort_table(void) {
 	// The table maps characters to a precedence value
 	// higher value = higher precedence
@@ -244,9 +248,9 @@ static const unsigned char *get_string_sort_table(void) {
 
 	if(!initialized) {
 		int i;
-		unsigned char value = 255;
+		unsigned char value = 250;
 		for(i='z'; i>='a'; --i) table[i] = value--;
-		value = 255;
+		value = 250;
 		for(i='Z'; i>='A'; --i) table[i] = value--;
 		for(i='9'; i>='0'; --i) table[i] = value--;
 		for(i=255; i>=0; --i) if(!table[i]) table[i] = value--;
@@ -276,26 +280,27 @@ static unsigned int basegame_dir_precedence(fs_modtype_t mod_type) {
 	if(mod_type == MODTYPE_BASE) return 1;
 	return 0; }
 
-void fs_write_sort_string(const char *string, fsc_stream_t *output) {
+void fs_write_sort_string(const char *string, fsc_stream_t *output, qboolean prioritize_shorter) {
+	// Set prioritize_shorter true to prioritize shorter strings (i.e. "abc" over "abcd")
 	const unsigned char *sort_table = get_string_sort_table();
 	while(*string && output->position < output->size) {
 		output->data[output->position++] = (char)sort_table[*(unsigned char *)(string++)]; }
-	if(output->position < output->size) output->data[output->position++] = 0; }
+	if(output->position < output->size) output->data[output->position++] = prioritize_shorter ? (char)(unsigned char)255 : 0; }
 
-static void write_sort_filename(const fsc_file_t *file, fsc_stream_t *output) {
+void fs_write_sort_filename(const fsc_file_t *file, fsc_stream_t *output) {
 	// Write sort key of the file itself
 	char buffer[FS_FILE_BUFFER_SIZE];
 	fs_file_to_buffer(file, buffer, sizeof(buffer), qfalse, qfalse, qfalse, qfalse);
-	fs_write_sort_string(buffer, output); }
+	fs_write_sort_string(buffer, output, qfalse); }
 
 static void write_sort_pk3_source_filename(const fsc_file_t *file, fsc_stream_t *output) {
 	// Write sort key of the pk3 file or pk3dir the file came from
 	if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
-		fs_write_sort_string((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output);
+		fs_write_sort_string((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr), output, qfalse);
 		fs_write_sort_value(1, output); }
 	else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 		fsc_file_direct_t *source_pk3 = (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-		fs_write_sort_string((const char *)STACKPTR(source_pk3->f.qp_name_ptr), output);
+		fs_write_sort_string((const char *)STACKPTR(source_pk3->f.qp_name_ptr), output, qfalse);
 		fs_write_sort_value(0, output); } }
 
 void fs_write_sort_value(unsigned int value, fsc_stream_t *output) {
@@ -307,34 +312,26 @@ void fs_write_sort_value(unsigned int value, fsc_stream_t *output) {
 		*((unsigned int *)(output->data + output->position)) = value;
 		output->position += 4; } }
 
-void fs_generate_file_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list) {
+void fs_generate_core_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list) {
 	// This is a rough version of the lookup precedence for reference and file listing purposes
+	// This sorts the mod/pk3 origin of the file, but not the actual file name, or the source directory
+	//    since the file list system handles file names separately and currently ignores source directory
 	fs_modtype_t mod_type = fs_get_mod_type(fsc_get_mod_dir(file, &fs));
 	if(use_server_pak_list) fs_write_sort_value(server_pak_precedence(file), output);
 	fs_write_sort_value(mod_dir_precedence(mod_type), output);
 	fs_write_sort_value(default_pak_precedence(file, mod_type), output);
 	fs_write_sort_value(basegame_dir_precedence(mod_type), output);
+	// Deprioritize download folder pk3s, whether the flag is set for this file or this file's source pk3
+	fs_write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) || (file->sourcetype == FSC_SOURCETYPE_PK3
+			&& (((fsc_file_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->flags & FSC_FILEFLAG_DLPK3))
+			? 0 : 1, output);
 	if(file->sourcetype == FSC_SOURCETYPE_PK3 ||
 			(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr)) {
-		fs_write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
 		fs_write_sort_value(0, output);
 		write_sort_pk3_source_filename(file, output);
 		fs_write_sort_value((file->sourcetype == FSC_SOURCETYPE_PK3) ? ~((fsc_file_frompk3_t *)file)->header_position : ~0u, output); }
 	else {
-		fs_write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) ? 0 : 1, output);
-		fs_write_sort_value(1, output); }
-	write_sort_filename(file, output);
-	fs_write_sort_value(fs_get_source_dir_id(file), output); }
-
-int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list) {
-	char buffer1[1024];
-	char buffer2[1024];
-	fsc_stream_t stream1 = {buffer1, 0, sizeof(buffer1), qfalse};
-	fsc_stream_t stream2 = {buffer2, 0, sizeof(buffer2), qfalse};
-	fs_generate_file_sort_key(file1, &stream1, use_server_pak_list);
-	fs_generate_file_sort_key(file2, &stream2, use_server_pak_list);
-	return fsc_memcmp(stream2.data, stream1.data,
-			stream1.position < stream2.position ? stream1.position : stream2.position); }
+		fs_write_sort_value(1, output); } }
 
 int fs_compare_pk3_source(const fsc_file_t *file1, const fsc_file_t *file2) {
 	char buffer1[1024];
