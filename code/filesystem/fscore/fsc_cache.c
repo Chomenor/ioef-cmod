@@ -126,9 +126,6 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 	export_file->qp_dir_ptr = convert_string(export_file->qp_dir_ptr, xw);
 	export_file->qp_name_ptr = convert_string(export_file->qp_name_ptr, xw);
 	export_file->qp_ext_ptr = convert_string(export_file->qp_ext_ptr, xw);
-	// Currently no flags need to be stored in cache, but this can be evaluated
-	// on a case-by-case basis if new flags are added
-	export_file->flags = 0;
 	if(source_file->sourcetype == FSC_SOURCETYPE_DIRECT) {
 		fsc_file_direct_t *export_file_typed = (fsc_file_direct_t *)export_file;
 		export_file_typed->qp_mod_ptr = convert_string(export_file_typed->qp_mod_ptr, xw);
@@ -396,7 +393,7 @@ int fsc_cache_import_file(void *os_path, fsc_filesystem_t *target_fs, fsc_errorh
 		fsc_fclose(fp);
 		return 1; }
 
-	// Read compressed data and close file
+	// Read data and close file
 	stream.data = (char *)fsc_malloc(header.size);
 	if(fsc_fread(stream.data, header.size, fp) != header.size) {
 		fsc_report_error(eh, FSC_ERROR_GENERAL, "error reading cache file data", 0);

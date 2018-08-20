@@ -20,26 +20,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#ifdef _MSC_VER
-#pragma warning(disable:4477)	// warning about void ptrs from STACKPTR macros
-#endif
-
 /* ******************************************************************************** */
 // Definitions
 /* ******************************************************************************** */
 
-#define FSC_CACHE_VERSION 7
+#define FSC_CACHE_VERSION 8
 
 #define FSC_MAX_QPATH 256	// Buffer size including null terminator
 #define FSC_MAX_MODDIR 32	// Buffer size including null terminator
 
 #define	FSC_MAX_TOKEN_CHARS 1024	// based on q_shared.h
 #define FSC_MAX_SHADER_NAME FSC_MAX_TOKEN_CHARS
-
-#define FSC_CONTENTS_PK3 1
-#define FSC_CONTENTS_DLPK3 2
-#define FSC_CONTENTS_SHADER 4
-#define FSC_CONTENTS_CROSSHAIR 8
 
 /* ******************************************************************************** */
 // Misc (fsc_misc.c)
@@ -224,7 +215,8 @@ void fsc_free(void *allocation);
 #define FSC_SOURCETYPE_DIRECT 1
 #define FSC_SOURCETYPE_PK3 2
 
-#define FSC_FILEFLAG_DLPK3 1
+#define FSC_FILEFLAG_LINKED_CONTENT 1	// This file has other content like shaders linked to it
+#define FSC_FILEFLAG_DLPK3 2	// This pk3 is located in a download directory
 
 typedef struct fsc_file_s {
 	// Hash table compliance
@@ -342,7 +334,7 @@ int fsc_file_hash(const fsc_file_t *file, const fsc_filesystem_t *fs);
 void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
 			int include_mod, int include_pk3_origin);
 
-int fsc_filename_contents(const char *qp_dir, const char *qp_name, const char *qp_ext);
+void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
 
 void fsc_filesystem_initialize(fsc_filesystem_t *fs);
 void fsc_filesystem_free(fsc_filesystem_t *fs);
