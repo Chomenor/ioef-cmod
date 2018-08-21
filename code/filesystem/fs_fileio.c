@@ -1212,8 +1212,9 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 						COM_CompareExtension(qpath, ".game") || COM_CompareExtension(qpath, ".dat"))
 					lookup_flags |= LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE; }
 
-			if((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE)) ||
-					fs_connected_server_pure_state() != 1) {
+			if(((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE)) ||
+					fs_connected_server_pure_state() != 1) && !COM_CompareExtension(qpath, ".arena") &&
+					!COM_CompareExtension(qpath, ".bot")) {
 				// Try to read directly from disk first, because some mods do weird things involving
 				// files that were just written/currently open that don't work with cache handles
 				char path[FS_MAX_PATH];
