@@ -75,6 +75,11 @@ static const fsc_sourcetype_t *fsc_get_sourcetype(const fsc_file_t *file, const 
 	return 0; }
 
 int fsc_extract_file(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+	// Provided buffer should be size file->filesize
+	// Returns 0 on success, 1 on error
+	if(file->contents_cache) {
+		fsc_memcpy(buffer, STACKPTR(file->contents_cache), file->filesize);
+		return 0; }
 	return fsc_get_sourcetype(file, fs)->extract_data(file, buffer, fs, eh); }
 
 int fsc_is_file_enabled(const fsc_file_t *file, const fsc_filesystem_t *fs) {
@@ -175,7 +180,18 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 		fsc_strncpy(buffer, qp_name, sizeof(buffer));
 		if(!fsc_stricmp(buffer, "crosshair")) {
 			index_crosshair(fs, file_ptr, eh);
-			if(base_file) base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } } }
+			if(base_file) base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
+
+	// Cache small arena and bot file contents
+	if(file->filesize < 16384 && qp_dir && !fsc_stricmp(qp_dir, "scripts") && qp_ext &&
+			(!fsc_stricmp(qp_ext, "arena") || !fsc_stricmp(qp_ext, "bot"))) {
+		char *source_data = fsc_extract_file_allocated(fs, file, eh);
+		if(source_data) {
+			fsc_stackptr_t target_ptr = fsc_stack_allocate(&fs->general_stack, file->filesize);
+			char *target_data = (char *)STACKPTR(target_ptr);
+			fsc_memcpy(target_data, source_data, file->filesize);
+			file->contents_cache = target_ptr;
+			fsc_free(source_data); } } }
 
 static int fsc_app_extension(const char *name) {
 	// Returns 1 if name matches mac app bundle extension, 0 otherwise
@@ -243,7 +259,7 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		if(file->pk3dir_ptr && (!file_in_pk3dir || fsc_strcmp((const char *)STACKPTR(file->pk3dir_ptr), pk3dir_buffer))) continue;
 		if(!file->pk3dir_ptr && file_in_pk3dir) continue;
 		if(file->f.filesize != filesize || file->os_timestamp != os_timestamp) {
-			if(!(file->f.flags & FSC_FILEFLAG_LINKED_CONTENT) && file->os_path_ptr) {
+			if(file->os_path_ptr && !(file->f.flags & FSC_FILEFLAG_LINKED_CONTENT) && !file->f.contents_cache) {
 				// Reuse the same file object to save memory
 				file->f.filesize = filesize;
 				file->os_timestamp = os_timestamp;

@@ -122,10 +122,14 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 	export_file = (fsc_file_t *)fsc_stack_retrieve(&xw->export_stack, export_file_ptr);
 	fsc_memcpy(export_file, source_file, file_size);
 
-	// Perform conversions
+	// Reallocate stackptrs from original stack to export stack and other adjustments
 	export_file->qp_dir_ptr = convert_string(export_file->qp_dir_ptr, xw);
 	export_file->qp_name_ptr = convert_string(export_file->qp_name_ptr, xw);
 	export_file->qp_ext_ptr = convert_string(export_file->qp_ext_ptr, xw);
+	if(export_file->contents_cache) {
+		export_file->contents_cache = fsc_stack_allocate(&xw->export_stack, source_file->filesize);
+		fsc_memcpy(fsc_stack_retrieve(&xw->export_stack, export_file->contents_cache),
+				STACKPTR_SRC(source_file->contents_cache), source_file->filesize); }
 	if(source_file->sourcetype == FSC_SOURCETYPE_DIRECT) {
 		fsc_file_direct_t *export_file_typed = (fsc_file_direct_t *)export_file;
 		export_file_typed->qp_mod_ptr = convert_string(export_file_typed->qp_mod_ptr, xw);
@@ -172,10 +176,13 @@ void fscache_build_filesystem(export_work_t *xw) {
 		fsc_hashtable_open(&xw->source_fs->files, i, &hti);
 		while((source_file_ptr = fsc_hashtable_next(&hti))) {
 			fsc_file_t *source_file = (fsc_file_t *)STACKPTR_SRC(source_file_ptr);
-			if(!fsc_is_file_enabled(source_file, xw->source_fs)) continue;		// Process only active files
-			if(source_file->sourcetype != FSC_SOURCETYPE_PK3) continue;		// Process only pk3 sourcetype files
-
-			convert_file(source_file_ptr, xw); } } }
+			if(!fsc_is_file_enabled(source_file, xw->source_fs)) continue;
+			// Cache files in pk3s and files with contents_cache set
+			// Files referenced by shaders or crosshairs will be cached in their own cycle below,
+			//    if not already cached here
+			if(source_file->sourcetype == FSC_SOURCETYPE_PK3 ||
+					(source_file->sourcetype == FSC_SOURCETYPE_DIRECT && source_file->contents_cache)) {
+				convert_file(source_file_ptr, xw); } } } }
 
 void fscache_build_shaders(export_work_t *xw) {
 	int i;
