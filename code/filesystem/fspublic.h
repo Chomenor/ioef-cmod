@@ -70,7 +70,7 @@ typedef enum {
 #ifdef FSLOCAL
 typedef struct {
 	const char *name;
-	cvar_t *path_cvar;
+	const char *path;
 	qboolean active;
 } fs_source_directory_t;
 
@@ -128,7 +128,7 @@ DEF_LOCAL( extern cvar_t *fs_debug_references )
 DEF_LOCAL( extern cvar_t *fs_debug_filelist )
 
 #ifdef FSLOCAL
-#define FS_MAX_SOURCEDIRS 8
+#define FS_MAX_SOURCEDIRS 16
 #endif
 
 DEF_LOCAL( extern fs_source_directory_t fs_sourcedirs[FS_MAX_SOURCEDIRS] )

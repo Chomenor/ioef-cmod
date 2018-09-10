@@ -174,7 +174,7 @@ static void FS_Path_f( void ) {
 
 	for(sourceid=0; sourceid<FS_MAX_SOURCEDIRS; ++sourceid) {
 		if(!fs_sourcedirs[sourceid].active) continue;
-		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path_cvar->string);
+		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path);
 
 		for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);

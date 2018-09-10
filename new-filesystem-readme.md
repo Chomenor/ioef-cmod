@@ -57,16 +57,17 @@ These settings can increase security, but may break compatibility with some serv
 
 # Source Directory Options
 
-A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*homepath basepath steampath gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
+A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
 
 Notes:
+- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to work.
 - You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
-- The write directory selected will always be treated as the primary read directory.
+- The write directory selected will always be treated as the highest precedence read directory.
 - If no directory passes a write test, or no write directory was set at all, the game will run in read-only mode.
 
 Examples:
-- "fs_dirs" = "*basepath": Read and write to fs_basepath only.
-- "fs_dirs" = "homepath basepath": Read-only mode with homepath taking precedence over basepath.
+- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain a file with the same name.
+- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
 
 # Inactive Mod Support
 

@@ -206,7 +206,7 @@ qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) {
 // Source Directory Determination
 /* ******************************************************************************** */
 
-static qboolean prepare_writable_directory(char *directory) {
+static qboolean prepare_writable_directory(const char *directory) {
 	// Attempts to create directory and tests writability
 	// Returns qtrue if test passed, qfalse otherwise
 	char path[FS_MAX_PATH];
@@ -221,25 +221,18 @@ static qboolean prepare_writable_directory(char *directory) {
 	fs_delete_file(path);
 	return qtrue; }
 
-static const char *fs_default_homepath(void) {
-	// Default homepath but it returns empty string in place of null
-	char *homepath = Sys_DefaultHomePath();
-	if(!homepath) return "";
-	return homepath; }
-
 typedef struct {
-	const char *name;
-	cvar_t *path_cvar;
-	int fs_dirs_position;	// 0 = inactive, otherwise lower means higher priority
+	fs_source_directory_t s;
+	int fs_dirs_position;	// lower means higher priority
 	qboolean write_dir;
 } temp_source_directory_t;
 
 static int compare_temp_source_dirs(const temp_source_directory_t *dir1, const temp_source_directory_t *dir2) {
-	// Put write dir first, followed by highest to lowest priority dirs, and inactive (0 active_rank) dirs last
+	// Put write dir first, and sort remaining directories according to position in fs_dirs cvar
+	if(dir1->s.active && !dir2->s.active) return -1;
+	if(dir2->s.active && !dir1->s.active) return 1;
 	if(dir1->write_dir && !dir2->write_dir) return -1;
 	if(dir2->write_dir && !dir1->write_dir) return 1;
-	if(dir1->fs_dirs_position && !dir2->fs_dirs_position) return -1;
-	if(dir2->fs_dirs_position && !dir1->fs_dirs_position) return 1;
 	if(dir1->fs_dirs_position < dir2->fs_dirs_position) return -1;
 	return 1; }
 
@@ -249,46 +242,66 @@ static int compare_temp_source_dirs_qsort(const void *dir1, const void *dir2) {
 void fs_initialize_sourcedirs(void) {
 	int i;
 	qboolean have_write_dir = qfalse;
-	int current_position = 0;
 	char *fs_dirs_ptr;
-	char *token;
-	temp_source_directory_t temp_dirs[] = {
-		{"homepath",  Cvar_Get("fs_homepath", fs_default_homepath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
-		{"basepath", Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
-		{"steampath", Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
-		{"gogpath", Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
-#ifdef __APPLE__
-		{"apppath", Cvar_Get("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED), 0, qfalse},
-#endif
-};
+	temp_source_directory_t temp_dirs[FS_MAX_SOURCEDIRS];
+	const char *homepath = Sys_DefaultHomePath();
 
-	// Configure temp_dirs based on fs_dirs entries
+	// Initialize default path cvars
+	Cvar_Get("fs_homepath", homepath ? homepath : "", CVAR_INIT|CVAR_PROTECTED);
+	Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT|CVAR_PROTECTED);
+	Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED);
+	Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED);
+#ifdef __APPLE__
+	Cvar_Get("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED);
+#endif
+
+	// Generate temp_dirs based on fs_dirs entries
+	Com_Memset(temp_dirs, 0, sizeof(temp_dirs));
 	fs_dirs_ptr = fs_dirs->string;
 	while(1) {
+		qboolean write_flag = qfalse;
 		qboolean write_dir = qfalse;
+		const char *token;
+		const char *path;
 
+		// Get next token (source dir name) from fs_dirs
 		token = COM_ParseExt(&fs_dirs_ptr, qfalse);
 		if(!*token) break;
 
+		// Process writable flag
 		if(*token == '*') {
-			write_dir = qtrue;
-			++token; }
+			write_flag = qtrue;
+			++token;
+			if(!*token) continue; }
 
-		for(i=0; i<ARRAY_LEN(temp_dirs); ++i) if(!Q_stricmp(token, temp_dirs[i].name)) break;
-		if(i >= ARRAY_LEN(temp_dirs)) continue;	// Invalid source dir name
-		if(!*temp_dirs[i].path_cvar->string) continue;	// No path set
-		if(temp_dirs[i].fs_dirs_position) continue;		// Source dir already initialized
+		// Determine path from cvar
+		path = Cvar_VariableString(token);
+		if(!*path) continue;
 
-		temp_dirs[i].fs_dirs_position = ++current_position;
+		// Look for duplicate entry or next empty slot
+		for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
+			if(!temp_dirs[i].s.active) break;
+			if(!Q_stricmp(token, temp_dirs[i].s.name)) break; }
+		if(i >= FS_MAX_SOURCEDIRS) {
+			Com_Printf("WARNING: FS_MAX_SOURCEDIRS exceeded parsing fs_dirs\n");
+			break; }
+		if(temp_dirs[i].s.active) {
+			Com_Printf("WARNING: Duplicate entry '%s' parsing fs_dirs\n", token);
+			continue; }
 
-		if(write_dir && !have_write_dir) {
-			Com_Printf("Checking if %s is writable...\n", temp_dirs[i].path_cvar->name);
-			if(prepare_writable_directory(temp_dirs[i].path_cvar->string)) {
+		// If write flag is set and no write directory yet, test writability
+		if(write_flag && !have_write_dir) {
+			Com_Printf("Checking if %s is writable...\n", token);
+			if(prepare_writable_directory(path)) {
 				Com_Printf("Confirmed writable.\n");
-				temp_dirs[i].write_dir = qtrue;
+				write_dir = qtrue;
 				have_write_dir = qtrue; }
 			else {
-				Com_Printf("Not writable due to failed write test.\n"); } } }
+				Com_Printf("Not writable due to failed write test.\n"); } }
+
+		// Create entry in available slot
+		temp_dirs[i] = (temp_source_directory_t){
+			{CopyString(token), CopyString(path), qtrue}, i, write_dir}; }
 
 	// Sort temp_dirs
 	qsort(temp_dirs, ARRAY_LEN(temp_dirs), sizeof(*temp_dirs), compare_temp_source_dirs_qsort);
@@ -296,22 +309,16 @@ void fs_initialize_sourcedirs(void) {
 	// Check for read-only mode
 	if(temp_dirs[0].write_dir) {
 		fs_read_only = qfalse;
-		Com_Printf("Write directory: %s (%s)\n", temp_dirs[0].name, temp_dirs[0].path_cvar->string); }
+		Com_Printf("Write directory: %s (%s)\n", temp_dirs[0].s.name, temp_dirs[0].s.path); }
 	else {
 		fs_read_only = qtrue;
 		Com_Printf("WARNING: No write directory selected. Filesystem in read-only mode.\n"); }
 
-	// Transfer data from temp_dirs to fs_sourcedirs
-	Com_Memset(fs_sourcedirs, 0, sizeof(fs_sourcedirs));
+	// Transfer entries from temp_dirs to fs_sourcedirs
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
-		if(i >= ARRAY_LEN(temp_dirs) || !temp_dirs[i].fs_dirs_position) continue;
-
-		fs_sourcedirs[i].name = temp_dirs[i].name;
-		fs_sourcedirs[i].path_cvar = temp_dirs[i].path_cvar;
-		fs_sourcedirs[i].active = qtrue;
-
-		Com_Printf("Source directory %i: %s (%s)\n", i+1, fs_sourcedirs[i].name,
-				fs_sourcedirs[i].path_cvar->string); } }
+		fs_sourcedirs[i] = temp_dirs[i].s;
+		if(fs_sourcedirs[i].active) Com_Printf("Source directory %i: %s (%s)\n", i+1,
+				fs_sourcedirs[i].name, fs_sourcedirs[i].path); } }
 
 /* ******************************************************************************** */
 // Filesystem Refresh
@@ -364,7 +371,7 @@ void fs_refresh(qboolean quiet) {
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		if(!fs_sourcedirs[i].active) continue;
 		if(!quiet) Com_Printf("Indexing %s...\n", fs_sourcedirs[i].name);
-		index_directory(fs_sourcedirs[i].path_cvar->string, i, quiet); }
+		index_directory(fs_sourcedirs[i].path, i, quiet); }
 
 	if(!quiet) Com_Printf("Index memory usage at %iMB.\n",
 			fsc_fs_size_estimate(&fs) / 1048576 + 1); }
@@ -434,9 +441,9 @@ void fs_startup(void) {
 	Com_Printf("\n----- fs_startup -----\n");
 
 #ifdef __APPLE__
-	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath apppath", CVAR_INIT|CVAR_PROTECTED);
+	fs_dirs = Cvar_Get("fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath fs_apppath", CVAR_INIT|CVAR_PROTECTED);
 #else
-	fs_dirs = Cvar_Get("fs_dirs", "*homepath basepath steampath gogpath", CVAR_INIT|CVAR_PROTECTED);
+	fs_dirs = Cvar_Get("fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath", CVAR_INIT|CVAR_PROTECTED);
 #endif
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_INIT);
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
