@@ -221,11 +221,11 @@ static qboolean check_path_enabled(fsc_stream_t *stream, const filelist_work_t *
 
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_work_t *flw) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
-	int disabled_flags = FD_FLAG_FILELIST_QUERY;
-	if(flw->flags & FL_FLAG_USE_PURE_LIST) disabled_flags |= FD_FLAG_CHECK_PURE;
-	if(fs_file_disabled(file, disabled_flags)) return qfalse;
+	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS;
+	if(flw->flags & FL_FLAG_USE_PURE_LIST) disabled_checks |= FD_CHECK_PURE_LIST;
+	if(fs_file_disabled(file, disabled_checks)) return qfalse;
 	if((flw->flags & FL_FLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&
-			((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash == 2430342401u) return qfalse;
+			fsc_get_base_file(file, &fs)->pk3_hash == 2430342401u) return qfalse;
 	return qtrue; }
 
 static void cut_stream(const fsc_stream_t *source, fsc_stream_t *target, int start_pos, int end_pos) {

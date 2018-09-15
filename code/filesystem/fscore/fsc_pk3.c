@@ -409,12 +409,10 @@ unsigned int fsc_pk3_handle_read(void *handle, char *buffer, unsigned int length
 /* ******************************************************************************** */
 
 static int fsc_pk3_is_file_active(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-	return source_pk3->refresh_count == fs->refresh_count; }
+	return fsc_get_base_file(file, fs)->refresh_count == fs->refresh_count; }
 
 static const char *fsc_pk3_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-	return (const char *)STACKPTR(source_pk3->qp_mod_ptr); }
+	return (const char *)STACKPTR(fsc_get_base_file(file, fs)->qp_mod_ptr); }
 
 static int fsc_pk3_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Returns 0 on success, 1 on failure

@@ -326,6 +326,7 @@ typedef struct fsc_filesystem_s {
 
 // ***** Functions *****
 
+const fsc_file_direct_t *fsc_get_base_file(const fsc_file_t *file, const fsc_filesystem_t *fs);
 int fsc_extract_file(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
 char *fsc_extract_file_allocated(fsc_filesystem_t *index, fsc_file_t *file, fsc_errorhandler_t *eh);
 
@@ -372,7 +373,7 @@ typedef struct fsc_shader_s {
 } fsc_shader_t;
 
 int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh);
-int is_shader_enabled(fsc_filesystem_t *fs, fsc_shader_t *shader);
+int is_shader_enabled(fsc_filesystem_t *fs, const fsc_shader_t *shader);
 
 /* ******************************************************************************** */
 // Crosshair Lookup (fsc_crosshair.c)
@@ -387,7 +388,7 @@ typedef struct {
 } fsc_crosshair_t;
 
 int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh);
-int is_crosshair_enabled(fsc_filesystem_t *fs, fsc_crosshair_t *crosshair);
+int is_crosshair_enabled(fsc_filesystem_t *fs, const fsc_crosshair_t *crosshair);
 
 /* ******************************************************************************** */
 // Iteration (fsc_iteration.c)

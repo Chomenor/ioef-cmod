@@ -74,6 +74,15 @@ static const fsc_sourcetype_t *fsc_get_sourcetype(const fsc_file_t *file, const 
 
 	return 0; }
 
+const fsc_file_direct_t *fsc_get_base_file(const fsc_file_t *file, const fsc_filesystem_t *fs) {
+	// Returns the source pk3 if file is from a pk3, the file itself if file is on disk,
+	// and null if the file is from a custom sourcetype
+	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
+		return (const fsc_file_direct_t *)file; }
+	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
+		return (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3); }
+	return 0; }
+
 int fsc_extract_file(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Provided buffer should be size file->filesize
 	// Returns 0 on success, 1 on error
@@ -106,14 +115,14 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 			FSC_ADD_STRING((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr));
 			FSC_ADD_STRING(".pk3dir->"); }
 		else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			fsc_file_t *pk3_file = (fsc_file_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-			if(pk3_file->qp_dir_ptr) {
-				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_dir_ptr));
+			const fsc_file_direct_t *pk3_file = fsc_get_base_file(file, fs);
+			if(pk3_file->f.qp_dir_ptr) {
+				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_dir_ptr));
 				FSC_ADD_STRING("/"); }
-			FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_name_ptr));
-			if(pk3_file->qp_ext_ptr) {
+			FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_name_ptr));
+			if(pk3_file->f.qp_ext_ptr) {
 				FSC_ADD_STRING(".");
-				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_ext_ptr)); }
+				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_ext_ptr)); }
 			FSC_ADD_STRING("->"); } }
 
 	if(file->qp_dir_ptr) {
@@ -152,15 +161,10 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 	// Registers file in index and loads secondary content such as shaders
 	// Called for both files on disk and in pk3s
 	fsc_file_t *file = (fsc_file_t *)STACKPTR(file_ptr);
-	fsc_file_direct_t *base_file = 0;
+	fsc_file_direct_t *base_file = (fsc_file_direct_t *)fsc_get_base_file(file, fs);
 	const char *qp_dir = (const char *)STACKPTR(file->qp_dir_ptr);
 	const char *qp_name = (const char *)STACKPTR(file->qp_name_ptr);
 	const char *qp_ext = (const char *)STACKPTR(file->qp_ext_ptr);
-
-	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-		base_file = (fsc_file_direct_t *)file; }
-	else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		base_file = (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3); }
 
 	// Register file for main lookup and directory iteration
 	fsc_hashtable_insert(file_ptr, fsc_string_hash(qp_name, qp_dir), &fs->files);

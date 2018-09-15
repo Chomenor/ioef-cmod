@@ -368,21 +368,14 @@ DEF_LOCAL( void fs_file_to_buffer(const fsc_file_t *file, char *buffer, unsigned
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) )
 DEF_PUBLIC( void fs_print_file_location(const fsc_file_t *file) )
 
-// Disabled check defines
+// File disabled check function
 #ifdef FSLOCAL
-#define FD_FLAG_CHECK_PURE 1
-#define FD_FLAG_FILELIST_QUERY 2
-
-typedef enum {
-	FD_RESULT_FILE_ENABLED,
-	FD_RESULT_FILE_INACTIVE,
-	FD_RESULT_PURE_LIST_BLOCKED,
-	FD_RESULT_INACTIVE_MOD_BLOCKED
-} file_disabled_result_t;
+#define FD_CHECK_FILE_ENABLED 1		// Check if file is disabled in index
+#define FD_CHECK_PURE_LIST 2		// Check if file is blocked by connected server pure configuration
+#define FD_CHECK_SEARCH_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_search_inactive_mods setting
+#define FD_CHECK_LIST_INACTIVE_MODS 8		// Check if file is blocked for file listing by fs_list_inactive_mods setting
+DEF_LOCAL( int fs_file_disabled(const fsc_file_t *file, int checks) )
 #endif
-
-// Disabled check function
-DEF_LOCAL( file_disabled_result_t fs_file_disabled(const fsc_file_t *file, int flags) )
 
 // File Sorting Functions
 DEF_LOCAL( void fs_write_sort_string(const char *string, fsc_stream_t *output, qboolean prioritize_shorter) )

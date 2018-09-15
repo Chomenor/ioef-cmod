@@ -86,7 +86,7 @@ void fs_register_reference(const fsc_file_t *file) {
 		fs_hashtable_initialize(&reference_tracker, 32); }
 
 	// Add the reference
-	if(reference_tracker_add((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))) {
+	if(reference_tracker_add((fsc_file_direct_t *)fsc_get_base_file(file, &fs))) {
 		if(fs_debug_references->integer) {
 			char temp[FS_FILE_BUFFER_SIZE];
 			fs_file_to_buffer(file, temp, sizeof(temp), qtrue, qtrue, qtrue, qfalse);
@@ -230,7 +230,7 @@ static int get_pure_checksum_for_pk3(const fsc_file_direct_t *pk3, int checksum_
 static int get_pure_checksum_for_file(const fsc_file_t *file, int checksum_feed) {
 	if(!file) return 0;
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
-	return get_pure_checksum_for_pk3((const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3), checksum_feed); }
+	return get_pure_checksum_for_pk3(fsc_get_base_file(file, &fs), checksum_feed); }
 
 static void add_referenced_pure_pk3s(fsc_stream_t *stream, fs_hashtable_t *reference_tracker) {
 	int i;
@@ -450,7 +450,7 @@ static void add_pak_containing_file(reference_set_work_t *rsw, const char *name)
 	const fsc_file_t *file = fs_general_lookup(name, LOOKUPFLAG_IGNORE_CURRENT_MAP|LOOKUPFLAG_PK3_SOURCE_ONLY, qfalse);
 	if(!file || file->sourcetype != FSC_SOURCETYPE_PK3) {
 		return; }
-	reference_set_insert_pak(rsw, (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3)); }
+	reference_set_insert_pak(rsw, fsc_get_base_file(file, &fs)); }
 
 typedef enum {
 	PAKCATEGORY_ACTIVE_MOD,
@@ -474,7 +474,7 @@ static void add_paks_by_category(reference_set_work_t *rsw, pakcategory_t catego
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
 			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
-			if(fs_file_disabled((fsc_file_t *)pk3, 0)) continue;
+			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 			if(get_pak_category(pk3) != category) continue;
 			reference_set_insert_pak(rsw, pk3); } } }
 
@@ -527,7 +527,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
 		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
 			const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-			if(fs_file_disabled((fsc_file_t *)file, 0)) continue;
+			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 			if(file->pk3_hash != hash) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, hash, file);
 			++count; }
@@ -545,7 +545,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		while((file = (const fsc_file_direct_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
 			if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 			if(!file->pk3_hash) continue;
-			if(fs_file_disabled((const fsc_file_t *)file, 0)) continue;
+			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 			if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), name)) continue;
 			if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), mod_dir)) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);
