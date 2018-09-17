@@ -55,23 +55,9 @@ There are two new settings that can be used to control automatic downloads.
 
 These settings can increase security, but may break compatibility with some servers unless you manually move files out of the downloads folder.
 
-# Source Directory Options
-
-A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
-
-Notes:
-- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to work.
-- You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
-- The write directory selected will always be treated as the highest precedence read directory.
-- If no directory passes a write test, or no write directory was set at all, the game will run in read-only mode.
-
-Examples:
-- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain a file with the same name.
-- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
-
 # Inactive Mod Support
 
-This project supports loading files from all mod directories, not just the current active mod. This is intended to help smooth out discrepancies between server directory configurations and allows maps to work correctly even if they have dependencies that, for one reason or another, are located in the wrong mod directory.
+This filesystem supports loading files from all mod directories, not just the current active mod. This is intended to help smooth out discrepancies between server directory configurations and allows maps to work correctly even if they have dependencies that, for one reason or another, are located in the wrong mod directory.
 
 The precedence system ensures that files located in the current mod and basegame directories always have first priority. Inactive mods are only accessed as a last resort if files cannot be found anywhere else.
 
@@ -83,6 +69,12 @@ Both cvars support the following settings:
 - 0: Disabled; all files from inactive mods blocked
 - 1: Enabled only for ID paks (including missionpack) and files on the connected server's pure list
 - 2: Enabled; all files from inactive mods allowed
+
+# Semi-Pure Server Support
+
+This feature allows clients to load external content (particularly player models) when playing on an otherwise pure server. It retains the stability and compatibility benefits of a pure server, because the pure pk3s are prioritized over other pk3s, but is less restrictive when it comes to allowing content that doesn't exist in any of the pure pk3s.
+
+To enable this feature, set sv_pure to 2 on the server. Since this a client-side feature, it only affects clients using the new filesystem. Clients using the original filesystem will function the same as if sv_pure is 1.
 
 # Cache Mechanisms
 
@@ -141,15 +133,40 @@ In some cases it can be convenient to exclude a certain pk3 that would otherwise
 set fs_download_manifest *currentmap_pak &exclude mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
 ```
 
-# Semi-Pure Server
+# Source Directory Options
 
-This option causes clients to prioritize data from paks on the server like a normal pure server, but also allows loading content from other paks when it is not available from the pure list paks. For example, it lets clients use custom models that are not on the server. To enable, set sv_pure to 2 on the server.
+A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
 
-This a client-side feature, so it only affects clients using the new filesystem. Clients using the original filesystem will function the same as if sv_pure is 1.
+Notes:
+- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to work.
+- You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
+- The write directory selected will always be treated as the highest precedence read directory.
+- If no directory passes a write test, or no write directory was set at all, the game will run in read-only mode.
+
+Examples:
+- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain a file with the same name.
+- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
+
+## Auxiliary Source Directories
+
+This is an advanced feature that allows source directories to be loaded, but with restricted effects on the game. It is primarily useful for server hosting configurations. An auxiliary source directory has the following properties:
+
+- For file reading operations, auxiliary source directories are strictly prioritized below non-auxiliary directories, even if the auxiliary directory contains a higher precedence mod directory or pk3 filename.
+- For file listing operations, auxiliary source directories are excluded entirely.
+- Auxiliary source directories do not change the default order for pure list generation. Pk3s in auxiliary source directories are prioritized normally alongside other pk3s for pure server purposes.
+
+Auxiliary source directories can be useful in the following cases:
+
+- To prevent map pk3s from adding bots or causing conflicts with the server configuration. This can be especially useful for servers with hundreds or thousands of map pk3s installed, which may not be well vetted to be free of conflicts.
+- To include client mod pk3s needed for the pure or download list without allowing them to modify the configuration of the server itself.
+
+To specify an auxiliary source directory, include a number sign (#) in front of the directory name in fs_dirs. Example:
+
++set fs_dirs *fs_basepath #fs_auxiliary +set fs_auxiliary /home/user/q3auxiliary
 
 # Shader Precedence
 
-In this project, shader precedence follows the same rules as normal filesystem precedence, e.g. a shader in pak2.pk3 will override a shader in pak1.pk3, and a shader in a mod will override a shader in baseq3. However, the original filesystem uses the opposite precedence when shaders are defined in .shader files with different names, which can make things confusing for mod authors. Here are some tips for mod authors working with shader definitions:
+In this filesystem, shader precedence follows the same rules as normal filesystem precedence, e.g. a shader in pak2.pk3 will override a shader in pak1.pk3, and a shader in a mod will override a shader in baseq3. However, the original filesystem uses the opposite precedence when shaders are defined in .shader files with different names, which can make things confusing for mod authors. Here are some tips for mod authors working with shader definitions:
 
 - To update shaders in an existing pak from your mod to a new version, copy the .shader file from the earlier pak to the new pak, keeping the same filename. Then modify the shader(s) in the new file. The original filesystem will only load the newer file, so make sure it contains all the shaders from the original file as well.
 

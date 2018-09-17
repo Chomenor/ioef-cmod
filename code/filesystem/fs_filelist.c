@@ -221,7 +221,7 @@ static qboolean check_path_enabled(fsc_stream_t *stream, const filelist_work_t *
 
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_work_t *flw) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
-	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS;
+	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_AUXILIARY_SOURCEDIR;
 	if(flw->flags & FL_FLAG_USE_PURE_LIST) disabled_checks |= FD_CHECK_PURE_LIST;
 	if(fs_file_disabled(file, disabled_checks)) return qfalse;
 	if((flw->flags & FL_FLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&

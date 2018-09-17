@@ -72,6 +72,7 @@ typedef struct {
 	const char *name;
 	const char *path;
 	qboolean active;
+	qboolean auxiliary;
 } fs_source_directory_t;
 
 typedef struct fs_hashtable_entry_s {
@@ -374,6 +375,7 @@ DEF_PUBLIC( void fs_print_file_location(const fsc_file_t *file) )
 #define FD_CHECK_PURE_LIST 2		// Check if file is blocked by connected server pure configuration
 #define FD_CHECK_SEARCH_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_search_inactive_mods setting
 #define FD_CHECK_LIST_INACTIVE_MODS 8		// Check if file is blocked for file listing by fs_list_inactive_mods setting
+#define FD_CHECK_LIST_AUXILIARY_SOURCEDIR 16	// Check if file is blocked for file listing due to auxiliary sourcedir
 DEF_LOCAL( int fs_file_disabled(const fsc_file_t *file, int checks) )
 #endif
 

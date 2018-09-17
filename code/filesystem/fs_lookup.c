@@ -49,6 +49,7 @@ typedef struct {
 #define RESFLAG_IN_CURRENT_MAP_PAK 2
 #define RESFLAG_FROM_DLL_QUERY 4
 #define RESFLAG_CASE_MISMATCH 8
+#define RESFLAG_AUXILIARY_SOURCEDIR 16
 
 typedef struct {
 	// This should contain only static data, i.e. no pointers that expire when the query
@@ -104,6 +105,10 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if((!Q_stricmp(resource_mod_dir, FS_GetCurrentGameDir()) && strcmp(resource_mod_dir, FS_GetCurrentGameDir()))
 			|| (!Q_stricmp(resource_mod_dir, com_basegame->string) && strcmp(resource_mod_dir, com_basegame->string))) {
 		resource->flags |= RESFLAG_CASE_MISMATCH; }
+
+	// Check for auxiliary source directory
+	if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !resource->server_pak_position) {
+		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
 	// Handle settings (e.g. q3config.cfg or autoexec.cfg) query
 	if(query->config_query == FS_CONFIGTYPE_SETTINGS) {
@@ -285,6 +290,14 @@ PC_COMPARE(resource_disabled) {
 PC_DEBUG(resource_disabled) {
 	ADD_STRING(va("Resource %i was selected because resource %i is disabled: %s", high_num, low_num, low->disabled)); }
 
+PC_COMPARE(auxiliary_sourcedir) {
+	if((r1->flags & RESFLAG_AUXILIARY_SOURCEDIR) && !(r2->flags & RESFLAG_AUXILIARY_SOURCEDIR)) return 1;
+	if((r2->flags & RESFLAG_AUXILIARY_SOURCEDIR) && !(r1->flags & RESFLAG_AUXILIARY_SOURCEDIR)) return -1;
+	return 0; }
+
+PC_DEBUG(auxiliary_sourcedir) {
+	ADD_STRING(va("Resource %i was selected because resource %i is in an auxiliary source directory.", high_num, low_num)); }
+
 PC_COMPARE(special_shaders) {
 	qboolean r1_special = (r1->shader && (r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
 			r1->default_pak_priority || r1->server_pak_position)) ? qtrue : qfalse;
@@ -459,6 +472,7 @@ typedef struct {
 #define ADD_CHECK(check) { #check, pc_cmp_ ## check, pc_dbg_ ## check }
 static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(resource_disabled),
+	ADD_CHECK(auxiliary_sourcedir),
 	ADD_CHECK(special_shaders),
 	ADD_CHECK(server_pak_position),
 	ADD_CHECK(basemod_or_current_mod_dir),
