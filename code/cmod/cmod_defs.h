@@ -70,9 +70,6 @@
 #define CMOD_PROTOCOL_MSG_FIX
 #define CMOD_RECORD
 #define CMOD_NO_ENGINE_NEXTMAP_SET
-#ifdef DEDICATED
-	#define CMOD_DEDICATED_SOURCEDIRS
-#endif
 
 // Allow the "map_script" cvar to customize behavior when map command is called
 #define CMOD_MAP_SCRIPT
