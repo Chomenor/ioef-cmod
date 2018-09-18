@@ -128,10 +128,22 @@ static int get_crosshair_index_by_hash(unsigned int hash) {
 		if(crosshairs[i].hash == hash) return i; }
 	return -1; }
 
-static int compare_crosshair_file(const fsc_file_t *f1, const fsc_file_t *f2) {
-	if(f1->sourcetype == SOURCETYPE_CROSSHAIR && f2->sourcetype != SOURCETYPE_CROSSHAIR) return -1;
-	if(f2->sourcetype == SOURCETYPE_CROSSHAIR && f1->sourcetype != SOURCETYPE_CROSSHAIR) return 1;
-	return fs_compare_file(f1, f2, qtrue); }
+static void crosshair_gen_sort_key(const fsc_file_t *file, fsc_stream_t *output) {
+	fs_generate_core_sort_key(file, output, qtrue);
+	fs_write_sort_filename(file, output);
+	fs_write_sort_value(fs_get_source_dir_id(file), output); }
+
+static int compare_crosshair_file(const fsc_file_t *file1, const fsc_file_t *file2) {
+	char buffer1[1024];
+	char buffer2[1024];
+	fsc_stream_t stream1 = {buffer1, 0, sizeof(buffer1), qfalse};
+	fsc_stream_t stream2 = {buffer2, 0, sizeof(buffer2), qfalse};
+	if(file1->sourcetype == SOURCETYPE_CROSSHAIR && file2->sourcetype != SOURCETYPE_CROSSHAIR) return -1;
+	if(file2->sourcetype == SOURCETYPE_CROSSHAIR && file1->sourcetype != SOURCETYPE_CROSSHAIR) return 1;
+	crosshair_gen_sort_key(file1, &stream1);
+	crosshair_gen_sort_key(file2, &stream2);
+	return fsc_memcmp(stream2.data, stream1.data,
+			stream1.position < stream2.position ? stream1.position : stream2.position); }
 
 static int compare_crosshairs(const void *c1, const void *c2) {
 	if(((crosshair_t *)c1)->special_priority > ((crosshair_t *)c2)->special_priority) return -1;
