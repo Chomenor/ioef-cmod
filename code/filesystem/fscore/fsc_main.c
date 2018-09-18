@@ -74,7 +74,21 @@ static const fsc_sourcetype_t *fsc_get_sourcetype(const fsc_file_t *file, const 
 
 	return 0; }
 
+const fsc_file_direct_t *fsc_get_base_file(const fsc_file_t *file, const fsc_filesystem_t *fs) {
+	// Returns the source pk3 if file is from a pk3, the file itself if file is on disk,
+	// and null if the file is from a custom sourcetype
+	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
+		return (const fsc_file_direct_t *)file; }
+	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
+		return (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3); }
+	return 0; }
+
 int fsc_extract_file(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+	// Provided buffer should be size file->filesize
+	// Returns 0 on success, 1 on error
+	if(file->contents_cache) {
+		fsc_memcpy(buffer, STACKPTR(file->contents_cache), file->filesize);
+		return 0; }
 	return fsc_get_sourcetype(file, fs)->extract_data(file, buffer, fs, eh); }
 
 int fsc_is_file_enabled(const fsc_file_t *file, const fsc_filesystem_t *fs) {
@@ -101,14 +115,14 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 			FSC_ADD_STRING((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr));
 			FSC_ADD_STRING(".pk3dir->"); }
 		else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			fsc_file_t *pk3_file = (fsc_file_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-			if(pk3_file->qp_dir_ptr) {
-				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_dir_ptr));
+			const fsc_file_direct_t *pk3_file = fsc_get_base_file(file, fs);
+			if(pk3_file->f.qp_dir_ptr) {
+				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_dir_ptr));
 				FSC_ADD_STRING("/"); }
-			FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_name_ptr));
-			if(pk3_file->qp_ext_ptr) {
+			FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_name_ptr));
+			if(pk3_file->f.qp_ext_ptr) {
 				FSC_ADD_STRING(".");
-				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->qp_ext_ptr)); }
+				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_ext_ptr)); }
 			FSC_ADD_STRING("->"); } }
 
 	if(file->qp_dir_ptr) {
@@ -143,17 +157,45 @@ static void fsc_merge_stats(const fsc_stats_t *source, fsc_stats_t *target) {
 	target->total_file_count += source->total_file_count;
 	target->cacheable_file_count += source->cacheable_file_count; }
 
-int fsc_filename_contents(const char *qp_dir, const char *qp_name, const char *qp_ext) {
-	int contents = 0;
-	if(qp_ext && !fsc_stricmp(qp_ext, "pk3")) {
-		if(!qp_dir) contents |= FSC_CONTENTS_PK3;
-		if(qp_dir && !fsc_stricmp(qp_dir, "downloads")) contents |= FSC_CONTENTS_DLPK3; }
-	if(qp_ext && qp_dir && !fsc_stricmp(qp_dir, "scripts") && !fsc_stricmp(qp_ext, "shader")) contents |= FSC_CONTENTS_SHADER;
+void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+	// Registers file in index and loads secondary content such as shaders
+	// Called for both files on disk and in pk3s
+	fsc_file_t *file = (fsc_file_t *)STACKPTR(file_ptr);
+	fsc_file_direct_t *base_file = (fsc_file_direct_t *)fsc_get_base_file(file, fs);
+	const char *qp_dir = (const char *)STACKPTR(file->qp_dir_ptr);
+	const char *qp_name = (const char *)STACKPTR(file->qp_name_ptr);
+	const char *qp_ext = (const char *)STACKPTR(file->qp_ext_ptr);
+
+	// Register file for main lookup and directory iteration
+	fsc_hashtable_insert(file_ptr, fsc_string_hash(qp_name, qp_dir), &fs->files);
+	fsc_iteration_register_file(file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack);
+
+	// Index shaders and update shader counter on base file
+	if(qp_ext && qp_dir && !fsc_stricmp(qp_dir, "scripts") && !fsc_stricmp(qp_ext, "shader")) {
+		int count = index_shader_file(fs, file_ptr, eh);
+		if(base_file) {
+			base_file->shader_file_count += 1;
+			base_file->shader_count += count;
+			base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
+
+	// Index crosshairs
 	if(qp_dir && !fsc_stricmp(qp_dir, "gfx/2d")) {
 		char buffer[10];
 		fsc_strncpy(buffer, qp_name, sizeof(buffer));
-		if(!fsc_stricmp(buffer, "crosshair")) contents |= FSC_CONTENTS_CROSSHAIR; }
-	return contents; }
+		if(!fsc_stricmp(buffer, "crosshair")) {
+			index_crosshair(fs, file_ptr, eh);
+			if(base_file) base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
+
+	// Cache small arena and bot file contents
+	if(file->filesize < 16384 && qp_dir && !fsc_stricmp(qp_dir, "scripts") && qp_ext &&
+			(!fsc_stricmp(qp_ext, "arena") || !fsc_stricmp(qp_ext, "bot"))) {
+		char *source_data = fsc_extract_file_allocated(fs, file, eh);
+		if(source_data) {
+			fsc_stackptr_t target_ptr = fsc_stack_allocate(&fs->general_stack, file->filesize);
+			char *target_data = (char *)STACKPTR(target_ptr);
+			fsc_memcpy(target_data, source_data, file->filesize);
+			file->contents_cache = target_ptr;
+			fsc_free(source_data); } } }
 
 static int fsc_app_extension(const char *name) {
 	// Returns 1 if name matches mac app bundle extension, 0 otherwise
@@ -172,15 +214,13 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 	char qp_mod[FSC_MAX_MODDIR];
 	const char *qpath_start = 0;
 
-	int pk3dir_active = 0;
+	int file_in_pk3dir = 0;
 	char pk3dir_buffer[FSC_MAX_QPATH];
 	const char *pk3dir_remainder = 0;
 
 	const char *qp_dir, *qp_name, *qp_ext;
 	fsc_stackptr_t qp_mod_ptr, qp_dir_ptr, qp_name_ptr, qp_ext_ptr;
-
 	unsigned int fs_hash;
-	int filename_contents;
 
 	int unindexed_file = 0;	// File was not present in the index at all
 	int new_file = 0;	// File was not present in last refresh, but may have been in the index
@@ -196,7 +236,7 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 			int length = fsc_strlen(pk3dir_buffer);
 			if(length >= 7 && !fsc_stricmp(pk3dir_buffer + length - 7, ".pk3dir")) {
 				pk3dir_buffer[length - 7] = 0;
-				pk3dir_active = 1;
+				file_in_pk3dir = 1;
 				qpath_start = pk3dir_remainder; } } }
 
 	// Process qpath
@@ -205,10 +245,7 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 	qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
 	qp_name_ptr = fsc_string_repository_getstring(qp_name, 1, &fs->string_repository, &fs->general_stack);
 	qp_ext_ptr = qp_ext ? fsc_string_repository_getstring(qp_ext, 1, &fs->string_repository, &fs->general_stack) : 0;
-
-	// Determine hash and contents
 	fs_hash = fsc_string_hash(qp_name, qp_dir);
-	filename_contents = fsc_filename_contents(qp_dir, qp_name, qp_ext);
 
 	// printf("qp_mod(%s) qp_dir(%s) qp_name(%s) qp_ext(%s) fs_hash(%u)\n", qp_mod, qp_dir, qp_name, qp_ext, fs_hash);
 	// printf("mod_dir(%u) qp_dir(%u) qp_name(%u) qp_ext(%u) fs_hash(%u)\n", mod_dir, qp_dir, qp_name, qp_ext, fs_hash);
@@ -223,10 +260,10 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		if(file->f.qp_ext_ptr != qp_ext_ptr) continue;
 		if(fsc_get_mod_dir((fsc_file_t *)file, fs) != STACKPTR(qp_mod_ptr)) continue;
 		if(file->os_path_ptr && fsc_compare_os_path(STACKPTR(file->os_path_ptr), os_path)) continue;
-		if(file->pk3dir_ptr && (!pk3dir_active || fsc_strcmp((const char *)STACKPTR(file->pk3dir_ptr), pk3dir_buffer))) continue;
-		if(!file->pk3dir_ptr && pk3dir_active) continue;
+		if(file->pk3dir_ptr && (!file_in_pk3dir || fsc_strcmp((const char *)STACKPTR(file->pk3dir_ptr), pk3dir_buffer))) continue;
+		if(!file->pk3dir_ptr && file_in_pk3dir) continue;
 		if(file->f.filesize != filesize || file->os_timestamp != os_timestamp) {
-			if(!filename_contents && file->os_path_ptr) {
+			if(file->os_path_ptr && !(file->f.flags & FSC_FILEFLAG_LINKED_CONTENT) && !file->f.contents_cache) {
 				// Reuse the same file object to save memory
 				file->f.filesize = filesize;
 				file->os_timestamp = os_timestamp;
@@ -237,8 +274,8 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 	if(file_ptr) {
 		// Have existing entry
 		if(file->refresh_count == fs->refresh_count) {
-			// File already active - normally shouldn't happen, unless there are duplicate
-			// source directories or something. Ignore the duplicate file
+			// Existing file already active. This can happen with if there are duplicate source directories
+			// loaded in the same refresh cycle. Just leave the existing file unchanged.
 			return; }
 
 		// Activate the entry
@@ -256,7 +293,7 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		file->f.qp_dir_ptr = qp_dir_ptr;
 		file->f.qp_ext_ptr = qp_ext_ptr;
 		file->qp_mod_ptr = qp_mod_ptr;
-		if(pk3dir_active) file->pk3dir_ptr = fsc_string_repository_getstring(pk3dir_buffer, 1,
+		if(file_in_pk3dir) file->pk3dir_ptr = fsc_string_repository_getstring(pk3dir_buffer, 1,
 				&fs->string_repository, &fs->general_stack);
 		file->f.filesize = filesize;
 		file->os_timestamp = os_timestamp;
@@ -266,8 +303,9 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 
 	// Update source dir and download folder flag
 	file->source_dir_id = source_dir_id;
-	if(filename_contents & FSC_CONTENTS_DLPK3) file->f.flags |= FSC_FILEFLAG_DLPK3;
-	else file->f.flags &= ~FSC_FILEFLAG_DLPK3;
+	file->f.flags &= ~FSC_FILEFLAG_DLPK3;
+	if(qp_ext && !fsc_stricmp(qp_ext, "pk3") && qp_dir && !fsc_stricmp(qp_dir, "downloads")) {
+		file->f.flags |= FSC_FILEFLAG_DLPK3; }
 
 	// Save os path. This happens on loading a new file, and also when first activating an entry that was loaded from cache.
 	if(!file->os_path_ptr) {
@@ -275,17 +313,12 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		file->os_path_ptr = fsc_stack_allocate(&fs->general_stack, os_path_size);
 		fsc_memcpy(STACKPTR(file->os_path_ptr), os_path, os_path_size); }
 
-	// Register file and contents
+	// Register file and load contents
 	if(unindexed_file) {
-		fsc_hashtable_insert(file_ptr, fs_hash, &fs->files);
-		fsc_iteration_register_file(file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack);
-
-		if((filename_contents & (FSC_CONTENTS_PK3|FSC_CONTENTS_DLPK3)) && !pk3dir_active) {
-			fsc_load_pk3(STACKPTR(file->os_path_ptr), fs, file_ptr, eh, 0, 0); }
-		if(filename_contents & FSC_CONTENTS_SHADER) {
-			file->shader_file_count = 1;
-			file->shader_count = index_shader_file(fs, file_ptr, eh); }
-		if(filename_contents & FSC_CONTENTS_CROSSHAIR) index_crosshair(fs, file_ptr, eh); }
+		fsc_register_file(file_ptr, fs, eh);
+		if(qp_ext && !fsc_stricmp(qp_ext, "pk3") && (!qp_dir || !fsc_stricmp(qp_dir, "downloads"))) {
+			fsc_load_pk3(STACKPTR(file->os_path_ptr), fs, file_ptr, eh, 0, 0);
+			file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
 
 	// Update stats
 	{	fsc_stats_t stats;

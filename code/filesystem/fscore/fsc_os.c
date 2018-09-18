@@ -300,7 +300,7 @@ static void iterate_directory2(iterate_work_t *iw, int junction_allowed) {
 	WIN32_FIND_DATA FindFileData;
 	HANDLE hFind;
 
-	if(!iterate_append_path(iw, TEXT("/*"))) return;
+	if(!iterate_append_path(iw, TEXT("\\*"))) return;
 	hFind = FindFirstFile(iw->path, &FindFileData);
 	//hFind = FindFirstFileEx(search, FindExInfoBasic, &FindFileData, FindExSearchNameMatch, 0, FIND_FIRST_EX_LARGE_FETCH);
 	if(hFind == INVALID_HANDLE_VALUE) return;
@@ -308,12 +308,12 @@ static void iterate_directory2(iterate_work_t *iw, int junction_allowed) {
 	do {
 		// Prepare path
 		iterate_set_position(iw, old_position);
-		iterate_append_path(iw, TEXT("/"));
+		iterate_append_path(iw, TEXT("\\"));
 		if(!iterate_append_path(iw, FindFileData.cFileName)) continue;
 
 		if(FindFileData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY) {
 			// Have directory - check validity
-			if(FindFileData.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT && !junction_allowed) continue;
+			if((FindFileData.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT) && !junction_allowed) continue;
 			if(FindFileData.cFileName[0] == '.' && (!FindFileData.cFileName[1] ||
 					(FindFileData.cFileName[1] == '.' && !FindFileData.cFileName[2]))) continue;
 

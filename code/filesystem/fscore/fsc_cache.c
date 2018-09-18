@@ -76,7 +76,7 @@ fsc_stackptr_t convert_string(fsc_stackptr_t source_string, export_work_t *xw) {
 			&xw->export_string_repository, &xw->export_stack); }
 
 fsc_stackptr_t file_map_lookup(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
-	// Converts stackptr in general stack to stackptr in export stack
+	// Maps stackptr in general stack to converted file stackptr in export stack
 	unsigned int hash = integer_hash(source_file_ptr);
 	fsc_hashtable_iterator_t hti;
 	fsc_stackptr_t filemap_entry_ptr;
@@ -102,12 +102,15 @@ void file_map_insert(fsc_stackptr_t source_file_ptr, fsc_stackptr_t export_file_
 	fsc_hashtable_insert(filemap_entry_ptr, hash, &xw->filemap); }
 
 fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
+	// Converts file from source filesystem to export filesystem if not already converted
+	// If file is already converted, just returns the existing converted file
+	// Should only be called for direct or pk3 sourcetype files (not custom sourcetypes)
 	fsc_file_t *source_file = (fsc_file_t *)STACKPTR_SRC(source_file_ptr);
 	fsc_stackptr_t export_file_ptr;
 	fsc_file_t *export_file;
 	int file_size;
 
-	// Check if the file has already been loaded
+	// Check if the file has already been converted
 	export_file_ptr = file_map_lookup(source_file_ptr, xw);
 	if(export_file_ptr) return export_file_ptr;
 
@@ -122,13 +125,14 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 	export_file = (fsc_file_t *)fsc_stack_retrieve(&xw->export_stack, export_file_ptr);
 	fsc_memcpy(export_file, source_file, file_size);
 
-	// Perform conversions
+	// Reallocate stackptrs from original stack to export stack and other adjustments
 	export_file->qp_dir_ptr = convert_string(export_file->qp_dir_ptr, xw);
 	export_file->qp_name_ptr = convert_string(export_file->qp_name_ptr, xw);
 	export_file->qp_ext_ptr = convert_string(export_file->qp_ext_ptr, xw);
-	// Currently no flags need to be stored in cache, but this can be evaluated
-	// on a case-by-case basis if new flags are added
-	export_file->flags = 0;
+	if(export_file->contents_cache) {
+		export_file->contents_cache = fsc_stack_allocate(&xw->export_stack, source_file->filesize);
+		fsc_memcpy(fsc_stack_retrieve(&xw->export_stack, export_file->contents_cache),
+				STACKPTR_SRC(source_file->contents_cache), source_file->filesize); }
 	if(source_file->sourcetype == FSC_SOURCETYPE_DIRECT) {
 		fsc_file_direct_t *export_file_typed = (fsc_file_direct_t *)export_file;
 		export_file_typed->qp_mod_ptr = convert_string(export_file_typed->qp_mod_ptr, xw);
@@ -175,10 +179,14 @@ void fscache_build_filesystem(export_work_t *xw) {
 		fsc_hashtable_open(&xw->source_fs->files, i, &hti);
 		while((source_file_ptr = fsc_hashtable_next(&hti))) {
 			fsc_file_t *source_file = (fsc_file_t *)STACKPTR_SRC(source_file_ptr);
-			if(!fsc_is_file_enabled(source_file, xw->source_fs)) continue;		// Process only active files
-			if(source_file->sourcetype != FSC_SOURCETYPE_PK3) continue;		// Process only pk3 sourcetype files
 
-			convert_file(source_file_ptr, xw); } } }
+			// Process active files from pk3 sources, or from direct sources if contents_cache is set
+			// Files referenced by shaders or crosshairs will be cached in their own cycle below,
+			//    if not already cached here
+			if(!fsc_is_file_enabled(source_file, xw->source_fs)) continue;
+			if(source_file->sourcetype == FSC_SOURCETYPE_PK3 ||
+					(source_file->sourcetype == FSC_SOURCETYPE_DIRECT && source_file->contents_cache)) {
+				convert_file(source_file_ptr, xw); } } } }
 
 void fscache_build_shaders(export_work_t *xw) {
 	int i;
@@ -200,8 +208,12 @@ void fscache_build_shaders(export_work_t *xw) {
 	for(i=0; i<xw->source_fs->shaders.bucket_count; ++i) {
 		fsc_hashtable_open(&xw->source_fs->shaders, i, &hti);
 		while((source_shader_ptr = fsc_hashtable_next(&hti))) {
-			fsc_shader_t *source_shader = (fsc_shader_t *)STACKPTR_SRC(source_shader_ptr);
-			if(!is_shader_enabled(xw->source_fs, source_shader)) continue;		// Process only active shaders
+			const fsc_shader_t *source_shader = (fsc_shader_t *)STACKPTR_SRC(source_shader_ptr);
+			const fsc_file_t *source_file = (const fsc_file_t *)STACKPTR_SRC(source_shader->source_file_ptr);
+
+			// Process only active shaders from direct/pk3 sources
+			if(source_file->sourcetype != FSC_SOURCETYPE_DIRECT && source_file->sourcetype != FSC_SOURCETYPE_PK3) continue;
+			if(!is_shader_enabled(xw->source_fs, source_shader)) continue;
 
 			// Allocate new shader
 			export_shader_ptr = fsc_stack_allocate(&xw->export_stack, sizeof(fsc_shader_t));
@@ -231,8 +243,12 @@ void fscache_build_crosshairs(export_work_t *xw) {
 	for(i=0; i<xw->source_fs->crosshairs.bucket_count; ++i) {
 		fsc_hashtable_open(&xw->source_fs->crosshairs, i, &hti);
 		while((source_crosshair_ptr = fsc_hashtable_next(&hti))) {
-			fsc_crosshair_t *source_crosshair = (fsc_crosshair_t *)STACKPTR_SRC(source_crosshair_ptr);
-			if(!is_crosshair_enabled(xw->source_fs, source_crosshair)) continue;		// Process only active crosshairs
+			const fsc_crosshair_t *source_crosshair = (fsc_crosshair_t *)STACKPTR_SRC(source_crosshair_ptr);
+			const fsc_file_t *source_file = (const fsc_file_t *)STACKPTR_SRC(source_crosshair->source_file_ptr);
+
+			// Process only active crosshairs from direct/pk3 sources
+			if(source_file->sourcetype != FSC_SOURCETYPE_DIRECT && source_file->sourcetype != FSC_SOURCETYPE_PK3) continue;
+			if(!is_crosshair_enabled(xw->source_fs, source_crosshair)) continue;
 
 			// Allocate new crosshair
 			export_crosshair_ptr = fsc_stack_allocate(&xw->export_stack, sizeof(fsc_crosshair_t));
@@ -396,7 +412,7 @@ int fsc_cache_import_file(void *os_path, fsc_filesystem_t *target_fs, fsc_errorh
 		fsc_fclose(fp);
 		return 1; }
 
-	// Read compressed data and close file
+	// Read data and close file
 	stream.data = (char *)fsc_malloc(header.size);
 	if(fsc_fread(stream.data, header.size, fp) != header.size) {
 		fsc_report_error(eh, FSC_ERROR_GENERAL, "error reading cache file data", 0);

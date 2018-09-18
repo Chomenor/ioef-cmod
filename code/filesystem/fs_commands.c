@@ -174,13 +174,14 @@ static void FS_Path_f( void ) {
 
 	for(sourceid=0; sourceid<FS_MAX_SOURCEDIRS; ++sourceid) {
 		if(!fs_sourcedirs[sourceid].active) continue;
-		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path_cvar->string);
+		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path);
 
 		for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 			while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
 				const fsc_file_direct_t *pak = (const fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
-				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak, 0)) {
+				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak,
+						FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) {
 					char buffer[FS_FILE_BUFFER_SIZE];
 					fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
 					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count);

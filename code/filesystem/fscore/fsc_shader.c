@@ -112,7 +112,7 @@ int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_
 // Other
 /* ******************************************************************************** */
 
-int is_shader_enabled(fsc_filesystem_t *fs, fsc_shader_t *shader) {
+int is_shader_enabled(fsc_filesystem_t *fs, const fsc_shader_t *shader) {
 	return fsc_is_file_enabled((const fsc_file_t *)STACKPTR(shader->source_file_ptr), fs); }
 
 #endif	// NEW_FILESYSTEM

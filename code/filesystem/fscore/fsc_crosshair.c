@@ -57,7 +57,7 @@ int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_er
 // Other
 /* ******************************************************************************** */
 
-int is_crosshair_enabled(fsc_filesystem_t *fs, fsc_crosshair_t *crosshair) {
+int is_crosshair_enabled(fsc_filesystem_t *fs, const fsc_crosshair_t *crosshair) {
 	return fsc_is_file_enabled((const fsc_file_t *)STACKPTR(crosshair->source_file_ptr), fs); }
 
 #endif	// NEW_FILESYSTEM

@@ -187,17 +187,14 @@ static void register_file_from_pk3(fsc_filesystem_t *fs, char *filename, int fil
 
 	char buffer[FSC_MAX_QPATH];
 	const char *qp_dir, *qp_name, *qp_ext;
-	unsigned int fs_hash;
-	int filename_contents;
 
 	// Copy filename into null-terminated buffer for process_qpath
 	// Also convert to lowercase to match behavior of old filesystem
-	if(filename_length > FSC_MAX_QPATH - 1) filename_length = FSC_MAX_QPATH - 1;
+	if(filename_length >= FSC_MAX_QPATH) filename_length = FSC_MAX_QPATH - 1;
 	fsc_strncpy_lower(buffer, filename, filename_length+1);
 
 	// Call process_qpath
 	fsc_process_qpath(buffer, buffer, &qp_dir, &qp_name, &qp_ext);
-	fs_hash = fsc_string_hash(qp_name, qp_dir);
 
 	// Write qpaths to file structure
 	file->f.qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
@@ -212,17 +209,9 @@ static void register_file_from_pk3(fsc_filesystem_t *fs, char *filename, int fil
 	file->compression_method = compression_method;
 	file->f.filesize = uncompressed_size;
 
-	// Register file and contents
-	fsc_hashtable_insert(file_ptr, fs_hash, &fs->files);
-	fsc_iteration_register_file(file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack);
-	++sourcefile->pk3_subfile_count;
-
-	filename_contents = fsc_filename_contents(qp_dir, qp_name, qp_ext);
-	if(filename_contents & FSC_CONTENTS_SHADER) {
-		++sourcefile->shader_file_count;
-		sourcefile->shader_count += index_shader_file(fs, file_ptr, eh); }
-	if(filename_contents & FSC_CONTENTS_CROSSHAIR) {
-		index_crosshair(fs, file_ptr, eh); } }
+	// Register file and load contents
+	fsc_register_file(file_ptr, fs, eh);
+	++sourcefile->pk3_subfile_count; }
 
 void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr, fsc_errorhandler_t *eh,
 				void (receive_hash_data)(void *context, char *data, int size), void *receive_hash_data_context ) {
@@ -420,12 +409,10 @@ unsigned int fsc_pk3_handle_read(void *handle, char *buffer, unsigned int length
 /* ******************************************************************************** */
 
 static int fsc_pk3_is_file_active(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-	return source_pk3->refresh_count == fs->refresh_count; }
+	return fsc_get_base_file(file, fs)->refresh_count == fs->refresh_count; }
 
 static const char *fsc_pk3_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3);
-	return (const char *)STACKPTR(source_pk3->qp_mod_ptr); }
+	return (const char *)STACKPTR(fsc_get_base_file(file, fs)->qp_mod_ptr); }
 
 static int fsc_pk3_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Returns 0 on success, 1 on failure

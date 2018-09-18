@@ -49,6 +49,7 @@ typedef struct {
 #define RESFLAG_IN_CURRENT_MAP_PAK 2
 #define RESFLAG_FROM_DLL_QUERY 4
 #define RESFLAG_CASE_MISMATCH 8
+#define RESFLAG_AUXILIARY_SOURCEDIR 16
 
 typedef struct {
 	// This should contain only static data, i.e. no pointers that expire when the query
@@ -82,28 +83,32 @@ typedef struct {
 /* ******************************************************************************** */
 
 static void configure_lookup_resource(const lookup_query_t *query, lookup_resource_t *resource) {
-	// Determine mod dir match level
 	const char *resource_mod_dir = fsc_get_mod_dir(resource->file, &fs);
+	const fsc_file_direct_t *base_file = fsc_get_base_file(resource->file, &fs);
+
+	// Determine mod dir match level
 	resource->mod_type = fs_get_mod_type(resource_mod_dir);
 
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
-		const fsc_file_direct_t *source_pk3 =
-				(const fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)(resource->file))->source_pk3);
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
-			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, source_pk3->pk3_hash, qfalse);
-		if(source_pk3->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
+			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, base_file->pk3_hash, qfalse);
+		if(base_file->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 
 		if(resource->mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
 			// Sort default paks or the current map pak specially unless they are mixed into an active mod directory
-			resource->default_pak_priority = default_pk3_position(source_pk3->pk3_hash);
-			if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && source_pk3 == current_map_pk3)
+			resource->default_pak_priority = default_pk3_position(base_file->pk3_hash);
+			if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && base_file == current_map_pk3)
 				resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; } }
 
 	// Check mod dir for case mismatched current or basegame directory
 	if((!Q_stricmp(resource_mod_dir, FS_GetCurrentGameDir()) && strcmp(resource_mod_dir, FS_GetCurrentGameDir()))
 			|| (!Q_stricmp(resource_mod_dir, com_basegame->string) && strcmp(resource_mod_dir, com_basegame->string))) {
 		resource->flags |= RESFLAG_CASE_MISMATCH; }
+
+	// Check for auxiliary source directory
+	if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !resource->server_pak_position) {
+		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
 	// Handle settings (e.g. q3config.cfg or autoexec.cfg) query
 	if(query->config_query == FS_CONFIGTYPE_SETTINGS) {
@@ -130,22 +135,15 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3) && (query->config_query)) {
 		resource->disabled = "blocking config file in downloaded pk3 due to fs_restrict_dlfolder setting"; }
 
+	// Disable files blocked by fs_search_inactive_mods setting
+	if(fs_file_disabled(resource->file, FD_CHECK_SEARCH_INACTIVE_MODS)) {
+		resource->disabled = "blocking file from inactive mod dir due to fs_search_inactive_mods setting"; }
+
 	// Disable files not on server pak list if connected to a pure server
 	if(!resource->server_pak_position && fs_connected_server_pure_state() == 1 &&
 			!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) &&
 			!((query->lookup_flags & LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
-		resource->disabled = "connected to pure server and file is not on server pak list"; }
-
-	// Run general file disabled check
-	switch(fs_file_disabled(resource->file, 0)) {
-		case FD_RESULT_FILE_ENABLED:
-			break;
-		case FD_RESULT_INACTIVE_MOD_BLOCKED:
-			resource->disabled = "blocking file from inactive mod dir due to fs_search_inactive_mods setting";
-			break;
-		default:
-			// Shouldn't happen
-			resource->disabled = "blocking file due to unexpected fs_file_disabled result"; } }
+		resource->disabled = "connected to pure server and file is not on server pak list"; } }
 
 static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_t *file,
 			int extension_index, qboolean case_mismatch, lookup_resource_t *resource) {
@@ -291,6 +289,14 @@ PC_COMPARE(resource_disabled) {
 
 PC_DEBUG(resource_disabled) {
 	ADD_STRING(va("Resource %i was selected because resource %i is disabled: %s", high_num, low_num, low->disabled)); }
+
+PC_COMPARE(auxiliary_sourcedir) {
+	if((r1->flags & RESFLAG_AUXILIARY_SOURCEDIR) && !(r2->flags & RESFLAG_AUXILIARY_SOURCEDIR)) return 1;
+	if((r2->flags & RESFLAG_AUXILIARY_SOURCEDIR) && !(r1->flags & RESFLAG_AUXILIARY_SOURCEDIR)) return -1;
+	return 0; }
+
+PC_DEBUG(auxiliary_sourcedir) {
+	ADD_STRING(va("Resource %i was selected because resource %i is in an auxiliary source directory.", high_num, low_num)); }
 
 PC_COMPARE(special_shaders) {
 	qboolean r1_special = (r1->shader && (r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
@@ -466,6 +472,7 @@ typedef struct {
 #define ADD_CHECK(check) { #check, pc_cmp_ ## check, pc_dbg_ ## check }
 static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(resource_disabled),
+	ADD_CHECK(auxiliary_sourcedir),
 	ADD_CHECK(special_shaders),
 	ADD_CHECK(server_pak_position),
 	ADD_CHECK(basemod_or_current_mod_dir),

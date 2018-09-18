@@ -177,7 +177,7 @@ The refresh function, fs_refresh, can be called at any time to check for new fil
 
 ## Source Directory Handling
 
-The source directory names and paths are stored in the "fs_sourcedirs" array which is initialized in fs_startup and remains constant afterwards. The source directories are ordered by precedence with index 0 being highest priority. Each fs_source_directory_t entry contains the name of the source dir (used to identify it in fs_dirs), the path cvar, and whether the source directory is active.
+The source directory names and paths are stored in the "fs_sourcedirs" array which is initialized in fs_startup and remains constant afterwards. The source directories are ordered by precedence with index 0 being highest priority. Each fs_source_directory_t entry contains the name of the source dir (the cvar name specified in fs_dirs), the path value, and whether the source directory is active.
 
 You can tell which source directory a file came from by checking its "source_dir_id" field, which represents the index to the fs_sourcedirs array.
 

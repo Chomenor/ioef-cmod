@@ -148,7 +148,7 @@ unsigned int fs_generate_path_sourcedir(int source_dir_id, const char *path1, co
 		int path1_flags, int path2_flags, char *target, unsigned int target_size) {
 	// Generates path prefixed by source directory
 	if(!fs_sourcedirs[source_dir_id].active) return 0;
-	return fs_generate_path(fs_sourcedirs[source_dir_id].path_cvar->string, path1, path2, FS_NO_SANITIZE,
+	return fs_generate_path(fs_sourcedirs[source_dir_id].path, path1, path2, FS_NO_SANITIZE,
 				path1_flags, path2_flags, target, target_size); }
 
 unsigned int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
@@ -1229,8 +1229,9 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 						COM_CompareExtension(qpath, ".game") || COM_CompareExtension(qpath, ".dat"))
 					lookup_flags |= LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE; }
 
-			if((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE)) ||
-					fs_connected_server_pure_state() != 1) {
+			if(((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE)) ||
+					fs_connected_server_pure_state() != 1) && !COM_CompareExtension(qpath, ".arena") &&
+					!COM_CompareExtension(qpath, ".bot")) {
 				// Try to read directly from disk first, because some mods do weird things involving
 				// files that were just written/currently open that don't work with cache handles
 				char path[FS_MAX_PATH];
