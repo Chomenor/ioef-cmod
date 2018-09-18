@@ -32,7 +32,7 @@ CVAR_DEF(cmod_font_scaling, "1", CVAR_ARCHIVE)
 #endif
 
 #ifdef CMOD_CONSOLE_KEY_FIXES
-CVAR_DEF(cmod_console_mode, "0", CVAR_ARCHIVE)
+CVAR_DEF(cmod_console_mode, "1", CVAR_ARCHIVE)
 #endif
 
 #ifdef CMOD_MAP_SCRIPT

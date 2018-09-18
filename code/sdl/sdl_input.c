@@ -319,7 +319,13 @@ static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, qboolean down )
 	}
 
 #ifdef CMOD_CONSOLE_KEY_FIXES
-	if((cmod_console_mode->integer & 1) && keysym->scancode == 0x35) key = K_CONSOLE;
+	if(keysym->scancode == 0x35) {
+		if((cmod_console_mode->integer & 1) && !(keysym->sym >= '0' && keysym->sym <= '9')
+				&& !(keysym->sym >= 'a' && keysym->sym <= 'z')
+				&& !(keysym->sym >= 'A' && keysym->sym <= 'Z')) {
+			key = K_CONSOLE; }
+		if(cmod_console_mode->integer & 4) {
+			key = K_CONSOLE; } }
 #endif
 
 	return key;
