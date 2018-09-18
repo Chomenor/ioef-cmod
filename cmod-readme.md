@@ -57,6 +57,14 @@ cMod uses a new crosshair indexing system, which allows all the installed crossh
 
 If you encounter crosshair-related issues, you can try disabling this feature by setting cmod_crosshair_enable to 0.
 
+## Font Scaling
+
+In the original game, the console and chat font are displayed at a fixed size, unlike other graphical components that scale with the resolution of the display. This can lead to the font appearing too small on high resolution displays. cMod adds a new setting called "cmod_font_scaling" intended to help compensate for this effect.
+
+- A setting of 1 scales the font to the same relative size as the original game running at 640x480 (the original default resolution).
+- A setting between 0 and 1 scales to some fraction of the font size represented by 1. However it will not scale below the original unscaled font size.
+- A setting of 0 produces the original unscaled font size.
+
 # Server
 
 It is possible to use cMod for hosting servers, but this is currently very experimental. Let me know if you encounter any bugs. I hope to add more features, documentation, and server config templates sometime in the future.
