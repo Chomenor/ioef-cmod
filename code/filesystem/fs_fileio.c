@@ -121,8 +121,8 @@ unsigned int fs_generate_path(const char *path1, const char *path2, const char *
 	// Concatenates paths, adding '/' character as seperator, with sanitization
 	//    and directory creation based on flags
 	// Returns output length on success, 0 on error (overflow or sanitize fail)
-
 	fsc_stream_t stream = {target, 0, target_size, 0};
+	FSC_ASSERT(target);
 
 	if(path1) {
 		if(!fs_generate_subpath(&stream, path1, path1_flags)) return 0; }
@@ -158,25 +158,28 @@ unsigned int fs_generate_path_writedir(const char *path1, const char *path2, int
 /* ******************************************************************************** */
 
 void *fs_open_file(const char *path, const char *mode) {
-	// This is basically a string-path version of fsc_open_file
-	void *os_path = fsc_string_to_os_path(path);
-	void *handle = fsc_open_file(os_path, mode);
-	fsc_free(os_path);
-	return handle; }
+	// Standard string version of fsc_open_file
+	FSC_ASSERT(path && mode);
+	{	void *os_path = fsc_string_to_os_path(path);
+		void *handle = fsc_open_file(os_path, mode);
+		fsc_free(os_path);
+		return handle; } }
 
 void fs_rename_file(const char *source, const char *target) {
-	// Basically a string-path version of fsc_rename_file
-	void *source_os_path = fsc_string_to_os_path(source);
-	void *target_os_path = fsc_string_to_os_path(target);
-	fsc_rename_file(source_os_path, target_os_path);
-	fsc_free(source_os_path);
-	fsc_free(target_os_path); }
+	// Standard string version of fsc_rename_file
+	FSC_ASSERT(source && target);
+	{	void *source_os_path = fsc_string_to_os_path(source);
+		void *target_os_path = fsc_string_to_os_path(target);
+		fsc_rename_file(source_os_path, target_os_path);
+		fsc_free(source_os_path);
+		fsc_free(target_os_path); } }
 
 void fs_delete_file(const char *path) {
-	// Basically a string-path version of fsc_delete_file
-	void *os_path = fsc_string_to_os_path(path);
-	fsc_delete_file(os_path);
-	fsc_free(os_path); }
+	// Standard string version of fsc_delete_file
+	FSC_ASSERT(path);
+	{	void *os_path = fsc_string_to_os_path(path);
+		fsc_delete_file(os_path);
+		fsc_free(os_path); } }
 
 void FS_HomeRemove( const char *homePath ) {
 	char path[FS_MAX_PATH];
@@ -226,7 +229,7 @@ static cache_entry_t *cache_lookup_table[CACHE_LOOKUP_TABLE_SIZE];
 
 static unsigned int cache_hash(const fsc_file_t *file) {
 	if(!file) return 0;
-	return fsc_string_hash((const char *)STACKPTR(file->qp_name_ptr), (const char *)STACKPTR(file->qp_dir_ptr)); }
+	return fsc_string_hash((const char *)STACKPTR(file->qp_name_ptr), (const char *)STACKPTRN(file->qp_dir_ptr)); }
 
 static void cache_lookup_table_register(cache_entry_t *entry) {
 	int position = entry->lookup_hash % CACHE_LOOKUP_TABLE_SIZE;
@@ -434,7 +437,6 @@ static cache_entry_t *cache_search_current_stage(const fsc_file_t *file) {
 char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_out) {
 	// Input can be either file or path, not both.
 	// Returns null on error, otherwise result needs to be freed by fs_free_data.
-
 	cache_entry_t *cache_entry = 0;
 	char *data = 0;
 	void *os_path = 0;
@@ -522,7 +524,7 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 	return 0; }
 
 void fs_free_data(char *data) {
-	if(!data) Com_Error(ERR_DROP, "Null parameter to fs_free_data.");
+	FSC_ASSERT(data);
 	if(data >= (char *)base_entry && data < (char *)base_entry + cache_size) {
 		cache_entry_t *cache_entry = (cache_entry_t *)(data - sizeof(cache_entry_t));
 		if(cache_entry->lock_count <= 0) Com_Error(ERR_DROP, "fs_free_data on invalid or already freed entry.");
@@ -532,10 +534,12 @@ void fs_free_data(char *data) {
 
 char *fs_read_shader(const fsc_shader_t *shader) {
 	// Returns shader text allocated in Z_Malloc, or null if there was an error
-	unsigned int size = shader->end_position - shader->start_position;
+	unsigned int size;
 	char *source_data;
 	char *shader_data;
+	FSC_ASSERT(shader);
 
+	size = shader->end_position - shader->start_position;
 	if(size > 10000) return 0;
 	source_data = fs_read_data((const fsc_file_t *)STACKPTR(shader->source_file_ptr), 0, 0);
 	if(!source_data) return 0;
@@ -717,9 +721,10 @@ fileHandle_t fs_direct_read_handle_open(const fsc_file_t *file, const char *path
 		if(file->sourcetype != FSC_SOURCETYPE_DIRECT) Com_Error(ERR_FATAL, "fs_direct_read_handle_open on non direct file");
 		os_path = STACKPTR(((fsc_file_direct_t *)file)->os_path_ptr);
 		fs_file_to_buffer((fsc_file_t *)file, debug_path, sizeof(debug_path), qtrue, qtrue, qtrue, qfalse); }
-	else {
+	else if(path) {
 		os_path = fsc_string_to_os_path(path);
 		Q_strncpyz(debug_path, path, sizeof(debug_path)); }
+	else Com_Error(ERR_FATAL, "Invalid parameters to fs_direct_read_handle_open.");
 
 	if(fs_debug_fileio->integer) Com_Printf("********** opening direct read handle **********\npath: %s\n", debug_path);
 
@@ -1152,6 +1157,7 @@ static long open_index_read_handle(const char *filename, fileHandle_t *handle, i
 	return (long)size; }
 
 long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) {
+	FSC_ASSERT(filename);
 	return open_index_read_handle(filename, file, 0, qfalse); }
 
 long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
@@ -1159,6 +1165,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	char path[FS_MAX_PATH];
 	unsigned int size = -1;
 	*fp = 0;
+	FSC_ASSERT(filename);
 
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_SLASH, 0, path, sizeof(path))) {
@@ -1180,12 +1187,15 @@ static fileHandle_t open_write_handle_path_gen(const char *mod_dir, const char *
 	return fs_write_handle_open(full_path, append, sync); }
 
 fileHandle_t FS_FOpenFileWrite(const char *filename) {
+	FSC_ASSERT(filename);
 	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qfalse, qfalse, 0); }
 
 fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
+	FSC_ASSERT(filename);
 	return open_write_handle_path_gen(0, filename, qfalse, qfalse, 0); }
 
 fileHandle_t FS_FOpenFileAppend(const char *filename) {
+	FSC_ASSERT(filename);
 	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qtrue, qfalse, 0); }
 
 int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
@@ -1193,6 +1203,8 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 	int size = 0;
 	fileHandle_t handle = 0;
 
+	if(!qpath) {
+		Com_Error(ERR_DROP, "FS_FOpenFileByMode: null path"); }
 	if(!f && mode != FS_READ) {
 		Com_Error(ERR_DROP, "FS_FOpenFileByMode: null handle pointer with non-read mode"); }
 
@@ -1259,6 +1271,7 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 		return size; } }
 
 int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
+	FSC_ASSERT(qpath);
 	return FS_FOpenFileByModeOwner(qpath, f, mode, FS_HANDLEOWNER_SYSTEM); }
 
 void FS_FCloseFile(fileHandle_t f) {
@@ -1268,13 +1281,16 @@ void FS_FCloseFile(fileHandle_t f) {
 	fs_handle_close(f); }
 
 int FS_Read(void *buffer, int len, fileHandle_t f) {
+	FSC_ASSERT(buffer);
 	return fs_handle_read((char *)buffer, len, f); }
 
 int FS_Read2(void *buffer, int len, fileHandle_t f) {
 	// This seems pretty much identical to FS_Read in the original filesystem as well
+	FSC_ASSERT(buffer);
 	return FS_Read(buffer, len, f); }
 
 int FS_Write(const void *buffer, int len, fileHandle_t h) {
+	FSC_ASSERT(buffer);
 	fs_write_handle_write(h, (const char *)buffer, len);
 	return len; }
 
@@ -1300,6 +1316,7 @@ long FS_ReadFile(const char *qpath, void **buffer) {
 	// Can be called with null buffer for size check.
 	const fsc_file_t *file;
 	unsigned int len;
+	FSC_ASSERT(qpath);
 
 	file = fs_general_lookup(qpath, 0, qfalse);
 
@@ -1316,6 +1333,7 @@ long FS_ReadFile(const char *qpath, void **buffer) {
 	return (long)len; }
 
 void FS_FreeFile(void *buffer) {
+	if(!buffer) Com_Error(ERR_FATAL, "FS_FreeFile( NULL )");
 	fs_free_data((char *)buffer); }
 
 void FS_WriteFile( const char *qpath, const void *buffer, int size ) {

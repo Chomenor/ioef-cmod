@@ -178,7 +178,7 @@ static void FS_Path_f( void ) {
 
 		for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-			while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+			while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 				const fsc_file_direct_t *pak = (const fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
 				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak,
 						FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) {

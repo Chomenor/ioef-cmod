@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-#define STACKPTR(pointer) ( fsc_stack_retrieve(&fs->general_stack, pointer) )
+#define STACKPTR(pointer) ( FSC_STACK_RETRIEVE(&fs->general_stack, pointer, 0) )	// non-null
 
 /* ******************************************************************************** */
 // Shader Indexing

@@ -73,11 +73,15 @@ typedef struct {
 
 void fsc_stack_initialize(fsc_stack_t *stack);
 fsc_stackptr_t fsc_stack_allocate(fsc_stack_t *stack, unsigned int size);
-void *fsc_stack_retrieve(const fsc_stack_t *stack, const fsc_stackptr_t pointer);
+void *fsc_stack_retrieve(const fsc_stack_t *stack, const fsc_stackptr_t pointer, int allow_null,
+		const char *caller, const char *expression);
 void fsc_stack_free(fsc_stack_t *stack);
 unsigned int fsc_stack_get_export_size(fsc_stack_t *stack);
 int fsc_stack_export(fsc_stack_t *stack, fsc_stream_t *stream);
 int fsc_stack_import(fsc_stack_t *stack, fsc_stream_t *stream);
+
+#define FSC_STACK_RETRIEVE(stack, pointer, allow_null) \
+		fsc_stack_retrieve(stack, pointer, allow_null, __func__, #pointer)
 
 // ***** Standard Hash Table *****
 
@@ -134,14 +138,17 @@ int fsc_get_leading_directory(const char *input, char *output, int buffer_length
 #define FSC_ERROR_SHADERFILE 3	// current_element: fsc_file_t
 #define FSC_ERROR_CROSSHAIRFILE 4	// current_element: fsc_file_t
 
+#define FSC_ASSERT(expression) if(!(expression)) fsc_fatal_error_tagged("assertion failed", __func__, #expression);
+
 typedef struct {
 	void (*handler)(int id, const char *msg, void *current_element, void *context);
 	void *context;
 } fsc_errorhandler_t;
 
-void fsc_initialize_errorhandler(fsc_errorhandler_t *errorhandler,
-		void (*handler)(int id, const char *msg, void *current_element, void *context), void *context);
 void fsc_report_error(fsc_errorhandler_t *errorhandler, int id, const char *msg, void *current_element);
+void fsc_register_fatal_error_handler(void (*handler)(const char *msg));
+void fsc_fatal_error(const char *msg);
+void fsc_fatal_error_tagged(const char *msg, const char *caller, const char *expression);
 
 /* ******************************************************************************** */
 // Game Parsing Support (fsc_gameparse.c)
@@ -183,6 +190,7 @@ int fsc_compare_os_path(const void *path1, const void *path2);
 void iterate_directory(void *search_os_path, void (operation)(iterate_data_t *file_data,
 			void *iterate_context), void *iterate_context);
 
+void fsc_error_abort(const char *msg);
 int fsc_rename_file(void *source_os_path, void *target_os_path);
 int fsc_delete_file(void *os_path);
 int fsc_mkdir(void *os_path);
@@ -332,7 +340,6 @@ char *fsc_extract_file_allocated(fsc_filesystem_t *index, fsc_file_t *file, fsc_
 
 int fsc_is_file_enabled(const fsc_file_t *file, const fsc_filesystem_t *fs);
 const char *fsc_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs);
-int fsc_file_hash(const fsc_file_t *file, const fsc_filesystem_t *fs);
 void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
 			int include_mod, int include_pk3_origin);
 
@@ -350,7 +357,7 @@ void fsc_load_directory(fsc_filesystem_t *fs, void *os_path, int source_dir_id, 
 // receive_hash_data is used for standalone hash calculation operations,
 // and should be nulled during normal filesystem loading
 void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr, fsc_errorhandler_t *eh,
-				void (receive_hash_data)(void *context, char *data, int size), void *receive_hash_data_context );
+				void (*receive_hash_data)(void *context, char *data, int size), void *receive_hash_data_context );
 void register_pk3_hash_lookup_entry(fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t *pk3_hash_lookup, fsc_stack_t *stack);
 void *fsc_pk3_handle_open(const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
 void fsc_pk3_handle_close(void *handle);

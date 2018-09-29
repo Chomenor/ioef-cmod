@@ -50,8 +50,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Misc Library Functions
 /* ******************************************************************************** */
 
+void fsc_error_abort(const char *msg) {
+	// Prints error message and aborts program
+	fprintf(stderr, "filesystem error: %s\n", msg);
+	exit(1); }
+
 int fsc_rename_file(void *source_os_path, void *target_os_path) {
 	// Returns 1 on error, 0 on success
+	FSC_ASSERT(source_os_path && target_os_path);
 #ifdef _WIN32
 	if(!MoveFile((LPCTSTR)source_os_path, (LPCTSTR)target_os_path)) return 1;
 #else
@@ -61,6 +67,7 @@ int fsc_rename_file(void *source_os_path, void *target_os_path) {
 
 int fsc_delete_file(void *os_path) {
 	// Returns 1 on error, 0 on success
+	FSC_ASSERT(os_path);
 	#ifdef _WIN32
 		// Can we just use remove instead?
 		if(!DeleteFile((LPCTSTR)os_path)) return 1;
@@ -71,6 +78,7 @@ int fsc_delete_file(void *os_path) {
 
 int fsc_mkdir(void *os_path) {
 	// Returns 1 on error, 0 on success or directory already exists
+	FSC_ASSERT(os_path);
 	#ifdef _WIN32
 		if(CreateDirectory((LPCTSTR)os_path, 0)) return 0;
 		return GetLastError() != ERROR_ALREADY_EXISTS;
@@ -80,7 +88,10 @@ int fsc_mkdir(void *os_path) {
 	return 0; }
 
 void *fsc_open_file(const void *os_path, const char *mode) {
-	#ifdef WIN_UNICODE
+	FSC_ASSERT(os_path);
+	FSC_ASSERT(mode);
+	{
+#ifdef WIN_UNICODE
 		int i;
 		wchar_t mode_wide[10];
 		for(i=0; i<9; ++i) {
@@ -88,18 +99,20 @@ void *fsc_open_file(const void *os_path, const char *mode) {
 			if(!mode[i]) break; }
 		mode_wide[9] = 0;
 		return _wfopen((const wchar_t *)os_path, mode_wide);
-	#else
+#else
 		return fopen((const char *)os_path, mode);
-	#endif
-}
+#endif
+	} }
 
 void fsc_fclose(void *fp) {
 	fclose((FILE *)fp); }
 
 unsigned int fsc_fread(void *dest, int size, void *fp) {
+	FSC_ASSERT(dest);
 	return fread(dest, 1, size, (FILE *)fp); }
 
 unsigned int fsc_fwrite(const void *src, int size, void *fp) {
+	FSC_ASSERT(src);
 	return fwrite(src, 1, size, (FILE *)fp); }
 
 void fsc_fflush(void *fp) {
@@ -134,28 +147,35 @@ unsigned int fsc_ftell(void *fp) {
 		return (unsigned int)value; }
 
 void fsc_memcpy(void *dst, const void *src, unsigned int size) {
+	FSC_ASSERT(dst && src);
 	memcpy(dst, src, size); }
 
 int fsc_memcmp(const void *str1, const void *str2, unsigned int size) {
+	FSC_ASSERT(str1 && str2);
 	return memcmp(str1, str2, size); }
 
 void fsc_memset(void *dst, int value, unsigned int size) {
+	FSC_ASSERT(dst);
 	memset(dst, value, size); }
 
 void fsc_strncpy(char *dst, const char *src, unsigned int size) {
 	// Ensures null termination if size > 0
+	FSC_ASSERT(dst && src);
 	strncpy(dst, src, size);
 	if(size) dst[size-1] = 0; }
 
 void fsc_strncpy_lower(char *dst, const char *src, unsigned int size) {
+	FSC_ASSERT(dst && src);
 	if(size) {
 		while(--size) *(dst++) = tolower(*(src++));
 		*dst = 0; } }
 
 int fsc_strcmp(const char *str1, const char *str2) {
+	FSC_ASSERT(str1 && str2);
 	return strcmp(str1, str2); }
 
 int fsc_stricmp(const char *str1, const char *str2) {
+	FSC_ASSERT(str1 && str2);
 #ifdef _WIN32
 	return _stricmp(str1, str2);
 #else
@@ -164,15 +184,21 @@ int fsc_stricmp(const char *str1, const char *str2) {
 }
 
 int fsc_strlen(const char *str) {
+	FSC_ASSERT(str);
 	return strlen(str); }
 
 void *fsc_malloc(unsigned int size) {
-	return malloc(size); }
+	void *result = malloc(size);
+	FSC_ASSERT(result);
+	return result; }
 
 void *fsc_calloc(unsigned int size) {
-	return calloc(size, 1); }
+	void *result = calloc(size, 1);
+	FSC_ASSERT(result);
+	return result; }
 
 void fsc_free(void *allocation) {
+	FSC_ASSERT(allocation);
 	free(allocation); }
 
 /* ******************************************************************************** */
@@ -190,36 +216,37 @@ void fsc_free(void *allocation) {
 void *fsc_string_to_os_path(const char *path) {
 	// Converts UTF-8 string to OS path format
 	// WARNING: Result must be freed by caller using fsc_free!!!
-	FSC_CHAR *buffer;
-	#ifdef WIN_UNICODE
+	FSC_ASSERT(path);
+	{	FSC_CHAR *buffer;
+#ifdef WIN_UNICODE
 		int length = MultiByteToWideChar(CP_UTF8, 0, path, -1, 0, 0);
-		if(!length) return 0;
-
+		FSC_ASSERT(length);
 		buffer = (FSC_CHAR *)fsc_malloc(length * sizeof(wchar_t));
 		MultiByteToWideChar(CP_UTF8, 0, path, -1, buffer, length);
-	#else
+#else
+		// Consider stripping non-ASCII chars for non-unicode Windows builds
 		int length = strlen(path);
 		buffer = (char *)fsc_malloc(length+1);
 		fsc_memcpy(buffer, path, length+1);
-	#endif
-	return buffer; }
+#endif
+		return buffer; } }
 
 char *fsc_os_path_to_string(const void *os_path) {
 	// Converts OS path format to UTF-8 string
 	// WARNING: Result must be freed by caller using fsc_free!!!
-	char *buffer;
-	#ifdef WIN_UNICODE
+	FSC_ASSERT(os_path);
+	{	char *buffer;
+#ifdef WIN_UNICODE
 		int length = WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR)os_path, -1, 0, 0, 0, 0);
-		if(!length) return 0;
-
+		FSC_ASSERT(length);
 		buffer = (char *)fsc_malloc(length);
 		WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR)os_path, -1, buffer, length, 0, 0);
-	#else
+#else
 		int length = strlen((const char *)os_path);
 		buffer = (char *)fsc_malloc(length+1);
 		fsc_memcpy(buffer, os_path, length+1);
-	#endif
-	return buffer; }
+#endif
+		return buffer; } }
 
 static char *fsc_os_path_to_qpath(void *os_path, char *output) {
 	// Output buffer must be size FSC_MAX_QPATH
@@ -228,14 +255,16 @@ static char *fsc_os_path_to_qpath(void *os_path, char *output) {
 	FSC_UCHAR *os_path_typed = (FSC_UCHAR *)os_path;
 	char *outpos = output;
 	char *endpos = output + FSC_MAX_QPATH - 1;
+	FSC_ASSERT(os_path);
+	FSC_ASSERT(output);
 	while(*os_path_typed && outpos < endpos) {
 		if(*os_path_typed > 127) {
 			// Write an underscore to represent special characters, but not on extended bytes
-			#ifdef WIN_UNICODE
+#ifdef WIN_UNICODE
 			if(!(*os_path_typed >= 0xdc00 && *os_path_typed <= 0xdfff)) *(outpos++) = '_';
-			#else
+#else
 			if(*os_path_typed >= 192) *(outpos++) = '_';
-			#endif
+#endif
 		}
 
 		else *(outpos++) = (char)*os_path_typed;
@@ -246,6 +275,7 @@ static char *fsc_os_path_to_qpath(void *os_path, char *output) {
 
 int fsc_os_path_size(const void *os_path) {
 	// Length in bytes
+	FSC_ASSERT(os_path);
 #ifdef WIN_UNICODE
 	return 2 * wcslen((const wchar_t *)os_path) + 2;
 #else
@@ -255,6 +285,7 @@ int fsc_os_path_size(const void *os_path) {
 
 int fsc_compare_os_path(const void *path1, const void *path2) {
 	// Returns 0 if paths are equal
+	FSC_ASSERT(path1 && path2);
 #ifdef WIN_UNICODE
 	return wcscmp((const wchar_t *)path1, (const wchar_t *)path2);
 #else
@@ -291,6 +322,7 @@ static int iterate_append_path(iterate_work_t *iw, const FSC_CHAR *path) {
 	return 0; }
 
 static void iterate_set_position(iterate_work_t *iw, int position) {
+	FSC_ASSERT(position >= 0 && position < SEARCH_PATH_LIMIT);
 	iw->path_position = position;
 	iw->path[position] = 0; }
 

@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-#define STACKPTRL(pointer) ( fsc_stack_retrieve(stack, pointer) )	// stack is a local parameter
+#define STACKPTR_LCL(pointer) ( FSC_STACK_RETRIEVE(stack, pointer, 0) )		// non-null, local stack parameter
 
 /* ******************************************************************************** */
 // Misc
@@ -57,6 +57,8 @@ unsigned int fsc_fs_size_estimate(fsc_filesystem_t *fs) {
 
 int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length) {
 	// Returns 1 on error, 0 on success.
+	FSC_ASSERT(stream);
+	FSC_ASSERT(data);
 	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
 	fsc_memcpy(stream->data + stream->position, data, length);
 	stream->position += length;
@@ -65,10 +67,12 @@ int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length)
 void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
 	// If stream runs out of space, output is truncated.
 	// Stream data will always be null terminated.
+	FSC_ASSERT(stream);
 	if(stream->position >= stream->size) {
 		if(stream->size) stream->data[stream->size-1] = 0;
 		stream->overflowed = 1;
 		return; }
+	if(!string) string = "<null>";
 	while(*string) {
 		if(stream->position >= stream->size-1) {
 			stream->overflowed = 1;
@@ -78,6 +82,8 @@ void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
 
 int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length) {
 	// Returns 1 on error, 0 on success.
+	FSC_ASSERT(stream);
+	FSC_ASSERT(output);
 	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
 	fsc_memcpy(output, stream->data + stream->position, length);
 	stream->position += length;
@@ -103,8 +109,9 @@ int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length
 #define STACK_BUCKET_DATA_SIZE (STACK_BUCKET_SIZE - sizeof(fsc_stack_bucket_t))
 
 static void stack_add_bucket(fsc_stack_t *stack) {
-	// Assumes we are not hitting STACK_MAX_BUCKETS
 	stack->buckets_position++;
+	FSC_ASSERT(stack->buckets_position >= 0);
+	FSC_ASSERT(stack->buckets_position < STACK_MAX_BUCKETS);
 
 	// Resize the bucket array if necessary
 	if(stack->buckets_position >= stack->buckets_size) {
@@ -132,28 +139,21 @@ void fsc_stack_initialize(fsc_stack_t *stack) {
 	stack->buckets = (fsc_stack_bucket_t **)fsc_malloc(stack->buckets_size * sizeof(fsc_stack_bucket_t *));
 	stack_add_bucket(stack); }
 
-int fsc_stack_validate(const fsc_stack_t *stack, const fsc_stackptr_t pointer) {
-	// Runs some checks on whether the stack pointer is valid
-	// Returns 1 if valid, 0 if not valid
-	int bucket;
-	int offset;
-	if(!pointer) return 0;
+void *fsc_stack_retrieve(const fsc_stack_t *stack, const fsc_stackptr_t pointer, int allow_null,
+			const char *caller, const char *expression) {
+	// Converts stackptr for a given stack to actual pointer
+	if(pointer) {
+		int bucket = pointer >> STACK_BUCKET_POSITION_BITS;
+		unsigned int offset = pointer & ((1 << STACK_BUCKET_POSITION_BITS) - 1);
 
-	bucket = pointer >> STACK_BUCKET_POSITION_BITS;
-	if(bucket > stack->buckets_position) return 0;
+		if(bucket < 0 || bucket > stack->buckets_position || offset < sizeof(fsc_stack_bucket_t) ||
+				offset - sizeof(fsc_stack_bucket_t) >= stack->buckets[bucket]->position) {
+			fsc_fatal_error_tagged("stackptr out of range", caller, expression); }
 
-	// Offset is relative to the fsc_stack_bucket_t itself, not the data component at the end of the fsc_stack_bucket_t
-	offset = pointer & ((1 << STACK_BUCKET_POSITION_BITS) - 1);
-	if(offset < sizeof(fsc_stack_bucket_t)) return 0;
-	if(offset - sizeof(fsc_stack_bucket_t) >= stack->buckets[bucket]->position) return 0;
-	return 1; }
-
-void *fsc_stack_retrieve(const fsc_stack_t *stack, const fsc_stackptr_t pointer) {
-	// Returns 0 on error
-	if(!pointer) return 0;
-	if(!fsc_stack_validate(stack, pointer)) return 0;
-	return (void *)((char *)stack->buckets[pointer >> STACK_BUCKET_POSITION_BITS]
-			+ (pointer & ((1 << STACK_BUCKET_POSITION_BITS) - 1))); }
+		return (void *)((char *)stack->buckets[bucket] + offset); }
+	else {
+		if(!allow_null) fsc_fatal_error_tagged("unexpected null stackptr", caller, expression);
+		return 0; } }
 
 fsc_stackptr_t fsc_stack_allocate(fsc_stack_t *stack, unsigned int size) {
 	// Returns 0 on error
@@ -161,11 +161,9 @@ fsc_stackptr_t fsc_stack_allocate(fsc_stack_t *stack, unsigned int size) {
 	unsigned int aligned_position = (bucket->position + 3) & ~3;
 	char *output;
 
-	if(size >= STACK_BUCKET_DATA_SIZE) return 0;
-
 	// Add a new bucket if we are out of space
+	FSC_ASSERT(size < STACK_BUCKET_DATA_SIZE);
 	if(size > STACK_BUCKET_DATA_SIZE - aligned_position) {
-		if(stack->buckets_size >= STACK_MAX_BUCKETS) return 0;
 		stack_add_bucket(stack);
 		bucket = stack->buckets[stack->buckets_position];
 		aligned_position = (bucket->position + 3) & ~3; }
@@ -254,12 +252,12 @@ void fsc_hashtable_open(fsc_hashtable_t *ht, unsigned int hash, fsc_hashtable_it
 
 fsc_stackptr_t fsc_hashtable_next(fsc_hashtable_iterator_t *iterator) {
 	fsc_stackptr_t current = *iterator->next_ptr;
-	if(current) iterator->next_ptr = &(((fsc_hashtable_entry_t *)fsc_stack_retrieve(iterator->stack, current))->next);
+	if(current) iterator->next_ptr = &(((fsc_hashtable_entry_t *)FSC_STACK_RETRIEVE(iterator->stack, current, 0))->next);
 	return current; }
 
 void fsc_hashtable_insert(fsc_stackptr_t entry_ptr, unsigned int hash, fsc_hashtable_t *ht) {
 	// entry_ptr must be castable to fsc_hashtable_entry_t.
-	fsc_hashtable_entry_t *entry = (fsc_hashtable_entry_t *)fsc_stack_retrieve(ht->stack, entry_ptr);
+	fsc_hashtable_entry_t *entry = (fsc_hashtable_entry_t *)FSC_STACK_RETRIEVE(ht->stack, entry_ptr, 0);
 	fsc_stackptr_t *bucket = &ht->buckets[hash % ht->bucket_count];
 	entry->next = *bucket;
 	*bucket = entry_ptr;
@@ -307,14 +305,14 @@ fsc_stackptr_t fsc_string_repository_getentry(const char *input, int allocate, f
 	// Get entry
 	fsc_hashtable_open(string_repository, hash, &hti);
 	while((sre_ptr = fsc_hashtable_next(&hti))) {
-		sre = (stringrepository_entry_t *)STACKPTRL(sre_ptr);
+		sre = (stringrepository_entry_t *)STACKPTR_LCL(sre_ptr);
 		if(!fsc_strcmp((char *)sre + sizeof(*sre), input)) break; }
 
 	if(!sre_ptr && allocate) {
 		// Allocate new entry
 		int length = fsc_strlen(input) + 1;		// Include null terminator
 		sre_ptr = fsc_stack_allocate(stack, sizeof(stringrepository_entry_t) + length);
-		sre = (stringrepository_entry_t *)STACKPTRL(sre_ptr);
+		sre = (stringrepository_entry_t *)STACKPTR_LCL(sre_ptr);
 		fsc_memcpy((char *)sre + sizeof(*sre), input, length);
 		fsc_hashtable_insert(sre_ptr, hash, string_repository); }
 
@@ -425,9 +423,27 @@ void fsc_report_error(fsc_errorhandler_t *errorhandler, int id, const char *msg,
 	if(!errorhandler) return;
 	errorhandler->handler(id, msg, current_element, errorhandler->context); }
 
-void fsc_initialize_errorhandler(fsc_errorhandler_t *errorhandler,
-		void (*handler)(int id, const char *msg, void *current_element, void *context), void *context) {
-	errorhandler->handler = handler;
-	errorhandler->context = context; }
+static void (*fsc_registered_fatal_error_handler)(const char *msg) = 0;
+
+void fsc_register_fatal_error_handler(void (*handler)(const char *msg)) {
+	// Registers a handler function to call in the event fsc_fatal_error is invoked.
+	fsc_registered_fatal_error_handler = handler; }
+
+void fsc_fatal_error(const char *msg) {
+	// Calls fatal error handler if registered. If not registered, or it returns, aborts the program.
+	if(fsc_registered_fatal_error_handler) fsc_registered_fatal_error_handler(msg);
+	fsc_error_abort(msg); }
+
+void fsc_fatal_error_tagged(const char *msg, const char *caller, const char *expression) {
+	// Calls fatal error handler with calling function and expression logging parameters
+	char buffer[1024];
+	fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
+	fsc_stream_append_string(&stream, msg);
+	fsc_stream_append_string(&stream, " - function(");
+	fsc_stream_append_string(&stream, caller);
+	fsc_stream_append_string(&stream, ") expression(");
+	fsc_stream_append_string(&stream, expression);
+	fsc_stream_append_string(&stream, ")");
+	fsc_fatal_error(buffer); }
 
 #endif	// NEW_FILESYSTEM

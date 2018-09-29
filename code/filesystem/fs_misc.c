@@ -30,13 +30,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 void fs_hashtable_initialize(fs_hashtable_t *hashtable, int bucket_count) {
 	// Valid for an uninitialized hash table
+	FSC_ASSERT(hashtable);
+	FSC_ASSERT(bucket_count > 0);
 	hashtable->bucket_count = bucket_count;
 	hashtable->buckets = (fs_hashtable_entry_t **)Z_Malloc(sizeof(fs_hashtable_entry_t *) * bucket_count);
 	hashtable->element_count = 0; }
 
 void fs_hashtable_insert(fs_hashtable_t *hashtable, fs_hashtable_entry_t *entry, unsigned int hash) {
 	// Valid for an initialized hash table
-	int index = hash % hashtable->bucket_count;
+	int index;
+	FSC_ASSERT(hashtable);
+	FSC_ASSERT(hashtable->bucket_count > 0);
+	FSC_ASSERT(entry);
+	index = hash % hashtable->bucket_count;
 	entry->next = hashtable->buckets[index];
 	hashtable->buckets[index] = entry;
 	++hashtable->element_count; }
@@ -44,6 +50,7 @@ void fs_hashtable_insert(fs_hashtable_t *hashtable, fs_hashtable_entry_t *entry,
 fs_hashtable_iterator_t fs_hashtable_iterate(fs_hashtable_t *hashtable, unsigned int hash, qboolean iterate_all) {
 	// Valid for an initialized or uninitialized (zeroed) hashtable
 	fs_hashtable_iterator_t iterator;
+	FSC_ASSERT(hashtable);
 	iterator.ht = hashtable;
 	if(!hashtable->bucket_count || iterate_all) {
 		iterator.current_bucket = 0;
@@ -71,12 +78,14 @@ static void fs_hashtable_free_entries(fs_hashtable_t *hashtable, void (*free_ent
 
 void fs_hashtable_free(fs_hashtable_t *hashtable, void (*free_entry)(fs_hashtable_entry_t *entry)) {
 	// Valid for an initialized or uninitialized (zeroed) hashtable
+	FSC_ASSERT(hashtable);
 	fs_hashtable_free_entries(hashtable, free_entry);
 	if(hashtable->buckets) Z_Free(hashtable->buckets);
 	Com_Memset(hashtable, 0, sizeof(*hashtable)); }
 
 void fs_hashtable_reset(fs_hashtable_t *hashtable, void (*free_entry)(fs_hashtable_entry_t *entry)) {
 	// Valid for an initialized hash table
+	FSC_ASSERT(hashtable);
 	fs_hashtable_free_entries(hashtable, free_entry);
 	Com_Memset(hashtable->buckets, 0, sizeof(*hashtable->buckets) * hashtable->bucket_count);
 	hashtable->element_count = 0; }
@@ -86,17 +95,22 @@ void fs_hashtable_reset(fs_hashtable_t *hashtable, void (*free_entry)(fs_hashtab
 /* ******************************************************************************** */
 
 void pk3_list_initialize(pk3_list_t *pk3_list, unsigned int bucket_count) {
+	FSC_ASSERT(pk3_list);
 	fs_hashtable_initialize(&pk3_list->ht, bucket_count); }
 
 void pk3_list_insert(pk3_list_t *pk3_list, unsigned int hash) {
-	pk3_list_entry_t *new_entry = (pk3_list_entry_t *)S_Malloc(sizeof(pk3_list_entry_t));
+	pk3_list_entry_t *new_entry;
+	FSC_ASSERT(pk3_list);
+	new_entry = (pk3_list_entry_t *)S_Malloc(sizeof(pk3_list_entry_t));
 	fs_hashtable_insert(&pk3_list->ht, &new_entry->hte, hash);
 	new_entry->hash = hash;
 	new_entry->position = pk3_list->ht.element_count; }
 
 int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash, qboolean reverse) {
-	fs_hashtable_iterator_t it = fs_hashtable_iterate((fs_hashtable_t *)&pk3_list->ht, hash, qfalse);
+	fs_hashtable_iterator_t it;
 	pk3_list_entry_t *entry;
+	FSC_ASSERT(pk3_list);
+	it = fs_hashtable_iterate((fs_hashtable_t *)&pk3_list->ht, hash, qfalse);
 	while((entry = (pk3_list_entry_t *)fs_hashtable_next(&it))) {
 		if(entry->hash == hash) {
 			if(reverse) return pk3_list->ht.element_count - entry->position + 1;
@@ -104,6 +118,7 @@ int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash, qboolean reve
 	return 0; }
 
 void pk3_list_free(pk3_list_t *pk3_list) {
+	FSC_ASSERT(pk3_list);
 	fs_hashtable_free(&pk3_list->ht, 0); }
 
 /* ******************************************************************************** */
@@ -130,6 +145,7 @@ int default_pk3_position(unsigned int hash) {
 	return 0; }
 
 fs_modtype_t fs_get_mod_type(const char *mod_dir) {
+	FSC_ASSERT(mod_dir);
 	if(*current_mod_dir && !Q_stricmp(mod_dir, current_mod_dir)) return MODTYPE_CURRENT_MOD;
 	else if(!Q_stricmp(mod_dir, "basemod")) return MODTYPE_OVERRIDE_DIRECTORY;
 	else if(!Q_stricmp(mod_dir, com_basegame->string)) return MODTYPE_BASE;
@@ -140,7 +156,9 @@ fs_modtype_t fs_get_mod_type(const char *mod_dir) {
 /* ******************************************************************************** */
 
 const char *fs_file_extension(const fsc_file_t *file) {
-	return (const char *)STACKPTR(file->qp_ext_ptr); }
+	// Returns null for no extension
+	FSC_ASSERT(file);
+	return (const char *)STACKPTRN(file->qp_ext_ptr); }
 
 qboolean fs_files_from_same_pk3(const fsc_file_t *file1, const fsc_file_t *file2) {
 	// Returns qtrue if both files are located in the same pk3, qfalse otherwise
@@ -150,7 +168,9 @@ qboolean fs_files_from_same_pk3(const fsc_file_t *file1, const fsc_file_t *file2
 	return qtrue; }
 
 int fs_get_source_dir_id(const fsc_file_t *file) {
-	const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
+	const fsc_file_direct_t *base_file;
+	FSC_ASSERT(file);
+	base_file = fsc_get_base_file(file, &fs);
 	if(base_file) return base_file->source_dir_id;
 	return -1; }
 
@@ -161,6 +181,7 @@ const char *fs_get_source_dir_string(const fsc_file_t *file) {
 
 void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
+	FSC_ASSERT(file && stream);
 	if(include_source_dir) {
 		fsc_stream_append_string(stream, fs_get_source_dir_string(file));
 		fsc_stream_append_string(stream, "/"); }
@@ -174,11 +195,13 @@ void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean in
 void fs_file_to_buffer(const fsc_file_t *file, char *buffer, unsigned int buffer_size, qboolean include_source_dir,
 			qboolean include_mod, qboolean include_pk3_origin, qboolean include_size) {
 	fsc_stream_t stream = {buffer, 0, buffer_size};
+	FSC_ASSERT(file && buffer);
 	fs_file_to_stream(file, &stream, include_source_dir, include_mod, include_pk3_origin, include_size); }
 
 void fs_print_file_location(const fsc_file_t *file) {
 	char name_buffer[FS_FILE_BUFFER_SIZE];
 	char source_buffer[FS_FILE_BUFFER_SIZE];
+	FSC_ASSERT(file);
 	fs_file_to_buffer(file, name_buffer, sizeof(name_buffer), qfalse, qfalse, qfalse, qfalse);
 	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 		fs_file_to_buffer((const fsc_file_t *)fsc_get_base_file(file, &fs), source_buffer, sizeof(source_buffer),
@@ -217,6 +240,7 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 
 int fs_file_disabled(const fsc_file_t *file, int checks) {
 	// Returns value of one of the triggering checks if file is disabled, null otherwise
+	FSC_ASSERT(file);
 
 	// File index disabled check
 	if((checks & FD_CHECK_FILE_ENABLED) && !fsc_is_file_enabled(file, &fs)) return FD_CHECK_FILE_ENABLED;
@@ -392,6 +416,7 @@ void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)
 	const void *dll_path;
 	char *dll_path_string;
 	void *dll_handle;
+	FSC_ASSERT(dll_file);
 
 	// Print the info message
 	fs_file_to_buffer(dll_file, dll_info_string, sizeof(dll_info_string), qtrue, qtrue, qtrue, qfalse);
@@ -554,12 +579,12 @@ static qboolean check_default_cfg_pk3(const char *mod, const char *filename, uns
 	fsc_file_t *file;
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash("default", 0), &hti);
-	while((file = (fsc_file_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((file = (fsc_file_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 		const fsc_file_direct_t *source_pk3;
 		if(fs_file_disabled(file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 		if(file->sourcetype != FSC_SOURCETYPE_PK3) continue;
 		if(Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), "default")) continue;
-		if(Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "cfg")) continue;
+		if(!file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "cfg")) continue;
 		if(file->qp_dir_ptr) continue;
 
 		source_pk3 = fsc_get_base_file(file, &fs);
@@ -582,11 +607,11 @@ static default_pak_state_t get_pak_state(const char *mod, const char *filename, 
 	const fsc_file_direct_t *file;
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash(filename, 0), &hti);
-	while((file = (const fsc_file_direct_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), filename)) continue;
-		if(Q_stricmp((const char *)STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
+		if(!file->f.qp_ext_ptr || Q_stricmp((const char *)STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
 		if(file->f.qp_dir_ptr) continue;
 		if(mod && Q_stricmp(fsc_get_mod_dir((fsc_file_t *)file, &fs), mod)) continue;
 		if(file->pk3_hash == hash) {
@@ -595,7 +620,7 @@ static default_pak_state_t get_pak_state(const char *mod, const char *filename, 
 		name_match = file; }
 
 	fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
-	while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 		file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
 		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 		if((file->pk3_hash == hash)) {

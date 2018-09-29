@@ -72,7 +72,7 @@ static file_list_sort_key_t *generate_sort_key(const fsc_file_t *file, fsc_stack
 
 	fs_generate_core_sort_key(file, &stream, (flw->flags & FL_FLAG_USE_PURE_LIST) ? qtrue : qfalse);
 
-	key = (file_list_sort_key_t *)fsc_stack_retrieve(stack, fsc_stack_allocate(stack, sizeof(*key) + stream.position));
+	key = (file_list_sort_key_t *)FSC_STACK_RETRIEVE(stack, fsc_stack_allocate(stack, sizeof(*key) + stream.position), 0);
 	key->length = stream.position;
 	fsc_memcpy(key->key, stream.data, stream.position);
 	return key; }
@@ -241,7 +241,7 @@ static void temp_file_set_populate(const fsc_directory_t *base, fs_hashtable_t *
 	fsc_file_t *file;
 	fsc_directory_t *directory;
 
-	file = (fsc_file_t *)STACKPTR(base->sub_file);
+	file = (fsc_file_t *)STACKPTRN(base->sub_file);
 	while(file) {
 		if(check_file_enabled(file, flw)) {
 			int directory_depth = DIRECT_NON_PK3DIR(file) ? flw->direct_directory_depth : flw->general_directory_depth;
@@ -286,13 +286,13 @@ static void temp_file_set_populate(const fsc_directory_t *base, fs_hashtable_t *
 				if(check_path_enabled(&string_stream, flw)) {
 					temp_file_set_insert(output, file, string_stream.data, qfalse, &sort_key, flw); } } }
 
-		file = (fsc_file_t *)STACKPTR(file->next_in_directory); }
+		file = (fsc_file_t *)STACKPTRN(file->next_in_directory); }
 
 	// Process subdirectories
-	directory = (fsc_directory_t *)STACKPTR(base->sub_directory);
+	directory = (fsc_directory_t *)STACKPTRN(base->sub_directory);
 	while(directory) {
 		temp_file_set_populate(directory, output, flw);
-		directory = (fsc_directory_t *)STACKPTR(directory->peer_directory); } }
+		directory = (fsc_directory_t *)STACKPTRN(directory->peer_directory); } }
 
 static int temp_file_list_compare_string(const temp_file_set_entry_t *element1, const temp_file_set_entry_t *element2) {
 	char buffer1[FS_FILE_BUFFER_SIZE];
@@ -370,7 +370,7 @@ static fsc_directory_t *get_start_directory(const char *path) {
 static char **list_files(const char *path, int *numfiles_out, filelist_query_t *query) {
 	char path_buffer1[FSC_MAX_QPATH];
 	char path_buffer2[FSC_MAX_QPATH];
-	fsc_directory_t *start_directory;
+	fsc_directory_t *start_directory = 0;
 	fs_hashtable_t temp_file_set;
 	filelist_work_t flw;
 	char **result;
@@ -391,14 +391,15 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 	fs_hashtable_initialize(&temp_file_set, MAX_FOUND_FILES);
 
 	// Determine start directory
-	if(strip_trailing_slash(path, path_buffer1, sizeof(path_buffer1))) {
-		++special_depth; }
-	sanitize_path_separators(path_buffer1, path_buffer2, sizeof(path_buffer2));
-	if(*path_buffer2) {
-		start_directory = get_start_directory(path_buffer2); }
-	else {
-		start_directory = get_start_directory(0);
-		++special_depth; }
+	if(path) {
+		if(strip_trailing_slash(path, path_buffer1, sizeof(path_buffer1))) {
+			++special_depth; }
+		sanitize_path_separators(path_buffer1, path_buffer2, sizeof(path_buffer2));
+		if(*path_buffer2) {
+			start_directory = get_start_directory(path_buffer2); }
+		else {
+			start_directory = get_start_directory(0);
+			++special_depth; } }
 
 	if(start_directory) {
 		// Determine depths
@@ -497,7 +498,7 @@ static void generate_mod_dir_list2(fsc_directory_t *base, mod_dir_list_t *list) 
 	fsc_directory_t *directory;
 	const char *last_mod_dir = 0;
 
-	file = (fsc_file_t *)STACKPTR(base->sub_file);
+	file = (fsc_file_t *)STACKPTRN(base->sub_file);
 	while(file) {
 		if(file->sourcetype == FSC_SOURCETYPE_DIRECT && fsc_is_file_enabled(file, &fs)) {
 			const char *mod_dir = fsc_get_mod_dir(file, &fs);
@@ -505,12 +506,12 @@ static void generate_mod_dir_list2(fsc_directory_t *base, mod_dir_list_t *list) 
 				add_mod_dir_to_list(list, fsc_get_mod_dir(file, &fs));
 				last_mod_dir = mod_dir; } }
 
-		file = (fsc_file_t *)STACKPTR(file->next_in_directory); }
+		file = (fsc_file_t *)STACKPTRN(file->next_in_directory); }
 
-	directory = (fsc_directory_t *)STACKPTR(base->sub_directory);
+	directory = (fsc_directory_t *)STACKPTRN(base->sub_directory);
 	while(directory) {
 		generate_mod_dir_list2(directory, list);
-		directory = (fsc_directory_t *)STACKPTR(directory->peer_directory); } }
+		directory = (fsc_directory_t *)STACKPTRN(directory->peer_directory); } }
 
 static int mod_list_qsort(const void *element1, const void *element2) {
 	return Q_stricmp(*(const char **)element1, *(const char **)element2); }
@@ -561,19 +562,23 @@ static int FS_GetModList(char *listbuf, int bufsize) {
 
 char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
 		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
+	// path, extension, filter, and numfiles_out may be null
 	filelist_query_t query = {extension, filter, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
 	return list_files(path, numfiles_out, &query); }
 
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
+	// path, extension, and numfiles may be null
 	return FS_ListFilteredFiles( path, extension, NULL, numfiles, qfalse ); }
 
 int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize ) {
+	// path and extension may be null
 	int i;
 	int flags = FL_FLAG_USE_PURE_LIST;
 	int nFiles = 0;
 	int nTotal = 0;
 	int nLen;
 	char **pFiles = NULL;
+	FSC_ASSERT(listbuf);
 
 	*listbuf = 0;
 

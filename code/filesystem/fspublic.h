@@ -102,7 +102,8 @@ typedef struct {
 	fs_hashtable_t ht;
 } pk3_list_t;
 
-#define STACKPTR(pointer) ( fsc_stack_retrieve(&fs.general_stack, pointer) )
+#define STACKPTR(pointer) ( FSC_STACK_RETRIEVE(&fs.general_stack, pointer, 0) )		// non-null
+#define STACKPTRN(pointer) ( FSC_STACK_RETRIEVE(&fs.general_stack, pointer, 1) )	// null allowed
 #endif
 
 /* ******************************************************************************** */
