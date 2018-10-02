@@ -157,7 +157,7 @@ static qboolean fs_is_crosshair_enabled(const fsc_file_t *file) {
 	if(fs_connected_server_pure_state() == 1) {
 		// Connected to pure server
 		if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			unsigned int pk3_hash = ((fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3))->pk3_hash;
+			unsigned int pk3_hash = fsc_get_base_file(file, &fs)->pk3_hash;
 			if(pk3_list_lookup(&connected_server_pk3_list, pk3_hash, qfalse)) return qtrue; }
 		return qfalse; }
 
@@ -170,7 +170,7 @@ static void build_crosshair_index(void) {
 	crosshair_count = 0;
 
 	fsc_hashtable_open(&fs.crosshairs, 0, &hti);
-	while((entry = STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((entry = STACKPTRN(fsc_hashtable_next(&hti)))) {
 		fsc_file_t *file = STACKPTR(entry->source_file_ptr);
 		int index;
 		if(!fs_is_crosshair_enabled(file)) continue;
@@ -416,7 +416,7 @@ static void crosshair_debug_files_cmd(void) {
 	fsc_crosshair_t *entry;
 
 	fsc_hashtable_open(&fs.crosshairs, 0, &hti);
-	while((entry = STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((entry = STACKPTRN(fsc_hashtable_next(&hti)))) {
 		char buffer[FS_FILE_BUFFER_SIZE];
 		fs_file_to_buffer(STACKPTR(entry->source_file_ptr), buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
 		Com_Printf("********** crosshair file **********\nhash: %08x\nfile: %s\n", entry->hash, buffer); } }

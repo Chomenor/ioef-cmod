@@ -1200,6 +1200,7 @@ static fileHandle_t open_write_handle_path_gen(const char *mod_dir, const char *
 
 #ifdef CMOD_RESTRICT_CFG_FILES
 fileHandle_t FS_FOpenConfigFileWrite(const char *filename) {
+	FSC_ASSERT(filename);
 	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
 #endif
 
@@ -1327,6 +1328,8 @@ void FS_ForceFlush(fileHandle_t f) {
 void FS_SV_Rename(const char *from, const char *to, qboolean safe) {
 	char source_path[FS_MAX_PATH];
 	char target_path[FS_MAX_PATH];
+	FSC_ASSERT(from);
+	FSC_ASSERT(to);
 
 	if(!fs_generate_path_writedir(from, 0, FS_ALLOW_SLASH, 0, source_path, sizeof(source_path))) return;
 	if(!fs_generate_path_writedir(to, 0, FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE, 0,
