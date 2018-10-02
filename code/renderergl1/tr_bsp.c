@@ -1656,10 +1656,23 @@ static	void R_LoadFogs( lump_t *l, lump_t *brushesLump, lump_t *sidesLump ) {
 		if ( sideNum == -1 ) {
 			out->hasSurface = qfalse;
 		} else {
+#ifdef CMOD_FOGSIDE_FIX
+			int sideOffset = firstSide + sideNum;
+			if ( (unsigned)sideOffset >= sidesCount ) {
+				ri.Printf( PRINT_WARNING, "bad fog side offset %i\n", sideOffset );
+				out->hasSurface = qfalse;
+			} else {
+				out->hasSurface = qtrue;
+				planeNum = LittleLong( sides[ sideOffset ].planeNum );
+				VectorSubtract( vec3_origin, s_worldData.planes[ planeNum ].normal, out->surface );
+				out->surface[3] = -s_worldData.planes[ planeNum ].dist;
+			}
+#else
 			out->hasSurface = qtrue;
 			planeNum = LittleLong( sides[ firstSide + sideNum ].planeNum );
 			VectorSubtract( vec3_origin, s_worldData.planes[ planeNum ].normal, out->surface );
 			out->surface[3] = -s_worldData.planes[ planeNum ].dist;
+#endif
 		}
 
 		out++;
