@@ -109,7 +109,7 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 	fsc_file_t *source_file = (fsc_file_t *)STACKPTR_SRC(source_file_ptr);
 	fsc_stackptr_t export_file_ptr;
 	fsc_file_t *export_file;
-	int file_size;
+	int file_size = 0;
 
 	// Check if the file has already been converted
 	export_file_ptr = file_map_lookup(source_file_ptr, xw);
