@@ -340,7 +340,7 @@ static localCvar_t *cvar_system_register(const char *name, const char *value, in
 	if(cvar->system_flags & CVAR_LATCH) cvar->protected_flags &= ~CVAR_LATCH;
 
 	// If setting CVAR_ROM, wipe other values
-	if(cvar->system_flags & CVAR_ROM) {
+	if(flags & CVAR_ROM) {
 		cvar_clearstring(&cvar->main_value);
 		cvar_clearstring(&cvar->protected_value);
 		cvar_clearstring(&cvar->protected_default); }
