@@ -201,11 +201,11 @@ static int is_file_selected(const fsc_file_t *file, const lookup_query_t *query,
 	int i;
 	if(!fsc_is_file_enabled(file, &fs)) return 0;
 	if(!string_match(query->qp_name, (const char *)STACKPTR(file->qp_name_ptr), case_mismatch_out)) return 0;
-	if(!string_match(query->qp_dir, (const char *)STACKPTR(file->qp_dir_ptr), case_mismatch_out)) return 0;
+	if(!string_match(query->qp_dir, (const char *)STACKPTRN(file->qp_dir_ptr), case_mismatch_out)) return 0;
 
 	if(!query->extension_count) return 1;
 	for(i=0; i<query->extension_count; ++i) {
-		if(string_match(query->qp_exts[i], (const char *)STACKPTR(file->qp_ext_ptr), case_mismatch_out)) {
+		if(string_match(query->qp_exts[i], (const char *)STACKPTRN(file->qp_ext_ptr), case_mismatch_out)) {
 			*extension_index_out = i + 1;
 			return 1; } }
 	return 0; }
@@ -714,6 +714,7 @@ const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean
 	char qpath_buffer[FSC_MAX_QPATH];
 	const char *ext = 0;
 	query_result_t lookup_result;
+	FSC_ASSERT(name);
 
 #ifdef CMOD_CROSSHAIR
 	{	fsc_file_t *crosshair = crosshair_process_lookup(name);
@@ -770,6 +771,8 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolea
 	// Input name should be extension-free (call COM_StripExtension first)
 	// Returns null if shader not found or image took precedence
 	query_result_t lookup_result;
+	FSC_ASSERT(name);
+
 #ifdef CMOD_CROSSHAIR
 	if(crosshair_process_lookup(name)) return 0;
 #endif
@@ -784,6 +787,8 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolea
 const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	query_result_t lookup_result;
+	FSC_ASSERT(name);
+
 #ifdef CMOD_CROSSHAIR
 	{	fsc_file_t *crosshair = crosshair_process_lookup(name);
 		if(crosshair) return crosshair; }
@@ -813,6 +818,7 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 #endif
 	};
 	query_result_t lookup_result;
+	FSC_ASSERT(name);
 
 	// For compatibility purposes, support dropping one leading slash from qpath
 	// as per FS_FOpenFileReadDir in original filesystem
@@ -843,6 +849,7 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 	int query_count = qvm_only ? 1 : 2;
 	char qpath_buffers[2][FSC_MAX_QPATH];
 	query_result_t lookup_result;
+	FSC_ASSERT(name);
 
 	Com_Memset(queries, 0, sizeof(queries));
 	queries[0].lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;
@@ -869,7 +876,7 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 		lookup_print_debug_file(lookup_result.file); }
 
 	// Not elegant but should be adequate
-	if(is_dll_out) *is_dll_out = lookup_result.file &&
+	if(is_dll_out) *is_dll_out = lookup_result.file && lookup_result.file->qp_ext_ptr &&
 			!Q_stricmp((const char *)STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT+1) ? qtrue : qfalse;
 	return lookup_result.file; }
 
@@ -878,6 +885,7 @@ const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboo
 	char qpath_buffer[FSC_MAX_QPATH];
 	const char *ext = 0;
 	query_result_t lookup_result;
+	FSC_ASSERT(name);
 
 	Com_Memset(&query, 0, sizeof(query));
 	query.lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;

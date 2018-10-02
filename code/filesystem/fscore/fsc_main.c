@@ -23,7 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-#define STACKPTR(pointer) ( fsc_stack_retrieve(&fs->general_stack, pointer) )
+#define STACKPTR(pointer) ( FSC_STACK_RETRIEVE(&fs->general_stack, pointer, 0) )	// non-null
+#define STACKPTRN(pointer) ( FSC_STACK_RETRIEVE(&fs->general_stack, pointer, 1) )	// null allowed
 
 /* ******************************************************************************** */
 // Direct Sourcetype Operations
@@ -77,6 +78,7 @@ static const fsc_sourcetype_t *fsc_get_sourcetype(const fsc_file_t *file, const 
 const fsc_file_direct_t *fsc_get_base_file(const fsc_file_t *file, const fsc_filesystem_t *fs) {
 	// Returns the source pk3 if file is from a pk3, the file itself if file is on disk,
 	// and null if the file is from a custom sourcetype
+	FSC_ASSERT(file);
 	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
 		return (const fsc_file_direct_t *)file; }
 	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
@@ -86,19 +88,28 @@ const fsc_file_direct_t *fsc_get_base_file(const fsc_file_t *file, const fsc_fil
 int fsc_extract_file(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Provided buffer should be size file->filesize
 	// Returns 0 on success, 1 on error
+	const fsc_sourcetype_t *sourcetype;
 	if(file->contents_cache) {
 		fsc_memcpy(buffer, STACKPTR(file->contents_cache), file->filesize);
 		return 0; }
-	return fsc_get_sourcetype(file, fs)->extract_data(file, buffer, fs, eh); }
+	sourcetype = fsc_get_sourcetype(file, fs);
+	FSC_ASSERT(sourcetype && sourcetype->extract_data);
+	return sourcetype->extract_data(file, buffer, fs, eh); }
 
 int fsc_is_file_enabled(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return fsc_get_sourcetype(file, fs)->is_file_active(file, fs); }
+	// Returns 1 if file enabled, 0 otherwise
+	const fsc_sourcetype_t *sourcetype = fsc_get_sourcetype(file, fs);
+	FSC_ASSERT(sourcetype && sourcetype->is_file_active);
+	return sourcetype->is_file_active(file, fs); }
 
 const char *fsc_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return fsc_get_sourcetype(file, fs)->get_mod_dir(file, fs); }
-
-int fsc_file_hash(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return fsc_string_hash((const char *)STACKPTR(file->qp_name_ptr), (const char *)STACKPTR(file->qp_dir_ptr)); }
+	// Should not return null; may return empty string to represent omitted/invalid mod directory
+	const fsc_sourcetype_t *sourcetype = fsc_get_sourcetype(file, fs);
+	const char *mod_directory;
+	FSC_ASSERT(sourcetype && sourcetype->get_mod_dir);
+	mod_directory = sourcetype->get_mod_dir(file, fs);
+	FSC_ASSERT(mod_directory);
+	return mod_directory; }
 
 #define FSC_ADD_STRING(string) fsc_stream_append_string(stream, string)
 
@@ -106,7 +117,7 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 			int include_mod, int include_pk3_origin) {
 	if(include_mod) {
 		const char *mod_dir = fsc_get_mod_dir(file, fs);
-		if(!mod_dir) mod_dir = "<no-mod-dir>";
+		if(!*mod_dir) mod_dir = "<no-mod-dir>";
 		FSC_ADD_STRING(mod_dir);
 		FSC_ADD_STRING("/"); }
 
@@ -115,14 +126,7 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 			FSC_ADD_STRING((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr));
 			FSC_ADD_STRING(".pk3dir->"); }
 		else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			const fsc_file_direct_t *pk3_file = fsc_get_base_file(file, fs);
-			if(pk3_file->f.qp_dir_ptr) {
-				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_dir_ptr));
-				FSC_ADD_STRING("/"); }
-			FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_name_ptr));
-			if(pk3_file->f.qp_ext_ptr) {
-				FSC_ADD_STRING(".");
-				FSC_ADD_STRING((const char *)STACKPTR(pk3_file->f.qp_ext_ptr)); }
+			fsc_file_to_stream((const fsc_file_t *)fsc_get_base_file(file, fs), stream, fs, 0, 0);
 			FSC_ADD_STRING("->"); } }
 
 	if(file->qp_dir_ptr) {
@@ -162,9 +166,9 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 	// Called for both files on disk and in pk3s
 	fsc_file_t *file = (fsc_file_t *)STACKPTR(file_ptr);
 	fsc_file_direct_t *base_file = (fsc_file_direct_t *)fsc_get_base_file(file, fs);
-	const char *qp_dir = (const char *)STACKPTR(file->qp_dir_ptr);
+	const char *qp_dir = (const char *)STACKPTRN(file->qp_dir_ptr);
 	const char *qp_name = (const char *)STACKPTR(file->qp_name_ptr);
-	const char *qp_ext = (const char *)STACKPTR(file->qp_ext_ptr);
+	const char *qp_ext = (const char *)STACKPTRN(file->qp_ext_ptr);
 
 	// Register file for main lookup and directory iteration
 	fsc_hashtable_insert(file_ptr, fsc_string_hash(qp_name, qp_dir), &fs->files);

@@ -346,12 +346,11 @@ static void refresh_errorhandler(int id, const char *msg, void *current_element,
 #define NON_PK3_FILES(stats) (stats.total_file_count - stats.pk3_subfile_count - stats.valid_pk3_count)
 
 static void index_directory(const char *directory, int dir_id, qboolean quiet) {
-	fsc_errorhandler_t errorhandler;
+	fsc_errorhandler_t errorhandler = {refresh_errorhandler, 0};
 	fsc_stats_t old_active_stats = fs.active_stats;
 	fsc_stats_t old_total_stats = fs.total_stats;
 	void *os_path = fsc_string_to_os_path(directory);
 
-	fsc_initialize_errorhandler(&errorhandler, refresh_errorhandler, 0);
 	fsc_load_directory(&fs, os_path, dir_id, &errorhandler);
 	fsc_free(os_path);
 
@@ -442,9 +441,14 @@ static void fs_initialize_index(void) {
 	else {
 		fsc_filesystem_initialize(&fs); } }
 
+static void fs_fatal_error_handler(const char *msg) {
+	Com_Error(ERR_FATAL, "filesystem error: %s", msg); }
+
 void fs_startup(void) {
 	// Initial startup, should only be called once
 	Com_Printf("\n----- fs_startup -----\n");
+
+	fsc_register_fatal_error_handler(fs_fatal_error_handler);
 
 #ifdef ELITEFORCE
 	fs_dirs = Cvar_Get("fs_dirs", "*fs_basepath *fs_homepath", CVAR_INIT|CVAR_PROTECTED);

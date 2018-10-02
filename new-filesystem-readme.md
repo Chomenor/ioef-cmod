@@ -1,16 +1,16 @@
-This is an updated file handling system for the ioquake3 project. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with almost all existing maps, mods, and configurations.
+This is an updated file handling system for the ioquake3 project. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with virtually all existing servers and content.
 
 Here are the key features:
 - Improved resource precedence system which significantly reduces conflicts between pk3s
 - Greatly improved load times, especially with lots of pk3s installed
-- Safer downloading options and other security improvements
-- Improved download handling, especially when downloading from poorly configured servers
-- Ability to use resources in mods that aren't loaded, such as missionpack maps and textures when team arena mode isn't active
-- New debugging commands to trace file/shader origins
+- Ability to use missionpack maps and textures when team arena mode isn't active
 - Ability to customize the download and pure lists when hosting servers
+- Safer downloading options and other security improvements
+- New debugging commands to trace file/shader origins
+- Improved recovery from server download errors such as broken HTTP links
 - Fixed server-side pure list overflow issues
 - Semi-pure server support
-- Various other fixes and improvements
+- Many other small fixes and improvements
 
 Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
@@ -28,9 +28,9 @@ There are some changes to the renderer dlls in the new filesystem. If you mix a 
 
 # ID Pak Precedence
 
-In this project, the ID paks, pak0.pk3 - pak8.pk3, automatically take precedence over other paks in baseq3. This is one of the key features that makes this project more stable than the original filesystem, because it prevents pk3s that are only intended to add maps or models from breaking the core game assets.
+To prevent arbitrary pk3s from making unwanted to changes to the game, this filesystem prioritizes the ID paks (pak0.pk3 - pak8.pk3) over other pk3s in baseq3. Most normal maps and models will still work fine in baseq3, but other types of content such as crosshairs, enhanced texture mods, and VMs that work by overriding the ID paks may not work out of baseq3 due to this change.
 
-To allow users to intentionally modify the game, a new directory called "basemod" is supported. Files in this directory will always override files in baseq3, including the ID paks. In general regular maps and models will work fine in baseq3, but things that work by overriding existing game assets, such as crosshairs, enhanced texture mods, and VMs, will need to be moved to basemod to take effect.
+These mods are still supported in this filesystem, but they need to be manually enabled by placing their pk3s in a directory called "basemod" instead of baseq3. This behavior gives the user more control over which pk3s are allowed to modify the game, and reduces the risk of game breakage due to buggy or misplaced pk3s in server downloads or map packs.
 
 # Mod Settings Option
 
@@ -74,11 +74,11 @@ Both cvars support the following settings:
 
 This feature allows clients to load external content (particularly player models) when playing on an otherwise pure server. It retains the stability and compatibility benefits of a pure server, because the pure pk3s are prioritized over other pk3s, but is less restrictive when it comes to allowing content that doesn't exist in any of the pure pk3s.
 
-To enable this feature, set sv_pure to 2 on the server. Since this a client-side feature, it only affects clients using the new filesystem. Clients using the original filesystem will function the same as if sv_pure is 1.
+To enable this feature, set sv_pure to 2 on the server. This will only affects clients using the new filesystem. Clients using the original filesystem will function the same as if sv_pure is 1.
 
 # Cache Mechanisms
 
-This project adds two types of caches to improve load times, an index cache and a memory cache.
+This filesystem adds two types of caches to improve load times, an index cache and a memory cache.
 
 The index cache stores pk3 index data in a file called fscache.dat to reduce the initial game startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.
 

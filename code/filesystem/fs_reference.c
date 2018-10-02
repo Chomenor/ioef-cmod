@@ -71,9 +71,10 @@ void fs_register_reference(const fsc_file_t *file) {
 	if(file->qp_ext_ptr) {
 		int i;
 		static const char *special_extensions[] = {"shader", "txt", "cfg", "config", "bot", "arena", "menu"};
-		const char *extension = (const char *)STACKPTR(file->qp_ext_ptr);
-		for(i=0; i<ARRAY_LEN(special_extensions); ++i) {
-			if(!Q_stricmp(extension, special_extensions[i])) return; } }
+		if(file->qp_ext_ptr) {
+			const char *extension = (const char *)STACKPTR(file->qp_ext_ptr);
+			for(i=0; i<ARRAY_LEN(special_extensions); ++i) {
+				if(!Q_stricmp(extension, special_extensions[i])) return; } } }
 
 	// Don't register reference in certain special cases
 	if(!Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), "qagame") &&
@@ -472,7 +473,7 @@ static void add_paks_by_category(reference_set_work_t *rsw, pakcategory_t catego
 
 	for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
 			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 			if(get_pak_category(pk3) != category) continue;
@@ -525,7 +526,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		fsc_hashtable_iterator_t hti;
 		fsc_pk3_hash_map_entry_t *entry;
 		fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
-		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
 			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
 			if(file->pk3_hash != hash) continue;
@@ -542,7 +543,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		fsc_hashtable_iterator_t hti;
 		const fsc_file_direct_t *file;
 		fsc_hashtable_open(&fs.files, fsc_string_hash(name, 0), &hti);
-		while((file = (const fsc_file_direct_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+		while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 			if(!file->pk3_hash) continue;
 			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;

@@ -85,8 +85,7 @@ static qboolean check_attempted_download(unsigned int hash, qboolean http) {
 	return pk3_list_lookup(target, hash, qfalse) ? qtrue : qfalse; }
 
 void fs_register_current_download_attempt(qboolean http) {
-	if(!current_download) Com_Error(ERR_FATAL,
-			"fs_register_current_download_attempt with null current_download");
+	FSC_ASSERT(current_download);
 	register_attempted_download(current_download->hash, http); }
 
 void fs_clear_attempted_downloads(void) {
@@ -103,7 +102,7 @@ static qboolean entry_match_in_index(download_entry_t *entry, fsc_file_direct_t 
 	fsc_pk3_hash_map_entry_t *hashmap_entry;
 
 	fsc_hashtable_open(&fs.pk3_hash_lookup, entry->hash, &hti);
-	while((hashmap_entry = (fsc_pk3_hash_map_entry_t *)STACKPTR(fsc_hashtable_next(&hti)))) {
+	while((hashmap_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 		fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hashmap_entry->pk3);
 		if(!fsc_is_file_enabled((fsc_file_t *)pk3, &fs)) continue;
 		if(pk3->pk3_hash != entry->hash) continue;
