@@ -40,7 +40,6 @@
 /* ******************************************************************************** */
 
 #define CMOD_BRIGHTNESS_SHIFT
-#define CMOD_GAMMA_SHIFT
 #define CMOD_FULLSCREEN
 #define CMOD_IGNORE_RESIZE_MESSAGES		// Avoids issues with CMOD_FULLSCREEN on some platforms/situations
 #define CMOD_OVERBRIGHT

@@ -347,14 +347,8 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	//
 	// gamma stuff
 	//
-#ifdef CMOD_GAMMASHIFT
-	if ( r_gamma->modified || r_gammaShift->modified ) {
-		r_gamma->modified = qfalse;
-		r_gammaShift->modified = qfalse;
-#else
 	if ( r_gamma->modified ) {
 		r_gamma->modified = qfalse;
-#endif
 
 		R_IssuePendingRenderCommands();
 		R_SetColorMappings();

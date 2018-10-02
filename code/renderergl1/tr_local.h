@@ -1102,11 +1102,11 @@ extern cvar_t	*r_marksOnTriangleMeshes;
 
 #ifdef CMOD_OVERBRIGHT
 extern	cvar_t	*r_overBrightFactor;
-extern	cvar_t	*r_mapOverBrightFactor;
-extern	cvar_t	*r_mapOverBrightFactorShifted;
+extern	cvar_t	*r_mapLightingFactor;
 #endif
 
-#ifdef CMOD_GAMMA_SHIFT
+#ifdef CMOD_BRIGHTNESS_SHIFT
+extern	cvar_t	*r_mapLightingFactorShift;
 extern	cvar_t	*r_gammaShift;
 #endif
 

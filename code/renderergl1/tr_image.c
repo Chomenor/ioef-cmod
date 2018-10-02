@@ -1353,7 +1353,7 @@ void R_SetColorMappings( void ) {
 		ri.Cvar_Set( "r_intensity", "1" );
 	}
 
-#ifdef CMOD_GAMMASHIFT
+#ifdef CMOD_BRIGHTNESS_SHIFT
 	g = r_gamma->value + r_gammaShift->value;
 	if(g < 0.5f) g = 0.5f;
 	else if(g > 3.0f) g = 3.0f;

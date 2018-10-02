@@ -102,9 +102,15 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	int i;
 	float colors[3];
 	float max = 0;
-	float map_overbright_factor = *r_mapOverBrightFactorShifted->string ?
-			r_mapOverBrightFactorShifted->value : r_mapOverBrightFactor->value;
-	float shift = map_overbright_factor / tr.overbrightFactor;
+	float map_lighting_factor = r_mapLightingFactor->value;
+	float shift;
+
+#ifdef CMOD_BRIGHTNESS_SHIFT
+	if(*r_mapLightingFactorShift->string) map_lighting_factor *= r_mapLightingFactorShift->value;
+#endif
+
+	if(map_lighting_factor < 1.0f) map_lighting_factor = 1.0f;
+	shift = map_lighting_factor / tr.overbrightFactor;
 
 	for(i=0; i<3; ++i) {
 		colors[i] = in[i] * shift;
