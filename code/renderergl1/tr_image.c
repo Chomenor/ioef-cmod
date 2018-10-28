@@ -1372,16 +1372,14 @@ void R_SetColorMappings( void ) {
 #endif
 
 	for ( i = 0; i < 256; i++ ) {
+#ifdef CMOD_OVERBRIGHT
+		inf = (g != 1 ? 255 * pow ( i/255.0f, 1.0f / g ) : i) * tr.overbrightFactor + 0.5f;
+#else
 		if ( g == 1 ) {
 			inf = i;
 		} else {
-#ifdef CMOD_OVERBRIGHT
-			inf = 255 * pow ( i/255.0f, 1.0f / g ) * tr.overbrightFactor + 0.5f;
-#else
 			inf = 255 * pow ( i/255.0f, 1.0f / g ) + 0.5f;
-#endif
 		}
-#ifndef CMOD_OVERBRIGHT
 		inf <<= shift;
 #endif
 		if (inf < 0) {
