@@ -184,12 +184,12 @@ void fs_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, qboolean in
 	FSC_ASSERT(file && stream);
 	if(include_source_dir) {
 		fsc_stream_append_string(stream, fs_get_source_dir_string(file));
-		fsc_stream_append_string(stream, "/"); }
+		fsc_stream_append_string(stream, "->"); }
 	fsc_file_to_stream(file, stream, &fs, include_mod, include_pk3_origin);
 
 	if(include_size) {
-		char buffer[20];
-		Com_sprintf(buffer, sizeof(buffer), " (%i)", file->filesize);
+		char buffer[24];
+		Com_sprintf(buffer, sizeof(buffer), " (%i bytes)", file->filesize);
 		fsc_stream_append_string(stream, buffer); } }
 
 void fs_file_to_buffer(const fsc_file_t *file, char *buffer, unsigned int buffer_size, qboolean include_source_dir,
