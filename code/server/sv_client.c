@@ -1157,6 +1157,10 @@ int SV_WriteDownloadToClient(client_t *cl, msg_t *msg)
 		cl->downloadCurrentBlock = cl->downloadClientBlock = cl->downloadXmitBlock = 0;
 		cl->downloadCount = 0;
 		cl->downloadEOF = qfalse;
+#ifdef CMOD_DL_PROTOCOL_FIXES
+		cl->state = CS_CONNECTED;
+		cl->oldServerTime = sv.time;
+#endif
 	}
 
 	// Perform any reads that we need to

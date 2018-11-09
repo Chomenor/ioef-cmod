@@ -464,6 +464,9 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 
 	for (i=0 ; i<sv_maxclients->integer ; i++) {
 		// save when the server started for each client already connected
+#ifdef CMOD_DL_PROTOCOL_FIXES
+		if(!*svs.clients[i].downloadName)
+#endif
 		if (svs.clients[i].state >= CS_CONNECTED) {
 			svs.clients[i].oldServerTime = sv.time;
 		}

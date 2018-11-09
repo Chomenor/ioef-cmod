@@ -29,7 +29,7 @@ void write_download_dummy_snapshot(client_t *client, msg_t *msg) {
 	MSG_WriteByte(msg, svc_snapshot);
 	MSG_WriteLong(msg, client->lastClientCommand);
 
-	if(client->oldServerTime) MSG_WriteLong(msg, sv.time + client->oldServerTime);
+	if(client->oldServerTime) MSG_WriteLong(msg, client->oldServerTime);
 	else MSG_WriteLong(msg, sv.time);
 
 	// Delta frame, snapflags, areabits
