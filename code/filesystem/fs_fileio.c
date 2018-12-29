@@ -48,6 +48,26 @@ static void fs_mkdir_in_range(char *base, char *position, qboolean for_file) {
 			return; }
 		++position; } }
 
+static const char *fs_valid_filename_char_table(void) {
+	// Returns map of characters allowed in filenames for direct disk access, with
+	//   invalid characters converted to underscores
+	// This table affects write operations and certain read operations that use
+	//   fs_generate_path, but not the main file index
+	static char table[256];
+	static int have_table = 0;
+	if(!have_table) {
+		int i;
+		char valid_chars[] = " ~!@#$%^&_-+=()[]{}';,.";
+		for(i=0; i<256; ++i) table[i] = '_';
+		for(i='a'; i<='z'; ++i) table[i] = i;
+		for(i='A'; i<='Z'; ++i) table[i] = i;
+		for(i='0'; i<='9'; ++i) table[i] = i;
+		for(i=0; i<sizeof(valid_chars)-1; ++i) table[((unsigned char *)valid_chars)[i]] = valid_chars[i];
+		table['/'] = '/';
+		table['\\'] = '/';
+		have_table = 1; }
+	return table; }
+
 static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int flags) {
 	// Writes path to stream with sanitization and other operations based on flags
 	// Returns qtrue on success, qfalse on error
@@ -59,7 +79,7 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 
 	else {
 		// Perform sanitize
-		const char *conversion_table = fsc_get_qpath_conversion_table();
+		const char *conversion_table = fs_valid_filename_char_table();
 		const char *index, *start, *end;
 		char sanitized_path[128];
 		int sanitized_path_length = 0;
@@ -86,7 +106,6 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 
 		// Check for possible backwards path
 		if(strstr(sanitized_path, "..")) return qfalse;
-		if(strstr(sanitized_path, "::")) return qfalse;
 
 		// Check for disallowed extensions
 		if(!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".qvm")) return qfalse;

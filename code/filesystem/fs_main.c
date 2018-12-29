@@ -136,20 +136,18 @@ void fs_disconnect_cleanup(void) {
 	if(fs_debug_state->integer) Com_Printf("fs_state: disconnect cleanup\n   > current_map_pk3 cleared"
 		"\n   > connected_server_sv_pure set to 0\n   > connected_server_pk3_list cleared\n"); }
 
-static void convert_mod_dir(const char *source, char *target) {
-	// Sanitizes mod dir, and replaces com_basegame with empty string
+static void generate_current_mod_dir(const char *source, char *target) {
+	// Converts mod dir to format used in current_mod_dir, with com_basegame and basemod
+	//   replaced by empty string
 	// Target should be size FSC_MAX_MODDIR
-	char buffer[FSC_MAX_MODDIR];
-	Q_strncpyz(buffer, source, sizeof(buffer));
-	if(!fs_generate_path(buffer, 0, 0, 0, 0, 0, target, FSC_MAX_MODDIR)) *target = 0;
-	else if(COM_CompareExtension(target, ".app")) *target = 0;	// Don't allow mac app bundles
-	else if(!Q_stricmp(target, "basemod")) *target = 0;
-	else if(!Q_stricmp(target, com_basegame->string)) *target = 0; }
+	fs_sanitize_mod_dir(source, target);
+	if(!Q_stricmp(target, "basemod")) *target = 0;
+	if(!Q_stricmp(target, com_basegame->string)) *target = 0; }
 
 static qboolean matches_current_mod_dir(const char *mod_dir) {
-	char converted_mod_dir[FSC_MAX_MODDIR];
-	convert_mod_dir(mod_dir, converted_mod_dir);
-	return strcmp(current_mod_dir, converted_mod_dir) ? qfalse : qtrue; }
+	char generated_mod_dir[FSC_MAX_MODDIR];
+	generate_current_mod_dir(mod_dir, generated_mod_dir);
+	return strcmp(current_mod_dir, generated_mod_dir) ? qfalse : qtrue; }
 
 #ifndef STANDALONE
 void Com_AppendCDKey( const char *filename );
@@ -161,7 +159,7 @@ void fs_set_mod_dir(const char *value, qboolean move_pid) {
 	Q_strncpyz(old_pid_dir, fs_pid_file_directory(), sizeof(old_pid_dir));
 
 	// Set current_mod_dir
-	convert_mod_dir(value, current_mod_dir);
+	generate_current_mod_dir(value, current_mod_dir);
 
 	// Move pid file to new mod dir if necessary
 	if(move_pid && strcmp(old_pid_dir, fs_pid_file_directory())) {

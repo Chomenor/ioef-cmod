@@ -30,15 +30,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* ******************************************************************************** */
 
 unsigned int fsc_string_hash(const char *input1, const char *input2) {
+	// Only processes alphanumeric characters, so any symbol sanitizing routines don't change hash
 	unsigned int hash = 5381;
 	int c;
 
 	if(input1) while ((c = *(unsigned char *)input1++)) {
 		if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
-		hash = ((hash << 5) + hash) + c; }
+		if((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) hash = ((hash << 5) + hash) + c; }
 	if(input2) while ((c = *(unsigned char *)input2++)) {
 		if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
-		hash = ((hash << 5) + hash) + c; }
+		if((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) hash = ((hash << 5) + hash) + c; }
 
 	return hash; }
 
@@ -354,7 +355,7 @@ const char *fsc_get_qpath_conversion_table(void) {
 	return qpath_conversion_table; }
 
 int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, const char **qp_name, const char **qp_ext) {
-	// Breaks input path into sanitized directory, name, and extension sections.
+	// Breaks input path into directory, name, and extension sections.
 	// Buffer is used to store the separated path data and should be length FSC_MAX_QPATH.
 	// Output qp_dir and qp_ext may be null if no directory or extension is available.
 	// Input qp_ext may be null to disable extension processing.
@@ -363,12 +364,12 @@ int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, cons
 	int i;
 	int period_pos = 0;
 	int slash_pos = 0;
-	const char *conversion_table = fsc_get_qpath_conversion_table();
 
 	// Write buffer; get period_pos and slash_pos
 	for(i=0; i<FSC_MAX_QPATH-1; ++i) {
-		buffer[i] = conversion_table[*(unsigned char *)(input + i)];
+		buffer[i] = input[i];
 		if(!buffer[i]) break;
+		if(buffer[i] == '\\') buffer[i] = '/';
 		if(buffer[i] == '/') {
 			slash_pos = i;
 			period_pos = 0; }

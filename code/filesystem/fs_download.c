@@ -186,7 +186,8 @@ static download_entry_t *create_download_entry(const char *name, unsigned int ha
 	// Generate mod_dir and filename
 	if(!fsc_get_leading_directory(name, temp_mod_dir, sizeof(temp_mod_dir), &temp_filename)) return 0;
 	if(!temp_filename) return 0;
-	if(!fs_generate_path(temp_mod_dir, 0, 0, 0, 0, 0, mod_dir, sizeof(mod_dir))) return 0;
+	fs_sanitize_mod_dir(temp_mod_dir, mod_dir);
+	if(!*mod_dir) return 0;
 	if(!fs_generate_path(temp_filename, 0, 0, 0, 0, 0, filename, sizeof(filename))) return 0;
 
 	// Patch mod dir capitalization

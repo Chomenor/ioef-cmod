@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Definitions
 /* ******************************************************************************** */
 
-#define FSC_CACHE_VERSION 9
+#define FSC_CACHE_VERSION 10
 
 #define FSC_MAX_QPATH 256	// Buffer size including null terminator
 #define FSC_MAX_MODDIR 32	// Buffer size including null terminator
@@ -231,6 +231,9 @@ typedef struct fsc_file_s {
 	fsc_hashtable_entry_t hte;
 
 	// Identification
+	// Note: The character encoding for qpaths is currently not standardized for values outside the ASCII range (val > 127)
+	// It depends on the encoding used by the OS library / pk3 file, which may be UTF-8, CP-1252, or something else
+	// Currently most content just uses ASCII characters
 	fsc_stackptr_t qp_dir_ptr;		// null for no directory
 	fsc_stackptr_t qp_name_ptr;		// should not be null
 	fsc_stackptr_t qp_ext_ptr;		// null for no extension

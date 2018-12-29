@@ -145,10 +145,12 @@ int default_pk3_position(unsigned int hash) {
 	return 0; }
 
 fs_modtype_t fs_get_mod_type(const char *mod_dir) {
-	FSC_ASSERT(mod_dir);
-	if(*current_mod_dir && !Q_stricmp(mod_dir, current_mod_dir)) return MODTYPE_CURRENT_MOD;
-	else if(!Q_stricmp(mod_dir, "basemod")) return MODTYPE_OVERRIDE_DIRECTORY;
-	else if(!Q_stricmp(mod_dir, com_basegame->string)) return MODTYPE_BASE;
+	if(mod_dir) {
+		char sanitized_mod_dir[FSC_MAX_MODDIR];
+		fs_sanitize_mod_dir(mod_dir, sanitized_mod_dir);
+		if(*sanitized_mod_dir && !Q_stricmp(sanitized_mod_dir, current_mod_dir)) return MODTYPE_CURRENT_MOD;
+		else if(!Q_stricmp(sanitized_mod_dir, "basemod")) return MODTYPE_OVERRIDE_DIRECTORY;
+		else if(!Q_stricmp(sanitized_mod_dir, com_basegame->string)) return MODTYPE_BASE; }
 	return MODTYPE_INACTIVE; }
 
 /* ******************************************************************************** */
@@ -530,6 +532,19 @@ qboolean FS_idPak(const char *pak, const char *base, int numPaks)
 	}
 	return qfalse;
 }
+
+void fs_sanitize_mod_dir(const char *source, char *target) {
+	// Sanitizes mod dir string. If mod dir is invalid it will be replaced with empty string.
+	// Target should be size FSC_MAX_MODDIR
+	char buffer[FSC_MAX_MODDIR];
+
+	// Copy to buffer before calling fs_generate_path, to allow overly long mod names to be truncated
+	//   instead of the normal fs_generate_path behavior of generating an empty string on overflow
+	Q_strncpyz(buffer, source, sizeof(buffer));
+	if(!fs_generate_path(buffer, 0, 0, 0, 0, 0, target, FSC_MAX_MODDIR)) *target = 0;
+
+	// Don't allow mac app bundles
+	else if(COM_CompareExtension(target, ".app")) *target = 0; }
 
 /* ******************************************************************************** */
 // VM Hash Verification
