@@ -56,6 +56,15 @@ unsigned int fsc_fs_size_estimate(fsc_filesystem_t *fs) {
 // Data Stream
 /* ******************************************************************************** */
 
+int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length) {
+	// Returns 1 on error, 0 on success.
+	FSC_ASSERT(stream);
+	FSC_ASSERT(output);
+	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
+	fsc_memcpy(output, stream->data + stream->position, length);
+	stream->position += length;
+	return 0; }
+
 int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length) {
 	// Returns 1 on error, 0 on success.
 	FSC_ASSERT(stream);
@@ -88,15 +97,6 @@ void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
 	// If stream runs out of space, output is truncated.
 	// Stream data will always be null terminated.
 	fsc_stream_append_string_substituted(stream, string, 0); }
-
-int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length) {
-	// Returns 1 on error, 0 on success.
-	FSC_ASSERT(stream);
-	FSC_ASSERT(output);
-	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
-	fsc_memcpy(output, stream->data + stream->position, length);
-	stream->position += length;
-	return 0; }
 
 /* ******************************************************************************** */
 // Standard Stack
