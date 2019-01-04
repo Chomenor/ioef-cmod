@@ -393,27 +393,26 @@ int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, cons
 
 	return i; }
 
-int fsc_get_leading_directory(const char *input, char *buffer, int buffer_length, const char **remainder) {
-	// Writes leading directory (text before first slash) to buffer
+unsigned int fsc_get_leading_directory(const char *input, char *buffer, unsigned int buffer_length, const char **remainder) {
+	// Writes leading directory (text before first slash) to buffer, truncating on overflow
 	// Writes pointer to remaining (post-slash) string to remainder, or null if not found
-	// Returns number of chars written to output (NOT including null terminator)
-	int i;
-	int slash_pos = 0;
-	const char *conversion_table = fsc_get_qpath_conversion_table();
+	// Returns total number of chars in leading directory, without truncation, not counting null terminator.
+	// If (return value >= buffer_length) output was truncated.
+	unsigned int i;
+	unsigned int chars_written;
 
-	// Write buffer; get slash_pos
-	for(i=0; i<buffer_length-1; ++i) {
-		buffer[i] = conversion_table[*(unsigned char *)(input + i)];
-		if(!buffer[i]) break;
-		if(buffer[i] == '/') {
-			slash_pos = i;
-			break; } }
-	buffer[i] = 0;
+	// Start with null remainder
+	if(remainder) *remainder = 0;
 
-	if(remainder) {
-		if(slash_pos) *remainder = (char *)(input + slash_pos + 1);
-		else *remainder = 0; }
+	// Write buffer and remainder (if slash encountered)
+	for(i=0; input[i]; ++i) {
+		if(input[i] == '/' || input[i] == '\\') {
+			if(remainder) *remainder = (char *)(input + i + 1);
+			break; }
+		if(i < buffer_length) buffer[i] = input[i]; }
 
+	chars_written = i < buffer_length ? i : buffer_length - 1;
+	buffer[chars_written] = 0;
 	return i; }
 
 /* ******************************************************************************** */

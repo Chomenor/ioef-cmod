@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Definitions
 /* ******************************************************************************** */
 
-#define FSC_CACHE_VERSION 10
+#define FSC_CACHE_VERSION 11
 
 #define FSC_MAX_QPATH 256	// Buffer size including null terminator
 #define FSC_MAX_MODDIR 32	// Buffer size including null terminator
@@ -128,7 +128,7 @@ fsc_stackptr_t fsc_string_repository_getstring(const char *input, int allocate, 
 
 const char *fsc_get_qpath_conversion_table(void);
 int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, const char **qp_name, const char **qp_ext);
-int fsc_get_leading_directory(const char *input, char *output, int buffer_length, const char **remainder);
+unsigned int fsc_get_leading_directory(const char *input, char *buffer, unsigned int buffer_length, const char **remainder);
 
 // ***** Error Handling *****
 
