@@ -53,6 +53,7 @@ typedef struct {
 } fsc_stream_t;
 
 int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length);
+void fsc_stream_append_string_substituted(fsc_stream_t *stream, const char *string, const char *substitution_table);
 void fsc_stream_append_string(fsc_stream_t *stream, const char *string);
 int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length);
 

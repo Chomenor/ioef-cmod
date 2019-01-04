@@ -65,21 +65,29 @@ int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length)
 	stream->position += length;
 	return 0; }
 
-void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
+void fsc_stream_append_string_substituted(fsc_stream_t *stream, const char *string, const char *substitution_table) {
+	// Writes string to stream using character substitution table.
 	// If stream runs out of space, output is truncated.
 	// Stream data will always be null terminated.
 	FSC_ASSERT(stream);
-	if(stream->position >= stream->size) {
-		if(stream->size) stream->data[stream->size-1] = 0;
-		stream->overflowed = 1;
-		return; }
+	FSC_ASSERT(stream->size > 0);
 	if(!string) string = "<null>";
 	while(*string) {
 		if(stream->position >= stream->size-1) {
 			stream->overflowed = 1;
 			break; }
-		stream->data[stream->position++] = *(string++); }
+		if(substitution_table) {
+			stream->data[stream->position++] = substitution_table[*(unsigned char *)(string++)]; }
+		else {
+			stream->data[stream->position++] = *(string++); } }
+	if(stream->position >= stream->size) stream->position = stream->size - 1;
 	stream->data[stream->position] = 0; }
+
+void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
+	// Writes string to stream.
+	// If stream runs out of space, output is truncated.
+	// Stream data will always be null terminated.
+	fsc_stream_append_string_substituted(stream, string, 0); }
 
 int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length) {
 	// Returns 1 on error, 0 on success.
