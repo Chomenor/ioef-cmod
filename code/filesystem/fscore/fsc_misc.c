@@ -372,6 +372,10 @@ int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, cons
 	int i;
 	int period_pos = 0;
 	int slash_pos = 0;
+	FSC_ASSERT(input);
+	FSC_ASSERT(buffer);
+	FSC_ASSERT(qp_dir);
+	FSC_ASSERT(qp_name);
 
 	// Write buffer; get period_pos and slash_pos
 	for(i=0; i<FSC_MAX_QPATH-1; ++i) {
@@ -408,6 +412,9 @@ unsigned int fsc_get_leading_directory(const char *input, char *buffer, unsigned
 	// If (return value >= buffer_length) output was truncated.
 	unsigned int i;
 	unsigned int chars_written;
+	FSC_ASSERT(input);
+	FSC_ASSERT(buffer);
+	FSC_ASSERT(buffer_length > 0);
 
 	// Start with null remainder
 	if(remainder) *remainder = 0;
