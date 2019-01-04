@@ -206,7 +206,7 @@ DEF_PUBLIC( int	FS_GetFileList(  const char *path, const char *extension, char *
 #define FS_NO_SANITIZE 1
 #define FS_CREATE_DIRECTORIES 2
 #define FS_CREATE_DIRECTORIES_FOR_FILE 4
-#define FS_ALLOW_SLASH 8
+#define FS_ALLOW_DIRECTORIES 8
 #define FS_ALLOW_PK3 16
 #define FS_ALLOW_DLL 32
 #define FS_ALLOW_SPECIAL_CFG 64

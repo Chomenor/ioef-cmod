@@ -541,10 +541,7 @@ void fs_sanitize_mod_dir(const char *source, char *target) {
 	// Copy to buffer before calling fs_generate_path, to allow overly long mod names to be truncated
 	//   instead of the normal fs_generate_path behavior of generating an empty string on overflow
 	Q_strncpyz(buffer, source, sizeof(buffer));
-	if(!fs_generate_path(buffer, 0, 0, 0, 0, 0, target, FSC_MAX_MODDIR)) *target = 0;
-
-	// Don't allow mac app bundles
-	else if(COM_CompareExtension(target, ".app")) *target = 0; }
+	if(!fs_generate_path(buffer, 0, 0, 0, 0, 0, target, FSC_MAX_MODDIR)) *target = 0; }
 
 /* ******************************************************************************** */
 // VM Hash Verification
