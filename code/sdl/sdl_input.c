@@ -362,6 +362,9 @@ static void IN_ActivateMouse( qboolean isFullscreen )
 
 	if( !mouseActive )
 	{
+#ifdef CMOD_MOUSE_WARPING_OPTION
+		SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, in_mouse_warping->integer ? "1" : "0");
+#endif
 		SDL_SetRelativeMouseMode( SDL_TRUE );
 		SDL_SetWindowGrab( SDL_window, SDL_TRUE );
 

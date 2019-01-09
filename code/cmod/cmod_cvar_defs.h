@@ -35,6 +35,10 @@ CVAR_DEF(cmod_font_scaling, "0.5", CVAR_ARCHIVE)
 CVAR_DEF(cmod_console_mode, "1", CVAR_ARCHIVE)
 #endif
 
+#ifdef CMOD_MOUSE_WARPING_OPTION
+CVAR_DEF(in_mouse_warping, "0", CVAR_ARCHIVE);
+#endif
+
 #ifdef CMOD_MAP_SCRIPT
 CVAR_DEF(map_script, "startmap", CVAR_NORESTART)
 #endif
