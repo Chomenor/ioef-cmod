@@ -111,6 +111,22 @@ const char *fsc_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) 
 	FSC_ASSERT(mod_directory);
 	return mod_directory; }
 
+char *fsc_extract_file_allocated(fsc_filesystem_t *fs, fsc_file_t *file, fsc_errorhandler_t *eh) {
+	// Returns data on success, 0 on failure
+	// Caller is responsible for calling fsc_free on extracted data
+	char *data;
+	if(file->filesize + 1 < file->filesize) return 0;
+	data = (char *)fsc_malloc(file->filesize + 1);
+	if(fsc_extract_file(file, data, fs, eh)) {
+		fsc_free(data);
+		return 0; }
+	data[file->filesize] = 0;
+	return data; }
+
+/* ******************************************************************************** */
+// File to printable string functions
+/* ******************************************************************************** */
+
 #define FSC_ADD_STRING(string) fsc_stream_append_string(stream, string)
 
 void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
@@ -136,18 +152,6 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 	if(file->qp_ext_ptr) {
 		FSC_ADD_STRING(".");
 		FSC_ADD_STRING((const char *)STACKPTR(file->qp_ext_ptr)); } }
-
-char *fsc_extract_file_allocated(fsc_filesystem_t *fs, fsc_file_t *file, fsc_errorhandler_t *eh) {
-	// Returns data on success, 0 on failure
-	// Caller is responsible for calling fsc_free on extracted data
-	char *data;
-	if(file->filesize + 1 < file->filesize) return 0;
-	data = (char *)fsc_malloc(file->filesize + 1);
-	if(fsc_extract_file(file, data, fs, eh)) {
-		fsc_free(data);
-		return 0; }
-	data[file->filesize] = 0;
-	return data; }
 
 /* ******************************************************************************** */
 // File Indexing

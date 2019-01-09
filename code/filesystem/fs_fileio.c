@@ -48,6 +48,75 @@ static void fs_mkdir_in_range(char *base, char *position, qboolean for_file) {
 			return; }
 		++position; } }
 
+static const char *fs_valid_filename_char_table(void) {
+	// Returns map of characters allowed in filenames for direct disk access, with
+	//   invalid characters converted to underscores
+	// This table affects write operations and certain read operations that use
+	//   fs_generate_path, but not the main file index
+	static char table[256];
+	static int have_table = 0;
+	if(!have_table) {
+		int i;
+		char valid_chars[] = " ~!@#$%^&_-+=()[]{}';,.";
+		for(i=0; i<256; ++i) table[i] = '_';
+		for(i='a'; i<='z'; ++i) table[i] = i;
+		for(i='A'; i<='Z'; ++i) table[i] = i;
+		for(i='0'; i<='9'; ++i) table[i] = i;
+		for(i=0; i<sizeof(valid_chars)-1; ++i) table[((unsigned char *)valid_chars)[i]] = valid_chars[i];
+		have_table = 1; }
+	return table; }
+
+#define MAX_SUBPATH_LENGTH 128		// Max length of each subpath in fs_generate_path (does not affect FS_NO_SANITIZE subpaths)
+
+static qboolean fs_generate_path_element(fsc_stream_t *stream, const char *name, int flags) {
+	// Sanitize name of single file or directory and write to stream
+	// Returns qtrue on success, qfalse on error
+	int i;
+	char sanitized_path[MAX_SUBPATH_LENGTH];
+	int path_length;
+	fsc_stream_t path_stream = {sanitized_path, 0, sizeof(sanitized_path), 0};
+
+	// Perform character filtering
+	fsc_stream_append_string_substituted(&path_stream, name, fs_valid_filename_char_table());
+	path_length = fsc_strlen(sanitized_path);	// Should equal path_stream.position, but recalculate to be safe
+	if(!path_length) return qfalse;
+
+	// Replace non-alphanumeric characters at beginning or end of string with underscores
+	// Exploits against OS-specific filename processing behavior often rely on symbols at beginning or end of filename
+	#define IS_ALPHANUMERIC(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9'))
+	for(i=0; i<path_length; ++i) {
+		if(IS_ALPHANUMERIC(sanitized_path[i])) break;
+		sanitized_path[i] = '_'; }
+	for(i=path_length-1; i>=0; --i) {
+		if(IS_ALPHANUMERIC(sanitized_path[i])) break;
+		sanitized_path[i] = '_'; }
+
+	// Check for possible backwards path
+	if(strstr(sanitized_path, "..")) return qfalse;
+
+	// Check for disallowed extensions
+	if(path_length >= 4 && !Q_stricmp(sanitized_path + path_length - 4, ".qvm")) return qfalse;
+	if(path_length >= 4 && !Q_stricmp(sanitized_path + path_length - 4, ".exe")) return qfalse;
+	if(path_length >= 4 && !Q_stricmp(sanitized_path + path_length - 4, ".app")) return qfalse;
+	if(!(flags & FS_ALLOW_PK3) && path_length >= 4 &&
+			!Q_stricmp(sanitized_path + path_length - 4, ".pk3")) return qfalse;
+	if(!(flags & FS_ALLOW_DLL)) {
+		if(Sys_DllExtension(sanitized_path)) return qfalse;
+		// Do some extra checks to be safe
+		if(path_length >= 4 && !Q_stricmp(sanitized_path + path_length - 4, ".dll")) return qfalse;
+		if(path_length >= 3 && !Q_stricmp(sanitized_path + path_length - 3, ".so")) return qfalse;
+		if(path_length >= 6 && !Q_stricmp(sanitized_path + path_length - 6, ".dylib")) return qfalse; }
+	if(!(flags & FS_ALLOW_SPECIAL_CFG) && (!Q_stricmp(sanitized_path, Q3CONFIG_CFG) ||
+			!Q_stricmp(sanitized_path, "autoexec.cfg"))) return qfalse;
+#ifdef CMOD_RESTRICT_CFG_FILES
+	if(!(flags & (FS_ALLOW_CFG|FS_ALLOW_SPECIAL_CFG)) && path_length >= 4 &&
+			!Q_stricmp(sanitized_path + path_length - 4, ".cfg")) return qfalse;
+#endif
+
+	// Write out the string
+	fsc_stream_append_string(stream, sanitized_path);
+	return qtrue; }
+
 static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int flags) {
 	// Writes path to stream with sanitization and other operations based on flags
 	// Returns qtrue on success, qfalse on error
@@ -57,59 +126,19 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 		// If sanitize disabled, just write out the string
 		fsc_stream_append_string(stream, path); }
 
+	else if(flags & FS_ALLOW_DIRECTORIES) {
+		// Write each section of the path separated by slashes
+		char name[MAX_SUBPATH_LENGTH];
+		const char *path_ptr = path;
+		if(fsc_strlen(path) >= MAX_SUBPATH_LENGTH) return qfalse;
+		while(path_ptr) {
+			fsc_get_leading_directory(path_ptr, name, sizeof(name), &path_ptr);
+			if(!fs_generate_path_element(stream, name, flags)) return qfalse;
+			if(path_ptr) fsc_stream_append_string(stream, "/"); } }
+
 	else {
-		// Perform sanitize
-		const char *conversion_table = fsc_get_qpath_conversion_table();
-		const char *index, *start, *end;
-		char sanitized_path[128];
-		int sanitized_path_length = 0;
-
-		// Determine the range of alphanumeric characters
-		index = path;
-		start = end = 0;
-		while(*index) {
-			char current = conversion_table[*(unsigned char *)index];
-			if((current >= '0' && current <= '9') || (current >= 'a' && current <= 'z') ||
-					(current >= 'A' && current <= 'Z')) {
-				if(!start) start = index;
-				end = index; }
-			++index; }
-		if(!start) return qfalse;
-
-		// Generate sanitized path
-		for(index=start; index<=end; ++index) {
-			char current = conversion_table[*(unsigned char *)index];
-			if(current == '/' && !(flags & FS_ALLOW_SLASH)) current = '_';
-			if(sanitized_path_length >= sizeof(sanitized_path)-1) continue;
-			sanitized_path[sanitized_path_length++] = current; }
-		sanitized_path[sanitized_path_length] = 0;
-
-		// Check for possible backwards path
-		if(strstr(sanitized_path, "..")) return qfalse;
-		if(strstr(sanitized_path, "::")) return qfalse;
-
-		// Check for disallowed extensions
-		if(!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".qvm")) return qfalse;
-		if(!(flags & FS_ALLOW_PK3) && sanitized_path_length >= 4 &&
-				!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".pk3")) return qfalse;
-		if(!(flags & FS_ALLOW_DLL)) {
-			if(Sys_DllExtension(sanitized_path)) return qfalse;
-			// Do some extra checks to be sure
-			if(sanitized_path_length >= 4 &&
-					!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".dll")) return qfalse;
-			if(sanitized_path_length >= 3 &&
-					!Q_stricmp(sanitized_path + sanitized_path_length - 3, ".so")) return qfalse;
-			if(sanitized_path_length >= 6 &&
-					!Q_stricmp(sanitized_path + sanitized_path_length - 6, ".dylib")) return qfalse; }
-		if(!(flags & FS_ALLOW_SPECIAL_CFG) && (!Q_stricmp(sanitized_path, Q3CONFIG_CFG) ||
-				!Q_stricmp(sanitized_path, "autoexec.cfg"))) return qfalse;
-#ifdef CMOD_RESTRICT_CFG_FILES
-		if(!(flags & (FS_ALLOW_CFG|FS_ALLOW_SPECIAL_CFG)) && sanitized_path_length >= 4 &&
-				!Q_stricmp(sanitized_path + sanitized_path_length - 4, ".cfg")) return qfalse;
-#endif
-
-		// Write out the string
-		fsc_stream_append_string(stream, sanitized_path); }
+		// Write single path element
+		if(!fs_generate_path_element(stream, path, flags)) return qfalse; }
 
 	// Create directories for path
 	if(flags & FS_CREATE_DIRECTORIES_FOR_FILE) {
@@ -124,37 +153,45 @@ unsigned int fs_generate_path(const char *path1, const char *path2, const char *
 		char *target, unsigned int target_size) {
 	// Concatenates paths, adding '/' character as seperator, with sanitization
 	//    and directory creation based on flags
-	// Returns output length on success, 0 on error (overflow or sanitize fail)
+	// Returns output length on success, 0 on error (overflow or sanitize error)
 	fsc_stream_t stream = {target, 0, target_size, 0};
 	FSC_ASSERT(target);
 
 	if(path1) {
-		if(!fs_generate_subpath(&stream, path1, path1_flags)) return 0; }
+		if(!fs_generate_subpath(&stream, path1, path1_flags)) goto error; }
 
 	if(path2) {
 		if(path1) fsc_stream_append_string(&stream, "/");
-		if(!fs_generate_subpath(&stream, path2, path2_flags)) return 0; }
+		if(!fs_generate_subpath(&stream, path2, path2_flags)) goto error; }
 
 	if(path3) {
 		if(path1 || path2) fsc_stream_append_string(&stream, "/");
-		if(!fs_generate_subpath(&stream, path3, path3_flags)) return 0; }
+		if(!fs_generate_subpath(&stream, path3, path3_flags)) goto error; }
 
-	if(!stream.position || stream.overflowed) {
-		*target = 0;
-		return 0; }
-	return stream.position; }
+	if(!stream.position || stream.overflowed) goto error;
+	return stream.position;
+
+	error:
+	*target = 0;
+	return 0; }
 
 unsigned int fs_generate_path_sourcedir(int source_dir_id, const char *path1, const char *path2,
 		int path1_flags, int path2_flags, char *target, unsigned int target_size) {
 	// Generates path prefixed by source directory
-	if(!fs_sourcedirs[source_dir_id].active) return 0;
+	FSC_ASSERT(target);
+	if(!fs_sourcedirs[source_dir_id].active) {
+		*target = 0;
+		return 0; }
 	return fs_generate_path(fs_sourcedirs[source_dir_id].path, path1, path2, FS_NO_SANITIZE,
 				path1_flags, path2_flags, target, target_size); }
 
 unsigned int fs_generate_path_writedir(const char *path1, const char *path2, int path1_flags, int path2_flags,
 		char *target, unsigned int target_size) {
 	// Generates path prefixed by write directory
-	if(fs_read_only) return 0;
+	FSC_ASSERT(target);
+	if(fs_read_only) {
+		*target = 0;
+		return 0; }
 	return fs_generate_path_sourcedir(0, path1, path2, path1_flags, path2_flags, target, target_size); }
 
 /* ******************************************************************************** */
@@ -187,7 +224,7 @@ void fs_delete_file(const char *path) {
 
 void FS_HomeRemove( const char *homePath ) {
 	char path[FS_MAX_PATH];
-	if(!fs_generate_path_writedir(FS_GetCurrentGameDir(), homePath, 0, FS_ALLOW_SLASH,
+	if(!fs_generate_path_writedir(FS_GetCurrentGameDir(), homePath, 0, FS_ALLOW_DIRECTORIES,
 				path, sizeof(path))) {
 		Com_Printf("WARNING: FS_HomeRemove on %s failed due to invalid path\n", homePath);
 		return; }
@@ -203,7 +240,7 @@ qboolean FS_FileInPathExists(const char *testpath) {
 
 qboolean FS_FileExists(const char *file) {
 	char path[FS_MAX_PATH];
-	if(!fs_generate_path_sourcedir(0, FS_GetCurrentGameDir(), file, 0, FS_ALLOW_SLASH,
+	if(!fs_generate_path_sourcedir(0, FS_GetCurrentGameDir(), file, 0, FS_ALLOW_DIRECTORIES,
 			path, sizeof(path))) return qfalse;
 	return FS_FileInPathExists(path); }
 
@@ -928,7 +965,7 @@ fileHandle_t FS_FCreateOpenPipeFile(const char *filename) {
 	fs_pipe_handle_t *handle_entry;
 
 	if(fs_generate_path_writedir(FS_GetCurrentGameDir(), filename,
-			0, FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE, path, sizeof(path))) {
+			0, FS_ALLOW_DIRECTORIES|FS_CREATE_DIRECTORIES_FOR_FILE, path, sizeof(path))) {
 		fifo = Sys_Mkfifo(path); }
 
 	if(!fifo) {
@@ -1180,7 +1217,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	FSC_ASSERT(filename);
 
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
-		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_SLASH, 0, path, sizeof(path))) {
+		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_DIRECTORIES, 0, path, sizeof(path))) {
 			*fp = fs_cache_read_handle_open(0, path, &size);
 			if(*fp) break; } }
 
@@ -1194,7 +1231,7 @@ static fileHandle_t open_write_handle_path_gen(const char *mod_dir, const char *
 	char full_path[FS_MAX_PATH];
 
 	if(!fs_generate_path_writedir(mod_dir, path, FS_CREATE_DIRECTORIES,
-			FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE|flags, full_path, sizeof(full_path))) return 0;
+			FS_ALLOW_DIRECTORIES|FS_CREATE_DIRECTORIES_FOR_FILE|flags, full_path, sizeof(full_path))) return 0;
 
 	return fs_write_handle_open(full_path, append, sync); }
 
@@ -1248,7 +1285,7 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 				// Try to read directly from disk first, because some mods do weird things involving
 				// files that were just written/currently open that don't work with cache handles
 				char path[FS_MAX_PATH];
-				if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_SLASH,
+				if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_DIRECTORIES,
 						path, sizeof(path))) {
 					handle = fs_direct_read_handle_open(0, path, (unsigned int *)&size); } }
 
@@ -1331,8 +1368,8 @@ void FS_SV_Rename(const char *from, const char *to, qboolean safe) {
 	FSC_ASSERT(from);
 	FSC_ASSERT(to);
 
-	if(!fs_generate_path_writedir(from, 0, FS_ALLOW_SLASH, 0, source_path, sizeof(source_path))) return;
-	if(!fs_generate_path_writedir(to, 0, FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE, 0,
+	if(!fs_generate_path_writedir(from, 0, FS_ALLOW_DIRECTORIES, 0, source_path, sizeof(source_path))) return;
+	if(!fs_generate_path_writedir(to, 0, FS_ALLOW_DIRECTORIES|FS_CREATE_DIRECTORIES_FOR_FILE, 0,
 			target_path, sizeof(target_path))) return;
 	fs_rename_file(source_path, target_path); }
 #endif

@@ -30,15 +30,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* ******************************************************************************** */
 
 unsigned int fsc_string_hash(const char *input1, const char *input2) {
+	// Only processes alphanumeric characters, so any symbol sanitizing routines don't change hash
 	unsigned int hash = 5381;
 	int c;
 
 	if(input1) while ((c = *(unsigned char *)input1++)) {
 		if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
-		hash = ((hash << 5) + hash) + c; }
+		if((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) hash = ((hash << 5) + hash) + c; }
 	if(input2) while ((c = *(unsigned char *)input2++)) {
 		if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
-		hash = ((hash << 5) + hash) + c; }
+		if((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) hash = ((hash << 5) + hash) + c; }
 
 	return hash; }
 
@@ -55,6 +56,15 @@ unsigned int fsc_fs_size_estimate(fsc_filesystem_t *fs) {
 // Data Stream
 /* ******************************************************************************** */
 
+int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length) {
+	// Returns 1 on error, 0 on success.
+	FSC_ASSERT(stream);
+	FSC_ASSERT(output);
+	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
+	fsc_memcpy(output, stream->data + stream->position, length);
+	stream->position += length;
+	return 0; }
+
 int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length) {
 	// Returns 1 on error, 0 on success.
 	FSC_ASSERT(stream);
@@ -64,30 +74,29 @@ int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length)
 	stream->position += length;
 	return 0; }
 
-void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
+void fsc_stream_append_string_substituted(fsc_stream_t *stream, const char *string, const char *substitution_table) {
+	// Writes string to stream using character substitution table.
 	// If stream runs out of space, output is truncated.
 	// Stream data will always be null terminated.
 	FSC_ASSERT(stream);
-	if(stream->position >= stream->size) {
-		if(stream->size) stream->data[stream->size-1] = 0;
-		stream->overflowed = 1;
-		return; }
+	FSC_ASSERT(stream->size > 0);
 	if(!string) string = "<null>";
 	while(*string) {
 		if(stream->position >= stream->size-1) {
 			stream->overflowed = 1;
 			break; }
-		stream->data[stream->position++] = *(string++); }
+		if(substitution_table) {
+			stream->data[stream->position++] = substitution_table[*(unsigned char *)(string++)]; }
+		else {
+			stream->data[stream->position++] = *(string++); } }
+	if(stream->position >= stream->size) stream->position = stream->size - 1;
 	stream->data[stream->position] = 0; }
 
-int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length) {
-	// Returns 1 on error, 0 on success.
-	FSC_ASSERT(stream);
-	FSC_ASSERT(output);
-	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
-	fsc_memcpy(output, stream->data + stream->position, length);
-	stream->position += length;
-	return 0; }
+void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
+	// Writes string to stream.
+	// If stream runs out of space, output is truncated.
+	// Stream data will always be null terminated.
+	fsc_stream_append_string_substituted(stream, string, 0); }
 
 /* ******************************************************************************** */
 // Standard Stack
@@ -354,7 +363,7 @@ const char *fsc_get_qpath_conversion_table(void) {
 	return qpath_conversion_table; }
 
 int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, const char **qp_name, const char **qp_ext) {
-	// Breaks input path into sanitized directory, name, and extension sections.
+	// Breaks input path into directory, name, and extension sections.
 	// Buffer is used to store the separated path data and should be length FSC_MAX_QPATH.
 	// Output qp_dir and qp_ext may be null if no directory or extension is available.
 	// Input qp_ext may be null to disable extension processing.
@@ -363,12 +372,16 @@ int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, cons
 	int i;
 	int period_pos = 0;
 	int slash_pos = 0;
-	const char *conversion_table = fsc_get_qpath_conversion_table();
+	FSC_ASSERT(input);
+	FSC_ASSERT(buffer);
+	FSC_ASSERT(qp_dir);
+	FSC_ASSERT(qp_name);
 
 	// Write buffer; get period_pos and slash_pos
 	for(i=0; i<FSC_MAX_QPATH-1; ++i) {
-		buffer[i] = conversion_table[*(unsigned char *)(input + i)];
+		buffer[i] = input[i];
 		if(!buffer[i]) break;
+		if(buffer[i] == '\\') buffer[i] = '/';
 		if(buffer[i] == '/') {
 			slash_pos = i;
 			period_pos = 0; }
@@ -392,27 +405,29 @@ int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, cons
 
 	return i; }
 
-int fsc_get_leading_directory(const char *input, char *buffer, int buffer_length, const char **remainder) {
-	// Writes leading directory (text before first slash) to buffer
+unsigned int fsc_get_leading_directory(const char *input, char *buffer, unsigned int buffer_length, const char **remainder) {
+	// Writes leading directory (text before first slash) to buffer, truncating on overflow
 	// Writes pointer to remaining (post-slash) string to remainder, or null if not found
-	// Returns number of chars written to output (NOT including null terminator)
-	int i;
-	int slash_pos = 0;
-	const char *conversion_table = fsc_get_qpath_conversion_table();
+	// Returns total number of chars in leading directory, without truncation, not counting null terminator.
+	// If (return value >= buffer_length) output was truncated.
+	unsigned int i;
+	unsigned int chars_written;
+	FSC_ASSERT(input);
+	FSC_ASSERT(buffer);
+	FSC_ASSERT(buffer_length > 0);
 
-	// Write buffer; get slash_pos
-	for(i=0; i<buffer_length-1; ++i) {
-		buffer[i] = conversion_table[*(unsigned char *)(input + i)];
-		if(!buffer[i]) break;
-		if(buffer[i] == '/') {
-			slash_pos = i;
-			break; } }
-	buffer[i] = 0;
+	// Start with null remainder
+	if(remainder) *remainder = 0;
 
-	if(remainder) {
-		if(slash_pos) *remainder = (char *)(input + slash_pos + 1);
-		else *remainder = 0; }
+	// Write buffer and remainder (if slash encountered)
+	for(i=0; input[i]; ++i) {
+		if(input[i] == '/' || input[i] == '\\') {
+			if(remainder) *remainder = (char *)(input + i + 1);
+			break; }
+		if(i < buffer_length) buffer[i] = input[i]; }
 
+	chars_written = i < buffer_length ? i : buffer_length - 1;
+	buffer[chars_written] = 0;
 	return i; }
 
 /* ******************************************************************************** */

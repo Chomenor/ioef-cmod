@@ -188,7 +188,8 @@ static download_entry_t *create_download_entry(const char *name, unsigned int ha
 	// Generate mod_dir and filename
 	if(!fsc_get_leading_directory(name, temp_mod_dir, sizeof(temp_mod_dir), &temp_filename)) return 0;
 	if(!temp_filename) return 0;
-	if(!fs_generate_path(temp_mod_dir, 0, 0, 0, 0, 0, mod_dir, sizeof(mod_dir))) return 0;
+	fs_sanitize_mod_dir(temp_mod_dir, mod_dir);
+	if(!*mod_dir) return 0;
 	if(!fs_generate_path(temp_filename, 0, 0, 0, 0, 0, filename, sizeof(filename))) return 0;
 
 	// Patch mod dir capitalization
@@ -292,7 +293,7 @@ void fs_finalize_download(void) {
 	if(!fs_generate_path_writedir("download.temp", 0, 0, 0, tempfile_path, sizeof(tempfile_path))) {
 		Com_Printf("ERROR: Failed to get tempfile path for download\n");
 		return; }
-	if(!fs_generate_path_writedir(current_download->local_name, 0, FS_ALLOW_PK3|FS_ALLOW_SLASH|FS_CREATE_DIRECTORIES_FOR_FILE,
+	if(!fs_generate_path_writedir(current_download->local_name, 0, FS_ALLOW_PK3|FS_ALLOW_DIRECTORIES|FS_CREATE_DIRECTORIES_FOR_FILE,
 				0, target_path, sizeof(target_path))) {
 		Com_Printf("ERROR: Failed to get target path for download\n");
 		return; }
@@ -318,7 +319,7 @@ void fs_finalize_download(void) {
 				current_download->filename, actual_hash);
 		Com_Printf("WARNING: Downloaded pk3 %s conflicts with existing file. Using name %s instead.\n",
 				current_download->local_name, new_name);
-		if(!fs_generate_path_writedir(new_name, 0, FS_ALLOW_SLASH|FS_ALLOW_PK3, 0, target_path, sizeof(target_path))) {
+		if(!fs_generate_path_writedir(new_name, 0, FS_ALLOW_DIRECTORIES|FS_ALLOW_PK3, 0, target_path, sizeof(target_path))) {
 			Com_Printf("ERROR: Failed to get nonconflicted target path for download\n");
 			return; }
 

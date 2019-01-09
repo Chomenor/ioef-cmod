@@ -154,7 +154,7 @@ static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_
 	if(case_mismatch) resource->flags |= RESFLAG_CASE_MISMATCH;
 	configure_lookup_resource(query, resource); }
 
-static void shader_to_lookup_resource(const lookup_query_t *query, fsc_shader_t *shader,
+static void shader_to_lookup_resource(const lookup_query_t *query, const fsc_shader_t *shader,
 			lookup_resource_t *resource) {
 	fsc_memset(resource, 0, sizeof(*resource));
 	resource->file = (const fsc_file_t *)STACKPTR(shader->source_file_ptr);
@@ -226,31 +226,17 @@ static void perform_file_selection(const lookup_query_t *query, selection_output
 
 /* *** Shader Selection *** */
 
-static int is_shader_selected(fsc_stackptr_t shader_name_ptr, fsc_shader_t *shader) {
-	if(shader->shader_name_ptr != shader_name_ptr) return 0;
-	if(!fsc_is_file_enabled((const fsc_file_t *)STACKPTR(shader->source_file_ptr), &fs)) return 0;
-	return 1; }
-
 static void perform_shader_selection(const lookup_query_t *query, selection_output_t *output) {
 	// Adds shaders matching criteria to output
-	char shader_name_lower[FSC_MAX_SHADER_NAME];
-	fsc_stackptr_t shader_name_ptr;
 	fsc_hashtable_iterator_t hti;
 	fsc_stackptr_t shader_ptr;
-	fsc_shader_t *shader;
-	lookup_resource_t *resource;
 
-	// Get lowercase shader_name. If it's not in string repository, we know shader doesn't exist.
-	fsc_strncpy_lower(shader_name_lower, query->shader_name, sizeof(shader_name_lower));
-	shader_name_ptr = fsc_string_repository_getstring(shader_name_lower, 0, &fs.string_repository, &fs.general_stack);
-	if(!shader_name_ptr) return;
-
-	fsc_hashtable_open(&fs.shaders, fsc_string_hash(shader_name_lower, 0), &hti);
+	fsc_hashtable_open(&fs.shaders, fsc_string_hash(query->shader_name, 0), &hti);
 	while((shader_ptr = fsc_hashtable_next(&hti))) {
-		shader = (fsc_shader_t *)STACKPTR(shader_ptr);
-		if(is_shader_selected(shader_name_ptr, shader)) {
-			resource = allocate_lookup_resource(output);
-			shader_to_lookup_resource(query, shader, resource); } } }
+		const fsc_shader_t *shader = (fsc_shader_t *)STACKPTR(shader_ptr);
+		if(!fsc_is_file_enabled((const fsc_file_t *)STACKPTR(shader->source_file_ptr), &fs)) continue;
+		if(Q_stricmp((const char *)STACKPTR(shader->shader_name_ptr), query->shader_name)) continue;
+		shader_to_lookup_resource(query, shader, allocate_lookup_resource(output)); } }
 
 /* *** Selection Main *** */
 

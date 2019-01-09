@@ -248,31 +248,6 @@ char *fsc_os_path_to_string(const void *os_path) {
 #endif
 		return buffer; } }
 
-static char *fsc_os_path_to_qpath(void *os_path, char *output) {
-	// Output buffer must be size FSC_MAX_QPATH
-	// This converts special chars to underscores, but does not run the qpath
-	// character convestion, so the output qpath is not fully sanitized yet
-	FSC_UCHAR *os_path_typed = (FSC_UCHAR *)os_path;
-	char *outpos = output;
-	char *endpos = output + FSC_MAX_QPATH - 1;
-	FSC_ASSERT(os_path);
-	FSC_ASSERT(output);
-	while(*os_path_typed && outpos < endpos) {
-		if(*os_path_typed > 127) {
-			// Write an underscore to represent special characters, but not on extended bytes
-#ifdef WIN_UNICODE
-			if(!(*os_path_typed >= 0xdc00 && *os_path_typed <= 0xdfff)) *(outpos++) = '_';
-#else
-			if(*os_path_typed >= 192) *(outpos++) = '_';
-#endif
-		}
-
-		else *(outpos++) = (char)*os_path_typed;
-		++os_path_typed; }
-	*outpos = 0;
-
-	return output; }
-
 int fsc_os_path_size(const void *os_path) {
 	// Length in bytes
 	FSC_ASSERT(os_path);
@@ -356,10 +331,11 @@ static void iterate_directory2(iterate_work_t *iw, int junction_allowed) {
 
 			// Add filename to path, to generate complete os_path
 			iw->file_data.os_path = iw->path;
-			iw->file_data.qpath_with_mod_dir = fsc_os_path_to_qpath(iw->path + iw->base_length + 1, iw->qpath_buffer);
+			iw->file_data.qpath_with_mod_dir = fsc_os_path_to_string(iw->path + iw->base_length + 1);
 			iw->file_data.os_timestamp = FindFileData.ftLastWriteTime.dwLowDateTime;
 			iw->file_data.filesize = FindFileData.nFileSizeLow;
-			iw->operation(&iw->file_data, iw->iterate_context); }
+			iw->operation(&iw->file_data, iw->iterate_context);
+			fsc_free(iw->file_data.qpath_with_mod_dir); }
 	} while(FindNextFile(hFind, &FindFileData));
 
 	FindClose(hFind); }
@@ -394,10 +370,11 @@ static void iterate_directory2(iterate_work_t *iw, int junction_allowed) {
 			if(st.st_size > 4294967295u) continue;
 
 			iw->file_data.os_path = iw->path;
-			iw->file_data.qpath_with_mod_dir = fsc_os_path_to_qpath(iw->path + iw->base_length + 1, iw->qpath_buffer);
+			iw->file_data.qpath_with_mod_dir = fsc_os_path_to_string(iw->path + iw->base_length + 1);
 			iw->file_data.os_timestamp = (unsigned int)st.st_mtime;
 			iw->file_data.filesize = (unsigned int)st.st_size;
-			iw->operation(&iw->file_data, iw->iterate_context); } }
+			iw->operation(&iw->file_data, iw->iterate_context);
+			fsc_free(iw->file_data.qpath_with_mod_dir); } }
 
 	closedir(dir); }
 #endif

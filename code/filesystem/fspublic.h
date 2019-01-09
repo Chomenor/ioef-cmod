@@ -223,7 +223,7 @@ DEF_PUBLIC( int	FS_GetFileList(  const char *path, const char *extension, char *
 #define FS_NO_SANITIZE 1
 #define FS_CREATE_DIRECTORIES 2
 #define FS_CREATE_DIRECTORIES_FOR_FILE 4
-#define FS_ALLOW_SLASH 8
+#define FS_ALLOW_DIRECTORIES 8
 #define FS_ALLOW_PK3 16
 #define FS_ALLOW_DLL 32
 #define FS_ALLOW_SPECIAL_CFG 64
@@ -427,6 +427,7 @@ DEF_PUBLIC( void FS_FilenameCompletion( const char *dir, const char *ext,
 DEF_PUBLIC( qboolean FS_FilenameCompare( const char *s1, const char *s2 ) )
 DEF_PUBLIC( void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3))) )
 DEF_LOCAL( qboolean FS_idPak(const char *pak, const char *base, int numPaks) )
+DEF_LOCAL( void fs_sanitize_mod_dir(const char *source, char *target) )
 
 // QVM Hash Verification
 DEF_LOCAL( qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output) )
