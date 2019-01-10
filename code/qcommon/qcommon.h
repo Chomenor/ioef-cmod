@@ -560,6 +560,7 @@ modules of the program.
 */
 
 #ifdef CMOD_CVAR_HANDLING
+void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t mode, qboolean init, qboolean verbose);
 void cvar_end_session(void);
 qboolean cvar_command(cmd_mode_t mode);
 void cvar_vstr(cmd_mode_t mode);

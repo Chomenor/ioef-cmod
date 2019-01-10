@@ -363,9 +363,11 @@ static void SV_MapRestart_f( void ) {
 			Com_Printf( "SV_MapRestart_f(%d): dropped client %i - denied!\n", delay, i );
 			continue;
 		}
+
 #ifdef CMOD_DL_PROTOCOL_FIXES
 		if(*client->downloadName) continue;
 #endif
+
 		if(client->state == CS_ACTIVE)
 			SV_ClientEnterWorld(client, &client->lastUsercmd);
 		else

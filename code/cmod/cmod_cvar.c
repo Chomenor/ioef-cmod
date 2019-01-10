@@ -363,7 +363,7 @@ static localCvar_t *cvar_system_register(const char *name, const char *value, in
 	cvar_finalize(cvar, qtrue);
 	return cvar; }
 
-void cvar_system_set(const char *name, const char *value) {
+static void cvar_system_set(const char *name, const char *value) {
 	localCvar_t *cvar = get_cvar(name, qtrue);
 	if(!cvar) return;
 
@@ -375,7 +375,7 @@ void cvar_system_set(const char *name, const char *value) {
 
 	cvar_finalize(cvar, qtrue); }
 
-static void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t mode, qboolean init, qboolean verbose) {
+void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t mode, qboolean init, qboolean verbose) {
 	localCvar_t *cvar = get_cvar(name, qtrue);
 	if(!cvar) return;
 
@@ -1050,7 +1050,6 @@ session*
 
 special_cvar_t specials[] = {
 	// Special cvars and defaults
-	{"in_mouse", "-1", CVARTYPE_NONE, 0},
 	{"ui_cdkeychecked", "-1", CVARTYPE_NONE, 0},
 	{"cl_motd", "0", CVARTYPE_NONE, 0},
 #ifdef USE_RENDERER_DLOPEN
