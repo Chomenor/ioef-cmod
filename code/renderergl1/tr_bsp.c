@@ -116,8 +116,11 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		colors[i] = in[i] * shift;
 		if(colors[i] > max) max = colors[i]; }
 
-	if(max > 255.0) for(i=0; i<3; ++i) {
-		colors[i] *= (255.0 / max); }
+	if(max > 255.0f) for(i=0; i<3; ++i) {
+		colors[i] *= (255.0f / max); }
+
+	if(r_mapLightingGamma->value != 1.0f) {
+		for(i=0; i<3; ++i) colors[i] = 255.0 * pow(colors[i]/255.0f, 1.0f/r_mapLightingGamma->value); }
 
 	for(i=0; i<3; ++i) {
 		int color = colors[i];
