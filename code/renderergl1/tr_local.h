@@ -1106,6 +1106,10 @@ extern	cvar_t	*r_mapLightingFactor;
 extern	cvar_t	*r_mapLightingGamma;
 #endif
 
+#ifdef CMOD_TEXTURE_GAMMA
+extern	cvar_t	*r_textureGamma;
+#endif
+
 #ifdef CMOD_BRIGHTNESS_SHIFT
 extern	cvar_t	*r_mapLightingFactorShift;
 extern	cvar_t	*r_gammaShift;

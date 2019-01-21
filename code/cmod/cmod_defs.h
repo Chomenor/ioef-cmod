@@ -43,6 +43,7 @@
 #define CMOD_FULLSCREEN
 #define CMOD_IGNORE_RESIZE_MESSAGES		// Avoids issues with CMOD_FULLSCREEN on some platforms/situations
 #define CMOD_OVERBRIGHT
+#define CMOD_TEXTURE_GAMMA
 #define CMOD_FRAMEBUFFER	// Requires CMOD_OVERBRIGHT
 #define CMOD_LOADINGSCREEN_FIX
 #define CMOD_LIGHTMAPSTAGE_FIX

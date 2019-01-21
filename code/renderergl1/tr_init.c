@@ -177,6 +177,10 @@ cvar_t	*r_mapLightingFactor;
 cvar_t	*r_mapLightingGamma;
 #endif
 
+#ifdef CMOD_TEXTURE_GAMMA
+cvar_t	*r_textureGamma;
+#endif
+
 #ifdef CMOD_BRIGHTNESS_SHIFT
 cvar_t	*r_mapLightingFactorShift;
 cvar_t	*r_gammaShift;
@@ -1204,6 +1208,10 @@ void R_Register( void )
 	r_overBrightFactor = ri.Cvar_Get("r_overBrightFactor", "1.5", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingFactor = ri.Cvar_Get("r_mapLightingFactor", "2", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingGamma = ri.Cvar_Get("r_mapLightingGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
+#endif
+
+#ifdef CMOD_TEXTURE_GAMMA
+	r_textureGamma = ri.Cvar_Get("r_textureGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
 #endif
 
 #ifdef CMOD_BRIGHTNESS_SHIFT
