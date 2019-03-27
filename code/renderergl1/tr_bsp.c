@@ -97,35 +97,56 @@ R_ColorShiftLightingBytes
 
 ===============
 */
-static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+static void intensity_limit_scaled(double *colors, double limit) {
+	// Scale back color components so no component exceeds limit
 	int i;
-	float colors[3];
-	float max = 0;
-	float map_lighting_factor = r_mapLightingFactor->value;
-	float shift;
+	double highest = 0.0;
 
+	for(i=0; i<3; ++i) {
+		if(colors[i] > highest) highest = colors[i]; }
+
+	if(highest > limit) for(i=0; i<3; ++i) {
+		colors[i] *= (limit / highest); } }
+#endif
+static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+	int i;
+	double colors[3];
+	double map_lighting_factor = r_mapLightingFactor->value;
 #ifdef CMOD_BRIGHTNESS_SHIFT
 	if(*r_mapLightingFactorShift->string) map_lighting_factor *= r_mapLightingFactorShift->value;
 #endif
-
-	if(map_lighting_factor < 1.0f) map_lighting_factor = 1.0f;
-	shift = map_lighting_factor / tr.overbrightFactor;
+	if(map_lighting_factor < 1.0) map_lighting_factor = 1.0;
+	double map_lighting_factor_overbright_scaled = map_lighting_factor / tr.overbrightFactor;
 
 	for(i=0; i<3; ++i) {
-		colors[i] = in[i] * shift;
-		if(colors[i] > max) max = colors[i]; }
+		colors[i] = in[i] * map_lighting_factor_overbright_scaled; }
+	intensity_limit_scaled(colors, 255.0);
 
-	if(max > 255.0f) for(i=0; i<3; ++i) {
-		colors[i] *= (255.0f / max); }
+	if(r_mapLightingGamma->value != 1.0) {
+		double component_factor = r_mapLightingGammaComponent->value;
+		double blended_intensity_base = sqrt(colors[0]*colors[0] + colors[1]*colors[1] + colors[2]*colors[2]);
+		double blended_intensity_shifted = 255.0 * pow(blended_intensity_base/255.0, 1.0/r_mapLightingGamma->value);
+		double blended_intensity_modifier = blended_intensity_shifted / blended_intensity_base;
 
-	if(r_mapLightingGamma->value != 1.0f) {
-		for(i=0; i<3; ++i) colors[i] = 255.0 * pow(colors[i]/255.0f, 1.0f/r_mapLightingGamma->value); }
+		for(i=0; i<3; ++i) {
+			double component_value = 255.0 * pow(colors[i]/255.0, 1.0/r_mapLightingGamma->value);
+			double blended_value = colors[i] * blended_intensity_modifier;
+			colors[i] = component_value * component_factor + blended_value * (1.0 - component_factor); } }
+	intensity_limit_scaled(colors, 255.0);
+
+	int min_clamp = (int)(r_mapLightingClampMin->value * 255.0);
+	int max_clamp = (int)(r_mapLightingClampMax->value * 255.0);
+	if(min_clamp < 0) min_clamp = 0;
+	if(min_clamp > 255) min_clamp = 255;
+	if(max_clamp < min_clamp) max_clamp = min_clamp;
+	if(max_clamp > 255) max_clamp = 255;
 
 	for(i=0; i<3; ++i) {
 		int color = colors[i];
-		if(color < 0) color = 0;
-		if(color > 255) color = 255;
+		if(color < min_clamp) color = min_clamp;
+		if(color > max_clamp) color = max_clamp;
 		out[i] = color; }
 #else
 	int		shift, r, g, b;

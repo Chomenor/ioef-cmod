@@ -938,7 +938,7 @@ typedef struct {
 
 	float					identityLight;		// 1.0 / ( 1 << overbrightBits )
 	int						identityLightByte;	// identityLight * 255
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	float					overbrightFactor;
 #else
 	int						overbrightBits;		// r_overbrightBits->integer, but set to 0 if no hw gamma
@@ -1085,7 +1085,7 @@ extern	cvar_t	*r_greyscale;
 
 extern	cvar_t	*r_ignoreGLErrors;
 
-#ifndef CMOD_OVERBRIGHT
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 extern	cvar_t	*r_overBrightBits;
 extern	cvar_t	*r_mapOverBrightBits;
 #endif
@@ -1100,10 +1100,13 @@ extern	cvar_t	*r_printShaders;
 
 extern cvar_t	*r_marksOnTriangleMeshes;
 
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 extern	cvar_t	*r_overBrightFactor;
 extern	cvar_t	*r_mapLightingFactor;
 extern	cvar_t	*r_mapLightingGamma;
+extern	cvar_t	*r_mapLightingGammaComponent;
+extern	cvar_t	*r_mapLightingClampMin;
+extern	cvar_t	*r_mapLightingClampMax;
 #endif
 
 #ifdef CMOD_TEXTURE_GAMMA

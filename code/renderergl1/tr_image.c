@@ -1322,12 +1322,12 @@ void R_SetColorMappings( void ) {
 	int		i, j;
 	float	g;
 	int		inf;
-#ifndef CMOD_OVERBRIGHT
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 	int		shift;
 #endif
 
 	// setup the overbright lighting
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	tr.overbrightFactor = r_overBrightFactor->value;
 
 	if(!tr.framebuffer_active && (!glConfig.deviceSupportsGamma || !glConfig.isFullscreen)) {
@@ -1383,12 +1383,12 @@ void R_SetColorMappings( void ) {
 	g = r_gamma->value;
 #endif
 
-#ifndef CMOD_OVERBRIGHT
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 	shift = tr.overbrightBits;
 #endif
 
 	for ( i = 0; i < 256; i++ ) {
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 		inf = (g != 1 ? 255 * pow ( i/255.0f, 1.0f / g ) : i) * tr.overbrightFactor + 0.5f;
 #else
 		if ( g == 1 ) {

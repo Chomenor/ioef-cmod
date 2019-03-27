@@ -171,10 +171,13 @@ int		max_polys;
 cvar_t	*r_maxpolyverts;
 int		max_polyverts;
 
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 cvar_t	*r_overBrightFactor;
 cvar_t	*r_mapLightingFactor;
 cvar_t	*r_mapLightingGamma;
+cvar_t	*r_mapLightingGammaComponent;
+cvar_t	*r_mapLightingClampMin;
+cvar_t	*r_mapLightingClampMax;
 #endif
 
 #ifdef CMOD_TEXTURE_GAMMA
@@ -973,7 +976,7 @@ void GfxInfo_f( void )
 	{
 		ri.Printf( PRINT_ALL, "N/A\n" );
 	}
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 #ifdef CMOD_FRAMEBUFFER
 	if(tr.framebuffer_active) ri.Printf(PRINT_ALL, "GAMMA: framebuffer w/ %g overbright factor\n", tr.overbrightFactor);
 	else
@@ -1079,7 +1082,7 @@ void R_Register( void )
 	r_depthbits = ri.Cvar_Get( "r_depthbits", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	r_ext_multisample = ri.Cvar_Get( "r_ext_multisample", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	ri.Cvar_CheckRange( r_ext_multisample, 0, 4, qtrue );
-#ifndef CMOD_OVERBRIGHT
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 	r_overBrightBits = ri.Cvar_Get ("r_overBrightBits", "1", CVAR_ARCHIVE | CVAR_LATCH );
 #endif
 	r_ignorehwgamma = ri.Cvar_Get( "r_ignorehwgamma", "0", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1104,7 +1107,7 @@ void R_Register( void )
 	r_displayRefresh = ri.Cvar_Get( "r_displayRefresh", "0", CVAR_LATCH );
 	ri.Cvar_CheckRange( r_displayRefresh, 0, 200, qtrue );
 	r_fullbright = ri.Cvar_Get ("r_fullbright", "0", CVAR_LATCH|CVAR_CHEAT );
-#ifndef CMOD_OVERBRIGHT
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 #ifdef ELITEFORCE
 	r_mapOverBrightBits = ri.Cvar_Get ("r_mapOverBrightBits", "1", CVAR_LATCH );
 #else
@@ -1204,10 +1207,13 @@ void R_Register( void )
 	r_maxpolys = ri.Cvar_Get( "r_maxpolys", va("%d", MAX_POLYS), 0);
 	r_maxpolyverts = ri.Cvar_Get( "r_maxpolyverts", va("%d", MAX_POLYVERTS), 0);
 
-#ifdef CMOD_OVERBRIGHT
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	r_overBrightFactor = ri.Cvar_Get("r_overBrightFactor", "1.5", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingFactor = ri.Cvar_Get("r_mapLightingFactor", "2", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingGamma = ri.Cvar_Get("r_mapLightingGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingGammaComponent = ri.Cvar_Get("r_mapLightingGammaComponent", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingClampMin = ri.Cvar_Get("r_mapLightingClampMin", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingClampMax = ri.Cvar_Get("r_mapLightingClampMax", "1", CVAR_ARCHIVE | CVAR_LATCH);
 #endif
 
 #ifdef CMOD_TEXTURE_GAMMA

@@ -1134,6 +1134,9 @@ special_cvar_t specials[] = {
 	{"r_overBrightFactor", "1.5", CVARTYPE_GRAPHICS, 0},
 	{"r_mapLightingFactor", "2", CVARTYPE_GRAPHICS, 0},
 	{"r_mapLightingGamma", "1", CVARTYPE_GRAPHICS, 0},
+	{"r_mapLightingGammaComponent", "1", CVARTYPE_GRAPHICS, 0},
+	{"r_mapLightingClampMin", "0", CVARTYPE_GRAPHICS, 0},
+	{"r_mapLightingClampMax", "1", CVARTYPE_GRAPHICS, 0},
 	{"r_textureGamma", "1", CVARTYPE_GRAPHICS, 0},
 
 	// Sound settings
