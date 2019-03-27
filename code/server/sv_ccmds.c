@@ -233,7 +233,7 @@ static void SV_Map_f( void ) {
 		Cvar_Set( "sv_cheats", "0" );
 	}
 #ifdef CMOD_MAP_SCRIPT
-	Cvar_Set("mapname", map);
+	Cvar_Set("mapname", mapname);
 	Cvar_Set("sv_map_killbots", killBots ? "1" : "0");
 	Cbuf_ExecuteText(EXEC_INSERT, "vstr map_script");
 #endif
