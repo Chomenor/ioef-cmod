@@ -55,7 +55,8 @@ static struct {
 // GL Functions
 /* ******************************************************************************** */
 
-#define GLE(ret, name, ...) name##proc * qgl##name;
+// Using extern because these function pointers are all already defined in sdl_glimp.c
+#define GLE(ret, name, ...) extern name##proc * qgl##name;
 QGL_1_5_PROCS;
 QGL_2_0_PROCS;
 QGL_ARB_framebuffer_object_PROCS;
