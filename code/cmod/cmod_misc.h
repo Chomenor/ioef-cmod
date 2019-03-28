@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // For misc cmod stuff, included at the end of qcommon.h
 
-#ifdef CMOD_BRIGHTNESS_SHIFT
-void brightshift_configure(const char *mapname);
+#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+void cmod_auto_brightness_configure(const char *mapname);
 #endif
 
 #ifdef CMOD_CROSSHAIR

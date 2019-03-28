@@ -630,7 +630,7 @@
     <ClCompile Include="..\..\code\filesystem\fscore\fsc_iteration.c">
       <Filter>filesystem\fscore</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\code\cmod\cmod_brightshift.c">
+    <ClCompile Include="..\..\code\cmod\cmod_auto_brightness.c">
       <Filter>cmod</Filter>
     </ClCompile>
     <ClCompile Include="..\..\code\cmod\cmod_cmd.c">

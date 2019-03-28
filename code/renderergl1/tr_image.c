@@ -1369,11 +1369,6 @@ void R_SetColorMappings( void ) {
 		ri.Cvar_Set( "r_intensity", "1" );
 	}
 
-#ifdef CMOD_BRIGHTNESS_SHIFT
-	g = r_gamma->value + r_gammaShift->value;
-	if(g < 0.5f) g = 0.5f;
-	else if(g > 3.0f) g = 3.0f;
-#else
 	if ( r_gamma->value < 0.5f ) {
 		ri.Cvar_Set( "r_gamma", "0.5" );
 	} else if ( r_gamma->value > 3.0f ) {
@@ -1381,7 +1376,6 @@ void R_SetColorMappings( void ) {
 	}
 
 	g = r_gamma->value;
-#endif
 
 #ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 	shift = tr.overbrightBits;

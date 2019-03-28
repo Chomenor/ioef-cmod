@@ -184,9 +184,10 @@ cvar_t	*r_mapLightingClampMax;
 cvar_t	*r_textureGamma;
 #endif
 
-#ifdef CMOD_BRIGHTNESS_SHIFT
-cvar_t	*r_mapLightingFactorShift;
-cvar_t	*r_gammaShift;
+#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+cvar_t	*r_autoMapLightingFactor;
+cvar_t	*r_autoMapLightingGammaMod;
+cvar_t	*r_autoMapLightingClampMin;
 #endif
 
 #ifdef CMOD_FRAMEBUFFER
@@ -1220,9 +1221,10 @@ void R_Register( void )
 	r_textureGamma = ri.Cvar_Get("r_textureGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
 #endif
 
-#ifdef CMOD_BRIGHTNESS_SHIFT
-	r_mapLightingFactorShift = ri.Cvar_Get("r_mapLightingFactorShift", "", 0);
-	r_gammaShift = ri.Cvar_Get("r_gammaShift", "", 0);
+#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+	r_autoMapLightingFactor = ri.Cvar_Get("r_autoMapLightingFactor", "", 0);
+	r_autoMapLightingGammaMod = ri.Cvar_Get("r_autoMapLightingGammaMod", "", 0);
+	r_autoMapLightingClampMin = ri.Cvar_Get("r_autoMapLightingClampMin", "", 0);
 #endif
 
 #ifdef CMOD_FRAMEBUFFER

@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#ifdef CMOD_BRIGHTNESS_SHIFT
+#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
@@ -30,17 +30,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* ******************************************************************************** */
 
 typedef struct {
-	float map_lighting_factor_shift;
-	float gamma_shift;
+	float map_lighting_factor;
+	float map_lighting_gamma;
+	float map_lighting_min_clamp;
 } shift_set_t;
 
 static void apply_shift_set(shift_set_t *shift_set) {
-	if(shift_set->map_lighting_factor_shift != 1.0f) {
-		Com_Printf("Setting r_mapLightingFactorShift %g\n", shift_set->map_lighting_factor_shift);
-		Cvar_Set("r_mapLightingFactorShift", va("%g", shift_set->map_lighting_factor_shift)); }
-	if(shift_set->gamma_shift != 0.0f) {
-		Com_Printf("Setting r_gammaShift %g\n", shift_set->gamma_shift);
-		Cvar_Set("r_gammaShift", va("%g", shift_set->gamma_shift)); } }
+	if(shift_set->map_lighting_factor != 1.0f) {
+		Com_Printf("Setting r_autoMapLightingFactor %g\n", shift_set->map_lighting_factor);
+		Cvar_Set("r_autoMapLightingFactor", va("%g", shift_set->map_lighting_factor)); }
+	if(shift_set->map_lighting_gamma != 0.0f) {
+		Com_Printf("Setting r_autoMapLightingGammaMod %g\n", shift_set->map_lighting_gamma);
+		Cvar_Set("r_autoMapLightingGammaMod", va("%g", shift_set->map_lighting_gamma)); }
+	if(shift_set->map_lighting_min_clamp != 0.0f) {
+		Com_Printf("Setting r_autoMapLightingClampMin %g\n", shift_set->map_lighting_min_clamp);
+		Cvar_Set("r_autoMapLightingClampMin", va("%g", shift_set->map_lighting_min_clamp)); } }
 
 /* ******************************************************************************** */
 // Hash checks
@@ -50,21 +54,22 @@ struct {
 	int hash;
 	shift_set_t shift_set;
 } special_shifts[] = {
-	{610817057, {1.0f, 0.1f}},		// ctf_twilight
-	{-1374186326, {2.0f, 0.1f}},	// ut_subway
-	{875359710, {0.5f, 0.0f}},		// pokernight
-	{1006385614, {0.6f, 0.0f}},		// 1upxmas
-	{-443776329, {0.5f, 0.0f}},		// crazychristmas
-	{-768581189, {0.5f, 0.0f}},		// ut4_terrorism4
-	{-1359736521, {0.5f, 0.0f}},	// ef_turnpike
-	{1038626548, {0.5f, 0.0f}},		// ctf_becks
-	{2006033781, {0.5f, 0.0f}},		// chickens
-	{-4369078, {0.75f, 0.2f}},		// amenhotep
-	{-301759510, {1.0f, 0.2f}},		// anubis
-	{1831086714, {1.0f, 0.2f}},		// heretic
-	{1535467701, {2.0f, 0.1f}},		// summer
-	{-169342235, {2.0f, 0.3f}},		// winter
-	{-834364908, {2.0f, 0.4f}},		// ethora
+	{610817057, {1.0f, 0.2f, 0.0f}},		// ctf_twilight
+	{-1374186326, {2.0f, 0.1f, 0.0f}},		// ut_subway
+	{875359710, {0.5f, 0.0f, 0.0f}},		// pokernight
+	{1006385614, {0.6f, 0.0f, 0.0f}},		// 1upxmas
+	{-443776329, {0.5f, 0.0f, 0.0f}},		// crazychristmas
+	{-768581189, {0.5f, 0.0f, 0.0f}},		// ut4_terrorism4
+	{-1359736521, {0.5f, 0.0f, 0.0f}},		// ef_turnpike
+	{1038626548, {0.5f, 0.0f, 0.0f}},		// ctf_becks
+	{2006033781, {0.5f, 0.0f, 0.0f}},		// chickens
+	{-4369078, {1.0f, 0.2f, 0.0f}},			// amenhotep
+	{-301759510, {1.0f, 0.3f, 0.0f}},		// anubis
+	{1831086714, {1.0f, 0.2f, 0.0f}},		// heretic
+	{1535467701, {2.0f, 0.1f, 0.0f}},		// summer
+	{-169342235, {2.0f, 0.5f, 0.0f}},		// winter
+	{-834364908, {2.0f, 0.5f, 0.0f}},		// ethora
+	{-1862613250, {2.0f, 0.5f, 0.0f}},		// goththang
 };
 
 static qboolean check_brightshift_hash(int hash) {
@@ -138,7 +143,7 @@ static qboolean check_quake3_entities(char *entities) {
 	//Com_Printf("quake entity hits: %i\n", entity_hits);
 
 	if(entity_hits >= 3) {
-		apply_shift_set(&(shift_set_t){2.0f, 0.0f});
+		apply_shift_set(&(shift_set_t){2.0f, 0.0f, 0.0f});
 		return qtrue; }
 	return qfalse; }
 
@@ -169,14 +174,16 @@ static void process_bsp_data(char *data, int length) {
 	//		length, hash, entity_offset, entity_length);
 }
 
-void brightshift_configure(const char *mapname) {
-	cvar_t *brightshift_enable = Cvar_Get("cmod_brightshift_enable", "1", CVAR_LATCH);
-	Cvar_Get("r_mapLightingFactorShift", "", CVAR_ROM);
-	Cvar_Get("r_gammaShift", "", CVAR_ROM);
-	Cvar_Set("r_mapLightingFactorShift", "");
-	Cvar_Set("r_gammaShift", "0");
+void cmod_auto_brightness_configure(const char *mapname) {
+	cvar_t *cmod_auto_brightness_enabled = Cvar_Get("cmod_auto_brightness_enabled", "1", CVAR_ARCHIVE|CVAR_LATCH);
+	Cvar_Get("r_autoMapLightingFactor", "", CVAR_ROM);
+	Cvar_Set("r_autoMapLightingFactor", "");
+	Cvar_Get("r_autoMapLightingGammaMod", "", CVAR_ROM);
+	Cvar_Set("r_autoMapLightingGammaMod", "");
+	Cvar_Get("r_autoMapLightingClampMin", "", CVAR_ROM);
+	Cvar_Set("r_autoMapLightingClampMin", "");
 
-	if(brightshift_enable->integer && mapname && *mapname) {
+	if(cmod_auto_brightness_enabled->integer && mapname && *mapname) {
 		char *data = 0;
 		int length = FS_ReadFile(va("maps/%s.bsp", mapname), (void **)&data);
 		if(data) {

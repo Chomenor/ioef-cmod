@@ -392,11 +392,7 @@ void framebuffer_init(void) {
 /* ******************************************************************************** */
 
 static void glsl_render(void) {
-#ifdef CMOD_BRIGHTNESS_SHIFT
-	float gamma = r_gamma->value + r_gammaShift->value;
-#else
 	float gamma = r_gamma->value;
-#endif
 	if(gamma < 0.5f) gamma = 0.5f;
 	else if(gamma > 3.0f) gamma = 3.0f;
 
