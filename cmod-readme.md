@@ -35,6 +35,20 @@ The most common values which you can use for these settings are as follows:
 - -1: Uses the resolution specified by r_customWidth and r_customHeight.
 - 3: Uses a 640x480 resolution (the original EF default).
 
+## Brightness Settings
+
+The following are some of the main settings that can be used to adjust the brightness of the game. Most of these settings require cMod version 1.04 or higher. Check the version you are running in the console and if you have an old version download the latest version from the Release page.
+
+- r_gamma: Performs a gamma adjustment on the final renderer output. This is the default brightness setting changed by the in-game brightness slider. Values over 1 increase the game brightness on a curve, increasing the midrange levels without changing the minimum and maximum levels. Current default value is 1.4.
+
+- r_mapLightingGamma: Performs a gamma-style adjustment on map lighting intensity. Values over 1 increase the map lighting levels on a curve, increasing the midrange levels without changing the minimum and maximum levels. Current default value is 1 (no change). Reasonable values for this setting range from 1.0 to around 2.0.
+
+- r_mapLightingClampMin: Sets the minimum lighting intensity (per rgb component), on a scale from 0 to 1. This can be used to force a minimum lighting level in maps. The default setting is 0. A value around 0.2 can be used to make the darkest parts of maps brighter without affecting the rest of the map.
+
+- r_mapLightingClampMax: Sets the maximum lighting intensity (per rgb component), on a scale from 0 to 1. The default setting is 1. A value around 0.8 can be used to reduce lighting in areas that are overly bright and washing out the colors to white without affecting the rest of the map.
+
+There are a number of other graphics settings that can affect brightness, but these are the ones that generally had the best results in my testing. If you don't like the way the graphics look in cMod, or you prefer the way an older EF client looks, feel free to send me an email so I can look into whether there is a way to improve your configuration. In general it is possible to replicate the graphics of any older client in cMod, although the exact settings you need to change to do that will vary depending on your system and configuration.
+
 ## Directory Handling
 
 By default, cMod will use the install location as the read/write directory, like the original version of Elite Force. This allows you to have multiple EF installations that use separate settings. The ioEF homepath location, which is %appdata%\STVEF on Windows, is used as a secondary read location in case you have any files left over there from a previous ioEF installation.
