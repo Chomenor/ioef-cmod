@@ -132,7 +132,7 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 
 	if(map_lighting_gamma != 1.0) {
 		double component_factor = r_mapLightingGammaComponent->value;
-		double blended_intensity_base = sqrt(colors[0]*colors[0] + colors[1]*colors[1] + colors[2]*colors[2]);
+		double blended_intensity_base = sqrt((colors[0]*colors[0] + colors[1]*colors[1] + colors[2]*colors[2])/3);
 		double blended_intensity_shifted = 255.0 * pow(blended_intensity_base/255.0, 1.0/map_lighting_gamma);
 		double blended_intensity_modifier = blended_intensity_shifted / blended_intensity_base;
 
