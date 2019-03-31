@@ -43,6 +43,8 @@ The following are some of the main settings that can be used to adjust the brigh
 
 - r_mapLightingGamma: Performs a gamma-style adjustment on map lighting intensity. Values over 1 increase the map lighting levels on a curve, increasing the midrange levels without changing the minimum and maximum levels. Current default value is 1 (no change). Reasonable values for this setting range from 1.0 to around 2.0.
 
+- r_mapLightingFactor: Performs a linear scaling on map lighting intensity. If any rgb component is scaled passed the maximum, values are scaled back so the highest component equals the maximum. Current default is 2 (EF standard). Values from around 2.5 to 8 can reasonably be used to increase brightness. Note while this setting has very good results brightening some maps, it is relatively inconsistent between maps, so use with caution.
+
 - r_mapLightingClampMin: Sets the minimum lighting intensity (per rgb component), on a scale from 0 to 1. This can be used to force a minimum lighting level in maps. The default setting is 0. A value around 0.2 can be used to make the darkest parts of maps brighter without affecting the rest of the map.
 
 - r_mapLightingClampMax: Sets the maximum lighting intensity (per rgb component), on a scale from 0 to 1. The default setting is 1. A value around 0.8 can be used to reduce lighting in areas that are overly bright and washing out the colors to white without affecting the rest of the map.
