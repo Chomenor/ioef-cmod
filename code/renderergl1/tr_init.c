@@ -69,8 +69,12 @@ cvar_t	*r_measureOverdraw;
 
 cvar_t	*r_inGameVideo;
 cvar_t	*r_fastsky;
+#ifdef CMOD_FASTSKY_COLOR
+cvar_t	*r_fastskyColor;
+#else
 #ifdef ELITEFORCE
 cvar_t	*r_origfastsky;
+#endif
 #endif
 cvar_t	*r_drawSun;
 cvar_t	*r_dynamiclight;
@@ -1130,8 +1134,12 @@ void R_Register( void )
 	r_stereoSeparation = ri.Cvar_Get( "r_stereoSeparation", "64", CVAR_ARCHIVE );
 	r_ignoreGLErrors = ri.Cvar_Get( "r_ignoreGLErrors", "1", CVAR_ARCHIVE );
 	r_fastsky = ri.Cvar_Get( "r_fastsky", "0", CVAR_ARCHIVE );
+#ifdef CMOD_FASTSKY_COLOR
+	r_fastskyColor = ri.Cvar_Get( "r_fastskyColor", "ccb366", CVAR_ARCHIVE );
+#else
 #ifdef ELITEFORCE
 	r_origfastsky = ri.Cvar_Get( "r_origfastsky", "0", CVAR_ARCHIVE );
+#endif
 #endif
 	r_inGameVideo = ri.Cvar_Get( "r_inGameVideo", "1", CVAR_ARCHIVE );
 	r_drawSun = ri.Cvar_Get( "r_drawSun", "0", CVAR_ARCHIVE );

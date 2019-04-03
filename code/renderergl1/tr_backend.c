@@ -407,6 +407,17 @@ static void SetViewportAndScissor( void ) {
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
 }
 
+#ifdef CMOD_FASTSKY_COLOR
+float fastsky_color[3];
+static void update_fastsky_color(void) {
+	if(r_fastskyColor->modified) {
+		unsigned int val = strtoul(r_fastskyColor->string, NULL, 16);
+		fastsky_color[0] = (float)((val >> 16) & 255) / 255.0f;
+		fastsky_color[1] = (float)((val >> 8) & 255) / 255.0f;
+		fastsky_color[2] = (float)(val & 255) / 255.0f;
+		r_fastskyColor->modified = qfalse; } }
+#endif
+
 /*
 =================
 RB_BeginDrawingView
@@ -448,6 +459,10 @@ void RB_BeginDrawingView (void) {
 	if ( r_fastsky->integer && !( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) )
 	{
 		clearBits |= GL_COLOR_BUFFER_BIT;	// FIXME: only if sky shaders have been used
+#ifdef CMOD_FASTSKY_COLOR
+		update_fastsky_color();
+		qglClearColor(fastsky_color[0], fastsky_color[1], fastsky_color[2], 1.0f);
+#else
 #ifdef ELITEFORCE
 		if(r_origfastsky->integer)
 			qglClearColor(0.8f, 0.7f, 0.4f, 1.0f);
@@ -458,6 +473,7 @@ void RB_BeginDrawingView (void) {
 		qglClearColor( 0.8f, 0.7f, 0.4f, 1.0f );	// FIXME: get color of sky
 #else
 		qglClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	// FIXME: get color of sky
+#endif
 #endif
 #endif
 	}

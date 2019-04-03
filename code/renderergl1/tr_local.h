@@ -1024,8 +1024,12 @@ extern cvar_t	*r_primitives;			// "0" = based on compiled vertex array existence
 
 extern cvar_t	*r_inGameVideo;				// controls whether in game video should be draw
 extern cvar_t	*r_fastsky;				// controls whether sky should be cleared or drawn
+#ifdef CMOD_FASTSKY_COLOR
+extern cvar_t	*r_fastskyColor;		// allows specifying fastsky color in rgb hex format
+#else
 #ifdef ELITEFORCE
 extern cvar_t	*r_origfastsky;				// controls whether fastsky color is like in original EF.
+#endif
 #endif
 extern cvar_t	*r_drawSun;				// controls drawing of sun quad
 extern cvar_t	*r_dynamiclight;		// dynamic lights enabled/disabled

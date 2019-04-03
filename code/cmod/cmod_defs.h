@@ -52,6 +52,7 @@
 #define CMOD_CHAT_FIELD_SIZE
 #define CMOD_FOGFACTOR_FIX
 #define CMOD_FOGSIDE_FIX
+#define CMOD_FASTSKY_COLOR
 
 /* ******************************************************************************** */
 // Version Identification
