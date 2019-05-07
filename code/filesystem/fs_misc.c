@@ -253,14 +253,14 @@ int fs_file_disabled(const fsc_file_t *file, int checks) {
 		if(!get_pk3_list_position(file)) return FD_CHECK_PURE_LIST; }
 
 	// Search inactive mods check - blocks files disabled by inactive mod settings for file reading
-	if((checks & FD_CHECK_SEARCH_INACTIVE_MODS) && inactive_mod_file_disabled(file, fs_search_inactive_mods->integer)) {
-		return FD_CHECK_SEARCH_INACTIVE_MODS; }
+	if((checks & FD_CHECK_READ_INACTIVE_MODS) && inactive_mod_file_disabled(file, fs_read_inactive_mods->integer)) {
+		return FD_CHECK_READ_INACTIVE_MODS; }
 
 	// List inactive mods check - blocks files disabled by inactive mod settings for file listing
 	if(checks & FD_CHECK_LIST_INACTIVE_MODS) {
-		// Use search_inactive_mods setting if it is lower, because it doesn't make sense to list unsearchable files
-		int list_inactive_mods_level = fs_search_inactive_mods->integer < fs_list_inactive_mods->integer ?
-				fs_search_inactive_mods->integer : fs_list_inactive_mods->integer;
+		// Use read_inactive_mods setting if it is lower, because it doesn't make sense to list unreadable files
+		int list_inactive_mods_level = fs_read_inactive_mods->integer < fs_list_inactive_mods->integer ?
+				fs_read_inactive_mods->integer : fs_list_inactive_mods->integer;
 		if(inactive_mod_file_disabled(file, list_inactive_mods_level)) return FD_CHECK_LIST_INACTIVE_MODS; }
 
 	// List auxiliary sourcedir check - blocks files from auxiliary source directories for file listing
@@ -596,7 +596,7 @@ static qboolean check_default_cfg_pk3(const char *mod, const char *filename, uns
 	fsc_hashtable_open(&fs.files, fsc_string_hash("default", 0), &hti);
 	while((file = (fsc_file_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 		const fsc_file_direct_t *source_pk3;
-		if(fs_file_disabled(file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
+		if(fs_file_disabled(file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 		if(file->sourcetype != FSC_SOURCETYPE_PK3) continue;
 		if(Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), "default")) continue;
 		if(!file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "cfg")) continue;
@@ -623,7 +623,7 @@ static default_pak_state_t get_pak_state(const char *mod, const char *filename, 
 
 	fsc_hashtable_open(&fs.files, fsc_string_hash(filename, 0), &hti);
 	while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
+		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), filename)) continue;
 		if(!file->f.qp_ext_ptr || Q_stricmp((const char *)STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
@@ -637,7 +637,7 @@ static default_pak_state_t get_pak_state(const char *mod, const char *filename, 
 	fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
 	while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 		file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
+		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 		if((file->pk3_hash == hash)) {
 			default_pak_state_t result = {name_match, file};
 			return result; } }

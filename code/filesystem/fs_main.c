@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 cvar_t *fs_dirs;
 cvar_t *fs_mod_settings;
 cvar_t *fs_index_cache;
-cvar_t *fs_search_inactive_mods;
+cvar_t *fs_read_inactive_mods;
 cvar_t *fs_list_inactive_mods;
 cvar_t *fs_download_manifest;
 cvar_t *fs_pure_manifest;
@@ -451,7 +451,7 @@ void fs_startup(void) {
 #endif
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_INIT);
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
-	fs_search_inactive_mods = Cvar_Get("fs_search_inactive_mods", "2", CVAR_ARCHIVE);
+	fs_read_inactive_mods = Cvar_Get("fs_read_inactive_mods", "2", CVAR_ARCHIVE);
 	fs_list_inactive_mods = Cvar_Get("fs_list_inactive_mods", "1", CVAR_ARCHIVE);
 	fs_download_manifest = Cvar_Get("fs_download_manifest",
 			"*mod_paks *cgame_pak *ui_pak *currentmap_pak *referenced_paks", CVAR_ARCHIVE);

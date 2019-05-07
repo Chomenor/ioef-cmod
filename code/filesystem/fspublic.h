@@ -113,7 +113,7 @@ typedef struct {
 DEF_LOCAL( extern cvar_t *fs_dirs )
 DEF_LOCAL( extern cvar_t *fs_mod_settings )
 DEF_LOCAL( extern cvar_t *fs_index_cache )
-DEF_LOCAL( extern cvar_t *fs_search_inactive_mods )
+DEF_LOCAL( extern cvar_t *fs_read_inactive_mods )
 DEF_LOCAL( extern cvar_t *fs_list_inactive_mods )
 DEF_LOCAL( extern cvar_t *fs_download_manifest )
 DEF_LOCAL( extern cvar_t *fs_pure_manifest )
@@ -374,7 +374,7 @@ DEF_PUBLIC( void fs_print_file_location(const fsc_file_t *file) )
 #ifdef FSLOCAL
 #define FD_CHECK_FILE_ENABLED 1		// Check if file is disabled in index
 #define FD_CHECK_PURE_LIST 2		// Check if file is blocked by connected server pure configuration
-#define FD_CHECK_SEARCH_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_search_inactive_mods setting
+#define FD_CHECK_READ_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_read_inactive_mods setting
 #define FD_CHECK_LIST_INACTIVE_MODS 8		// Check if file is blocked for file listing by fs_list_inactive_mods setting
 #define FD_CHECK_LIST_AUXILIARY_SOURCEDIR 16	// Check if file is blocked for file listing due to auxiliary sourcedir
 DEF_LOCAL( int fs_file_disabled(const fsc_file_t *file, int checks) )

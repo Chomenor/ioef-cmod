@@ -135,9 +135,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3) && (query->config_query)) {
 		resource->disabled = "blocking config file in downloaded pk3 due to fs_restrict_dlfolder setting"; }
 
-	// Disable files blocked by fs_search_inactive_mods setting
-	if(fs_file_disabled(resource->file, FD_CHECK_SEARCH_INACTIVE_MODS)) {
-		resource->disabled = "blocking file from inactive mod dir due to fs_search_inactive_mods setting"; }
+	// Disable files blocked by fs_read_inactive_mods setting
+	if(fs_file_disabled(resource->file, FD_CHECK_READ_INACTIVE_MODS)) {
+		resource->disabled = "blocking file from inactive mod dir due to fs_read_inactive_mods setting"; }
 
 	// Disable files not on server pak list if connected to a pure server
 	if(!resource->server_pak_position && fs_connected_server_pure_state() == 1 &&
