@@ -486,7 +486,7 @@ void fs_startup(void) {
 	fs_initialized = qtrue;
 
 #ifndef STANDALONE
-	fs_check_default_paks();
+	fs_check_core_paks();
 #endif
 }
 

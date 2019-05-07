@@ -133,14 +133,14 @@ void pk3_list_free(pk3_list_t *pk3_list) {
 	for(i=0; i<ARRAY_LEN(hashes); ++i) { \
 		if(hash == hashes[i]) return i + 1; } }
 
-int default_pk3_position(unsigned int hash) {
-	#ifdef FS_DEFAULT_PAKS_TEAMARENA
+int core_pk3_position(unsigned int hash) {
+	#ifdef FS_CORE_PAKS_TEAMARENA
 	if(!Q_stricmp(FS_GetCurrentGameDir(), BASETA)) {
-		PROCESS_PAKS(FS_DEFAULT_PAKS_TEAMARENA)
+		PROCESS_PAKS(FS_CORE_PAKS_TEAMARENA)
 		return 0; }
 	#endif
-	#ifdef FS_DEFAULT_PAKS
-	PROCESS_PAKS(FS_DEFAULT_PAKS)
+	#ifdef FS_CORE_PAKS
+	PROCESS_PAKS(FS_CORE_PAKS)
 	#endif
 	return 0; }
 
@@ -231,12 +231,12 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 	// Allow file if not in inactive mod directory
 	if(fs_get_mod_type(fsc_get_mod_dir(file, &fs)) > MODTYPE_INACTIVE) return qfalse;
 
-	// For setting 1, also allow files from default paks or on pure list
+	// For setting 1, also allow files from core paks or on pure list
 	if(level == 1) {
 		const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
 		if(base_file) {
 			if(pk3_list_lookup(&connected_server_pk3_list, base_file->pk3_hash, qfalse)) return qfalse;
-			if(default_pk3_position(base_file->pk3_hash)) return qfalse; } }
+			if(core_pk3_position(base_file->pk3_hash)) return qfalse; } }
 
 	return qtrue; }
 
@@ -306,10 +306,10 @@ static unsigned int mod_dir_precedence(fs_modtype_t mod_type) {
 	if(mod_type >= MODTYPE_OVERRIDE_DIRECTORY) return (unsigned int)mod_type;
 	return 0; }
 
-static unsigned int default_pak_precedence(const fsc_file_t *file, fs_modtype_t mod_type) {
+static unsigned int core_pak_precedence(const fsc_file_t *file, fs_modtype_t mod_type) {
 	if(mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
 		const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
-		if(base_file) return default_pk3_position(base_file->pk3_hash); }
+		if(base_file) return core_pk3_position(base_file->pk3_hash); }
 	return 0; }
 
 static unsigned int basegame_dir_precedence(fs_modtype_t mod_type) {
@@ -355,7 +355,7 @@ void fs_generate_core_sort_key(const fsc_file_t *file, fsc_stream_t *output, qbo
 	fs_modtype_t mod_type = fs_get_mod_type(fsc_get_mod_dir(file, &fs));
 	if(use_server_pak_list) fs_write_sort_value(server_pak_precedence(file), output);
 	fs_write_sort_value(mod_dir_precedence(mod_type), output);
-	fs_write_sort_value(default_pak_precedence(file, mod_type), output);
+	fs_write_sort_value(core_pak_precedence(file, mod_type), output);
 	fs_write_sort_value(basegame_dir_precedence(mod_type), output);
 	// Deprioritize download folder pk3s, whether the flag is set for this file or this file's source pk3
 	fs_write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) || (file->sourcetype == FSC_SOURCETYPE_PK3
@@ -575,10 +575,10 @@ void sha256_to_stream(unsigned char *sha, fsc_stream_t *output) {
 		fsc_stream_append_string(output, buffer); } }
 
 /* ******************************************************************************** */
-// Default Pak Verification
+// Core Pak Verification
 /* ******************************************************************************** */
 
-// This section is used to verify the system (ID) paks on startup, and produce
+// This section is used to verify the core (ID) paks on startup, and produce
 // appropriate warnings or errors if they are out of place
 
 #ifndef STANDALONE
@@ -612,9 +612,9 @@ static qboolean check_default_cfg_pk3(const char *mod, const char *filename, uns
 typedef struct {
 	const fsc_file_direct_t *name_match;
 	const fsc_file_direct_t *hash_match;
-} default_pak_state_t;
+} core_pak_state_t;
 
-static default_pak_state_t get_pak_state(const char *mod, const char *filename, unsigned int hash) {
+static core_pak_state_t get_pak_state(const char *mod, const char *filename, unsigned int hash) {
 	// Locates name and hash matches for a given pak
 	const fsc_file_direct_t *name_match = 0;
 	fsc_hashtable_iterator_t hti;
@@ -630,7 +630,7 @@ static default_pak_state_t get_pak_state(const char *mod, const char *filename, 
 		if(file->f.qp_dir_ptr) continue;
 		if(mod && Q_stricmp(fsc_get_mod_dir((fsc_file_t *)file, &fs), mod)) continue;
 		if(file->pk3_hash == hash) {
-			default_pak_state_t result = {file, file};
+			core_pak_state_t result = {file, file};
 			return result; }
 		name_match = file; }
 
@@ -639,13 +639,13 @@ static default_pak_state_t get_pak_state(const char *mod, const char *filename, 
 		file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
 		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 		if((file->pk3_hash == hash)) {
-			default_pak_state_t result = {name_match, file};
+			core_pak_state_t result = {name_match, file};
 			return result; } }
 
-	{ default_pak_state_t result = {name_match, 0};
+	{ core_pak_state_t result = {name_match, 0};
 	return result; } }
 
-static void generate_pak_warnings(const char *mod, const char *filename, default_pak_state_t *state,
+static void generate_pak_warnings(const char *mod, const char *filename, core_pak_state_t *state,
 		fsc_stream_t *warning_popup_stream) {
 	// Prints console warning messages and appends warning popup string for a given pak
 	if(state->hash_match) {
@@ -669,10 +669,10 @@ static void generate_pak_warnings(const char *mod, const char *filename, default
 			Com_Printf("WARNING: %s/%s.pk3 not found\n", mod, filename);
 			fsc_stream_append_string(warning_popup_stream, va("%s/%s.pk3: not found\n", mod, filename)); } } }
 
-void fs_check_default_paks(void) {
+void fs_check_core_paks(void) {
 	int i;
-	default_pak_state_t core_states[ARRAY_LEN(core_hashes)];
-	default_pak_state_t missionpack_states[ARRAY_LEN(missionpack_hashes)];
+	core_pak_state_t core_states[ARRAY_LEN(core_hashes)];
+	core_pak_state_t missionpack_states[ARRAY_LEN(missionpack_hashes)];
 	qboolean missionpack_installed = qfalse;	// Any missionpack paks detected
 	char warning_popup_buffer[1024];
 	fsc_stream_t warning_popup_stream = {warning_popup_buffer, 0, sizeof(warning_popup_buffer), qfalse};

@@ -345,11 +345,11 @@ static void generate_reference_set_entry(reference_set_work_t *rsw, const char *
 		strcpy(target->command_name + sizeof(target->command_name) - 4, "..."); }
 
 	{	fs_modtype_t mod_type = fs_get_mod_type(target->mod_dir);
-		unsigned int default_pak_priority = mod_type <= MODTYPE_BASE ? (unsigned int)default_pk3_position(hash) : 0;
+		unsigned int core_pak_priority = mod_type <= MODTYPE_BASE ? (unsigned int)core_pk3_position(hash) : 0;
 
 		fs_write_sort_value(~target->cluster, &sort_stream);
 		fs_write_sort_value(mod_type > MODTYPE_BASE ? (unsigned int)mod_type : 0, &sort_stream);
-		fs_write_sort_value(default_pak_priority, &sort_stream);
+		fs_write_sort_value(core_pak_priority, &sort_stream);
 		fs_write_sort_value((unsigned int)mod_type, &sort_stream);
 		fs_write_sort_string(target->mod_dir, &sort_stream, qfalse);
 		fs_write_sort_string(target->name, &sort_stream, qfalse);
