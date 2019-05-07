@@ -241,26 +241,29 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 	return qtrue; }
 
 int fs_file_disabled(const fsc_file_t *file, int checks) {
+	// This function is used to perform various checks for whether a file should be used by the filesystem
 	// Returns value of one of the triggering checks if file is disabled, null otherwise
 	FSC_ASSERT(file);
 
-	// File index disabled check
+	// File disabled check - blocks files disabled in the file index (they should never be accessed)
 	if((checks & FD_CHECK_FILE_ENABLED) && !fsc_is_file_enabled(file, &fs)) return FD_CHECK_FILE_ENABLED;
 
-	// Pure list check
+	// Pure list check - blocks files disabled by pure settings of server we are connected to
 	if((checks & FD_CHECK_PURE_LIST) && fs_connected_server_pure_state() == 1) {
 		if(!get_pk3_list_position(file)) return FD_CHECK_PURE_LIST; }
 
-	// Inactive mod checks
+	// Search inactive mods check - blocks files disabled by inactive mod settings for file reading
 	if((checks & FD_CHECK_SEARCH_INACTIVE_MODS) && inactive_mod_file_disabled(file, fs_search_inactive_mods->integer)) {
 		return FD_CHECK_SEARCH_INACTIVE_MODS; }
+
+	// List inactive mods check - blocks files disabled by inactive mod settings for file listing
 	if(checks & FD_CHECK_LIST_INACTIVE_MODS) {
 		// Use search_inactive_mods setting if it is lower, because it doesn't make sense to list unsearchable files
 		int list_inactive_mods_level = fs_search_inactive_mods->integer < fs_list_inactive_mods->integer ?
 				fs_search_inactive_mods->integer : fs_list_inactive_mods->integer;
 		if(inactive_mod_file_disabled(file, list_inactive_mods_level)) return FD_CHECK_LIST_INACTIVE_MODS; }
 
-	// Auxiliary sourcedir check
+	// List auxiliary sourcedir check - blocks files from auxiliary source directories for file listing
 	if(checks & FD_CHECK_LIST_AUXILIARY_SOURCEDIR) {
 		const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
 		if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !get_pk3_list_position(file)) {
