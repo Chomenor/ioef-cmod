@@ -62,7 +62,7 @@ This filesystem supports loading files from all mod directories, not just the cu
 The precedence system ensures that files located in the current mod and basegame directories always have first priority. Inactive mods are only accessed as a last resort if files cannot be found anywhere else.
 
 There are two cvars used to control this feature:
-- fs_read_inactive_mods: Applies to primary file lookups used to load models, textures, and sounds. (default: 2)
+- fs_read_inactive_mods: Applies to file reading operations used to load content like models, textures, and sounds. (default: 1)
 - fs_list_inactive_mods: Applies to file listing queries used by the ingame map and model menus. (default: 1)
 
 Both cvars support the following settings:

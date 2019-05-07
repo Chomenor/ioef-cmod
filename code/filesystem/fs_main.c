@@ -451,7 +451,7 @@ void fs_startup(void) {
 #endif
 	fs_mod_settings = Cvar_Get("fs_mod_settings", "0", CVAR_INIT);
 	fs_index_cache = Cvar_Get("fs_index_cache", "1", CVAR_INIT);
-	fs_read_inactive_mods = Cvar_Get("fs_read_inactive_mods", "2", CVAR_ARCHIVE);
+	fs_read_inactive_mods = Cvar_Get("fs_read_inactive_mods", "1", CVAR_ARCHIVE);
 	fs_list_inactive_mods = Cvar_Get("fs_list_inactive_mods", "1", CVAR_ARCHIVE);
 	fs_download_manifest = Cvar_Get("fs_download_manifest",
 			"*mod_paks *cgame_pak *ui_pak *currentmap_pak *referenced_paks", CVAR_ARCHIVE);
