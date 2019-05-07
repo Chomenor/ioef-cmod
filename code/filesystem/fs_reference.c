@@ -307,10 +307,6 @@ typedef struct {
 	// For debug print purposes
 	int entry_id;
 
-	// How closely the specified mod dir/name match the ones in the pak reference
-	// 0 = no pak, 1 = no name match, 2 = case insensitive match, 3 = case sensitive match
-	unsigned int pak_file_name_match;
-
 	// Sorting
 	char sort_key[FSC_MAX_MODDIR+FSC_MAX_QPATH+32];
 	unsigned int sort_key_length;
@@ -348,23 +344,16 @@ static void generate_reference_set_entry(reference_set_work_t *rsw, const char *
 	if(strlen(rsw->command_name) >= sizeof(target->command_name)) {
 		strcpy(target->command_name + sizeof(target->command_name) - 4, "..."); }
 
-	if(pak_file) {
-		const char *pak_mod = (const char *)STACKPTR(pak_file->qp_mod_ptr);
-		const char *pak_name = (const char *)STACKPTR(pak_file->f.qp_name_ptr);
-		if(!strcmp(mod_dir, pak_mod) && !strcmp(name, pak_name)) target->pak_file_name_match = 3;
-		else if(!Q_stricmp(mod_dir, pak_mod) && !Q_stricmp(name, pak_name)) target->pak_file_name_match = 2;
-		else target->pak_file_name_match = 1; }
-
 	{	fs_modtype_t mod_type = fs_get_mod_type(target->mod_dir);
-		unsigned int default_pak_priority = mod_type < MODTYPE_OVERRIDE_DIRECTORY ? (unsigned int)default_pk3_position(hash) : 0;
+		unsigned int default_pak_priority = mod_type <= MODTYPE_BASE ? (unsigned int)default_pk3_position(hash) : 0;
 
 		fs_write_sort_value(~target->cluster, &sort_stream);
-		fs_write_sort_value(mod_type >= MODTYPE_OVERRIDE_DIRECTORY ? (unsigned int)mod_type : 0, &sort_stream);
+		fs_write_sort_value(mod_type > MODTYPE_BASE ? (unsigned int)mod_type : 0, &sort_stream);
 		fs_write_sort_value(default_pak_priority, &sort_stream);
 		fs_write_sort_value((unsigned int)mod_type, &sort_stream);
 		fs_write_sort_string(target->mod_dir, &sort_stream, qfalse);
 		fs_write_sort_string(target->name, &sort_stream, qfalse);
-		fs_write_sort_value(target->pak_file_name_match, &sort_stream);
+		fs_write_sort_value(target->pak_file ? 1 : 0, &sort_stream);
 		target->sort_key_length = sort_stream.position; } }
 
 static int compare_reference_set_entry(const reference_set_entry_t *e1, const reference_set_entry_t *e2) {
