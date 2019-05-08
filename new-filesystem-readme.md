@@ -10,7 +10,7 @@ Here are the key features:
 - Improved recovery from server download errors such as broken HTTP links
 - Fixed server-side pure list overflow issues
 - Semi-pure server support
-- Many other small fixes and improvements
+- Various other fixes and improvements
 
 Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
@@ -57,7 +57,7 @@ These settings can increase security, but may break compatibility with some serv
 
 # Inactive Mod Support
 
-This filesystem supports loading files from all mod directories, not just the current active mod. This is intended to help smooth out discrepancies between server directory configurations and allows maps to work correctly even if they have dependencies that, for one reason or another, are located in the wrong mod directory.
+This filesystem supports loading files from all mod directories, not just the current active mod. This can help smooth out discrepancies between server directory configurations and allow maps to work correctly even if they have dependencies that, for one reason or another, are located in the wrong mod directory.
 
 The precedence system ensures that files located in the current mod and basegame directories always have first priority. Inactive mods are only accessed as a last resort if files cannot be found anywhere else.
 
@@ -90,13 +90,13 @@ Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow
 
 - *mod_paks - Selects all paks from the current active mod.
 - *base_paks - Selects all paks from com_basegame (baseq3).
-- *inactivemod_paks - Selects all paks in other mod directories (not baseq3 or the current mod).
+- *inactivemod_paks - Selects all paks in inactive mod directories (not baseq3 or the current mod).
 - *currentmap_pak - Selects the pak containing the bsp of the current running map.
 - *cgame_pak - Selects the pak containing the preferred cgame.qvm file.
 - *ui_pak - Selects the pak containing the preferred ui.qvm file.
 - *referenced_paks - Selects paks accessed during the loading process on the server.
 
-The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The *referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to *currentmap_pak and *mod_paks and can be dropped without issue.
+The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The *referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to the other rules and can be dropped without issue.
 ```
 set fs_download_manifest *mod_paks *cgame_pak *ui_pak *currentmap_pak *referenced_paks
 ```
@@ -123,7 +123,7 @@ It is possible to specify pk3s by hash, to support conditions where the file may
 set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks baseq3/md3-bender:-722067772 baseq3/md3-laracroft:1134218139 baseq3/md3-spongebob:-871946717
 ```
 
-The order of the pure list determines the precedence of files on clients. Normally the pure list is sorted according to filesystem precedence conventions, rather than the order in the pure manifest, but there may be special conditions where it is useful to force a certain order in the pure list. This can be accomplished by separating sections in the pure manifest with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering. Note that if the same pk3 is selected by multiple rules, its position will be determined by the first rule that selected it.
+The order of the pure list determines the precedence of files on clients. Normally the server sorts the pure list according to filesystem precedence conventions, rather than the order in the pure manifest, but there may be special conditions where it is useful to force a certain order in the pure list. This can be accomplished by separating sections in the pure manifest with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering. Note that if the same pk3 is selected by multiple rules, its position will be determined by the first rule that selected it.
 ```
 set fs_pure_manifest baseq3/somefile - *mod_paks *base_paks *currentmap_pak
 ```
@@ -138,22 +138,22 @@ set fs_download_manifest *currentmap_pak &exclude mod/somemap *mod_paks *cgame_p
 A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
 
 Notes:
-- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to work.
+- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.
 - You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
 - The write directory selected will always be treated as the highest precedence read directory.
-- If no directory passes a write test, or no write directory was set at all, the game will run in read-only mode.
+- If no directory passes a write test, or no write directory was set (no asterisks), the game will run in read-only mode.
 
 Examples:
-- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain a file with the same name.
+- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain files with the same name.
 - +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
 
 ## Auxiliary Source Directories
 
-This is an advanced feature that allows source directories to be loaded, but with restricted effects on the game. It is primarily useful for server hosting configurations. An auxiliary source directory has the following properties:
+This is an advanced feature that allows source directories to be loaded, but with restricted effects on the game. It is primarily intended for server hosting configurations. An auxiliary source directory has the following properties:
 
 - For file reading operations, auxiliary source directories are strictly prioritized below non-auxiliary directories, even if the auxiliary directory contains a higher precedence mod directory or pk3 filename.
 - For file listing operations, auxiliary source directories are excluded entirely.
-- Auxiliary source directories do not change the default order for pure list generation. Pk3s in auxiliary source directories are prioritized normally alongside other pk3s for pure server purposes.
+- Auxiliary source directories do not affect the default order for pure list generation. Pk3s in auxiliary source directories are prioritized normally alongside other pk3s for pure server purposes.
 
 Auxiliary source directories can be useful in the following cases:
 
