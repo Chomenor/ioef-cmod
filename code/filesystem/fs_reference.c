@@ -298,7 +298,7 @@ typedef struct {
 	char mod_dir[FSC_MAX_MODDIR];
 	char name[FSC_MAX_QPATH];
 	unsigned int hash;
-	const fsc_file_direct_t *pak_file;	// Optional (if null, will attempt to determine later)
+	const fsc_file_direct_t *pak_file;	// Optional (if null, represents hash-only entry)
 
 	// Command characteristics
 	char command_name[64];		// Name of the selector command that created this entry, for debug prints
