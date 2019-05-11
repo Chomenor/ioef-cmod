@@ -299,6 +299,7 @@ typedef struct {
 	char name[FSC_MAX_QPATH];
 	unsigned int hash;
 	const fsc_file_direct_t *pak_file;	// Optional (if null, represents hash-only entry)
+	unsigned int pak_file_name_match;	// For sorting purposes
 
 	// Command characteristics
 	char command_name[64];		// Name of the selector command that created this entry, for debug prints
@@ -340,10 +341,24 @@ static void generate_reference_set_entry(reference_set_work_t *rsw, const char *
 	target->cluster = rsw->cluster;
 	target->entry_id = rsw->entry_id_counter++;
 
+	// Write command name debug string
 	Q_strncpyz(target->command_name, rsw->command_name, sizeof(target->command_name));
 	if(strlen(rsw->command_name) >= sizeof(target->command_name)) {
 		strcpy(target->command_name + sizeof(target->command_name) - 4, "..."); }
 
+	// Determine pak_file_name_match, which is added to the sort key to handle special cases
+	//   e.g. if a pk3 is specified in the download manifest with a specific hash, and multiple pk3s exist
+	//   in the filesystem with that hash, this sort value attempts to prioritize the physical pk3 closer to
+	//   the user-specified name to be used as the physical download source file
+	// 0 = no pak, 1 = no name match, 2 = case insensitive match, 3 = case sensitive match
+	if(pak_file) {
+		const char *pak_mod = (const char *)STACKPTR(pak_file->qp_mod_ptr);
+		const char *pak_name = (const char *)STACKPTR(pak_file->f.qp_name_ptr);
+		if(!strcmp(mod_dir, pak_mod) && !strcmp(name, pak_name)) target->pak_file_name_match = 3;
+		else if(!Q_stricmp(mod_dir, pak_mod) && !Q_stricmp(name, pak_name)) target->pak_file_name_match = 2;
+		else target->pak_file_name_match = 1; }
+
+	// Write sort key
 	{	fs_modtype_t mod_type = fs_get_mod_type(target->mod_dir);
 		unsigned int core_pak_priority = mod_type <= MODTYPE_BASE ? (unsigned int)core_pk3_position(hash) : 0;
 
@@ -353,7 +368,7 @@ static void generate_reference_set_entry(reference_set_work_t *rsw, const char *
 		fs_write_sort_value((unsigned int)mod_type, &sort_stream);
 		fs_write_sort_string(target->mod_dir, &sort_stream, qfalse);
 		fs_write_sort_string(target->name, &sort_stream, qfalse);
-		fs_write_sort_value(target->pak_file ? 1 : 0, &sort_stream);
+		fs_write_sort_value(target->pak_file_name_match, &sort_stream);
 		target->sort_key_length = sort_stream.position; } }
 
 static int compare_reference_set_entry(const reference_set_entry_t *e1, const reference_set_entry_t *e2) {
@@ -381,9 +396,10 @@ static void reference_set_insert_entry(reference_set_work_t *rsw, const char *mo
 		if(new_entry.pak_file) {
 			char buffer[FS_FILE_BUFFER_SIZE];
 			fs_file_to_buffer((const fsc_file_t *)new_entry.pak_file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-			Com_Printf("physical file: %s\n", buffer); }
+			Com_Printf("pak file: %s\n", buffer);
+			Com_Printf("pak file name match: %u\n", new_entry.pak_file_name_match); }
 		else {
-			Com_Printf("physical file: <none>\n"); }
+			Com_Printf("pak file: <none>\n"); }
 		Com_Printf("cluster: %i\n", new_entry.cluster); }
 
 	// Process exclude command
