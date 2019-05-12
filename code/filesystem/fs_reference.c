@@ -470,22 +470,19 @@ static pakcategory_t get_pak_category(const fsc_file_direct_t *pak) {
 	if(mod_type >= MODTYPE_BASE) return PAKCATEGORY_BASEGAME;
 	return PAKCATEGORY_INACTIVE_MOD; }
 
-static void add_paks_by_category(reference_set_work_t *rsw, pakcategory_t category, qboolean check_inactive_mods_setting) {
+static void add_paks_by_category(reference_set_work_t *rsw, pakcategory_t category) {
 	// Add all loaded paks in specified category to the pak set
 	int i;
 	fsc_hashtable_iterator_t hti;
 	fsc_pk3_hash_map_entry_t *hash_entry;
 
-	// Note: Pure list from a previous client session should be cleared at this point in the map load process,
-	//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
-	int disabled_check_flags = FD_CHECK_FILE_ENABLED;
-	if(check_inactive_mods_setting) disabled_check_flags |= FD_CHECK_READ_INACTIVE_MODS;
-
 	for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
-			if(fs_file_disabled((fsc_file_t *)pk3, disabled_check_flags)) continue;
+			// Note: Pure list from a previous client session should be cleared at this point in the map load process,
+			//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
+			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 			if(get_pak_category(pk3) != category) continue;
 			reference_set_insert_pak(rsw, pk3); } } }
 
@@ -538,7 +535,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
 		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
+			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 			if(file->pk3_hash != hash) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, hash, file);
 			++count; }
@@ -556,7 +553,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 			if(!file->pk3_hash) continue;
-			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
+			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 			if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), name)) continue;
 			if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), mod_dir)) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);
@@ -591,13 +588,11 @@ static void generate_reference_set(const char *manifest, fs_hashtable_t *output,
 		else if(!Q_stricmp(token, "-")) {
 			++rsw.cluster; }
 		else if(!Q_stricmp(token, "*mod_paks")) {
-			add_paks_by_category(&rsw, PAKCATEGORY_ACTIVE_MOD, qfalse); }
+			add_paks_by_category(&rsw, PAKCATEGORY_ACTIVE_MOD); }
 		else if(!Q_stricmp(token, "*base_paks")) {
-			add_paks_by_category(&rsw, PAKCATEGORY_BASEGAME, qfalse); }
+			add_paks_by_category(&rsw, PAKCATEGORY_BASEGAME); }
 		else if(!Q_stricmp(token, "*inactivemod_paks")) {
-			add_paks_by_category(&rsw, PAKCATEGORY_INACTIVE_MOD, qfalse); }
-		else if(!Q_stricmp(token, "*inactivemod_paks_read_enabled")) {
-			add_paks_by_category(&rsw, PAKCATEGORY_INACTIVE_MOD, qtrue); }
+			add_paks_by_category(&rsw, PAKCATEGORY_INACTIVE_MOD); }
 		else if(!Q_stricmp(token, "*referenced_paks")) {
 			add_referenced_paks(&rsw); }
 		else if(!Q_stricmp(token, "*currentmap_pak")) {

@@ -91,11 +91,12 @@ Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow
 - *mod_paks - Selects all paks from the current active mod.
 - *base_paks - Selects all paks from com_basegame (baseq3).
 - *inactivemod_paks - Selects all paks in inactive mod directories (not baseq3 or the current mod).
-- *inactivemod_paks_read_enabled - Selects paks in inactive mod directories, but only if they are available according to the server fs_read_inactive_mods setting. If fs_read_inactive_mods is set to 1, this will select only the team arena paks.
 - *currentmap_pak - Selects the pak containing the bsp of the current running map.
 - *cgame_pak - Selects the pak containing the preferred cgame.qvm file.
 - *ui_pak - Selects the pak containing the preferred ui.qvm file.
 - *referenced_paks - Selects paks accessed during the loading process on the server.
+
+NOTE: No selector rules, including *inactivemod_paks, will select any paks from inactive mods unless they are allowed according to the fs_read_inactive_mods setting on the server. To use inactive mods freely make sure fs_read_inactive_mods is set to 2.
 
 The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The *referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to the other rules and can be dropped without issue.
 ```
@@ -109,7 +110,7 @@ set fs_download_manifest osp/zz-osp-pak3 osp/zz-osp-pak2 osp/zz-osp-pak1 osp/zz-
 
 The default pure manifest selects every pak normally available to the game.
 ```
-set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks_read_enabled
+set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks
 ```
 
 Pure servers with a large number of pk3s in baseq3 (300+) can run into problems with the pure list overflowing. To avoid such issues you can replace the *base_baks rule in the pure manifest with specific core paks. Note that any auxiliary paks in baseq3 required by maps or mods, as well as optional content like player models, will need be included manually as well.
