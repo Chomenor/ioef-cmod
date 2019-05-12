@@ -91,6 +91,7 @@ Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow
 - *mod_paks - Selects all paks from the current active mod.
 - *base_paks - Selects all paks from com_basegame (baseq3).
 - *inactivemod_paks - Selects all paks in inactive mod directories (not baseq3 or the current mod).
+- *inactivemod_paks_read_enabled - Selects paks in inactive mod directories, but only if they are available according to the server fs_read_inactive_mods setting. If fs_read_inactive_mods is set to 1, this will select only the team arena paks.
 - *currentmap_pak - Selects the pak containing the bsp of the current running map.
 - *cgame_pak - Selects the pak containing the preferred cgame.qvm file.
 - *ui_pak - Selects the pak containing the preferred ui.qvm file.
@@ -106,9 +107,9 @@ Some server configurations have a lot of maps or optional mod files in the mod d
 set fs_download_manifest osp/zz-osp-pak3 osp/zz-osp-pak2 osp/zz-osp-pak1 osp/zz-osp-pak0 *currentmap_pak
 ```
 
-The default pure manifest selects every pak in baseq3 and the current mod.
+The default pure manifest selects every pak normally available to the game.
 ```
-set fs_pure_manifest *mod_paks *base_paks
+set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks_read_enabled
 ```
 
 Pure servers with a large number of pk3s in baseq3 (300+) can run into problems with the pure list overflowing. To avoid such issues you can replace the *base_baks rule in the pure manifest with specific core paks. Note that any auxiliary paks in baseq3 required by maps or mods, as well as optional content like player models, will need be included manually as well.
