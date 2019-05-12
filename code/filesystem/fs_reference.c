@@ -761,7 +761,7 @@ static void generate_reference_strings(const char *manifest, fsc_stream_t *hash_
 	fs_hashtable_free(&reference_set, 0);
 	Z_Free(reference_list);
 
-	Com_Printf("Got %i unique paks with %i duplications\n", count, duplicates); }
+	Com_Printf("Got %i unique paks (%i duplicate entries)\n", count, duplicates); }
 
 /* ******************************************************************************** */
 // General functions
