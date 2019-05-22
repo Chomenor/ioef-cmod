@@ -480,6 +480,8 @@ static void add_paks_by_category(reference_set_work_t *rsw, pakcategory_t catego
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
+			// The *inactivemod_paks rule explicitly follows the fs_read_inactive_mods setting in order for
+			//    fs_read_inactive_mods to work in the expected way when using the default pure manifest
 			// Note: Pure list from a previous client session should be cleared at this point in the map load process,
 			//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
 			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
@@ -535,7 +537,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
 		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
+			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
 			if(file->pk3_hash != hash) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, hash, file);
 			++count; }
@@ -553,7 +555,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 			if(!file->pk3_hash) continue;
-			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
+			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
 			if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), name)) continue;
 			if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), mod_dir)) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);

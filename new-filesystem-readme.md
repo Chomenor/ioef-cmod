@@ -90,13 +90,11 @@ Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow
 
 - *mod_paks - Selects all paks from the current active mod.
 - *base_paks - Selects all paks from com_basegame (baseq3).
-- *inactivemod_paks - Selects all paks in inactive mod directories (not baseq3 or the current mod).
+- *inactivemod_paks - Selects all paks in inactive mod directories (not baseq3 or the current mod) that are enabled by the fs_read_inactive_mods setting on the server. Under the default fs_read_inactive_mods setting of 1 this will select only the missionpack paks pak0-pak3.
 - *currentmap_pak - Selects the pak containing the bsp of the current running map.
 - *cgame_pak - Selects the pak containing the preferred cgame.qvm file.
 - *ui_pak - Selects the pak containing the preferred ui.qvm file.
 - *referenced_paks - Selects paks accessed during the loading process on the server.
-
-NOTE: No selector rules, including *inactivemod_paks, will select any paks from inactive mods unless they are allowed according to the fs_read_inactive_mods setting on the server. To use inactive mods freely make sure fs_read_inactive_mods is set to 2.
 
 The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The *referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to the other rules and can be dropped without issue.
 ```
@@ -134,6 +132,8 @@ In some cases it can be convenient to exclude a certain pk3 that would otherwise
 ```
 set fs_download_manifest *currentmap_pak &exclude mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
 ```
+
+Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only supported to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
 
 # Source Directory Options
 
