@@ -298,7 +298,8 @@ typedef struct {
 	char mod_dir[FSC_MAX_MODDIR];
 	char name[FSC_MAX_QPATH];
 	unsigned int hash;
-	const fsc_file_direct_t *pak;	// Optional (if null, will attempt to determine later)
+	const fsc_file_direct_t *pak_file;	// Optional (if null, represents hash-only entry)
+	unsigned int pak_file_name_match;	// For sorting purposes
 
 	// Command characteristics
 	char command_name[64];		// Name of the selector command that created this entry, for debug prints
@@ -306,10 +307,6 @@ typedef struct {
 
 	// For debug print purposes
 	int entry_id;
-
-	// How closely the specified mod dir/name match the ones in the pak reference
-	// 0 = no pak, 1 = no name match, 2 = case insensitive match, 3 = case sensitive match
-	unsigned int name_match;
 
 	// Sorting
 	char sort_key[FSC_MAX_MODDIR+FSC_MAX_QPATH+32];
@@ -332,7 +329,7 @@ typedef struct {
 } reference_set_work_t;
 
 static void generate_reference_set_entry(reference_set_work_t *rsw, const char *mod_dir, const char *name,
-		unsigned int hash, const fsc_file_direct_t *pak, reference_set_entry_t *target) {
+		unsigned int hash, const fsc_file_direct_t *pak_file, reference_set_entry_t *target) {
 	// pak can be null; other parameters are required
 	fsc_stream_t sort_stream = {target->sort_key, 0, sizeof(target->sort_key), 0};
 
@@ -340,31 +337,38 @@ static void generate_reference_set_entry(reference_set_work_t *rsw, const char *
 	Q_strncpyz(target->mod_dir, mod_dir, sizeof(target->mod_dir));
 	Q_strncpyz(target->name, name, sizeof(target->name));
 	target->hash = hash;
-	target->pak = pak;
+	target->pak_file = pak_file;
 	target->cluster = rsw->cluster;
 	target->entry_id = rsw->entry_id_counter++;
 
+	// Write command name debug string
 	Q_strncpyz(target->command_name, rsw->command_name, sizeof(target->command_name));
 	if(strlen(rsw->command_name) >= sizeof(target->command_name)) {
 		strcpy(target->command_name + sizeof(target->command_name) - 4, "..."); }
 
-	if(pak) {
-		const char *pak_mod = (const char *)STACKPTR(pak->qp_mod_ptr);
-		const char *pak_name = (const char *)STACKPTR(pak->f.qp_name_ptr);
-		if(!strcmp(mod_dir, pak_mod) && !strcmp(name, pak_name)) target->name_match = 3;
-		else if(!Q_stricmp(mod_dir, pak_mod) && !Q_stricmp(name, pak_name)) target->name_match = 2;
-		else target->name_match = 1; }
+	// Determine pak_file_name_match, which is added to the sort key to handle special cases
+	//   e.g. if a pk3 is specified in the download manifest with a specific hash, and multiple pk3s exist
+	//   in the filesystem with that hash, this sort value attempts to prioritize the physical pk3 closer to
+	//   the user-specified name to be used as the physical download source file
+	// 0 = no pak, 1 = no name match, 2 = case insensitive match, 3 = case sensitive match
+	if(pak_file) {
+		const char *pak_mod = (const char *)STACKPTR(pak_file->qp_mod_ptr);
+		const char *pak_name = (const char *)STACKPTR(pak_file->f.qp_name_ptr);
+		if(!strcmp(mod_dir, pak_mod) && !strcmp(name, pak_name)) target->pak_file_name_match = 3;
+		else if(!Q_stricmp(mod_dir, pak_mod) && !Q_stricmp(name, pak_name)) target->pak_file_name_match = 2;
+		else target->pak_file_name_match = 1; }
 
+	// Write sort key
 	{	fs_modtype_t mod_type = fs_get_mod_type(target->mod_dir);
-		unsigned int default_pak_priority = mod_type < MODTYPE_OVERRIDE_DIRECTORY ? (unsigned int)default_pk3_position(hash) : 0;
+		unsigned int core_pak_priority = mod_type <= MODTYPE_BASE ? (unsigned int)core_pk3_position(hash) : 0;
 
 		fs_write_sort_value(~target->cluster, &sort_stream);
-		fs_write_sort_value(mod_type >= MODTYPE_OVERRIDE_DIRECTORY ? (unsigned int)mod_type : 0, &sort_stream);
-		fs_write_sort_value(default_pak_priority, &sort_stream);
+		fs_write_sort_value(mod_type > MODTYPE_BASE ? (unsigned int)mod_type : 0, &sort_stream);
+		fs_write_sort_value(core_pak_priority, &sort_stream);
 		fs_write_sort_value((unsigned int)mod_type, &sort_stream);
 		fs_write_sort_string(target->mod_dir, &sort_stream, qfalse);
 		fs_write_sort_string(target->name, &sort_stream, qfalse);
-		fs_write_sort_value(target->name_match, &sort_stream);
+		fs_write_sort_value(target->pak_file_name_match, &sort_stream);
 		target->sort_key_length = sort_stream.position; } }
 
 static int compare_reference_set_entry(const reference_set_entry_t *e1, const reference_set_entry_t *e2) {
@@ -389,12 +393,13 @@ static void reference_set_insert_entry(reference_set_work_t *rsw, const char *mo
 		Com_Printf("source rule: %s\n", new_entry.command_name);
 		Com_Printf("path: %s/%s\n", new_entry.mod_dir, new_entry.name);
 		Com_Printf("hash: %i\n", (int)new_entry.hash);
-		if(new_entry.pak) {
+		if(new_entry.pak_file) {
 			char buffer[FS_FILE_BUFFER_SIZE];
-			fs_file_to_buffer((const fsc_file_t *)new_entry.pak, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-			Com_Printf("physical file: %s\n", buffer); }
+			fs_file_to_buffer((const fsc_file_t *)new_entry.pak_file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
+			Com_Printf("pak file: %s\n", buffer);
+			Com_Printf("pak file name match: %u\n", new_entry.pak_file_name_match); }
 		else {
-			Com_Printf("physical file: <none>\n"); }
+			Com_Printf("pak file: <none>\n"); }
 		Com_Printf("cluster: %i\n", new_entry.cluster); }
 
 	// Process exclude command
@@ -475,7 +480,11 @@ static void add_paks_by_category(reference_set_work_t *rsw, pakcategory_t catego
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
-			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
+			// The *inactivemod_paks rule explicitly follows the fs_read_inactive_mods setting in order for
+			//    fs_read_inactive_mods to work in the expected way when using the default pure manifest
+			// Note: Pure list from a previous client session should be cleared at this point in the map load process,
+			//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
+			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
 			if(get_pak_category(pk3) != category) continue;
 			reference_set_insert_pak(rsw, pk3); } } }
 
@@ -528,7 +537,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
 		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
+			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
 			if(file->pk3_hash != hash) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, hash, file);
 			++count; }
@@ -546,14 +555,14 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 			if(!file->pk3_hash) continue;
-			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) continue;
+			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
 			if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), name)) continue;
 			if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), mod_dir)) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);
-			++count; } }
+			++count; }
 
-	if(count != 1) Com_Printf("WARNING: Command %s %s\n", rsw->command_name,
-			count ? "found multiple pk3s" : "failed to locate pk3"); }
+		if(count == 0) Com_Printf("WARNING: Command %s failed to match pk3.\n", rsw->command_name);
+		if(count > 1) Com_Printf("WARNING: Command %s matched multiple pk3s.\n", rsw->command_name); } }
 
 static void generate_reference_set(const char *manifest, fs_hashtable_t *output, int *duplicates_out) {
 	// Provide initialized hashtable for output
@@ -728,7 +737,7 @@ static void generate_reference_strings(const char *manifest, fsc_stream_t *hash_
 #endif
 
 			// Print warning if file is physically unavailable
-			if(!entry->pak && allowDownload && !(allowDownload & DLF_NO_UDP)) {
+			if(!entry->pak_file && allowDownload && !(allowDownload & DLF_NO_UDP)) {
 				Com_Printf("WARNING: Download list file %s/%s from command %s was not found on the server."
 					" Attempts to download this file via UDP will result in an error.\n",
 					mod_dir, name, entry->command_name); }
@@ -751,14 +760,14 @@ static void generate_reference_strings(const char *manifest, fsc_stream_t *hash_
 			fsc_stream_append_string(name_output, buffer); }
 
 		if(download_map_output) {
-			if(entry->pak) {
+			if(entry->pak_file) {
 				Com_sprintf(buffer, sizeof(buffer), "%s/%s.pk3", mod_dir, name);
-				add_download_map_entry(download_map_output, buffer, entry->pak); } } }
+				add_download_map_entry(download_map_output, buffer, entry->pak_file); } } }
 
 	fs_hashtable_free(&reference_set, 0);
 	Z_Free(reference_list);
 
-	Com_Printf("Got %i unique paks with %i duplications\n", count, duplicates); }
+	Com_Printf("Got %i unique paks (%i duplicate entries)\n", count, duplicates); }
 
 /* ******************************************************************************** */
 // General functions

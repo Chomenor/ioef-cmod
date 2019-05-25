@@ -181,11 +181,11 @@ static void FS_Path_f( void ) {
 			while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 				const fsc_file_direct_t *pak = (const fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
 				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak,
-						FD_CHECK_FILE_ENABLED|FD_CHECK_SEARCH_INACTIVE_MODS)) {
+						FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) {
 					char buffer[FS_FILE_BUFFER_SIZE];
 					fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
 					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count);
-					Com_Printf("    hash(%i) default_pk3_position(%i)\n", (int)pak->pk3_hash, default_pk3_position(pak->pk3_hash));
+					Com_Printf("    hash(%i) core_pk3_position(%i)\n", (int)pak->pk3_hash, core_pk3_position(pak->pk3_hash));
 					if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
 							pk3_list_lookup(&connected_server_pk3_list, pak->pk3_hash, qfalse) ? "" : "not "); } } } }
 

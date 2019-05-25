@@ -34,15 +34,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifdef ELITEFORCE
 // These paks get special precedence. Can be non-defined to disable.
-#define FS_DEFAULT_PAKS {3376297517, 596947475, 3960871590, 1592359207}
+#define FS_CORE_PAKS {3376297517, 596947475, 3960871590, 1592359207}
 #define FS_NODOWNLOAD_PAKS 4
 #else
 #ifndef STANDALONE
 // These paks get special precedence. Can be non-defined to disable.
-#define FS_DEFAULT_PAKS {2430342401u, 511014160u, 2662638993u, 1438664554u, \
+#define FS_CORE_PAKS {2430342401u, 511014160u, 2662638993u, 1438664554u, \
 		1566731103u, 298122907u, 412165236u, 2991495316u, 1197932710u, \
 		4087071573u, 3709064859u, 908855077u, 977125798u}
-#define FS_DEFAULT_PAKS_TEAMARENA {1566731103u, 298122907u, 412165236u, 2991495316u, \
+#define FS_CORE_PAKS_TEAMARENA {1566731103u, 298122907u, 412165236u, 2991495316u, \
 		1197932710u, 4087071573u, 3709064859u, 908855077u, 977125798u, \
 		2430342401u, 511014160u, 2662638993u, 1438664554u}
 
@@ -130,7 +130,7 @@ typedef struct {
 DEF_LOCAL( extern cvar_t *fs_dirs )
 DEF_LOCAL( extern cvar_t *fs_mod_settings )
 DEF_LOCAL( extern cvar_t *fs_index_cache )
-DEF_LOCAL( extern cvar_t *fs_search_inactive_mods )
+DEF_LOCAL( extern cvar_t *fs_read_inactive_mods )
 DEF_LOCAL( extern cvar_t *fs_list_inactive_mods )
 DEF_LOCAL( extern cvar_t *fs_download_manifest )
 DEF_LOCAL( extern cvar_t *fs_pure_manifest )
@@ -381,7 +381,7 @@ typedef enum {
 	MODTYPE_CURRENT_MOD
 } fs_modtype_t;
 #endif
-DEF_LOCAL( int default_pk3_position(unsigned int hash) )
+DEF_LOCAL( int core_pk3_position(unsigned int hash) )
 DEF_LOCAL( fs_modtype_t fs_get_mod_type(const char *mod_dir) )
 
 // File helper functions
@@ -403,7 +403,7 @@ DEF_PUBLIC( void fs_print_file_location(const fsc_file_t *file) )
 #ifdef FSLOCAL
 #define FD_CHECK_FILE_ENABLED 1		// Check if file is disabled in index
 #define FD_CHECK_PURE_LIST 2		// Check if file is blocked by connected server pure configuration
-#define FD_CHECK_SEARCH_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_search_inactive_mods setting
+#define FD_CHECK_READ_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_read_inactive_mods setting
 #define FD_CHECK_LIST_INACTIVE_MODS 8		// Check if file is blocked for file listing by fs_list_inactive_mods setting
 #define FD_CHECK_LIST_AUXILIARY_SOURCEDIR 16	// Check if file is blocked for file listing due to auxiliary sourcedir
 DEF_LOCAL( int fs_file_disabled(const fsc_file_t *file, int checks) )
@@ -434,8 +434,8 @@ DEF_LOCAL( qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char 
 DEF_LOCAL( qboolean fs_check_trusted_vm_file(const fsc_file_t *file) )
 DEF_LOCAL( void sha256_to_stream(unsigned char *sha, fsc_stream_t *output) )
 
-// Default Pak Verification
-DEF_LOCAL( void fs_check_default_paks(void) )
+// Core Pak Verification
+DEF_LOCAL( void fs_check_core_paks(void) )
 
 /* ******************************************************************************** */
 // Trusted VMs

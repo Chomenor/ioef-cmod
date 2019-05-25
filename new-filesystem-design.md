@@ -18,7 +18,7 @@ This is an overview of some of the main design changes in this project compared 
 
 **original filesystem:** Shaders are indexed by the renderer.  
 **new filesystem:** Shaders are indexed by the filesystem, and new API calls are added to allow the renderer to access shaders by name.  
-**reason for change:** It allows shaders to be sorted with the same precedence logic used by the filesystem and compared alongside images instead of always overriding them. It also improves load times significantly because shaders don't have to be reindexed on every map change and can take advantage of the index cache file.
+**reason for change:** It allows shaders to be sorted with the same precedence logic used by the filesystem and compared with images selectively instead of always overriding them. It also improves load times significantly because shaders don't have to be reindexed on every map change and can take advantage of the index cache file.
 
 # Source Files
 
@@ -219,13 +219,13 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 - resource_disabled: There are several conditions, such as a file not on the pure list, where resources are deemed to unusable in the selection process. Instead of just skipping these resources outright they are assigned a "disabled" string in the lookup resource, which allows them to go through the precedence process and appear in the debug outputs. This rule ensures such resources get sorted to the bottom of the resource list.
 
-- special_shaders: Prioritizes "special" shaders (those from a default pak, server pak list, current mod dir, or basemod dir). Resources in these locations normally override resources outside them anyway, but this rule causes explicit shaders to override images when they are both in one of these locations. This is helpful in some special cases. For example, suppose the default paks provide a shader and image both with the same name, in which the shader invokes the image, and a mod provides a modified version of the image only. By itself, the basemod_or_current_mod_dir rule would cause the mod image to override the shader instead of just the image, which is probably not the mod author's intention nor the original filesystem behavior. This rule increases the areas where shaders override images to better handle these kind of conditions.
+- special_shaders: Prioritizes "special" shaders (those from a core pak, server pak list, current mod dir, or basemod dir). Resources in these locations normally override resources outside them anyway, but this rule causes explicit shaders to override images when they are both in one of these locations. This is helpful in some special cases. For example, suppose the core paks provide a shader and image both with the same name, in which the shader invokes the image, and a mod provides a modified version of the image only. By itself, the basemod_or_current_mod_dir rule would cause the mod image to override the shader instead of just the image, which is probably not the mod author's intention nor the original filesystem behavior. This rule increases the areas where shaders override images to better handle these kind of conditions.
 
 - server_pak_position: Prioritizes paks according to the order of the server pak list (sv_paks) when connected to a pure or semi-pure server.
 
 - basemod_or_current_mod_dir: Prioritizes current_mod_dir (which generally corresponds to fs_game) and basemod over com_basegame and inactive mods.
 
-- system_paks: Prioritizes the default paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
+- core_paks: Prioritizes the core paks (e.g. pak0-pak8.pk3 in the case of Quake 3) which are defined by hash in fspublic.h.
 
 - current_map_pak: Prioritizes the pak, if any, where the current map was loaded from. That value is stored under current_map_pk3 in fs_main.c.
 
@@ -233,7 +233,7 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 - downloads_folder: De-prioritizes resources from paks within a "downloads" folder.
 
-- shader_over_image: Prioritizes explicit shaders over default shader images. Note the placement behind the system_paks, current_map_pak, inactive_mod_dir, and downloads_folder rules, as those are cases where it is desirable to let images override shaders.
+- shader_over_image: Prioritizes explicit shaders over default shader images. Note the placement behind the core_paks, current_map_pak, inactive_mod_dir, and downloads_folder rules, as those are cases where it is desirable to let images override shaders.
 
 - dll_over_qvm: Prioritizes game dlls over qvms. Note that this rule is only relevant if vm_game, vm_cgame, or vm_ui is set to 0 (VMI_NATIVE), as otherwise dlls will not be part of the query.
 
@@ -335,7 +335,7 @@ This component handles file list requests, which are used primarily by UI menus 
 
 - The "start directory" in the directory index is determined. This allows only files and subfiles under the directory specified in the query to be iterated, instead of having to iterate every file in the index like the original filesystem.
 
-- The file depths are calculated. This is to emulate the behavior of the original filesystem, which typically only lists files 2 directories deep from the base directory.
+- The file depths are calculated. This is to emulate the behavior of the original filesystem, which typically only lists files 2 directories deep from the base directory, but can use other depths due to various quirks.
 
 - A temporary file set is initialized and temp_file_set_populate is called. It iterates every file under the determined start directory, converts the file (and subdirectories) to strings, checks if the string matches the query criteria, and if so adds it to the file set. A sort key is stored with each file set entry, and duplicate entries are resolved to use the highest precedence sort key.
 
@@ -358,28 +358,32 @@ This component handles constructing the pure and download lists when hosting a s
 # FAQ
 
 **Q:** Why is the new filesystem larger (in terms of lines/source files)?  
-**A:** Some increase is due to new features and optimizations, but one main reason the line count is larger is because the filesystem is divided into two parts, the core component and the regular game component. The core component can be compiled independently and has no dependencies on ioquake3 code. This increases the line count, because certain things have to be reimplemented in the core that already exist in ioq3, but ultimately is easier to maintain because of the flexibility to make changes in ioq3 without concern about breaking anything in the filesystem core.
+**A:** It has many new features which increases the code length. Despite the increased size, the new design is often easier to maintain due to components such as file indexing, file lookup, file listing, pure list creation, etc. becoming more modular. In the original filesystem these components are integrated together which is good for short code size but can be a tangle to work with for any non-trivial feature.
 
 **Q:** Since some new filesystem features can bypass problems with maps, will it cause map developers to release broken maps?  
-**A:** Map developers should already test maps before release using a clean install of both ioquake3 and original Quake 3. As long as map developers follow existing good practices there should be no problems.
+**A:** Map developers should already test maps before release using a clean install of the original Quake 3 client, in addition to other clients like ioquake3. As long as map developers follow existing good practices there should be no problems.
 
 **Q:** Will the index cache reduce the stability of the game, and can it be corrupted?  
-**A:** So far the cache has been extremely stable. At the time of writing I haven't found a single bug or problem that traced to it in over a year since the initial release of this project. Still, if this project were to be integrated in ioquake3 it would make sense to default fs_index_cache to 0 during the initial testing phase just to rule out the cache as a source of problems.
+**A:** So far the cache has been extremely stable. At the time of writing I haven't found a single bug or problem that traced to it in several years since the initial release of this project. However, for integrating this filesystem into other projects it makes sense to default fs_index_cache to 0 during the initial testing phase just to rule out the cache as a source of problems. Even with the cache disabled this filesystem still significantly outperforms the original filesystem in load times.
 
 **Q:** How hard is this project to merge with other ioquake3-based projects?  
-**A:** It will be some degree of a task, but for projects using a files.c relatively close to ioquake3 it shouldn't be too hard. Most of the code is under the filesystem directory and can just be copied in. I think the improvements are well worth the trouble, especially if people tend to run your game with downloads enabled or a lot of pk3s installed.
+**A:** It will be some degree of a task, but for projects using a files.c relatively close to ioquake3 it shouldn't be too hard. Most of the code is under the filesystem directory and can just be copied in. I think the improvements are well worth the trouble, especially if people tend to run your game with downloads enabled or a lot of pk3s installed, or your game would benefit from a more advanced file precedence system.
 
 **Q:** Why is SV_VerifyPaks_f removed?  
 **A:** This function was used as an extra check to make certain kinds of hacks a little bit more difficult in the early days of Quake 3, when it was still closed source. It's not necessary or useful anymore so has been removed to reduce complexity.
 
 **Q:** Is it bad to change file precedence because it could break existing content?  
-**A:** If you assume a clean game directory with only a few pk3s installed, there would be no need to make precedence changes. However, in practical usage with server downloads, map download packages, and base directories with hundreds of pk3s, the existing precedence system is very unstable. It is based strictly on filename and has quirks that violate even the filename precedence under certain conditions. The precedence system in this project isolates the ID pak and current map pk3 from other base pk3s, and after that follows the traditional mod and alphabetical ordering without unpredictable quirks. As a result the game is much more stable and better at loading the assets actually intended by content authors when there are large numbers of pk3s installed.
+**A:** It is very rare that the precedence changes in this filesystem break existing content, but it does often prevent conflicts or game breakage from misplaced pk3s, which is a much more significant problem in practice. In my view it is better to use hardcoded workarounds for ~0.1% of content that has issues with the new precedence system than run with inferior precedence logic that affects the other 99.9% of content.
 
-**Q:** Why are all mod dirs including inactive ones indexed at startup? It seems weird/inefficient.  
-**A:** This design simplifies the filesystem code because there is no need to maintain multiple hashtables for different mod directories, or detect and perform reindexing when the mod changes. It also allows instantaneous mod switching with no indexing overhead and makes it easier to support features that work beyond the single fs_game model. The filesystem is designed so that even though inactive mods are indexed in memory they do not have any effect on the game unless a feature intentionally accesses them, and the load time impact of indexing the extra files is generally negligible due to the index cache.
+**Q:** Why are all mod dirs including inactive ones indexed at startup?
+**A:** This design simplifies the filesystem code because there is no need to maintain multiple hashtables for different mod directories or detect and perform reindexing when the mod changes. It generally does not cause any meaningful performance disadvantage due to the way the cache system works.
 
 **Q:** If it's a good idea to change the backwards shader precedence, why has it not been done in the original filesystem?  
-**A:** Forward shader precedence is much better in general, but there are a couple of issues that prevent it from being trivially changed in the original filesystem. First, some maps, especially low-quality conversions from other games, erroneously define shaders that conflict with the ID paks, and rely on the backwards shader precedence and having a filename alphabetically higher than 'p' to not override them. In the new filesystem the ID paks have precedence regardless of filename, so backwards shader precedence is no longer necessary. The second issue is with shaders that conflict with other shaders inside the *same* pk3 file. If the shader precedence was naively reversed, the intra-pk3 precedence would be reversed as well, which would lead to potential compatibility issues with all existing pk3s including the ID paks. The new filesystem solves this problem by explicitly emulating the original precedence conventions for shaders inside the same pk3.
+**A:** Forward shader precedence is much better in general, but there are a couple of issues that can complicate trivially changing it in original filesystem clients.
+
+- Some maps, especially low-quality conversions from other games, include incompatible shaders that conflict with the ID paks. They rely on the map pk3 having a filename alphabetically higher than 'p' so the ID paks override those shaders via backwards precedence. If forward shader presence is applied, these broken shaders take effect potentially breaking the game (for all maps, not just when the broken map is running). This filesystem avoids this problem because it prioritizes the ID paks over other pk3s in baseq3 regardless of filename.
+
+- In some cases shaders conflict with other shaders inside the same pk3 file. If the shader precedence was naively reversed, the internal pk3 precedence would be reversed as well, leading to compatibility issues with the ID paks and probably a few other existing pk3s. This filesystem avoids this problem by emulating the original precedence conventions for shaders within the same pk3 (whether in the same .shader file or not).
 
 # Conclusion
 
