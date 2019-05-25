@@ -1083,9 +1083,9 @@ void Key_WriteBindings( fileHandle_t f ) {
 		if(!keys[i].binding) continue;
 		if(keys[i].default_binding && !Q_stricmp(keys[i].binding, keys[i].default_binding)) continue;
 
-		// Don't write if value is super long or contains characters that could
+		// Don't write if value is excessively long or contains characters that could
 		// cause problems parsing the config file
-		if(strlen(keys[i].binding) > 2000) continue;
+		if(strlen(keys[i].binding) > 512) continue;
 		if(strchr(keys[i].binding, '\n')) continue;
 		if(strchr(keys[i].binding, '\r')) continue;
 		if(strchr(keys[i].binding, '\"')) continue;

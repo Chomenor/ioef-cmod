@@ -60,9 +60,9 @@ char	*Cmd_Args( void ) {
 
 	cmd_args[0] = 0;
 	for ( i = 1 ; i < cmd_argc ; i++ ) {
-		strcat( cmd_args, cmd_argv[i] );
+		Q_strcat( cmd_args, sizeof(cmd_args), cmd_argv[i] );
 		if ( i != cmd_argc-1 ) {
-			strcat( cmd_args, " " );
+			Q_strcat( cmd_args, sizeof(cmd_args), " " );
 		}
 	}
 
@@ -78,9 +78,9 @@ char *Cmd_ArgsFrom( int arg ) {
 	if (arg < 0)
 		arg = 0;
 	for ( i = arg ; i < cmd_argc ; i++ ) {
-		strcat( cmd_args, cmd_argv[i] );
+		Q_strcat( cmd_args, sizeof(cmd_args), cmd_argv[i] );
 		if ( i != cmd_argc-1 ) {
-			strcat( cmd_args, " " );
+			Q_strcat( cmd_args, sizeof(cmd_args), " " );
 		}
 	}
 
@@ -132,6 +132,9 @@ static void Cmd_TokenizeString2( const char *text_in, qboolean ignoreQuotes ) {
 	char	*textOut;
 
 	// Com_DPrintf("Cmd_TokenizeString: %s\n", text_in);
+
+	// Rough sanity check...
+	if(strlen(text_in) > sizeof(cmd_tokenized) - 10) text_in = "";
 
 	// clear previous args
 	cmd_argc = 0;

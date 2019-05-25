@@ -1371,9 +1371,10 @@ static int write_cvars_by_category(fileHandle_t f, int category, qboolean (enabl
 		// Don't write if it's the same as the default
 		if(cvar_matches_default(cvar, value)) continue;
 
-		// Don't write if value is super long or contains characters that could
+		// Don't write if value is excessively long or contains characters that could
 		// cause problems parsing the config file
-		if(strlen(value) > 65536) continue;
+		if(strlen(cvar->s.name) > 256) continue;
+		if(strlen(value) > 512) continue;
 		if(strchr(value, '\n')) continue;
 		if(strchr(value, '\r')) continue;
 		if(strchr(value, '\"')) continue;
