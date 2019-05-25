@@ -559,10 +559,10 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 			if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), name)) continue;
 			if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), mod_dir)) continue;
 			reference_set_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);
-			++count; } }
+			++count; }
 
-	if(count != 1) Com_Printf("WARNING: Command %s %s\n", rsw->command_name,
-			count ? "found multiple pk3s" : "failed to locate pk3"); }
+		if(count == 0) Com_Printf("WARNING: Command %s failed to match pk3.\n", rsw->command_name);
+		if(count > 1) Com_Printf("WARNING: Command %s matched multiple pk3s.\n", rsw->command_name); } }
 
 static void generate_reference_set(const char *manifest, fs_hashtable_t *output, int *duplicates_out) {
 	// Provide initialized hashtable for output
