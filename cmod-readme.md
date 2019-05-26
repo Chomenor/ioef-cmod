@@ -90,8 +90,8 @@ By default, cMod tries to use raw input mode for mouse input, which bypasses OS 
 cMod supports customizing the color of the sky in fastsky mode (when r_fastsky is set to 1). The color is controlled by the r_fastskyColor cvar and specified in RGB hex format. You can experiment with different combinations or use an online RGB picker tool that generates a standard 6-digit hex value to choose the color. Some sample values are as follows:
 
 - `ccb366` - yellow (original Elite Force default)
-- `666644` - darker shade of yellow
-- `444444` - light gray
+- `777755` - darker shade of yellow
+- `777777` - light gray
 - `000000` - black (original ioEF default)
 - `ffffff` - white
 
