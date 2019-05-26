@@ -81,6 +81,20 @@ In the original game, the console and chat font are displayed at a fixed size, u
 - A setting between 0 and 1 scales to some fraction of the font size represented by 1. However it will not scale below the original unscaled font size.
 - A setting of 0 produces the original unscaled font size.
 
+## Mouse Input Mode
+
+By default, cMod tries to use raw input mode for mouse input, which bypasses OS acceleration settings and is generally more accurate for FPS games. If you prefer to make the mouse input work the same as older versions of EF, try setting in_mouse_warping to 1 and restart cMod.
+
+## Custom Fastsky Color
+
+cMod supports customizing the color of the sky in fastsky mode (when r_fastsky is set to 1). The color is controlled by the r_fastskyColor cvar and specified in RGB hex format. You can experiment with different combinations or use an online RGB picker tool that generates a standard 6-digit hex value to choose the color. Some sample values are as follows:
+
+- `ccb366` - yellow (original Elite Force default)
+- `666644` - darker shade of yellow
+- `444444` - light gray
+- `000000` - black (original ioEF default)
+- `ffffff` - white
+
 # Server
 
 It is possible to use cMod for hosting servers, but this is currently very experimental. Let me know if you encounter any bugs. I hope to add more features, documentation, and server config templates sometime in the future.
