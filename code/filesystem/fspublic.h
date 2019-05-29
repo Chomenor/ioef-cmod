@@ -329,6 +329,12 @@ DEF_PUBLIC( void fs_set_pure_list(void) )
 // Misc
 /* ******************************************************************************** */
 
+// Indented debug prints
+
+DEF_LOCAL( void fs_debug_indent_start(void) )
+DEF_LOCAL( void fs_debug_indent_stop(void) )
+DEF_LOCAL( void QDECL FS_DPrintf(const char *fmt, ...) __attribute__ ((format (printf, 1, 2))) )
+
 // Hash Table
 DEF_LOCAL( void fs_hashtable_initialize(fs_hashtable_t *hashtable, int bucket_count) )
 DEF_LOCAL( void fs_hashtable_insert(fs_hashtable_t *hashtable, fs_hashtable_entry_t *entry, unsigned int hash) )

@@ -691,9 +691,9 @@ static void lookup_print_debug_file(const fsc_file_t *file) {
 	if(file) {
 		char buffer[FS_FILE_BUFFER_SIZE];
 		fs_file_to_buffer(file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-		Com_Printf("result: %s\n", buffer); }
+		FS_DPrintf("result: %s\n", buffer); }
 	else {
-		Com_Printf("result: <not found>\n"); } }
+		FS_DPrintf("result: <not found>\n"); } }
 
 const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) {
 	lookup_query_t query;
@@ -719,11 +719,13 @@ const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean
 
 	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** general lookup **********\n");
-		Com_Printf("name: %s\nignore_pure_list: %s\nignore_current_map: %s\n", name,
-			(lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "true" : "false",
-			(lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "true" : "false");
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** general lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		FS_DPrintf("ignore_pure_list: %s\n", (lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "true" : "false");
+		FS_DPrintf("ignore_current_map: %s\n", (lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "true" : "false");
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
 static void shader_or_image_lookup(const char *name, qboolean image_only, int lookup_flags,
@@ -757,9 +759,11 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolea
 	shader_or_image_lookup(name, qfalse, lookup_flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** shader lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** shader lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.shader; }
 
 const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean debug) {
@@ -770,9 +774,11 @@ const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean d
 	shader_or_image_lookup(name, qtrue, lookup_flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** image lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** image lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
 const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
@@ -806,9 +812,11 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 
 	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** sound lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** sound lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
 const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) {
@@ -841,10 +849,12 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 
 	perform_lookup(queries, query_count, qtrue, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** dll/qvm lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		Com_Printf("qvm only: %s\n", qvm_only ? "yes" : "no");
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** dll/qvm lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		FS_DPrintf("qvm only: %s\n", qvm_only ? "yes" : "no");
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 
 	// Not elegant but should be adequate
 	if(is_dll_out) *is_dll_out = lookup_result.file && lookup_result.file->qp_ext_ptr &&
@@ -872,9 +882,11 @@ const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboo
 
 	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** config lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** config lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
 #endif	// NEW_FILESYSTEM

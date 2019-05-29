@@ -491,9 +491,11 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 		if(file) {
 			char buffer[FS_FILE_BUFFER_SIZE];
 			fs_file_to_buffer(file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-			Com_Printf("********** read data from indexed file **********\nfile: %s\n", buffer); }
+			FS_DPrintf("********** read data from indexed file **********\n");
+			FS_DPrintf("  file: %s\n", buffer); }
 		else {
-			Com_Printf("********** read data from path **********\npath: %s\n", path); } }
+			FS_DPrintf("********** read data from path **********\n");
+			FS_DPrintf("  path: %s\n", path); } }
 
 	// Check if file is already available from cache
 	if(file) {
@@ -501,7 +503,7 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 		if(cache_entry) {
 			++cache_entry->lock_count;
 			if(size_out) *size_out = cache_entry->size - 1;
-			if(fs_debug_fileio->integer) Com_Printf("result: loaded %u bytes from cache\n", cache_entry->size - 1);
+			if(fs_debug_fileio->integer) FS_DPrintf("  result: loaded %u bytes from cache\n", cache_entry->size - 1);
 			return CACHE_ENTRY_DATA(cache_entry); } }
 
 	// Derive os_path in case of path parameter or direct sourcetype file
@@ -547,12 +549,12 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 	data[size] = 0;
 
 	if(size_out) *size_out = size;
-	if(fs_debug_fileio->integer) Com_Printf("result: loaded %u bytes from file\n", size);
+	if(fs_debug_fileio->integer) FS_DPrintf("  result: loaded %u bytes from file\n", size);
 	return data;
 
 	// Free buffer if there was an error extracting data
 	error:
-	if(fs_debug_fileio->integer) Com_Printf("result: failed to load file\n");
+	if(fs_debug_fileio->integer) FS_DPrintf("  result: failed to load file\n");
 	if(cache_entry) {
 		cache_entry->file = 0;
 		cache_entry->lock_count = 0; }
@@ -763,12 +765,14 @@ fileHandle_t fs_direct_read_handle_open(const fsc_file_t *file, const char *path
 		Q_strncpyz(debug_path, path, sizeof(debug_path)); }
 	else Com_Error(ERR_FATAL, "Invalid parameters to fs_direct_read_handle_open.");
 
-	if(fs_debug_fileio->integer) Com_Printf("********** opening direct read handle **********\npath: %s\n", debug_path);
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("********** opening direct read handle **********\n");
+		FS_DPrintf("  path: %s\n", debug_path); }
 
 	fsc_handle = fsc_open_file(os_path, "rb");
 	if(!file) fsc_free(os_path);
 	if(!fsc_handle) {
-		if(fs_debug_fileio->integer) Com_Printf("result: failed to open file\n");
+		if(fs_debug_fileio->integer) FS_DPrintf("  result: failed to open file\n");
 		return 0; }
 
 	// Set up handle entry
@@ -783,7 +787,7 @@ fileHandle_t fs_direct_read_handle_open(const fsc_file_t *file, const char *path
 		*size_out = fsc_ftell(fsc_handle);
 		fsc_fseek(fsc_handle, 0, FSC_SEEK_SET); }
 
-	if(fs_debug_fileio->integer) Com_Printf("result: success\n");
+	if(fs_debug_fileio->integer) FS_DPrintf("  result: success\n");
 	return handle; }
 
 static unsigned int fs_direct_read_handle_read(char *buffer, unsigned int length, fs_direct_read_handle_t *handle_entry) {
@@ -816,11 +820,13 @@ static fileHandle_t fs_pk3_read_handle_open(const fsc_file_t *file) {
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) Com_Error(ERR_FATAL, "fs_pk3_read_handle_open on non pk3 file");
 	fs_file_to_buffer((fsc_file_t *)file, debug_path, sizeof(debug_path), qtrue, qtrue, qtrue, qfalse);
 
-	if(fs_debug_fileio->integer) Com_Printf("********** opening pk3 read handle **********\nfile: %s\n", debug_path);
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("********** opening pk3 read handle **********\n");
+		FS_DPrintf("  file: %s\n", debug_path); }
 
 	fsc_handle = fsc_pk3_handle_open((fsc_file_frompk3_t *)file, 16384, &fs, 0);
 	if(!fsc_handle) {
-		if(fs_debug_fileio->integer) Com_Printf("result: failed to open file\n");
+		if(fs_debug_fileio->integer) FS_DPrintf("  result: failed to open file\n");
 		return 0; }
 
 	// Set up handle entry
@@ -831,7 +837,7 @@ static fileHandle_t fs_pk3_read_handle_open(const fsc_file_t *file) {
 	handle_entry->position = 0;
 	handle_entry->h.debug_path = CopyString(debug_path);
 
-	if(fs_debug_fileio->integer) Com_Printf("result: success\n");
+	if(fs_debug_fileio->integer) FS_DPrintf("  result: success\n");
 	return handle; }
 
 static unsigned int fs_pk3_read_handle_read(char *buffer, unsigned int length, fs_pk3_read_handle_t *handle_entry) {
@@ -900,10 +906,12 @@ static fileHandle_t fs_write_handle_open(const char *path, qboolean append, qboo
 	void *os_path = fsc_string_to_os_path(path);
 	void *fsc_handle;
 
-	if(fs_debug_fileio->integer) Com_Printf("********** opening write handle **********\npath: %s\n", path);
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("********** opening write handle **********\n");
+		FS_DPrintf("  path: %s\n", path); }
 
 	if(!os_path) {
-		if(fs_debug_fileio->integer) Com_Printf("result: failed to convert to os path\n");
+		if(fs_debug_fileio->integer) FS_DPrintf("  result: failed to convert to os path\n");
 		return 0; }
 
 	// Attempt to open the file
@@ -911,7 +919,7 @@ static fileHandle_t fs_write_handle_open(const char *path, qboolean append, qboo
 	else fsc_handle = fsc_open_file(os_path, "wb");
 	fsc_free(os_path);
 	if(!fsc_handle) {
-		if(fs_debug_fileio->integer) Com_Printf("result: failed to open file\n");
+		if(fs_debug_fileio->integer) FS_DPrintf("  result: failed to open file\n");
 		return 0; }
 
 	// Set up handle entry
@@ -920,7 +928,7 @@ static fileHandle_t fs_write_handle_open(const char *path, qboolean append, qboo
 	handle_entry->fsc_handle = fsc_handle;
 	handle_entry->sync = sync;
 	handle_entry->h.debug_path = CopyString(path);
-	if(fs_debug_fileio->integer) Com_Printf("result: success\n");
+	if(fs_debug_fileio->integer) FS_DPrintf("  result: success\n");
 	return handle; }
 
 static void fs_write_handle_write(fileHandle_t handle, const char *data, unsigned int length) {
@@ -1085,7 +1093,7 @@ void fs_print_handle_list(void) {
 	int i;
 	for(i=0; i<MAX_HANDLES; ++i) {
 		if(!handles[i]) continue;
-		Com_Printf("********** handle %i **********\ntype: %s\nowner: %s\npath: %s\n",
+		Com_Printf("********** handle %i **********\n  type: %s\n  owner: %s\n  path: %s\n",
 				i+1, identify_handle_type(handles[i]->type), identify_handle_owner(handles[i]->owner),
 				handles[i]->debug_path); } }
 

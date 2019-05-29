@@ -379,8 +379,11 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 
 	if(fs_debug_filelist->integer) {
 		start_time = Sys_Milliseconds();
-		Com_Printf("********** file list query **********\n");
-		Com_Printf("path: %s\nextension: %s\nfilter: %s\n", path, query->extension, query->filter); }
+		FS_DPrintf("********** file list query **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("path: %s\n", path);
+		FS_DPrintf("extension: %s\n", query->extension);
+		FS_DPrintf("filter: %s\n", query->filter); }
 
 	// Initialize temp structures
 	Com_Memset(&flw, 0, sizeof(flw));
@@ -434,17 +437,17 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 		// NOTE: Consider restricting general depths to match direct depths in these cases instead of
 		//    disabling them entirely?
 		if(Q_stricmp(path_buffer1, path_buffer2)) {
-			if(fs_debug_filelist->integer) Com_Printf("NOTE: Restricting to direct files only due to OS-specific"
+			if(fs_debug_filelist->integer) FS_DPrintf("NOTE: Restricting to direct files only due to OS-specific"
 					" path separator conversion: original(%s) converted(%s)\n", path_buffer1, path_buffer2);
 			flw.general_file_depth = flw.general_directory_depth = 0; }
 		if(flw.extension && (strchr(flw.extension, '*') || strchr(flw.extension, '?'))) {
-			if(fs_debug_filelist->integer) Com_Printf("NOTE: Restricting to direct files only due to OS-specific"
+			if(fs_debug_filelist->integer) FS_DPrintf("NOTE: Restricting to direct files only due to OS-specific"
 					" extension wildcards\n");
 			flw.general_file_depth = flw.general_directory_depth = 0; }
 
 		// Debug print depths
 		if(fs_debug_filelist->integer) {
-			Com_Printf("depths: gf(%i) gd(%i) df(%i) dd(%i)\n", flw.general_file_depth, flw.general_directory_depth,
+			FS_DPrintf("depths: gf(%i) gd(%i) df(%i) dd(%i)\n", flw.general_file_depth, flw.general_directory_depth,
 					flw.direct_file_depth, flw.direct_directory_depth); }
 
 		// Determine prefix length
@@ -453,15 +456,16 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 
 		// Populate file set
 		temp_file_set_populate(start_directory, &temp_file_set, &flw); }
-	else if(fs_debug_filelist->integer) Com_Printf("NOTE: Failed to match start directory.\n");
+	else if(fs_debug_filelist->integer) FS_DPrintf("NOTE: Failed to match start directory.\n");
 
 	// Generate file list
 	result = temp_file_set_to_file_list(&temp_file_set, numfiles_out, &flw);
 
 	if(fs_debug_filelist->integer) {
-		Com_Printf("result: %i elements\n", temp_file_set.element_count);
-		Com_Printf("temp stack usage: %u\n", fsc_stack_get_export_size(&flw.temp_stack));
-		Com_Printf("time: %i\n", Sys_Milliseconds() - start_time); }
+		FS_DPrintf("result: %i elements\n", temp_file_set.element_count);
+		FS_DPrintf("temp stack usage: %u\n", fsc_stack_get_export_size(&flw.temp_stack));
+		FS_DPrintf("time: %i\n", Sys_Milliseconds() - start_time);
+		fs_debug_indent_stop(); }
 
 	fs_hashtable_free(&temp_file_set, 0);
 	fsc_stack_free(&flw.temp_stack);

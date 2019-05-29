@@ -25,6 +25,41 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "fslocal.h"
 
 /* ******************************************************************************** */
+// Indented Debug Print Support
+/* ******************************************************************************** */
+
+// This section is used to support indented prints for the cvar-enabled debug logging options
+//    to make the output more readable, especially if there are nested calls to functions that
+//    produce cluster-type prints
+// Theoretically the level could be messed up by Com_Error, but since it's a pretty obscure
+//    scenario and this is ONLY used for cvar-enabled debug prints I'm not bothering with it
+
+static int fs_debug_indent_level = 0;
+
+void fs_debug_indent_start(void) {
+	++fs_debug_indent_level; }
+
+void fs_debug_indent_stop(void) {
+	--fs_debug_indent_level;
+	if(fs_debug_indent_level < 0) {
+		Com_Printf("WARNING: Negative filesystem debug increment\n");
+		fs_debug_indent_level = 0; } }
+
+void QDECL FS_DPrintf(const char *fmt, ...) {
+	va_list argptr;
+	char msg[MAXPRINTMSG];
+	unsigned int indent = (unsigned int)fs_debug_indent_level;
+	char spaces[16] = "                ";
+
+	va_start(argptr,fmt);
+	Q_vsnprintf(msg, sizeof(msg), fmt, argptr);
+	va_end(argptr);
+
+	if(indent > 4) indent = 4;
+	spaces[indent * 2] = 0;
+	Com_Printf("%s%s", spaces, msg); }
+
+/* ******************************************************************************** */
 // Hash Table
 /* ******************************************************************************** */
 
