@@ -1167,7 +1167,7 @@ fileHandle_t fs_open_settings_file_write(const char *filename) {
 // Misc Handle Operations
 /* ******************************************************************************** */
 
-static long open_index_read_handle(const char *filename, fileHandle_t *handle, int lookup_flags, qboolean allow_direct_handle) {
+static int fs_open_index_read_handle(const char *filename, fileHandle_t *handle, int lookup_flags, qboolean allow_direct_handle) {
 	// Can be called with a null filehandle pointer for a size/existance check
 	const fsc_file_t *fscfile;
 	unsigned int size = 0;
@@ -1201,26 +1201,7 @@ static long open_index_read_handle(const char *filename, fileHandle_t *handle, i
 
 	return (long)size; }
 
-long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) {
-	FSC_ASSERT(filename);
-	return open_index_read_handle(filename, file, 0, qfalse); }
-
-long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
-	int i;
-	char path[FS_MAX_PATH];
-	unsigned int size = -1;
-	*fp = 0;
-	FSC_ASSERT(filename);
-
-	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
-		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_DIRECTORIES, 0, path, sizeof(path))) {
-			*fp = fs_cache_read_handle_open(0, path, &size);
-			if(*fp) break; } }
-
-	if(!*fp) return -1;
-	return size; }
-
-static fileHandle_t open_write_handle_path_gen(const char *mod_dir, const char *path, qboolean append,
+static fileHandle_t fs_open_write_handle_path_gen(const char *mod_dir, const char *path, qboolean append,
 		qboolean sync, int flags) {
 	// Includes directory creation and sanity checks
 	// Returns handle on success, null on error
@@ -1231,19 +1212,7 @@ static fileHandle_t open_write_handle_path_gen(const char *mod_dir, const char *
 
 	return fs_write_handle_open(full_path, append, sync); }
 
-fileHandle_t FS_FOpenFileWrite(const char *filename) {
-	FSC_ASSERT(filename);
-	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qfalse, qfalse, 0); }
-
-fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
-	FSC_ASSERT(filename);
-	return open_write_handle_path_gen(0, filename, qfalse, qfalse, 0); }
-
-fileHandle_t FS_FOpenFileAppend(const char *filename) {
-	FSC_ASSERT(filename);
-	return open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qtrue, qfalse, 0); }
-
-int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
+static int FS_FOpenFileByModeGeneral(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
 	// Can be called with a null filehandle pointer for a size/existance check
 	int size = 0;
 	fileHandle_t handle = 0;
@@ -1281,10 +1250,10 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 
 			// Use read with direct handle support option, to optimize for mods like UI Enhanced that do
 			// bulk .bsp handle opens on startup which would be very slow using normal cache handles
-			if(!handle) size = open_index_read_handle(qpath, f ? &handle : 0, lookup_flags, qtrue); }
+			if(!handle) size = fs_open_index_read_handle(qpath, f ? &handle : 0, lookup_flags, qtrue); }
 
 		// Engine reads don't do anything fancy so just use the basic method
-		else size = open_index_read_handle(qpath, f ? &handle : 0, 0, qfalse);
+		else size = fs_open_index_read_handle(qpath, f ? &handle : 0, 0, qfalse);
 
 		// Verify size is valid
 		if(size <= 0) {
@@ -1292,11 +1261,11 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 			handle = 0;
 			size = -1; } }
 	else if(mode == FS_WRITE) {
-		handle = open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qfalse, qfalse, 0); }
+		handle = fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qfalse, qfalse, 0); }
 	else if(mode == FS_APPEND_SYNC) {
-		handle = open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qtrue, 0); }
+		handle = fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qtrue, 0); }
 	else if(mode == FS_APPEND) {
-		handle = open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qfalse, 0); }
+		handle = fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qfalse, 0); }
 	else {
 		Com_Error(ERR_DROP, "FS_FOpenFileByMode: bad mode"); }
 
@@ -1315,9 +1284,84 @@ int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, f
 		if(size == 0) return 1;
 		return size; } }
 
+static const char *fs_mode_string(fsMode_t mode) {
+	if(mode == FS_READ) return "read";
+	if(mode == FS_WRITE) return "write";
+	if(mode == FS_APPEND) return "append";
+	if(mode == FS_APPEND_SYNC) return "append-sync";
+	return "unknown"; }
+
+static const char *fs_owner_string(fs_handle_owner_t owner) {
+	if(owner == FS_HANDLEOWNER_SYSTEM) return "system";
+	if(owner == FS_HANDLEOWNER_CGAME) return "cgame";
+	if(owner == FS_HANDLEOWNER_UI) return "ui";
+	if(owner == FS_HANDLEOWNER_QAGAME) return "qagame";
+	return "unknown"; }
+
+static int FS_FOpenFileByModeLogged(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner,
+			const char *gateway_function) {
+	int result;
+
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("********** file handle open **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("path: %s\n", qpath);
+		if(mode == FS_READ && !f) {
+			FS_DPrintf("mode: read (size check)\n"); }
+		else {
+			FS_DPrintf("mode: %s\n", fs_mode_string(mode)); }
+		FS_DPrintf("function: %s\n", gateway_function);
+		FS_DPrintf("owner: %s\n", fs_owner_string(owner)); }
+
+	result = FS_FOpenFileByModeGeneral(qpath, f, mode, owner);
+
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("result: size value %i\n", result);
+		fs_debug_indent_stop(); }
+
+	return result; }
+
+long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) {
+	FSC_ASSERT(filename);
+	return FS_FOpenFileByModeLogged(filename, file, FS_READ, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileRead"); }
+
+fileHandle_t FS_FOpenFileWrite(const char *filename) {
+	fileHandle_t handle = 0;
+	FSC_ASSERT(filename);
+	FS_FOpenFileByModeLogged(filename, &handle, FS_WRITE, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileWrite");
+	return handle; }
+
+fileHandle_t FS_FOpenFileAppend(const char *filename) {
+	fileHandle_t handle = 0;
+	FSC_ASSERT(filename);
+	FS_FOpenFileByModeLogged(filename, &handle, FS_APPEND, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileAppend");
+	return handle; }
+
+int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
+	return FS_FOpenFileByModeLogged(qpath, f, mode, owner, "FS_FOpenFileByModeOwner"); }
+
 int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
 	FSC_ASSERT(qpath);
-	return FS_FOpenFileByModeOwner(qpath, f, mode, FS_HANDLEOWNER_SYSTEM); }
+	return FS_FOpenFileByModeLogged(qpath, f, mode, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileByMode"); }
+
+long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
+	int i;
+	char path[FS_MAX_PATH];
+	unsigned int size = -1;
+	*fp = 0;
+	FSC_ASSERT(filename);
+
+	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
+		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_DIRECTORIES, 0, path, sizeof(path))) {
+			*fp = fs_cache_read_handle_open(0, path, &size);
+			if(*fp) break; } }
+
+	if(!*fp) return -1;
+	return size; }
+
+fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
+	FSC_ASSERT(filename);
+	return fs_open_write_handle_path_gen(0, filename, qfalse, qfalse, 0); }
 
 void FS_FCloseFile(fileHandle_t f) {
 	if(!f) {
