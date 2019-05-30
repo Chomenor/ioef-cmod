@@ -471,9 +471,10 @@ static cache_entry_t *cache_search_current_stage(const fsc_file_t *file) {
 
 	return entry; }
 
-char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_out) {
+char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_out, const char *calling_function) {
 	// Input can be either file or path, not both.
 	// Returns null on error, otherwise result needs to be freed by fs_free_data.
+	// Currently file-type read always reads file->filesize, otherwise it is an error and null is returned.
 	cache_entry_t *cache_entry = 0;
 	char *data = 0;
 	void *os_path = 0;
@@ -488,13 +489,15 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 
 	// Print leading debug info
 	if(fs_debug_fileio->integer) {
+		FS_DPrintf("********** load file data **********\n");
+		FS_DPrintf("  origin: %s\n", calling_function);
 		if(file) {
 			char buffer[FS_FILE_BUFFER_SIZE];
 			fs_file_to_buffer(file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-			FS_DPrintf("********** read data from indexed file **********\n");
+			FS_DPrintf("  type: indexed file\n");
 			FS_DPrintf("  file: %s\n", buffer); }
 		else {
-			FS_DPrintf("********** read data from path **********\n");
+			FS_DPrintf("  type: direct path\n");
 			FS_DPrintf("  path: %s\n", path); } }
 
 	// Check if file is already available from cache
@@ -512,7 +515,7 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 		if(!os_path) goto error; }
 	else if(file && file->sourcetype == FSC_SOURCETYPE_DIRECT) os_path = STACKPTR(((fsc_file_direct_t *)file)->os_path_ptr);
 
-	// Obtain handle (if applicable) and size (including null terminating byte)
+	// Obtain handle (if applicable) and size
 	if(os_path) {
 		fsc_file_handle = fsc_open_file(os_path, "rb");
 		if(path) fsc_free(os_path);
@@ -525,8 +528,8 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 	else size = file->filesize;
 
 	// Set a file size limit of about 2GB as a catch-all to avoid overflow conditions
-	// The game shouldn't normally need to read such big files
-	if(size > 2147418112) {
+	// The game shouldn't normally need to read such big files using this function
+	if(size > 2000000000) {
 		Com_Printf("WARNING: Excessive file size in fs_read_data\n");
 		goto error; }
 
@@ -578,15 +581,35 @@ char *fs_read_shader(const fsc_shader_t *shader) {
 	char *shader_data;
 	FSC_ASSERT(shader);
 
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("********** read shader **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", (char *)STACKPTR(shader->shader_name_ptr)); }
+
 	size = shader->end_position - shader->start_position;
-	if(size > 10000) return 0;
-	source_data = fs_read_data((const fsc_file_t *)STACKPTR(shader->source_file_ptr), 0, 0);
-	if(!source_data) return 0;
+	if(size > 10000) {
+		if(fs_debug_fileio->integer) {
+			FS_DPrintf("result: failed due to invalid size\n");
+			fs_debug_indent_stop(); }
+		return 0; }
+
+	source_data = fs_read_data((const fsc_file_t *)STACKPTR(shader->source_file_ptr), 0, 0, "fs_read_shader");
+	if(!source_data) {
+		if(fs_debug_fileio->integer) {
+			FS_DPrintf("result: failed to read source file\n");
+			fs_debug_indent_stop(); }
+		return 0; }
 
 	shader_data = (char *)Z_Malloc(size + 1);
 	fsc_memcpy(shader_data, source_data + shader->start_position, size);
 	shader_data[size] = 0;
+
 	fs_free_data(source_data);
+
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("result: loaded %i shader bytes\n", size);
+		fs_debug_indent_stop(); }
+
 	return shader_data; }
 
 /* ******************************************************************************** */
@@ -691,7 +714,7 @@ static fileHandle_t fs_cache_read_handle_open(const fsc_file_t *file, const char
 	fs_cache_read_handle_t *handle_entry = (fs_cache_read_handle_t *)fs_get_handle_entry(handle);
 
 	// Set up handle entry
-	handle_entry->data = fs_read_data(file, path, &handle_entry->size);
+	handle_entry->data = fs_read_data(file, path, &handle_entry->size, "fs_cache_read_handle_open");
 	if(!handle_entry->data) {
 		fs_free_handle(handle);
 		return 0; }
@@ -1074,7 +1097,7 @@ fs_handle_owner_t fs_handle_get_owner(fileHandle_t handle) {
 	if(!handle_entry) return FS_HANDLEOWNER_SYSTEM;
 	return handle_entry->owner; }
 
-static const char *identify_handle_type(fs_handle_type_t type) {
+static const char *fs_handletype_string(fs_handle_type_t type) {
 	if(type == FS_HANDLE_CACHE_READ) return "cache read";
 	if(type == FS_HANDLE_DIRECT_READ) return "direct read";
 	if(type == FS_HANDLE_PK3_READ) return "pk3 read";
@@ -1082,7 +1105,7 @@ static const char *identify_handle_type(fs_handle_type_t type) {
 	if(type == FS_HANDLE_PIPE) return "pipe";
 	return "unknown"; }
 
-static const char *identify_handle_owner(fs_handle_owner_t owner) {
+static const char *fs_owner_string(fs_handle_owner_t owner) {
 	if(owner == FS_HANDLEOWNER_SYSTEM) return "system";
 	if(owner == FS_HANDLEOWNER_CGAME) return "cgame";
 	if(owner == FS_HANDLEOWNER_UI) return "ui";
@@ -1094,7 +1117,7 @@ void fs_print_handle_list(void) {
 	for(i=0; i<MAX_HANDLES; ++i) {
 		if(!handles[i]) continue;
 		Com_Printf("********** handle %i **********\n  type: %s\n  owner: %s\n  path: %s\n",
-				i+1, identify_handle_type(handles[i]->type), identify_handle_owner(handles[i]->owner),
+				i+1, fs_handletype_string(handles[i]->type), fs_owner_string(handles[i]->owner),
 				handles[i]->debug_path); } }
 
 void fs_close_owner_handles(fs_handle_owner_t owner) {
@@ -1103,8 +1126,8 @@ void fs_close_owner_handles(fs_handle_owner_t owner) {
 	for(i=0; i<MAX_HANDLES; ++i) {
 		if(handles[i] && handles[i]->owner == owner) {
 			Com_Printf("^1*****************\nWARNING: Auto-closing possible leaked handle\n"
-					"type: %s\nowner: %s\npath: %s\n*****************\n", identify_handle_type(handles[i]->type),
-					identify_handle_owner(handles[i]->owner), handles[i]->debug_path);
+					"type: %s\nowner: %s\npath: %s\n*****************\n", fs_handletype_string(handles[i]->type),
+					fs_owner_string(handles[i]->owner), handles[i]->debug_path);
 			fs_handle_close(i+1); } } }
 
 /* ******************************************************************************** */
@@ -1208,7 +1231,9 @@ static fileHandle_t fs_open_write_handle_path_gen(const char *mod_dir, const cha
 	char full_path[FS_MAX_PATH];
 
 	if(!fs_generate_path_writedir(mod_dir, path, FS_CREATE_DIRECTORIES,
-			FS_ALLOW_DIRECTORIES|FS_CREATE_DIRECTORIES_FOR_FILE|flags, full_path, sizeof(full_path))) return 0;
+			FS_ALLOW_DIRECTORIES|FS_CREATE_DIRECTORIES_FOR_FILE|flags, full_path, sizeof(full_path))) {
+		if(fs_debug_fileio->integer) FS_DPrintf("WARNING: Failed to generate write path for %s/%s\n", mod_dir, path);
+		return 0; }
 
 	return fs_write_handle_open(full_path, append, sync); }
 
@@ -1291,32 +1316,25 @@ static const char *fs_mode_string(fsMode_t mode) {
 	if(mode == FS_APPEND_SYNC) return "append-sync";
 	return "unknown"; }
 
-static const char *fs_owner_string(fs_handle_owner_t owner) {
-	if(owner == FS_HANDLEOWNER_SYSTEM) return "system";
-	if(owner == FS_HANDLEOWNER_CGAME) return "cgame";
-	if(owner == FS_HANDLEOWNER_UI) return "ui";
-	if(owner == FS_HANDLEOWNER_QAGAME) return "qagame";
-	return "unknown"; }
-
 static int FS_FOpenFileByModeLogged(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner,
-			const char *gateway_function) {
+			const char *calling_function) {
 	int result;
 
 	if(fs_debug_fileio->integer) {
 		FS_DPrintf("********** file handle open **********\n");
 		fs_debug_indent_start();
+		FS_DPrintf("origin: %s\n", calling_function);
 		FS_DPrintf("path: %s\n", qpath);
 		if(mode == FS_READ && !f) {
 			FS_DPrintf("mode: read (size check)\n"); }
 		else {
 			FS_DPrintf("mode: %s\n", fs_mode_string(mode)); }
-		FS_DPrintf("function: %s\n", gateway_function);
 		FS_DPrintf("owner: %s\n", fs_owner_string(owner)); }
 
 	result = FS_FOpenFileByModeGeneral(qpath, f, mode, owner);
 
 	if(fs_debug_fileio->integer) {
-		FS_DPrintf("result: size value %i\n", result);
+		FS_DPrintf("result: return value %i (handle %i)\n", result, f ? *f : 0);
 		fs_debug_indent_stop(); }
 
 	return result; }
@@ -1348,15 +1366,25 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	int i;
 	char path[FS_MAX_PATH];
 	unsigned int size = -1;
-	*fp = 0;
 	FSC_ASSERT(filename);
+	FSC_ASSERT(fp);
+	*fp = 0;
+
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("********** SV file read **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("path: %s\n", filename); }
 
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_DIRECTORIES, 0, path, sizeof(path))) {
 			*fp = fs_cache_read_handle_open(0, path, &size);
 			if(*fp) break; } }
+	if(!*fp) size = -1;
 
-	if(!*fp) return -1;
+	if(fs_debug_fileio->integer) {
+		FS_DPrintf("result: return value %i (handle %i)\n", size, *fp);
+		fs_debug_indent_stop(); }
+
 	return size; }
 
 fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
@@ -1418,7 +1446,7 @@ long FS_ReadFile(const char *qpath, void **buffer) {
 		// Size check
 		return (long)file->filesize; }
 
-	*buffer = fs_read_data(file, 0, &len);
+	*buffer = fs_read_data(file, 0, &len, "FS_ReadFile");
 	return (long)len; }
 
 void FS_FreeFile(void *buffer) {

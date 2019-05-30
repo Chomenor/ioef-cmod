@@ -436,7 +436,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 			Com_Printf("couldn't exec %s - file not found\n", name);
 			fs_write_journal_data(0, 0);
 			return; }
-		data = fs_read_data(file, 0, &size);
+		data = fs_read_data(file, 0, &size, "fs_execute_config_file");
 		if(!data) {
 			Com_Printf("couldn't exec %s - failed to read data\n", name);
 			fs_write_journal_data(0, 0);
@@ -588,7 +588,7 @@ void fs_sanitize_mod_dir(const char *source, char *target) {
 qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output) {
 	// Returns qtrue on success, qfalse otherwise
 	unsigned int size = 0;
-	char *data = fs_read_data(file, 0, &size);
+	char *data = fs_read_data(file, 0, &size, "calculate_file_sha256");
 	if(!data) {
 		Com_Memset(output, 0, 32);
 		return qfalse; }

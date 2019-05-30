@@ -234,7 +234,7 @@ DEF_PUBLIC( void fs_advance_cache_stage(void) )
 DEF_LOCAL( void fs_readcache_debug(void) )
 
 // Data reading
-DEF_PUBLIC( char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_out) )
+DEF_PUBLIC( char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_out, const char *calling_function) )
 DEF_PUBLIC( void fs_free_data(char *data) )
 DEF_PUBLIC( char *fs_read_shader(const fsc_shader_t *shader) )
 
@@ -270,9 +270,7 @@ DEF_PUBLIC( fileHandle_t fs_open_settings_file_write(const char *filename) )
 DEF_PUBLIC( long FS_ReadFile(const char *qpath, void **buffer) )
 DEF_PUBLIC( void FS_FreeFile(void *buffer) )
 DEF_PUBLIC( long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) )
-DEF_PUBLIC( long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) )
 DEF_PUBLIC( fileHandle_t FS_FOpenFileWrite(const char *filename) )
-DEF_PUBLIC( fileHandle_t FS_SV_FOpenFileWrite(const char *filename) )
 DEF_PUBLIC( fileHandle_t FS_FOpenFileAppend(const char *filename) )
 DEF_PUBLIC( int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) )
 DEF_PUBLIC( int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) )
