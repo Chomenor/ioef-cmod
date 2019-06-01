@@ -142,7 +142,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	// Disable files not on server pak list if connected to a pure server
 	if(!resource->server_pak_position && fs_connected_server_pure_state() == 1 &&
 			!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) &&
-			!((query->lookup_flags & LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
+			!((query->lookup_flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
 		resource->disabled = "connected to pure server and file is not on server pak list"; } }
 
 static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_t *file,
@@ -578,8 +578,43 @@ static selection_output_t debug_selection;
 
 /* *** Debug Lookup *** */
 
+static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
+	const char *flag_strings[6] = {0};
+	flag_strings[0] = (flags & LOOKUPFLAG_ENABLE_DDS) ? "enable_dds" : 0;
+	flag_strings[1] = (flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
+	flag_strings[2] = (flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "ignore_current_map" : 0;
+	flag_strings[3] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
+	flag_strings[4] = (flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY) ? "direct_source_only" : 0;
+	flag_strings[5] = (flags & LOOKUPFLAG_PK3_SOURCE_ONLY) ? "pk3_source_only" : 0;
+	fs_comma_separated_list(flag_strings, ARRAY_LEN(flag_strings), stream); }
+
+static void debug_print_lookup_query(const lookup_query_t *query) {
+	char buffer[256];
+	fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
+	Com_Printf("  path: %s%s%s\n", query->qp_dir ? query->qp_dir : "", query->qp_dir ? "/" : "",
+			query->qp_name);
+	stream.position = 0;
+	fs_comma_separated_list(query->qp_exts, query->extension_count, &stream);
+	Com_Printf("  extensions: %s\n", stream.data);
+	Com_Printf("  shader: %s\n", query->shader_name ? query->shader_name : "<none>");
+	if(query->lookup_flags) {
+		stream.position = 0;
+		debug_lookup_flags_to_stream(query->lookup_flags, &stream);
+		Com_Printf("  flags: %i (%s)\n", query->lookup_flags, stream.data); }
+	else {
+		Com_Printf("  flags: <none>\n"); }
+	Com_Printf("  dll_query: %s\n", query->dll_query ? "yes" : "no");
+	Com_Printf("  config_query: %s\n", query->config_query ? "yes" : "no"); }
+
 static void debug_lookup(const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup) {
 	int i;
+
+	// Print source queries
+	if(fs_debug_lookup->integer) {
+		for(i=0; i<query_count; ++i) {
+			Com_Printf("Query %i\n", i+1);
+			debug_print_lookup_query(&queries[i]);
+			Com_Printf("\n"); } }
 
 	// Set global state
 	if(have_debug_selection) free_selection_output(&debug_selection);
@@ -596,7 +631,7 @@ static void debug_lookup(const lookup_query_t *queries, int query_count, qboolea
 		char buffer[2048];
 		fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
 
-		ADD_STRINGL(va("   Element %i: ", i+1));
+		ADD_STRINGL(va("  ^3Element %i: ^7", i+1));
 		resource_to_stream(&debug_selection.resources[i], &stream);
 
 		if(protected_vm_lookup) {
@@ -695,6 +730,15 @@ static void lookup_print_debug_file(const fsc_file_t *file) {
 	else {
 		FS_DPrintf("result: <not found>\n"); } }
 
+static void lookup_print_debug_flags(int flags) {
+	if(flags) {
+		char buffer[256];
+		fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
+		debug_lookup_flags_to_stream(flags, &stream);
+		FS_DPrintf("flags: %i (%s)\n", flags, buffer); }
+	else {
+		FS_DPrintf("flags: <none>\n"); } }
+
 const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) {
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
@@ -722,8 +766,7 @@ const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean
 		FS_DPrintf("********** general lookup **********\n");
 		fs_debug_indent_start();
 		FS_DPrintf("name: %s\n", name);
-		FS_DPrintf("ignore_pure_list: %s\n", (lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "true" : "false");
-		FS_DPrintf("ignore_current_map: %s\n", (lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "true" : "false");
+		lookup_print_debug_flags(lookup_flags);
 		lookup_print_debug_file(lookup_result.file);
 		fs_debug_indent_stop(); }
 	return lookup_result.file; }
@@ -762,6 +805,7 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolea
 		FS_DPrintf("********** shader lookup **********\n");
 		fs_debug_indent_start();
 		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_flags(lookup_flags);
 		lookup_print_debug_file(lookup_result.file);
 		fs_debug_indent_stop(); }
 	return lookup_result.shader; }
@@ -777,6 +821,7 @@ const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean d
 		FS_DPrintf("********** image lookup **********\n");
 		fs_debug_indent_start();
 		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_flags(lookup_flags);
 		lookup_print_debug_file(lookup_result.file);
 		fs_debug_indent_stop(); }
 	return lookup_result.file; }

@@ -556,6 +556,22 @@ void QDECL FS_Printf(fileHandle_t h, const char *fmt, ...) {
 	FS_Write(msg, strlen(msg), h);
 }
 
+void fs_comma_separated_list(const char **strings, int count, fsc_stream_t *output) {
+	// Writes array of strings to stream separated by comma (useful for debug print purposes)
+	// Ignores strings that are null or empty
+	// Writes "<none>" if nothing was written
+	int i;
+	qboolean have_item = qfalse;
+	FSC_ASSERT(strings);
+	FSC_ASSERT(output);
+	fsc_stream_append_string(output, "");
+	for(i=0; i<count; ++i) {
+		if(strings[i] && *strings[i]) {
+			if(have_item) fsc_stream_append_string(output, ", ");
+			fsc_stream_append_string(output, strings[i]);
+			have_item = qtrue; } }
+	if(!have_item) fsc_stream_append_string(output, "<none>"); }
+
 qboolean FS_idPak(const char *pak, const char *base, int numPaks)
 {
 	int i;

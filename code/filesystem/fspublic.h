@@ -175,7 +175,7 @@ DEF_PUBLIC( void fs_startup(void) )
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups. Must match value in tr_public.h!
 #define LOOKUPFLAG_IGNORE_PURE_LIST 2
 #define LOOKUPFLAG_IGNORE_CURRENT_MAP 4
-#define LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE 8
+#define LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE 8
 #define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16
 #define LOOKUPFLAG_PK3_SOURCE_ONLY 32
 
@@ -403,6 +403,7 @@ DEF_PUBLIC( void FS_FilenameCompletion( const char *dir, const char *ext,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk ) )
 DEF_PUBLIC( qboolean FS_FilenameCompare( const char *s1, const char *s2 ) )
 DEF_PUBLIC( void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3))) )
+DEF_LOCAL( void fs_comma_separated_list(const char **strings, int count, fsc_stream_t *output) )
 DEF_LOCAL( qboolean FS_idPak(const char *pak, const char *base, int numPaks) )
 DEF_LOCAL( void fs_sanitize_mod_dir(const char *source, char *target) )
 

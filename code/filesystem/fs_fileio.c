@@ -1261,9 +1261,9 @@ static int FS_FOpenFileByModeGeneral(const char *qpath, fileHandle_t *f, fsMode_
 				// NOTE: Consider enabling this regardless of extension?
 				if(COM_CompareExtension(qpath, ".cfg") || COM_CompareExtension(qpath, ".menu") ||
 						COM_CompareExtension(qpath, ".game") || COM_CompareExtension(qpath, ".dat"))
-					lookup_flags |= LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE; }
+					lookup_flags |= LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE; }
 
-			if(((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE)) ||
+			if(((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE)) ||
 					fs_connected_server_pure_state() != 1) && !COM_CompareExtension(qpath, ".arena") &&
 					!COM_CompareExtension(qpath, ".bot")) {
 				// Try to read directly from disk first, because some mods do weird things involving
