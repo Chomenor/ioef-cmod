@@ -121,7 +121,7 @@ static void FS_NewDir_f( void ) {
 
 	Com_Printf( "---------------\n" );
 
-	dirnames = FS_ListFilteredFiles( "", "", filter, &ndirs, qfalse );
+	dirnames = FS_FlagListFilteredFiles( "", "", filter, &ndirs, 0 );
 
 	for ( i = 0; i < ndirs; i++ ) {
 		Com_Printf( "%s\n", dirnames[i] );

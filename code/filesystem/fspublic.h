@@ -191,9 +191,13 @@ DEF_PUBLIC( const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, 
 // File Listing
 /* ******************************************************************************** */
 
+#define FLISTFLAG_IGNORE_TAPAK0 1	// Ignore missionpak pak0.pk3 (to keep incompatible models out of model list)
+#define FLISTFLAG_IGNORE_PURE_LIST 2	// Ignore pure list entirely (allow all files AND ignore ordering)
+#define FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE 4	// Allow files on disk when pure
+
 DEF_PUBLIC( void FS_FreeFileList( char **list ) )
-DEF_LOCAL( char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
-		int *numfiles_out, qboolean allowNonPureFilesOnDisk) )
+DEF_LOCAL( char **FS_FlagListFilteredFiles(const char *path, const char *extension, const char *filter,
+		int *numfiles_out, int flags) )
 DEF_PUBLIC( char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) )
 DEF_PUBLIC( int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize ) )
 

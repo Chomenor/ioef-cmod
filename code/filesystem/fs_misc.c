@@ -502,7 +502,6 @@ void FS_GetModDescription(const char *modDir, char *description, int description
 		// Just use the mod name as the description
 		Q_strncpyz(description, modDir, descriptionLen); } }
 
-// From old filesystem
 void FS_FilenameCompletion( const char *dir, const char *ext,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk ) {
 	char	**filenames;
@@ -510,7 +509,10 @@ void FS_FilenameCompletion( const char *dir, const char *ext,
 	int		i;
 	char	filename[ MAX_STRING_CHARS ];
 
-	filenames = FS_ListFilteredFiles( dir, ext, NULL, &nfiles, allowNonPureFilesOnDisk );
+	// Currently using the less restrictive FLISTFLAG_IGNORE_PURE_LIST when allowNonPureFilesOnDisk is
+	//    false, since that's what's used for map completion, and we want to ignore the pure list there
+	filenames = FS_FlagListFilteredFiles(dir, ext, NULL, &nfiles,
+			allowNonPureFilesOnDisk ? FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE : FLISTFLAG_IGNORE_PURE_LIST);
 
 	for( i = 0; i < nfiles; i++ ) {
 		Q_strncpyz( filename, filenames[ i ], MAX_STRING_CHARS );

@@ -27,9 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Limit max files returned by searches to avoid Z_Malloc overflows
 #define	MAX_FOUND_FILES	32768
 
-#define FL_FLAG_USE_PURE_LIST 1
-#define FL_FLAG_IGNORE_TAPAK0 2
-
 typedef struct {
 	const char *extension;
 	const char *filter;
@@ -70,7 +67,7 @@ static file_list_sort_key_t *generate_sort_key(const fsc_file_t *file, fsc_stack
 	fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
 	file_list_sort_key_t *key;
 
-	fs_generate_core_sort_key(file, &stream, (flw->flags & FL_FLAG_USE_PURE_LIST) ? qtrue : qfalse);
+	fs_generate_core_sort_key(file, &stream, (flw->flags & FLISTFLAG_IGNORE_PURE_LIST) ? qfalse : qtrue);
 
 	key = (file_list_sort_key_t *)FSC_STACK_RETRIEVE(stack, fsc_stack_allocate(stack, sizeof(*key) + stream.position), 0);
 	key->length = stream.position;
@@ -222,9 +219,11 @@ static qboolean check_path_enabled(fsc_stream_t *stream, const filelist_work_t *
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_work_t *flw) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
 	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_AUXILIARY_SOURCEDIR;
-	if(flw->flags & FL_FLAG_USE_PURE_LIST) disabled_checks |= FD_CHECK_PURE_LIST;
+	if(!(flw->flags & FLISTFLAG_IGNORE_PURE_LIST) &&
+			!((flw->flags & FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE) && file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
+		disabled_checks |= FD_CHECK_PURE_LIST; }
 	if(fs_file_disabled(file, disabled_checks)) return qfalse;
-	if((flw->flags & FL_FLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&
+	if((flw->flags & FLISTFLAG_IGNORE_TAPAK0) && file->sourcetype == FSC_SOURCETYPE_PK3 &&
 			fsc_get_base_file(file, &fs)->pk3_hash == 2430342401u) return qfalse;
 	return qtrue; }
 
@@ -367,6 +366,21 @@ static fsc_directory_t *get_start_directory(const char *path) {
 	if(!directory_ptr) return 0;
 	return directory; }
 
+static void filelist_debug_print_flags(int flags) {
+	if(flags) {
+		char buffer[256];
+		fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
+		const char *flag_strings[3] = {0};
+
+		flag_strings[0] = (flags & FLISTFLAG_IGNORE_TAPAK0) ? "ignore_tapak0" : 0;
+		flag_strings[1] = (flags & FLISTFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
+		flag_strings[2] = (flags & FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
+		fs_comma_separated_list(flag_strings, ARRAY_LEN(flag_strings), &stream);
+
+		FS_DPrintf("flags: %i (%s)\n", flags, buffer); }
+	else {
+		FS_DPrintf("flags: <none>\n"); } }
+
 static char **list_files(const char *path, int *numfiles_out, filelist_query_t *query) {
 	char path_buffer1[FSC_MAX_QPATH];
 	char path_buffer2[FSC_MAX_QPATH];
@@ -383,7 +397,8 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 		fs_debug_indent_start();
 		FS_DPrintf("path: %s\n", path);
 		FS_DPrintf("extension: %s\n", query->extension);
-		FS_DPrintf("filter: %s\n", query->filter); }
+		FS_DPrintf("filter: %s\n", query->filter);
+		filelist_debug_print_flags(query->flags); }
 
 	// Initialize temp structures
 	Com_Memset(&flw, 0, sizeof(flw));
@@ -564,20 +579,20 @@ static int FS_GetModList(char *listbuf, int bufsize) {
 // External file list functions
 /* ******************************************************************************** */
 
-char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
-		int *numfiles_out, qboolean allowNonPureFilesOnDisk) {
+char **FS_FlagListFilteredFiles(const char *path, const char *extension, const char *filter,
+		int *numfiles_out, int flags) {
 	// path, extension, filter, and numfiles_out may be null
-	filelist_query_t query = {extension, filter, allowNonPureFilesOnDisk ? 0 : FL_FLAG_USE_PURE_LIST};
+	filelist_query_t query = {extension, filter, flags};
 	return list_files(path, numfiles_out, &query); }
 
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
 	// path, extension, and numfiles may be null
-	return FS_ListFilteredFiles( path, extension, NULL, numfiles, qfalse ); }
+	return FS_FlagListFilteredFiles( path, extension, NULL, numfiles, 0 ); }
 
 int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize ) {
 	// path and extension may be null
 	int i;
-	int flags = FL_FLAG_USE_PURE_LIST;
+	int flags = 0;
 	int nFiles = 0;
 	int nTotal = 0;
 	int nLen;
@@ -597,7 +612,7 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 			&& Q_stricmp(current_mod_dir, BASETA)) {
 		// Special case to block missionpack pak0.pk3 models from the standard non-TA model list
 		// which doesn't handle their skin setting correctly
-		flags |= FL_FLAG_IGNORE_TAPAK0; }
+		flags |= FLISTFLAG_IGNORE_TAPAK0; }
 
 	{
 		filelist_query_t query = {extension, 0, flags};
