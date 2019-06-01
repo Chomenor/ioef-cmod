@@ -29,25 +29,25 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* ******************************************************************************** */
 
 static void cmd_find_file(void) {
-	if(Cmd_Argc() != 2) {
-		Com_Printf("Usage: find_file <path>\n");
+	if(Cmd_Argc() < 2) {
+		Com_Printf("Usage: find_file <path> <optional flag value>\n");
 		return; }
 
-	fs_general_lookup(Cmd_Argv(1), 0, qtrue); }
+	fs_general_lookup(Cmd_Argv(1), atoi(Cmd_Argv(2)), qtrue); }
 
 static void cmd_find_shader(void) {
-	if(Cmd_Argc() != 2) {
-		Com_Printf("Usage: find_shader <shader/image name>\n");
+	if(Cmd_Argc() < 2) {
+		Com_Printf("Usage: find_shader <shader/image name> <optional flag value>\n");
 		return; }
 
-	fs_shader_lookup(Cmd_Argv(1), 1, qtrue); }
+	fs_shader_lookup(Cmd_Argv(1), atoi(Cmd_Argv(2)), qtrue); }
 
 static void cmd_find_sound(void) {
-	if(Cmd_Argc() != 2) {
-		Com_Printf("Usage: find_sound <sound name>\n");
+	if(Cmd_Argc() < 2) {
+		Com_Printf("Usage: find_sound <sound name> <optional flag value>\n");
 		return; }
 
-	fs_sound_lookup(Cmd_Argv(1), qtrue); }
+	fs_sound_lookup(Cmd_Argv(1), atoi(Cmd_Argv(2)), qtrue); }
 
 static void cmd_find_vm(void) {
 	if(Cmd_Argc() != 2) {

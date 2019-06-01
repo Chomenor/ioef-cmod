@@ -173,18 +173,18 @@ DEF_PUBLIC( void fs_startup(void) )
 /* ******************************************************************************** */
 
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups. Must match value in tr_public.h!
-#define LOOKUPFLAG_IGNORE_PURE_LIST 2
-#define LOOKUPFLAG_IGNORE_CURRENT_MAP 4
-#define LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE 8
-#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16
-#define LOOKUPFLAG_PK3_SOURCE_ONLY 32
+#define LOOKUPFLAG_IGNORE_PURE_LIST 2	// Ignore pure list entirely (allow all files AND ignore ordering)
+#define LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE 4	// Allow files on disk when pure
+#define LOOKUPFLAG_IGNORE_CURRENT_MAP 8		// Ignore current map sort criteria
+#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16	// Only allow files on disk
+#define LOOKUPFLAG_PK3_SOURCE_ONLY 32	// Only allow files in pk3s
 #define LOOKUPFLAG_SETTINGS_FILE 64		// For auto-executed config files (e.g. q3config and autoexec)
 
 DEF_LOCAL( void debug_resource_comparison(int resource1_position, int resource2_position) )
 DEF_PUBLIC( const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) )
 DEF_PUBLIC( const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolean debug) )
 DEF_PUBLIC( const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean debug) )
-DEF_PUBLIC( const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) )
+DEF_PUBLIC( const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean debug) )
 DEF_PUBLIC( const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) )
 
 /* ******************************************************************************** */

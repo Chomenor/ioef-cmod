@@ -40,9 +40,8 @@ typedef struct {
 	// Lookup flags
 	int lookup_flags;
 
-	// Specialized query configurations
+	// Special
 	qboolean dll_query;
-	fs_config_type_t config_query;
 } lookup_query_t;
 
 #define RESFLAG_IN_DOWNLOAD_PK3 1
@@ -576,8 +575,8 @@ static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
 	const char *flag_strings[7] = {0};
 	flag_strings[0] = (flags & LOOKUPFLAG_ENABLE_DDS) ? "enable_dds" : 0;
 	flag_strings[1] = (flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
-	flag_strings[2] = (flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "ignore_current_map" : 0;
-	flag_strings[3] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
+	flag_strings[2] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
+	flag_strings[3] = (flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "ignore_current_map" : 0;
 	flag_strings[4] = (flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY) ? "direct_source_only" : 0;
 	flag_strings[5] = (flags & LOOKUPFLAG_PK3_SOURCE_ONLY) ? "pk3_source_only" : 0;
 	flag_strings[6] = (flags & LOOKUPFLAG_SETTINGS_FILE) ? "settings_file" : 0;
@@ -598,8 +597,7 @@ static void debug_print_lookup_query(const lookup_query_t *query) {
 		Com_Printf("  flags: %i (%s)\n", query->lookup_flags, stream.data); }
 	else {
 		Com_Printf("  flags: <none>\n"); }
-	Com_Printf("  dll_query: %s\n", query->dll_query ? "yes" : "no");
-	Com_Printf("  config_query: %s\n", query->config_query ? "yes" : "no"); }
+	Com_Printf("  dll_query: %s\n", query->dll_query ? "yes" : "no"); }
 
 static void debug_lookup(const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup) {
 	int i;
@@ -821,7 +819,7 @@ const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean d
 		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
-const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
+const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
@@ -855,6 +853,7 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 		FS_DPrintf("********** sound lookup **********\n");
 		fs_debug_indent_start();
 		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_flags(lookup_flags);
 		lookup_print_debug_file(lookup_result.file);
 		fs_debug_indent_stop(); }
 	return lookup_result.file; }
