@@ -433,6 +433,8 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 		int lookup_flags = LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE | LOOKUPFLAG_IGNORE_CURRENT_MAP;
 		if(config_type == FS_CONFIGTYPE_SETTINGS) {
 			lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY); }
+		if(config_type == FS_CONFIGTYPE_DEFAULT) {
+			lookup_flags |= LOOKUPFLAG_SETTINGS_FILE; }
 
 		if(!quiet) Com_Printf("execing %s\n", name);
 

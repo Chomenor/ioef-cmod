@@ -109,7 +109,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !resource->server_pak_position) {
 		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
-	// Handle settings (e.g. q3config.cfg or autoexec.cfg) query
+	// Handle settings (e.g. q3config.cfg, autoexec.cfg, or default.cfg) query
 	if(query->lookup_flags & LOOKUPFLAG_SETTINGS_FILE) {
 		if(fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE && resource->mod_type != MODTYPE_CURRENT_MOD) {
 			resource->disabled = "settings config file can only be loaded from com_basegame or current mod dir"; }
