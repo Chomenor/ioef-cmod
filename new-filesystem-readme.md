@@ -50,8 +50,8 @@ There are two new settings that can be used to control automatic downloads.
 
 - fs_restrict_dlfolder: This setting blocks potentially less secure content from pk3s in the downloads folder. It has three modes:
     * setting 0: No restrictions.
-	* setting 1: Config files and qvm files that do not match a list of known trusted mod hashes will be blocked.
-	* setting 2: Config files and all qvm files will be blocked.
+	* setting 1: Qvm files that do not match a list of known trusted mod hashes will be blocked.
+	* setting 2: All qvm files will be blocked.
 
 These settings can increase security, but may break compatibility with some servers unless you manually move files out of the downloads folder.
 

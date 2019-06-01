@@ -190,27 +190,31 @@ DEF_PUBLIC( void fs_startup(void) )
 /* ******************************************************************************** */
 
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups. Must match value in tr_public.h!
-#define LOOKUPFLAG_IGNORE_PURE_LIST 2
-#define LOOKUPFLAG_IGNORE_CURRENT_MAP 4
-#define LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE 8
-#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16
-#define LOOKUPFLAG_PK3_SOURCE_ONLY 32
+#define LOOKUPFLAG_IGNORE_PURE_LIST 2	// Ignore pure list entirely (allow all files AND ignore ordering)
+#define LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE 4	// Allow files on disk when pure
+#define LOOKUPFLAG_IGNORE_CURRENT_MAP 8		// Ignore current map sort criteria
+#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16	// Only allow files on disk
+#define LOOKUPFLAG_PK3_SOURCE_ONLY 32	// Only allow files in pk3s
+#define LOOKUPFLAG_SETTINGS_FILE 64		// For auto-executed config files (e.g. q3config and autoexec)
 
 DEF_LOCAL( void debug_resource_comparison(int resource1_position, int resource2_position) )
 DEF_PUBLIC( const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) )
 DEF_PUBLIC( const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolean debug) )
 DEF_PUBLIC( const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean debug) )
-DEF_PUBLIC( const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) )
+DEF_PUBLIC( const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean debug) )
 DEF_PUBLIC( const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) )
-DEF_LOCAL( const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug) )
 
 /* ******************************************************************************** */
 // File Listing
 /* ******************************************************************************** */
 
+#define FLISTFLAG_IGNORE_TAPAK0 1	// Ignore missionpak pak0.pk3 (to keep incompatible models out of model list)
+#define FLISTFLAG_IGNORE_PURE_LIST 2	// Ignore pure list entirely (allow all files AND ignore ordering)
+#define FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE 4	// Allow files on disk when pure
+
 DEF_PUBLIC( void FS_FreeFileList( char **list ) )
-DEF_LOCAL( char **FS_ListFilteredFiles(const char *path, const char *extension, const char *filter,
-		int *numfiles_out, qboolean allowNonPureFilesOnDisk) )
+DEF_LOCAL( char **FS_FlagListFilteredFiles(const char *path, const char *extension, const char *filter,
+		int *numfiles_out, int flags) )
 DEF_PUBLIC( char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) )
 DEF_PUBLIC( int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize ) )
 
@@ -254,7 +258,7 @@ DEF_PUBLIC( void fs_advance_cache_stage(void) )
 DEF_LOCAL( void fs_readcache_debug(void) )
 
 // Data reading
-DEF_PUBLIC( char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_out) )
+DEF_PUBLIC( char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_out, const char *calling_function) )
 DEF_PUBLIC( void fs_free_data(char *data) )
 DEF_PUBLIC( char *fs_read_shader(const fsc_shader_t *shader) )
 
@@ -293,15 +297,15 @@ DEF_PUBLIC( fileHandle_t fs_open_global_settings_file_write(const char *filename
 DEF_PUBLIC( long FS_ReadFile(const char *qpath, void **buffer) )
 DEF_PUBLIC( void FS_FreeFile(void *buffer) )
 DEF_PUBLIC( long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) )
-DEF_PUBLIC( long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) )
-#ifdef CMOD_RESTRICT_CFG_FILES
-DEF_PUBLIC( fileHandle_t FS_FOpenConfigFileWrite(const char *filename) )
-#endif
 DEF_PUBLIC( fileHandle_t FS_FOpenFileWrite(const char *filename) )
-DEF_PUBLIC( fileHandle_t FS_SV_FOpenFileWrite(const char *filename) )
 DEF_PUBLIC( fileHandle_t FS_FOpenFileAppend(const char *filename) )
 DEF_PUBLIC( int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) )
 DEF_PUBLIC( int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) )
+#ifdef CMOD_RESTRICT_CFG_FILES
+DEF_PUBLIC( fileHandle_t FS_FOpenConfigFileWrite(const char *filename) )
+#endif
+DEF_PUBLIC( long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) )
+DEF_PUBLIC( fileHandle_t FS_SV_FOpenFileWrite(const char *filename) )
 DEF_PUBLIC( void FS_FCloseFile(fileHandle_t f) )
 DEF_PUBLIC( int FS_Read(void *buffer, int len, fileHandle_t f) )
 DEF_PUBLIC( int FS_Read2(void *buffer, int len, fileHandle_t f) )
@@ -357,6 +361,12 @@ DEF_PUBLIC( void fs_set_pure_list(void) )
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */
+
+// Indented debug prints
+
+DEF_LOCAL( void fs_debug_indent_start(void) )
+DEF_LOCAL( void fs_debug_indent_stop(void) )
+DEF_LOCAL( void QDECL FS_DPrintf(const char *fmt, ...) __attribute__ ((format (printf, 1, 2))) )
 
 // Hash Table
 DEF_LOCAL( void fs_hashtable_initialize(fs_hashtable_t *hashtable, int bucket_count) )
@@ -426,6 +436,7 @@ DEF_PUBLIC( void FS_FilenameCompletion( const char *dir, const char *ext,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk ) )
 DEF_PUBLIC( qboolean FS_FilenameCompare( const char *s1, const char *s2 ) )
 DEF_PUBLIC( void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3))) )
+DEF_LOCAL( void fs_comma_separated_list(const char **strings, int count, fsc_stream_t *output) )
 DEF_LOCAL( qboolean FS_idPak(const char *pak, const char *base, int numPaks) )
 DEF_LOCAL( void fs_sanitize_mod_dir(const char *source, char *target) )
 

@@ -40,9 +40,8 @@ typedef struct {
 	// Lookup flags
 	int lookup_flags;
 
-	// Specialized query configurations
+	// Special
 	qboolean dll_query;
-	fs_config_type_t config_query;
 } lookup_query_t;
 
 #define RESFLAG_IN_DOWNLOAD_PK3 1
@@ -111,9 +110,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
 	// Handle settings (e.g. q3config.cfg or autoexec.cfg) query
-	if(query->config_query == FS_CONFIGTYPE_SETTINGS) {
-		if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
-			resource->disabled = "settings config file can't be loaded from pk3"; }
+	if(query->lookup_flags & LOOKUPFLAG_SETTINGS_FILE) {
 		if(fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE && resource->mod_type != MODTYPE_CURRENT_MOD) {
 			resource->disabled = "settings config file can only be loaded from com_basegame or current mod dir"; }
 		if(!fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE) {
@@ -127,13 +124,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 
 	// Disable files according to lookupflag sourcetype restrictions
 	if((query->lookup_flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY) && resource->file->sourcetype != FSC_SOURCETYPE_DIRECT) {
-		resource->disabled = "blocking file because query requested files directly on disk only"; }
+		resource->disabled = "blocking file due to direct_source_only flag"; }
 	if((query->lookup_flags & LOOKUPFLAG_PK3_SOURCE_ONLY) && resource->file->sourcetype != FSC_SOURCETYPE_PK3) {
-		resource->disabled = "blocking file because query requested files inside pk3s only"; }
-
-	// Disable config files from download folder (qvm file restrictions are handled in perform_lookup)
-	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3) && (query->config_query)) {
-		resource->disabled = "blocking config file in downloaded pk3 due to fs_restrict_dlfolder setting"; }
+		resource->disabled = "blocking file due to pk3_source_only flag"; }
 
 	// Disable files blocked by fs_read_inactive_mods setting
 	if(fs_file_disabled(resource->file, FD_CHECK_READ_INACTIVE_MODS)) {
@@ -142,7 +135,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	// Disable files not on server pak list if connected to a pure server
 	if(!resource->server_pak_position && fs_connected_server_pure_state() == 1 &&
 			!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) &&
-			!((query->lookup_flags & LOOKUPFLAG_DIRECT_SOURCE_ALLOW_UNPURE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
+			!((query->lookup_flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
 		resource->disabled = "connected to pure server and file is not on server pak list"; } }
 
 static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_t *file,
@@ -578,8 +571,43 @@ static selection_output_t debug_selection;
 
 /* *** Debug Lookup *** */
 
+static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
+	const char *flag_strings[7] = {0};
+	flag_strings[0] = (flags & LOOKUPFLAG_ENABLE_DDS) ? "enable_dds" : 0;
+	flag_strings[1] = (flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
+	flag_strings[2] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
+	flag_strings[3] = (flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "ignore_current_map" : 0;
+	flag_strings[4] = (flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY) ? "direct_source_only" : 0;
+	flag_strings[5] = (flags & LOOKUPFLAG_PK3_SOURCE_ONLY) ? "pk3_source_only" : 0;
+	flag_strings[6] = (flags & LOOKUPFLAG_SETTINGS_FILE) ? "settings_file" : 0;
+	fs_comma_separated_list(flag_strings, ARRAY_LEN(flag_strings), stream); }
+
+static void debug_print_lookup_query(const lookup_query_t *query) {
+	char buffer[256];
+	fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
+	Com_Printf("  path: %s%s%s\n", query->qp_dir ? query->qp_dir : "", query->qp_dir ? "/" : "",
+			query->qp_name);
+	stream.position = 0;
+	fs_comma_separated_list(query->qp_exts, query->extension_count, &stream);
+	Com_Printf("  extensions: %s\n", stream.data);
+	Com_Printf("  shader: %s\n", query->shader_name ? query->shader_name : "<none>");
+	if(query->lookup_flags) {
+		stream.position = 0;
+		debug_lookup_flags_to_stream(query->lookup_flags, &stream);
+		Com_Printf("  flags: %i (%s)\n", query->lookup_flags, stream.data); }
+	else {
+		Com_Printf("  flags: <none>\n"); }
+	Com_Printf("  dll_query: %s\n", query->dll_query ? "yes" : "no"); }
+
 static void debug_lookup(const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup) {
 	int i;
+
+	// Print source queries
+	if(fs_debug_lookup->integer) {
+		for(i=0; i<query_count; ++i) {
+			Com_Printf("Query %i\n", i+1);
+			debug_print_lookup_query(&queries[i]);
+			Com_Printf("\n"); } }
 
 	// Set global state
 	if(have_debug_selection) free_selection_output(&debug_selection);
@@ -596,7 +624,7 @@ static void debug_lookup(const lookup_query_t *queries, int query_count, qboolea
 		char buffer[2048];
 		fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
 
-		ADD_STRINGL(va("   Element %i: ", i+1));
+		ADD_STRINGL(va("  ^3Element %i: ^7", i+1));
 		resource_to_stream(&debug_selection.resources[i], &stream);
 
 		if(protected_vm_lookup) {
@@ -691,9 +719,18 @@ static void lookup_print_debug_file(const fsc_file_t *file) {
 	if(file) {
 		char buffer[FS_FILE_BUFFER_SIZE];
 		fs_file_to_buffer(file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-		Com_Printf("result: %s\n", buffer); }
+		FS_DPrintf("result: %s\n", buffer); }
 	else {
-		Com_Printf("result: <not found>\n"); } }
+		FS_DPrintf("result: <not found>\n"); } }
+
+static void lookup_print_debug_flags(int flags) {
+	if(flags) {
+		char buffer[256];
+		fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
+		debug_lookup_flags_to_stream(flags, &stream);
+		FS_DPrintf("flags: %i (%s)\n", flags, buffer); }
+	else {
+		FS_DPrintf("flags: <none>\n"); } }
 
 const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) {
 	lookup_query_t query;
@@ -724,11 +761,12 @@ const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean
 
 	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** general lookup **********\n");
-		Com_Printf("name: %s\nignore_pure_list: %s\nignore_current_map: %s\n", name,
-			(lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "true" : "false",
-			(lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "true" : "false");
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** general lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_flags(lookup_flags);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
 static void shader_or_image_lookup(const char *name, qboolean image_only, int lookup_flags,
@@ -765,9 +803,12 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolea
 	shader_or_image_lookup(name, qfalse, lookup_flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** shader lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** shader lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_flags(lookup_flags);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.shader; }
 
 const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean debug) {
@@ -782,12 +823,15 @@ const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean d
 	shader_or_image_lookup(name, qtrue, lookup_flags, &lookup_result, debug);
 	if(debug) return 0;
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** image lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** image lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_flags(lookup_flags);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
-const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
+const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	lookup_query_t query;
 	char qpath_buffer[FSC_MAX_QPATH];
@@ -821,9 +865,12 @@ const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) {
 
 	perform_lookup(&query, 1, qfalse, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** sound lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** sound lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		lookup_print_debug_flags(lookup_flags);
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
 const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) {
@@ -856,40 +903,16 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 
 	perform_lookup(queries, query_count, qtrue, &lookup_result);
 	if(fs_debug_lookup->integer) {
-		Com_Printf("********** dll/qvm lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		Com_Printf("qvm only: %s\n", qvm_only ? "yes" : "no");
-		lookup_print_debug_file(lookup_result.file); }
+		FS_DPrintf("********** dll/qvm lookup **********\n");
+		fs_debug_indent_start();
+		FS_DPrintf("name: %s\n", name);
+		FS_DPrintf("qvm only: %s\n", qvm_only ? "yes" : "no");
+		lookup_print_debug_file(lookup_result.file);
+		fs_debug_indent_stop(); }
 
 	// Not elegant but should be adequate
 	if(is_dll_out) *is_dll_out = lookup_result.file && lookup_result.file->qp_ext_ptr &&
 			!Q_stricmp((const char *)STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT+1) ? qtrue : qfalse;
-	return lookup_result.file; }
-
-const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug) {
-	lookup_query_t query;
-	char qpath_buffer[FSC_MAX_QPATH];
-	const char *ext = 0;
-	query_result_t lookup_result;
-	FSC_ASSERT(name);
-
-	Com_Memset(&query, 0, sizeof(query));
-	query.lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;
-	if(type != FS_CONFIGTYPE_DEFAULT) query.lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST;
-	fsc_process_qpath(name, qpath_buffer, &query.qp_dir, &query.qp_name, &ext);
-	query.qp_exts = &ext;
-	query.extension_count = ext ? 1 : 0;
-	query.config_query = type;
-
-	if(debug) {
-		debug_lookup(&query, 1, qfalse);
-		return 0; }
-
-	perform_lookup(&query, 1, qfalse, &lookup_result);
-	if(fs_debug_lookup->integer) {
-		Com_Printf("********** config lookup **********\n");
-		Com_Printf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file); }
 	return lookup_result.file; }
 
 #endif	// NEW_FILESYSTEM

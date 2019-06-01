@@ -78,7 +78,7 @@ static void *S_CodecGetSound(const char *filename, snd_info_t *info)
 #endif
 
 	// Look up the file
-	file = fs_sound_lookup(localName, 0);
+	file = fs_sound_lookup(localName, 0, qfalse);
 	if(!file) {
 #ifdef ELITEFORCE
 		Com_DPrintf(S_COLOR_YELLOW "WARNING: Failed to %s sound %s!\n", info ? "load" : "open", filename);

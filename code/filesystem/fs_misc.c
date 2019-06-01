@@ -25,6 +25,41 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "fslocal.h"
 
 /* ******************************************************************************** */
+// Indented Debug Print Support
+/* ******************************************************************************** */
+
+// This section is used to support indented prints for the cvar-enabled debug logging options
+//    to make the output more readable, especially if there are nested calls to functions that
+//    produce cluster-type prints
+// Theoretically the level could be messed up by Com_Error, but since it's a pretty obscure
+//    scenario and this is ONLY used for cvar-enabled debug prints I'm not bothering with it
+
+static int fs_debug_indent_level = 0;
+
+void fs_debug_indent_start(void) {
+	++fs_debug_indent_level; }
+
+void fs_debug_indent_stop(void) {
+	--fs_debug_indent_level;
+	if(fs_debug_indent_level < 0) {
+		Com_Printf("WARNING: Negative filesystem debug increment\n");
+		fs_debug_indent_level = 0; } }
+
+void QDECL FS_DPrintf(const char *fmt, ...) {
+	va_list argptr;
+	char msg[MAXPRINTMSG];
+	unsigned int indent = (unsigned int)fs_debug_indent_level;
+	char spaces[16] = "                ";
+
+	va_start(argptr,fmt);
+	Q_vsnprintf(msg, sizeof(msg), fmt, argptr);
+	va_end(argptr);
+
+	if(indent > 4) indent = 4;
+	spaces[indent * 2] = 0;
+	Com_Printf("%s%s", spaces, msg); }
+
+/* ******************************************************************************** */
 // Hash Table
 /* ******************************************************************************** */
 
@@ -395,6 +430,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 #endif
 
 	if(com_journalDataFile && com_journal->integer == 2) {
+		// In journal playback mode, try to load config files from journal data file
 		Com_Printf("execing %s from journal data file\n", name);
 		data = fs_read_journal_data();
 		if(!data) {
@@ -406,7 +442,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 		char path[FS_MAX_PATH];
 		if(!quiet) Com_Printf("execing global %s\n", name);
 		if(fs_generate_path_sourcedir(0, name, 0, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof(path))) {
-			data = fs_read_data(0, path, 0); }
+			data = fs_read_data(0, path, 0, "fs_execute_config_file"); }
 		if(!data) {
 			Com_Printf("loading %s failed; attempting to import settings from " Q3CONFIG_CFG "\n", name);
 			fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_RESTRICTED_IMPORT, EXEC_APPEND, qfalse);
@@ -414,14 +450,26 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 #endif
 	else {
 		const fsc_file_t *file;
+		int lookup_flags = LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE | LOOKUPFLAG_IGNORE_CURRENT_MAP;
+		if(config_type == FS_CONFIGTYPE_SETTINGS) {
+			lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY); }
+#ifdef CMOD_SETTINGS
+		if(config_type == FS_CONFIGTYPE_RESTRICTED_IMPORT) {
+			lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY); }
+#endif
+
 		if(!quiet) Com_Printf("execing %s\n", name);
+
+		// Locate file
 		fs_auto_refresh();
-		file = fs_config_lookup(name, config_type, qfalse);
+		file = fs_general_lookup(name, lookup_flags, qfalse);
 		if(!file) {
 			Com_Printf("couldn't exec %s - file not found\n", name);
 			fs_write_journal_data(0, 0);
 			return; }
-		data = fs_read_data(file, 0, &size);
+
+		// Load data
+		data = fs_read_data(file, 0, &size, "fs_execute_config_file");
 		if(!data) {
 			Com_Printf("couldn't exec %s - failed to read data\n", name);
 			fs_write_journal_data(0, 0);
@@ -498,7 +546,6 @@ void FS_GetModDescription(const char *modDir, char *description, int description
 		// Just use the mod name as the description
 		Q_strncpyz(description, modDir, descriptionLen); } }
 
-// From old filesystem
 void FS_FilenameCompletion( const char *dir, const char *ext,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk ) {
 	char	**filenames;
@@ -506,7 +553,10 @@ void FS_FilenameCompletion( const char *dir, const char *ext,
 	int		i;
 	char	filename[ MAX_STRING_CHARS ];
 
-	filenames = FS_ListFilteredFiles( dir, ext, NULL, &nfiles, allowNonPureFilesOnDisk );
+	// Currently using the less restrictive FLISTFLAG_IGNORE_PURE_LIST when allowNonPureFilesOnDisk is
+	//    false, since that's what's used for map completion, and we want to ignore the pure list there
+	filenames = FS_FlagListFilteredFiles(dir, ext, NULL, &nfiles,
+			allowNonPureFilesOnDisk ? FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE : FLISTFLAG_IGNORE_PURE_LIST);
 
 	for( i = 0; i < nfiles; i++ ) {
 		Q_strncpyz( filename, filenames[ i ], MAX_STRING_CHARS );
@@ -561,6 +611,22 @@ void QDECL FS_Printf(fileHandle_t h, const char *fmt, ...) {
 	FS_Write(msg, strlen(msg), h);
 }
 
+void fs_comma_separated_list(const char **strings, int count, fsc_stream_t *output) {
+	// Writes array of strings to stream separated by comma (useful for debug print purposes)
+	// Ignores strings that are null or empty
+	// Writes "<none>" if nothing was written
+	int i;
+	qboolean have_item = qfalse;
+	FSC_ASSERT(strings);
+	FSC_ASSERT(output);
+	fsc_stream_append_string(output, "");
+	for(i=0; i<count; ++i) {
+		if(strings[i] && *strings[i]) {
+			if(have_item) fsc_stream_append_string(output, ", ");
+			fsc_stream_append_string(output, strings[i]);
+			have_item = qtrue; } }
+	if(!have_item) fsc_stream_append_string(output, "<none>"); }
+
 qboolean FS_idPak(const char *pak, const char *base, int numPaks)
 {
 	int i;
@@ -593,7 +659,7 @@ void fs_sanitize_mod_dir(const char *source, char *target) {
 qboolean calculate_file_sha256(const fsc_file_t *file, unsigned char *output) {
 	// Returns qtrue on success, qfalse otherwise
 	unsigned int size = 0;
-	char *data = fs_read_data(file, 0, &size);
+	char *data = fs_read_data(file, 0, &size, "calculate_file_sha256");
 	if(!data) {
 		Com_Memset(output, 0, 32);
 		return qfalse; }
