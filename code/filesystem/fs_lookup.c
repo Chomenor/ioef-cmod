@@ -111,9 +111,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
 	// Handle settings (e.g. q3config.cfg or autoexec.cfg) query
-	if(query->config_query == FS_CONFIGTYPE_SETTINGS) {
-		if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
-			resource->disabled = "settings config file can't be loaded from pk3"; }
+	if(query->lookup_flags & LOOKUPFLAG_SETTINGS_FILE) {
 		if(fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE && resource->mod_type != MODTYPE_CURRENT_MOD) {
 			resource->disabled = "settings config file can only be loaded from com_basegame or current mod dir"; }
 		if(!fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE) {
@@ -127,13 +125,9 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 
 	// Disable files according to lookupflag sourcetype restrictions
 	if((query->lookup_flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY) && resource->file->sourcetype != FSC_SOURCETYPE_DIRECT) {
-		resource->disabled = "blocking file because query requested files directly on disk only"; }
+		resource->disabled = "blocking file due to direct_source_only flag"; }
 	if((query->lookup_flags & LOOKUPFLAG_PK3_SOURCE_ONLY) && resource->file->sourcetype != FSC_SOURCETYPE_PK3) {
-		resource->disabled = "blocking file because query requested files inside pk3s only"; }
-
-	// Disable config files from download folder (qvm file restrictions are handled in perform_lookup)
-	if(fs_restrict_dlfolder->integer && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3) && (query->config_query)) {
-		resource->disabled = "blocking config file in downloaded pk3 due to fs_restrict_dlfolder setting"; }
+		resource->disabled = "blocking file due to pk3_source_only flag"; }
 
 	// Disable files blocked by fs_read_inactive_mods setting
 	if(fs_file_disabled(resource->file, FD_CHECK_READ_INACTIVE_MODS)) {
@@ -579,13 +573,14 @@ static selection_output_t debug_selection;
 /* *** Debug Lookup *** */
 
 static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
-	const char *flag_strings[6] = {0};
+	const char *flag_strings[7] = {0};
 	flag_strings[0] = (flags & LOOKUPFLAG_ENABLE_DDS) ? "enable_dds" : 0;
 	flag_strings[1] = (flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
 	flag_strings[2] = (flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) ? "ignore_current_map" : 0;
 	flag_strings[3] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
 	flag_strings[4] = (flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY) ? "direct_source_only" : 0;
 	flag_strings[5] = (flags & LOOKUPFLAG_PK3_SOURCE_ONLY) ? "pk3_source_only" : 0;
+	flag_strings[6] = (flags & LOOKUPFLAG_SETTINGS_FILE) ? "settings_file" : 0;
 	fs_comma_separated_list(flag_strings, ARRAY_LEN(flag_strings), stream); }
 
 static void debug_print_lookup_query(const lookup_query_t *query) {
@@ -904,34 +899,6 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 	// Not elegant but should be adequate
 	if(is_dll_out) *is_dll_out = lookup_result.file && lookup_result.file->qp_ext_ptr &&
 			!Q_stricmp((const char *)STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT+1) ? qtrue : qfalse;
-	return lookup_result.file; }
-
-const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug) {
-	lookup_query_t query;
-	char qpath_buffer[FSC_MAX_QPATH];
-	const char *ext = 0;
-	query_result_t lookup_result;
-	FSC_ASSERT(name);
-
-	Com_Memset(&query, 0, sizeof(query));
-	query.lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;
-	if(type != FS_CONFIGTYPE_DEFAULT) query.lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST;
-	fsc_process_qpath(name, qpath_buffer, &query.qp_dir, &query.qp_name, &ext);
-	query.qp_exts = &ext;
-	query.extension_count = ext ? 1 : 0;
-	query.config_query = type;
-
-	if(debug) {
-		debug_lookup(&query, 1, qfalse);
-		return 0; }
-
-	perform_lookup(&query, 1, qfalse, &lookup_result);
-	if(fs_debug_lookup->integer) {
-		FS_DPrintf("********** config lookup **********\n");
-		fs_debug_indent_start();
-		FS_DPrintf("name: %s\n", name);
-		lookup_print_debug_file(lookup_result.file);
-		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
 #endif	// NEW_FILESYSTEM

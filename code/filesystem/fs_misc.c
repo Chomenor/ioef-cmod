@@ -422,6 +422,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	unsigned int size = 0;
 
 	if(com_journalDataFile && com_journal->integer == 2) {
+		// In journal playback mode, try to load config files from journal data file
 		Com_Printf("execing %s from journal data file\n", name);
 		data = fs_read_journal_data();
 		if(!data) {
@@ -429,13 +430,21 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 			return; } }
 	else {
 		const fsc_file_t *file;
+		int lookup_flags = LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE | LOOKUPFLAG_IGNORE_CURRENT_MAP;
+		if(config_type == FS_CONFIGTYPE_SETTINGS) {
+			lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY); }
+
 		if(!quiet) Com_Printf("execing %s\n", name);
+
+		// Locate file
 		fs_auto_refresh();
-		file = fs_config_lookup(name, config_type, qfalse);
+		file = fs_general_lookup(name, lookup_flags, qfalse);
 		if(!file) {
 			Com_Printf("couldn't exec %s - file not found\n", name);
 			fs_write_journal_data(0, 0);
 			return; }
+
+		// Load data
 		data = fs_read_data(file, 0, &size, "fs_execute_config_file");
 		if(!data) {
 			Com_Printf("couldn't exec %s - failed to read data\n", name);

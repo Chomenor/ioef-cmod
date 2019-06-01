@@ -188,7 +188,7 @@ qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) {
 
 	// Check for default.cfg here and attempt an ERR_DROP if it isn't found, to avoid getting
 	// an ERR_FATAL later due to broken pure list
-	if(!fs_config_lookup("default.cfg", FS_CONFIGTYPE_DEFAULT, qfalse)) {
+	if(!fs_general_lookup("default.cfg", LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE, qfalse)) {
 		Com_Error(ERR_DROP, "Failed to find default.cfg, assuming invalid configuration"); }
 
 	// Check if we need to do a restart to load new config files

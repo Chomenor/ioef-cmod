@@ -178,6 +178,7 @@ DEF_PUBLIC( void fs_startup(void) )
 #define LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE 8
 #define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16
 #define LOOKUPFLAG_PK3_SOURCE_ONLY 32
+#define LOOKUPFLAG_SETTINGS_FILE 64		// For auto-executed config files (e.g. q3config and autoexec)
 
 DEF_LOCAL( void debug_resource_comparison(int resource1_position, int resource2_position) )
 DEF_PUBLIC( const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) )
@@ -185,7 +186,6 @@ DEF_PUBLIC( const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_fl
 DEF_PUBLIC( const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean debug) )
 DEF_PUBLIC( const fsc_file_t *fs_sound_lookup(const char *name, qboolean debug) )
 DEF_PUBLIC( const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) )
-DEF_LOCAL( const fsc_file_t *fs_config_lookup(const char *name, fs_config_type_t type, qboolean debug) )
 
 /* ******************************************************************************** */
 // File Listing
