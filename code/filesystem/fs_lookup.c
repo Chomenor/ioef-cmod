@@ -109,7 +109,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !resource->server_pak_position) {
 		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
-	// Handle settings (e.g. q3config.cfg, autoexec.cfg, or default.cfg) query
+	// Restrict source locations for settings (e.g. q3config.cfg, autoexec.cfg, or default.cfg) query
 	if(query->lookup_flags & LOOKUPFLAG_SETTINGS_FILE) {
 		if(fs_mod_settings->integer && resource->mod_type != MODTYPE_BASE && resource->mod_type != MODTYPE_CURRENT_MOD) {
 			resource->disabled = "settings config file can only be loaded from com_basegame or current mod dir"; }
@@ -127,6 +127,10 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->disabled = "blocking file due to direct_source_only flag"; }
 	if((query->lookup_flags & LOOKUPFLAG_PK3_SOURCE_ONLY) && resource->file->sourcetype != FSC_SOURCETYPE_PK3) {
 		resource->disabled = "blocking file due to pk3_source_only flag"; }
+
+	// Disable files according to download folder restrictions
+	if((query->lookup_flags & LOOKUPFLAG_NO_DOWNLOAD_FOLDER) && (resource->flags & RESFLAG_IN_DOWNLOAD_PK3)) {
+		resource->disabled = "blocking file in download folder due to no_download_folder flag"; }
 
 	// Disable files blocked by fs_read_inactive_mods setting
 	if(fs_file_disabled(resource->file, FD_CHECK_READ_INACTIVE_MODS)) {
@@ -572,7 +576,7 @@ static selection_output_t debug_selection;
 /* *** Debug Lookup *** */
 
 static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
-	const char *flag_strings[7] = {0};
+	const char *flag_strings[8] = {0};
 	flag_strings[0] = (flags & LOOKUPFLAG_ENABLE_DDS) ? "enable_dds" : 0;
 	flag_strings[1] = (flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
 	flag_strings[2] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
@@ -580,6 +584,7 @@ static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
 	flag_strings[4] = (flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY) ? "direct_source_only" : 0;
 	flag_strings[5] = (flags & LOOKUPFLAG_PK3_SOURCE_ONLY) ? "pk3_source_only" : 0;
 	flag_strings[6] = (flags & LOOKUPFLAG_SETTINGS_FILE) ? "settings_file" : 0;
+	flag_strings[7] = (flags & LOOKUPFLAG_NO_DOWNLOAD_FOLDER) ? "no_download_folder" : 0;
 	fs_comma_separated_list(flag_strings, ARRAY_LEN(flag_strings), stream); }
 
 static void debug_print_lookup_query(const lookup_query_t *query) {
