@@ -195,7 +195,8 @@ DEF_PUBLIC( void fs_startup(void) )
 #define LOOKUPFLAG_IGNORE_CURRENT_MAP 8		// Ignore current map sort criteria
 #define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16	// Only allow files on disk
 #define LOOKUPFLAG_PK3_SOURCE_ONLY 32	// Only allow files in pk3s
-#define LOOKUPFLAG_SETTINGS_FILE 64		// For auto-executed config files (e.g. q3config and autoexec)
+#define LOOKUPFLAG_SETTINGS_FILE 64		// Apply fs_mod_settings for auto-executed config files (e.g. q3config, autoexec, default)
+#define LOOKUPFLAG_NO_DOWNLOAD_FOLDER 128	// Don't allow files from download folder
 
 DEF_LOCAL( void debug_resource_comparison(int resource1_position, int resource2_position) )
 DEF_PUBLIC( const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) )

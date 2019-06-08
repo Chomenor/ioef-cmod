@@ -451,8 +451,16 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	else {
 		const fsc_file_t *file;
 		int lookup_flags = LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE | LOOKUPFLAG_IGNORE_CURRENT_MAP;
+		if(fs_restrict_dlfolder->integer) {
+			// Don't allow config files from restricted download folder pk3s, because they could disable the download folder
+			// restrictions to unrestrict themselves
+			lookup_flags |= LOOKUPFLAG_NO_DOWNLOAD_FOLDER; }
 		if(config_type == FS_CONFIGTYPE_SETTINGS) {
+			// For q3config.cfg and autoexec.cfg - only load files on disk and from appropriate fs_mod_settings locations
 			lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY); }
+		if(config_type == FS_CONFIGTYPE_DEFAULT) {
+			// For default.cfg - only load from appropriate fs_mod_settings locations
+			lookup_flags |= LOOKUPFLAG_SETTINGS_FILE; }
 #ifdef CMOD_SETTINGS
 		if(config_type == FS_CONFIGTYPE_RESTRICTED_IMPORT) {
 			lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY); }
