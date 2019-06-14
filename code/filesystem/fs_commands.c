@@ -68,6 +68,11 @@ static void cmd_compare(void) {
 // Other Commands
 /* ******************************************************************************** */
 
+static void cmd_fs_refresh(void) {
+	// Runs filesystem refresh
+	// Can be called with parameter 1 for quiet mode
+	fs_refresh(atoi(Cmd_Argv(1)) ? qtrue : qfalse); }
+
 static void cmd_readcache_debug(void) {
 	fs_readcache_debug(); }
 
@@ -203,6 +208,7 @@ void fs_register_commands(void) {
 	Cmd_AddCommand("find_vm", cmd_find_vm);
 	Cmd_AddCommand("compare", cmd_compare);
 
+	Cmd_AddCommand("fs_refresh", cmd_fs_refresh);
 	Cmd_AddCommand("readcache_debug", cmd_readcache_debug);
 	Cmd_AddCommand("indexcache_write", cmd_indexcache_write);
 
