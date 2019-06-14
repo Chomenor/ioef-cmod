@@ -180,7 +180,7 @@ In this filesystem, shader precedence follows the same rules as normal filesyste
 
 This project introduces some new cvars that can be set to 1 to enable debug prints.
 
-- fs_debug_state: logs changes to the primary filesystem state such as the current mod dir and server pak list
+- fs_debug_state: logs changes to the primary filesystem state such as the current mod dir and server pure list
 - fs_debug_refresh: logs warnings that come up during file indexing phase; best set from the command line and combined with fs_index_cache 0
 - fs_debug_fileio: logs file reading/writing activity
 - fs_debug_lookup: logs file index lookup activity

@@ -161,7 +161,7 @@ DEF_LOCAL( extern const fsc_file_direct_t *current_map_pk3 )
 DEF_LOCAL( extern int checksum_feed )
 
 DEF_LOCAL( extern int connected_server_sv_pure )
-DEF_LOCAL( extern pk3_list_t connected_server_pk3_list )
+DEF_LOCAL( extern pk3_list_t connected_server_pure_list )
 
 // State Accessors
 DEF_PUBLIC( const char *FS_GetCurrentGameDir(void) )
@@ -424,8 +424,8 @@ DEF_LOCAL( int fs_file_disabled(const fsc_file_t *file, int checks) )
 DEF_LOCAL( void fs_write_sort_string(const char *string, fsc_stream_t *output, qboolean prioritize_shorter) )
 DEF_LOCAL( void fs_write_sort_filename(const fsc_file_t *file, fsc_stream_t *output) )
 DEF_LOCAL( void fs_write_sort_value(unsigned int value, fsc_stream_t *output) )
-DEF_LOCAL( void fs_generate_core_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list) )
-DEF_LOCAL( int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pak_list) )
+DEF_LOCAL( void fs_generate_core_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pure_list) )
+DEF_LOCAL( int fs_compare_file(const fsc_file_t *file1, const fsc_file_t *file2, qboolean use_server_pure_list) )
 DEF_LOCAL( int fs_compare_pk3_source(const fsc_file_t *file1, const fsc_file_t *file2) )
 
 // Misc Functions

@@ -221,7 +221,7 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 - special_shaders: Prioritizes "special" shaders (those from a core pak, server pak list, current mod dir, or basemod dir). Resources in these locations normally override resources outside them anyway, but this rule causes explicit shaders to override images when they are both in one of these locations. This is helpful in some special cases. For example, suppose the core paks provide a shader and image both with the same name, in which the shader invokes the image, and a mod provides a modified version of the image only. By itself, the basemod_or_current_mod_dir rule would cause the mod image to override the shader instead of just the image, which is probably not the mod author's intention nor the original filesystem behavior. This rule increases the areas where shaders override images to better handle these kind of conditions.
 
-- server_pak_position: Prioritizes paks according to the order of the server pak list (sv_paks) when connected to a pure or semi-pure server.
+- server_pure_position: Prioritizes paks according to the order of the server pure list (sv_paks) when connected to a pure or semi-pure server.
 
 - basemod_or_current_mod_dir: Prioritizes current_mod_dir (which generally corresponds to fs_game) and basemod over com_basegame and inactive mods.
 

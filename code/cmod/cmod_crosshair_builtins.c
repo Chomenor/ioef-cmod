@@ -21087,7 +21087,7 @@ qboolean crosshair_builtin_file_enabled(const fsc_file_t *file) {
 		int i;
 		crosshair_def_t *def = ((crosshair_file_t *)file)->def;
 		for(i=0; i<ARRAY_LEN(def->pk3_hashes); ++i) {
-			if(def->pk3_hashes[i] && pk3_list_lookup(&connected_server_pk3_list, def->pk3_hashes[i], qfalse)) return qtrue; }
+			if(def->pk3_hashes[i] && pk3_list_lookup(&connected_server_pure_list, def->pk3_hashes[i], qfalse)) return qtrue; }
 		return qfalse; }
 
 	return qtrue; }

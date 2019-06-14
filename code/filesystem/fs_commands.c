@@ -68,6 +68,11 @@ static void cmd_compare(void) {
 // Other Commands
 /* ******************************************************************************** */
 
+static void cmd_fs_refresh(void) {
+	// Runs filesystem refresh
+	// Can be called with parameter 1 for quiet mode
+	fs_refresh(atoi(Cmd_Argv(1)) ? qtrue : qfalse); }
+
 static void cmd_readcache_debug(void) {
 	fs_readcache_debug(); }
 
@@ -187,7 +192,7 @@ static void FS_Path_f( void ) {
 					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count);
 					Com_Printf("    hash(%i) core_pk3_position(%i)\n", (int)pak->pk3_hash, core_pk3_position(pak->pk3_hash));
 					if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
-							pk3_list_lookup(&connected_server_pk3_list, pak->pk3_hash, qfalse) ? "" : "not "); } } } }
+							pk3_list_lookup(&connected_server_pure_list, pak->pk3_hash, qfalse) ? "" : "not "); } } } }
 
 	Com_Printf("\n");
 	fs_print_handle_list(); }
@@ -203,6 +208,7 @@ void fs_register_commands(void) {
 	Cmd_AddCommand("find_vm", cmd_find_vm);
 	Cmd_AddCommand("compare", cmd_compare);
 
+	Cmd_AddCommand("fs_refresh", cmd_fs_refresh);
 	Cmd_AddCommand("readcache_debug", cmd_readcache_debug);
 	Cmd_AddCommand("indexcache_write", cmd_indexcache_write);
 

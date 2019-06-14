@@ -158,7 +158,7 @@ static qboolean fs_is_crosshair_enabled(const fsc_file_t *file) {
 		// Connected to pure server
 		if(file->sourcetype == FSC_SOURCETYPE_PK3) {
 			unsigned int pk3_hash = fsc_get_base_file(file, &fs)->pk3_hash;
-			if(pk3_list_lookup(&connected_server_pk3_list, pk3_hash, qfalse)) return qtrue; }
+			if(pk3_list_lookup(&connected_server_pure_list, pk3_hash, qfalse)) return qtrue; }
 		return qfalse; }
 
 	return qtrue; }
