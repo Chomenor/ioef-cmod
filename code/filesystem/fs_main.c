@@ -64,7 +64,7 @@ int checksum_feed;
 // Store connected server's sv_pure value here instead of relying on the cvar,
 // because the cvar can be changed in console after connecting
 int connected_server_sv_pure;
-pk3_list_t connected_server_pk3_list;
+pk3_list_t connected_server_pure_list;
 
 /* ******************************************************************************** */
 // Filesystem State Accessors
@@ -88,7 +88,7 @@ qboolean FS_Initialized( void ) {
 
 int fs_connected_server_pure_state(void) {
 	// Returns 2 if semi-pure, 1 if pure, 0 if non-pure
-	if(!connected_server_pk3_list.ht.element_count) return 0;
+	if(!connected_server_pure_list.ht.element_count) return 0;
 	if(connected_server_sv_pure == 2) return 2;
 	return 1; }
 
@@ -117,24 +117,24 @@ void FS_PureServerSetLoadedPaks(const char *hash_list, const char *name_list) {
 	int i;
 	int count;
 
-	pk3_list_free(&connected_server_pk3_list);
-	pk3_list_initialize(&connected_server_pk3_list, 100);
+	pk3_list_free(&connected_server_pure_list);
+	pk3_list_initialize(&connected_server_pure_list, 100);
 
 	Cmd_TokenizeString(hash_list);
 	count = Cmd_Argc();
 	if(count > 4096) count = 4096;	// Sanity check
 
 	for(i=0; i<count; ++i) {
-		pk3_list_insert(&connected_server_pk3_list, atoi(Cmd_Argv(i))); }
+		pk3_list_insert(&connected_server_pure_list, atoi(Cmd_Argv(i))); }
 
-	if(fs_debug_state->integer) Com_Printf("fs_state: connected_server_pk3_list set to '%s'\n", hash_list); }
+	if(fs_debug_state->integer) Com_Printf("fs_state: connected_server_pure_list set to '%s'\n", hash_list); }
 
 void fs_disconnect_cleanup(void) {
 	current_map_pk3 = 0;
 	connected_server_sv_pure = 0;
-	pk3_list_free(&connected_server_pk3_list);
+	pk3_list_free(&connected_server_pure_list);
 	if(fs_debug_state->integer) Com_Printf("fs_state: disconnect cleanup\n   > current_map_pk3 cleared"
-		"\n   > connected_server_sv_pure set to 0\n   > connected_server_pk3_list cleared\n"); }
+		"\n   > connected_server_sv_pure set to 0\n   > connected_server_pure_list cleared\n"); }
 
 static void generate_current_mod_dir(const char *source, char *target) {
 	// Converts mod dir to format used in current_mod_dir, with com_basegame and basemod

@@ -56,7 +56,7 @@ typedef struct {
 	const fsc_file_t *file;
 	const fsc_shader_t *shader;
 	int core_pak_priority;
-	int server_pak_position;
+	int server_pure_position;
 	int extension_position;
 	fs_modtype_t mod_type;
 	int flags;
@@ -91,7 +91,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
-			resource->server_pak_position = pk3_list_lookup(&connected_server_pk3_list, base_file->pk3_hash, qfalse);
+			resource->server_pure_position = pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash, qfalse);
 		if(base_file->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 
 		if(resource->mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
@@ -106,7 +106,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 		resource->flags |= RESFLAG_CASE_MISMATCH; }
 
 	// Check for auxiliary source directory
-	if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !resource->server_pak_position) {
+	if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !resource->server_pure_position) {
 		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
 	// Restrict source locations for settings (e.g. q3config.cfg, autoexec.cfg, or default.cfg) query
@@ -136,11 +136,11 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if(fs_file_disabled(resource->file, FD_CHECK_READ_INACTIVE_MODS)) {
 		resource->disabled = "blocking file from inactive mod dir due to fs_read_inactive_mods setting"; }
 
-	// Disable files not on server pak list if connected to a pure server
-	if(!resource->server_pak_position && fs_connected_server_pure_state() == 1 &&
+	// Disable files not on pure list if connected to a pure server
+	if(!resource->server_pure_position && fs_connected_server_pure_state() == 1 &&
 			!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST) &&
 			!((query->lookup_flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
-		resource->disabled = "connected to pure server and file is not on server pak list"; } }
+		resource->disabled = "connected to pure server and file is not on pure list"; } }
 
 static void file_to_lookup_resource(const lookup_query_t *query, const fsc_file_t *file,
 			int extension_index, qboolean case_mismatch, lookup_resource_t *resource) {
@@ -283,9 +283,9 @@ PC_DEBUG(auxiliary_sourcedir) {
 
 PC_COMPARE(special_shaders) {
 	qboolean r1_special = (r1->shader && (r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
-			r1->core_pak_priority || r1->server_pak_position)) ? qtrue : qfalse;
+			r1->core_pak_priority || r1->server_pure_position)) ? qtrue : qfalse;
 	qboolean r2_special = (r2->shader && (r2->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
-			r2->core_pak_priority || r2->server_pak_position)) ? qtrue : qfalse;
+			r2->core_pak_priority || r2->server_pure_position)) ? qtrue : qfalse;
 
 	if(r1_special && !r2_special) return -1;
 	if(r2_special && !r1_special) return 1;
@@ -293,23 +293,23 @@ PC_COMPARE(special_shaders) {
 	return 0; }
 
 PC_DEBUG(special_shaders) {
-	ADD_STRING(va("Resource %i was selected because it is classified as a special shader (from a core pak, the server pak list,"
+	ADD_STRING(va("Resource %i was selected because it is classified as a special shader (from a core pak, the server pure list,"
 		" the current mod dir, or the basemod dir) and resource %i is not.", high_num, low_num)); }
 
-PC_COMPARE(server_pak_position) {
-	if(r1->server_pak_position && !r2->server_pak_position) return -1;
-	if(r2->server_pak_position && !r1->server_pak_position) return 1;
+PC_COMPARE(server_pure_position) {
+	if(r1->server_pure_position && !r2->server_pure_position) return -1;
+	if(r2->server_pure_position && !r1->server_pure_position) return 1;
 
-	if(r1->server_pak_position < r2->server_pak_position) return -1;
-	if(r2->server_pak_position < r1->server_pak_position) return 1;
+	if(r1->server_pure_position < r2->server_pure_position) return -1;
+	if(r2->server_pure_position < r1->server_pure_position) return 1;
 	return 0; }
 
-PC_DEBUG(server_pak_position) {
-	if(!low->server_pak_position) {
-		ADD_STRING(va("Resource %i was selected because it is on the server pak list and resource %i is not.", high_num, low_num)); }
+PC_DEBUG(server_pure_position) {
+	if(!low->server_pure_position) {
+		ADD_STRING(va("Resource %i was selected because it is on the server pure list and resource %i is not.", high_num, low_num)); }
 	else {
-		ADD_STRING(va("Resource %i was selected because it has a lower server pak position (%i) than resource %i (%i).",
-				high_num, high->server_pak_position, low_num, low->server_pak_position)); } }
+		ADD_STRING(va("Resource %i was selected because it has a lower server pure list position (%i) than resource %i (%i).",
+				high_num, high->server_pure_position, low_num, low->server_pure_position)); } }
 
 PC_COMPARE(basemod_or_current_mod_dir) {
 	if(r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY || r2->mod_type >= MODTYPE_OVERRIDE_DIRECTORY) {
@@ -457,7 +457,7 @@ static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(resource_disabled),
 	ADD_CHECK(auxiliary_sourcedir),
 	ADD_CHECK(special_shaders),
-	ADD_CHECK(server_pak_position),
+	ADD_CHECK(server_pure_position),
 	ADD_CHECK(basemod_or_current_mod_dir),
 	ADD_CHECK(core_paks),
 	ADD_CHECK(current_map_pak),

@@ -255,7 +255,7 @@ void fs_print_file_location(const fsc_file_t *file) {
 
 static int get_pk3_list_position(const fsc_file_t *file) {
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
-	return pk3_list_lookup(&connected_server_pk3_list, fsc_get_base_file(file, &fs)->pk3_hash, qfalse); }
+	return pk3_list_lookup(&connected_server_pure_list, fsc_get_base_file(file, &fs)->pk3_hash, qfalse); }
 
 static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 	// Check if a file is disabled by inactive mod settings
@@ -270,7 +270,7 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 	if(level == 1) {
 		const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
 		if(base_file) {
-			if(pk3_list_lookup(&connected_server_pk3_list, base_file->pk3_hash, qfalse)) return qfalse;
+			if(pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash, qfalse)) return qfalse;
 			if(core_pk3_position(base_file->pk3_hash)) return qfalse; } }
 
 	return qtrue; }
@@ -332,9 +332,9 @@ static const unsigned char *get_string_sort_table(void) {
 
 	return table; }
 
-static unsigned int server_pak_precedence(const fsc_file_t *file) {
+static unsigned int server_pure_precedence(const fsc_file_t *file) {
 	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		return pk3_list_lookup(&connected_server_pk3_list, fsc_get_base_file(file, &fs)->pk3_hash, qtrue); }
+		return pk3_list_lookup(&connected_server_pure_list, fsc_get_base_file(file, &fs)->pk3_hash, qtrue); }
 	return 0; }
 
 static unsigned int mod_dir_precedence(fs_modtype_t mod_type) {
@@ -383,12 +383,12 @@ void fs_write_sort_value(unsigned int value, fsc_stream_t *output) {
 		*((unsigned int *)(output->data + output->position)) = value;
 		output->position += 4; } }
 
-void fs_generate_core_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pak_list) {
+void fs_generate_core_sort_key(const fsc_file_t *file, fsc_stream_t *output, qboolean use_server_pure_list) {
 	// This is a rough version of the lookup precedence for reference and file listing purposes
 	// This sorts the mod/pk3 origin of the file, but not the actual file name, or the source directory
 	//    since the file list system handles file names separately and currently ignores source directory
 	fs_modtype_t mod_type = fs_get_mod_type(fsc_get_mod_dir(file, &fs));
-	if(use_server_pak_list) fs_write_sort_value(server_pak_precedence(file), output);
+	if(use_server_pure_list) fs_write_sort_value(server_pure_precedence(file), output);
 	fs_write_sort_value(mod_dir_precedence(mod_type), output);
 	fs_write_sort_value(core_pak_precedence(file, mod_type), output);
 	fs_write_sort_value(basegame_dir_precedence(mod_type), output);
