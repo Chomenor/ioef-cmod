@@ -1057,8 +1057,8 @@ void Key_Bind_f (void)
 	}
 
 #ifdef CMOD_COMMAND_INTERPRETER
-	if(mode & CMD_RESTRICTED) {
-		// Don't override certain special keys in restricted mode
+	if(mode & CMD_SETTINGS_IMPORT) {
+		// Don't override certain special keys in settings import mode
 		if(b == Key_StringToKeynum("`") || b == Key_StringToKeynum("~") ||
 				b == Key_StringToKeynum("F1") || b == Key_StringToKeynum("F2")) return; }
 	Key_SetBinding (b, cmd, (mode & CMD_PROTECTED) || !Q_stricmp(Cmd_Argv(0), "bindp") ? CMD_PROTECTED : CMD_NORMAL);

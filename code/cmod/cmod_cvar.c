@@ -31,7 +31,7 @@ int cvar_modifiedFlags;		// Publicly shared
 // Definitions
 /* ******************************************************************************** */
 
-#define CVAR_CREATED_FLAGS (CVAR_USER_CREATED|CVAR_VM_CREATED|CVAR_RESTRICTED_CREATED)
+#define CVAR_CREATED_FLAGS (CVAR_USER_CREATED|CVAR_VM_CREATED|CVAR_IMPORT_CREATED)
 
 typedef struct localCvar_s {
 	// Components shared with the rest of the game, and defined in q_shared.h
@@ -351,12 +351,12 @@ static localCvar_t *cvar_system_register(const char *name, const char *value, in
 		cvar_clearstring(&cvar->protected_default);
 		cvar->protected_flags = 0; }
 
-	// If cvar was set under restricted mode, clear values
-	if(!(cvar->system_flags & CVAR_RESTRICTED_MODIFIABLE)) {
-		if(cvar->protected_flags & CVAR_RESTRICTED_CREATED) {
+	// If cvar was set under import mode and CVAR_IMPORT_ALLOWED is not present, clear values
+	if(!(cvar->system_flags & CVAR_IMPORT_ALLOWED)) {
+		if(cvar->protected_flags & CVAR_IMPORT_CREATED) {
 			cvar_clearstring(&cvar->protected_value);
 			cvar->protected_flags = 0; }
-		if(cvar->main_flags & CVAR_RESTRICTED_CREATED) {
+		if(cvar->main_flags & CVAR_IMPORT_CREATED) {
 			cvar_clearstring(&cvar->main_value);
 			cvar->main_flags = 0; } }
 
@@ -392,11 +392,13 @@ void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t
 		if(verbose) Com_Printf("%s is cheat protected.\n", name);
 		return; }
 
-	// Check for skip due to restricted (autoexec.cfg) mode
-	if(mode & CMD_RESTRICTED) {
-		if((cvar->system_flags & CVAR_SYSTEM_REGISTERED) && !(cvar->system_flags & CVAR_RESTRICTED_MODIFIABLE)) {
+	// Check for settings import/safe autoexec.cfg mode
+	if(mode & CMD_SETTINGS_IMPORT) {
+		// If cvar is already system registered and not import allowed, abort here
+		if((cvar->system_flags & CVAR_SYSTEM_REGISTERED) && !(cvar->system_flags & CVAR_IMPORT_ALLOWED)) {
 			return; }
-		flags |= CVAR_RESTRICTED_CREATED; }
+		// Set import flag, so import check can be performed if cvar is system registered in the future
+		flags |= CVAR_IMPORT_CREATED; }
 
 	// Set value and flags in appropriate location
 	if(mode & CMD_PROTECTED) {
@@ -980,8 +982,8 @@ static void cvar_flags_to_stream(int flags, cvar_stream_t *stream) {
 	RUN_FLAG(CVAR_SYSTEM_REGISTERED);
 	RUN_FLAG(CVAR_PROTECTED_MODIFIABLE);
 	RUN_FLAG(CVAR_PROTECTED_ARCHIVABLE);
-	RUN_FLAG(CVAR_RESTRICTED_MODIFIABLE);
-	RUN_FLAG(CVAR_RESTRICTED_CREATED);
+	RUN_FLAG(CVAR_IMPORT_ALLOWED);
+	RUN_FLAG(CVAR_IMPORT_CREATED);
 	RUN_FLAG(CVAR_IGNORE_VM_DEFAULT);
 	RUN_FLAG(CVAR_NOARCHIVE);
 	RUN_FLAG(CVAR_NUMERIC);
@@ -1082,17 +1084,17 @@ special_cvar_t specials[] = {
 	{"ui_initialsetup", "1", CVARTYPE_NONE, 0},
 
 	// Preferences
-	{"name", "RedShirt", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE},
-	{"model", "munro/red", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE},
+	{"name", "RedShirt", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
+	{"model", "munro/red", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
 	{"cl_allowDownload", "1", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
-	{"sensitivity", "5", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE|CVAR_NUMERIC},
-	{"g_language", "", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE},
-	{"k_language", "american", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE},
-	{"s_language", "", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE},
-	{"cg_crosshairSize", "24", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE},
+	{"sensitivity", "5", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED|CVAR_NUMERIC},
+	{"g_language", "", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
+	{"k_language", "american", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
+	{"s_language", "", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
+	{"cg_crosshairSize", "24", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
 	{"cmod_crosshair_selection", "076b9707", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
-	{"cg_fov", "80", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_RESTRICTED_MODIFIABLE},
-	{"rconPassword", "", CVARTYPE_PREFERENCES, CVAR_RESTRICTED_MODIFIABLE},
+	{"cg_fov", "80", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
+	{"rconPassword", "", CVARTYPE_PREFERENCES, CVAR_IMPORT_ALLOWED},
 	{"cg_drawFPS", "0", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
 	{"cg_drawTeamOverlay", "0", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
 	{"cg_drawTimer", "1", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IGNORE_VM_DEFAULT},

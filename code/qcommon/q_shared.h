@@ -952,8 +952,8 @@ default values.
 #define CVAR_SYSTEM_REGISTERED	(1<<14)
 #define CVAR_PROTECTED_MODIFIABLE	(1<<15)		// allow modifying this var from VMs, but reset when session ends
 #define CVAR_PROTECTED_ARCHIVABLE	(1<<16)		// allow modifying this var from VMs and archiving
-#define CVAR_RESTRICTED_MODIFIABLE	(1<<17)		// allow modifying this var from restricted (autoexec) scripts
-#define CVAR_RESTRICTED_CREATED	(1<<18)			// created by restricted script; reset on system register
+#define CVAR_IMPORT_ALLOWED	(1<<17)				// allow modifying this var in import/protected autoexec mode
+#define CVAR_IMPORT_CREATED	(1<<18)				// created in import mode; reset on system register unless CVAR_IMPORT_ALLOWED is present
 #define CVAR_IGNORE_VM_DEFAULT	(1<<19)			// allow system default to override vm default
 #define CVAR_NOARCHIVE	(1<<20)					// override CVAR_ARCHIVE
 #define CVAR_NUMERIC	(1<<21)					// perform numeric comparison with default when deciding to write the cvar to config file

@@ -426,7 +426,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	if(config_type == FS_CONFIGTYPE_DEFAULT) mode |= CMD_PROTECTED;
 #endif
 #ifdef CMOD_SETTINGS
-	if(config_type == FS_CONFIGTYPE_RESTRICTED_IMPORT) mode |= CMD_RESTRICTED;
+	if(config_type == FS_CONFIGTYPE_SETTINGS_IMPORT) mode |= CMD_SETTINGS_IMPORT;
 #endif
 
 	if(com_journalDataFile && com_journal->integer == 2) {
@@ -445,7 +445,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 			data = fs_read_data(0, path, 0, "fs_execute_config_file"); }
 		if(!data) {
 			Com_Printf("loading %s failed; attempting to import settings from " Q3CONFIG_CFG "\n", name);
-			fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_RESTRICTED_IMPORT, EXEC_APPEND, qfalse);
+			fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_SETTINGS_IMPORT, EXEC_APPEND, qfalse);
 			return; } }
 #endif
 	else {
@@ -462,7 +462,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 			// For default.cfg - only load from appropriate fs_mod_settings locations
 			lookup_flags |= LOOKUPFLAG_SETTINGS_FILE; }
 #ifdef CMOD_SETTINGS
-		if(config_type == FS_CONFIGTYPE_RESTRICTED_IMPORT) {
+		if(config_type == FS_CONFIGTYPE_SETTINGS_IMPORT) {
 			lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY); }
 #endif
 
@@ -495,7 +495,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 		Com_Printf("NOTE: Running autoexec.cfg file in restricted mode to avoid compatibility issues. This "
 			"may cause some commands not to work. If you know your autoexec.cfg file is compatible with cMod, "
 			"set cmod_restrict_autoexec to 0 to enable full command support.\n");
-		mode |= CMD_RESTRICTED; }
+		mode |= CMD_SETTINGS_IMPORT; }
 #endif
 #endif
 
