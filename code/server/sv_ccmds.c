@@ -162,6 +162,15 @@ static void SV_Map_f( void ) {
 		return;
 	}
 
+#ifdef CMOD_MAP_SCRIPT
+	if(Cmd_Argv(0)[0] != '_') {
+		Cvar_Set("cmod_sv_map_command", va("_%s", Cmd_Cmd()));
+		if(*cmod_sv_map_script->string) {
+			Com_Printf("Running custom map script...\n");
+			Cbuf_ExecuteText(EXEC_INSERT, "vstr cmod_sv_map_script");
+			return; } }
+#endif
+
 	// make sure the level exists before trying to change, so that
 	// a typo at the server console won't end the game
 	Com_sprintf (expanded, sizeof(expanded), "maps/%s.bsp", map);
@@ -188,6 +197,9 @@ static void SV_Map_f( void ) {
 #endif
 
 	cmd = Cmd_Argv(0);
+#ifdef CMOD_MAP_SCRIPT
+	if(cmd[0] == '_') ++cmd;
+#endif
 	if( Q_stricmpn( cmd, "sp", 2 ) == 0 ) {
 		Cvar_SetValue( "g_gametype", GT_SINGLE_PLAYER );
 		Cvar_SetValue( "g_doWarmup", 0 );
@@ -218,10 +230,8 @@ static void SV_Map_f( void ) {
 	// and thus nuke the arguments of the map command
 	Q_strncpyz(mapname, map, sizeof(mapname));
 
-#ifndef CMOD_MAP_SCRIPT
 	// start up the map
 	SV_SpawnServer( mapname, killBots );
-#endif
 
 	// set the cheat value
 	// if the level was started with "map <levelname>", then
@@ -232,17 +242,7 @@ static void SV_Map_f( void ) {
 	} else {
 		Cvar_Set( "sv_cheats", "0" );
 	}
-#ifdef CMOD_MAP_SCRIPT
-	Cvar_Set("mapname", mapname);
-	Cvar_Set("sv_map_killbots", killBots ? "1" : "0");
-	Cbuf_ExecuteText(EXEC_INSERT, "vstr map_script");
-#endif
 }
-
-#ifdef CMOD_MAP_SCRIPT
-static void SV_Startmap_f( void ) {
-	SV_SpawnServer( sv_mapname->string, Cvar_VariableIntegerValue("sv_map_killbots") ? qtrue : qfalse ); }
-#endif
 
 /*
 ================
@@ -1604,7 +1604,8 @@ void SV_AddOperatorCommands( void ) {
 	Cmd_AddCommand("exceptdel", SV_ExceptDel_f);
 	Cmd_AddCommand("flushbans", SV_FlushBans_f);
 #ifdef CMOD_MAP_SCRIPT
-	Cmd_AddCommand("startmap", SV_Startmap_f);
+	Cmd_AddCommand("_map", SV_Map_f);
+	Cmd_AddCommand("_devmap", SV_Map_f);
 #endif
 }
 

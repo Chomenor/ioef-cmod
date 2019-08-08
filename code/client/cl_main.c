@@ -1535,10 +1535,8 @@ void CL_Disconnect( qboolean showMainMenu ) {
 
 	clc.state = CA_DISCONNECTED;
 
-#ifndef CMOD_MAP_SCRIPT
 	// allow cheats locally
 	Cvar_Set( "sv_cheats", "1" );
-#endif
 
 #ifndef NEW_FILESYSTEM
 	// not connected to a pure server anymore

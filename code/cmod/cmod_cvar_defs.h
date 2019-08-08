@@ -40,5 +40,6 @@ CVAR_DEF(in_mouse_warping, "0", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_MAP_SCRIPT
-CVAR_DEF(map_script, "startmap", CVAR_NORESTART)
+CVAR_DEF(cmod_sv_map_script, "", 0)
+CVAR_DEF(cmod_sv_map_command, "", CVAR_ROM)
 #endif

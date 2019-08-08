@@ -73,7 +73,7 @@
 #define CMOD_RECORD
 #define CMOD_NO_ENGINE_NEXTMAP_SET
 
-// Allow the "map_script" cvar to customize behavior when map command is called
+// Allow scripts to override map command behavior via "cmod_sv_map_command" cvar
 #define CMOD_MAP_SCRIPT
 
 /* ******************************************************************************** */
