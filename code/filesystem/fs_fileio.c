@@ -108,7 +108,7 @@ static qboolean fs_generate_path_element(fsc_stream_t *stream, const char *name,
 		if(path_length >= 6 && !Q_stricmp(sanitized_path + path_length - 6, ".dylib")) return qfalse; }
 	if(!(flags & FS_ALLOW_SPECIAL_CFG) && (!Q_stricmp(sanitized_path, Q3CONFIG_CFG) ||
 			!Q_stricmp(sanitized_path, "autoexec.cfg"))) return qfalse;
-#ifdef CMOD_RESTRICT_CFG_FILES
+#ifdef CMOD_RESTRICT_VM_CFG_WRITE
 	if(!(flags & (FS_ALLOW_CFG|FS_ALLOW_SPECIAL_CFG)) && path_length >= 4 &&
 			!Q_stricmp(sanitized_path + path_length - 4, ".cfg")) return qfalse;
 #endif
@@ -1374,7 +1374,7 @@ int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
 	FSC_ASSERT(qpath);
 	return FS_FOpenFileByModeLogged(qpath, f, mode, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileByMode"); }
 
-#ifdef CMOD_RESTRICT_CFG_FILES
+#ifdef CMOD_RESTRICT_VM_CFG_WRITE
 fileHandle_t FS_FOpenConfigFileWrite(const char *filename) {
 	FSC_ASSERT(filename);
 	return fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }

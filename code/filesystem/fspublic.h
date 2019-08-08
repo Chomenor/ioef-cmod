@@ -232,7 +232,7 @@ DEF_PUBLIC( int	FS_GetFileList(  const char *path, const char *extension, char *
 #define FS_ALLOW_PK3 16
 #define FS_ALLOW_DLL 32
 #define FS_ALLOW_SPECIAL_CFG 64
-#ifdef CMOD_RESTRICT_CFG_FILES
+#ifdef CMOD_RESTRICT_VM_CFG_WRITE
 #define FS_ALLOW_CFG 128
 #endif
 
@@ -302,7 +302,7 @@ DEF_PUBLIC( fileHandle_t FS_FOpenFileWrite(const char *filename) )
 DEF_PUBLIC( fileHandle_t FS_FOpenFileAppend(const char *filename) )
 DEF_PUBLIC( int FS_FOpenFileByModeOwner(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) )
 DEF_PUBLIC( int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) )
-#ifdef CMOD_RESTRICT_CFG_FILES
+#ifdef CMOD_RESTRICT_VM_CFG_WRITE
 DEF_PUBLIC( fileHandle_t FS_FOpenConfigFileWrite(const char *filename) )
 #endif
 DEF_PUBLIC( long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) )

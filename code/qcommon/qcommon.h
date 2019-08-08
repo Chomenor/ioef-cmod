@@ -1315,7 +1315,7 @@ extern huffman_t clientHuffTables;
 #define DLF_NO_UDP 4
 #define DLF_NO_DISCONNECT 8
 
-#ifdef CMOD_COMMON
+#ifdef CMOD_COMMON_CORE
 #include "../cmod/cmod_misc.h"
 #endif
 
