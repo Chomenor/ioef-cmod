@@ -809,6 +809,7 @@ static void cvar_flag_set_command(cmd_mode_t mode, const char *cvar_name, const 
 		if(flag == 's') flags |= CVAR_SERVERINFO;
 		if(flag == 'r') flags |= CVAR_ROM;
 		if(flag == 'v') flags |= CVAR_PROTECTED;
+		if(flag == 'n') flags |= CVAR_NORESTART;
 		if(flag == 'p') mode |= CMD_PROTECTED;
 		++flag_string; }
 	cvar_command_set(cvar_name, value, flags, mode, qfalse, qtrue); }
