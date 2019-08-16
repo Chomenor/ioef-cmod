@@ -128,6 +128,10 @@
 // in various mods
 #define CMOD_VMFLOATCAST
 
+// Reverse an ioef change which appears to be no longer necessary, and may potentially
+// cause issues such as photons disappearing on impact
+#define CMOD_NOIMPACT_TRACEFIX
+
 // Attempt to prevent Com_QueueEvent errors by increasing queue size
 #define CMOD_EVENT_QUEUE_SIZE
 
