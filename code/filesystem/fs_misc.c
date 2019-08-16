@@ -445,7 +445,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 		if(!quiet) Com_Printf("execing %s\n", name);
 
 		// Locate file
-		fs_auto_refresh();
+		fs_refresh_auto();
 		file = fs_general_lookup(name, lookup_flags, qfalse);
 		if(!file) {
 			Com_Printf("couldn't exec %s - file not found\n", name);

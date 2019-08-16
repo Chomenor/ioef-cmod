@@ -121,6 +121,7 @@ DEF_LOCAL( extern cvar_t *fs_redownload_across_mods )
 DEF_LOCAL( extern cvar_t *fs_full_pure_validation )
 DEF_LOCAL( extern cvar_t *fs_saveto_dlfolder )
 DEF_LOCAL( extern cvar_t *fs_restrict_dlfolder )
+DEF_LOCAL( extern cvar_t *fs_auto_refresh )
 
 DEF_LOCAL( extern cvar_t *fs_debug_state )
 DEF_LOCAL( extern cvar_t *fs_debug_refresh )
@@ -162,7 +163,7 @@ DEF_PUBLIC( qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect
 
 // Filesystem Refresh
 DEF_PUBLIC( void fs_refresh(qboolean quiet) )
-DEF_PUBLIC( void fs_auto_refresh(void) )
+DEF_PUBLIC( void fs_refresh_auto(void) )
 
 // Filesystem Initialization
 DEF_LOCAL( void fs_indexcache_write(void) )
