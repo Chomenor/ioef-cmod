@@ -147,9 +147,11 @@ void MSG_WriteBits( msg_t *msg, int value, int bits ) {
 				if(write > nbits)
 					write = nbits;
 
+#ifdef CMOD_MSG_OVERFLOW_CHECKS
 				if(location >= msg->maxsize) {
 					msg->overflowed = qtrue;
 					return; }
+#endif
 
 				msg->data[location] &= (1 << leftover) - 1;
 				msg->data[location] |= (value & ((1 << write) - 1)) << (leftover);
@@ -252,9 +254,11 @@ int MSG_ReadBits( msg_t *msg, int bits ) {
 				if(get > bits - nbits)
 					get = bits - nbits;
 
+#ifdef CMOD_MSG_OVERFLOW_CHECKS
 				if((msg->bit >> 3) >= msg->cursize) {
 					msg->readcount = msg->cursize + 1;
 					return 0; }
+#endif
 
 				value |= ((msg->data[msg->bit >> 3] >> i) & ((1 << get) - 1)) << nbits;
 				msg->bit += get;

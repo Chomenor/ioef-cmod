@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //   does not necessarily mean it is even compatible with ioquake3, only that it belongs to a
 //   "legitimate" mod and is likely not malicious.
 
-#ifndef ELITEFORCE
+#ifndef CMOD_DISABLE_QUAKE_VM_HASHES
 #define SHA(b0,b1,b2,b3,b4,b5,b6,b7) {0x##b0,0x##b1,0x##b2,0x##b3,0x##b4,0x##b5,0x##b6,0x##b7}
 
 static const unsigned int trusted_vms[][8] = {
@@ -332,7 +332,7 @@ static const unsigned int trusted_vms[][8] = {
 
 qboolean fs_check_trusted_vm_hash(unsigned char *hash) {
 	// Returns qtrue if hash is trusted, qfalse otherwise
-#ifdef ELITEFORCE
+#ifdef CMOD_DISABLE_QUAKE_VM_HASHES
 	// Hash list not yet implemented for EF
 #else
 	int i;
