@@ -42,6 +42,7 @@ cvar_t *fs_redownload_across_mods;
 cvar_t *fs_full_pure_validation;
 cvar_t *fs_saveto_dlfolder;
 cvar_t *fs_restrict_dlfolder;
+cvar_t *fs_auto_refresh;
 
 cvar_t *fs_debug_state;
 cvar_t *fs_debug_refresh;
@@ -380,11 +381,12 @@ void fs_refresh(qboolean quiet) {
 			fsc_fs_size_estimate(&fs) / 1048576 + 1); }
 
 extern int com_frameNumber;
-void fs_auto_refresh(void) {
-	// Calls fs_refresh, but only once within a certain number of frames
+void fs_refresh_auto(void) {
+	// Calls fs_refresh if enabled by settings, max once per frame
+	// For commands where there is a potential for new files to be added,
+	//    but a refresh is not strictly required
 	static int refresh_frame = 0;
-	//if(com_frameNumber > refresh_frame + 5) {
-	if(com_frameNumber != refresh_frame) {
+	if(fs_auto_refresh->integer && com_frameNumber != refresh_frame) {
 		refresh_frame = com_frameNumber;
 		fs_refresh(qtrue); } }
 
@@ -472,6 +474,7 @@ void fs_startup(void) {
 	fs_full_pure_validation = Cvar_Get("fs_full_pure_validation", "0", CVAR_ARCHIVE);
 	fs_saveto_dlfolder = Cvar_Get("fs_saveto_dlfolder", "0", CVAR_ARCHIVE);
 	fs_restrict_dlfolder = Cvar_Get("fs_restrict_dlfolder", "0", CVAR_ARCHIVE);
+	fs_auto_refresh = Cvar_Get("fs_auto_refresh", "1", 0);
 
 	fs_debug_state = Cvar_Get("fs_debug_state", "0", 0);
 	fs_debug_refresh = Cvar_Get("fs_debug_refresh", "0", 0);
