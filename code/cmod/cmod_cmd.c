@@ -523,7 +523,8 @@ cmd_mode_t cbuf_get_command(cbuf_t *cbuf, char *output, int output_size) {
 				in_star_comment = qtrue; }
 			else if(in_star_comment && current == '*' && next == '/') {
 				in_star_comment = qfalse;
-				++cbuf->first->position; } }
+				++cbuf->first->position;
+				break; } }
 
 		// Check for command-terminating characters
 		if(!in_star_comment && ((current == '\n' || current == '\r') ||
