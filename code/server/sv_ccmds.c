@@ -164,7 +164,7 @@ static void SV_Map_f( void ) {
 
 #ifdef CMOD_MAP_SCRIPT
 	if(Cmd_Argv(0)[0] != '_') {
-		Cvar_Set("cmod_sv_map_command", va("_%s", Cmd_Cmd()));
+		Cvar_Set("cmod_sv_map_command", va("_%s", Cmd_ArgsFrom(0)));
 		if(*cmod_sv_map_script->string) {
 			Com_Printf("Running custom map script...\n");
 			Cbuf_ExecuteText(EXEC_INSERT, "vstr cmod_sv_map_script");
