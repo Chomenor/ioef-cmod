@@ -36,9 +36,11 @@ There are some changes to the renderer dlls in the new filesystem. If you mix a 
 
 This filesystem uses improved logic to resolve conflicts between pk3s (i.e. when multiple pk3s contain conflicting resources). It follows a logical pattern that is roughly (mod paks > core game paks > current map pak > other paks), whereas the original filesystem uses a more archaic system where the base precedence for image-like content is approximately (shaders > tga images > jpg images) regardless of the filename/directory of the pk3s.
 
-In short what this means is that in the standard Q3 filesystem, as you add more paks (such as custom maps) manually or through ingame downloads, there is an increased risk of conflicts that cause broken texures, wrong textures, or other errors. This is because there are various means by which any pk3 can override any other pk3 and the more pk3s are installed, the higher the chance of conflicts. This filesystem is able to prioritize the current mod, core game paks, and current map over other pk3s so the game is stable like a clean install no matter how many pk3s are installed.
+In short what this means is that in the standard Q3 filesystem, as you add more paks (such as custom maps) manually or through ingame downloads, there is an increased risk of conflicts that cause broken textures, wrong textures, or other errors. This is because there are various means by which any pk3 can override any other pk3 and the more pk3s are installed, the higher the chance of conflicts. This filesystem is able to prioritize the current mod, core game paks, and current map over other pk3s so the game is stable like a clean install no matter how many pk3s are installed.
 
 NOTE that certain types of content such as crosshairs, enhanced texture mods, and VMs that work by overriding the ID paks will not work out of baseq3 due to the new precedence policy. These mods are still supported in this filesystem, but they need to be manually enabled by placing their pk3s in a directory called "basemod" instead of baseq3. This system gives the user control over which pk3s are allowed to modify the game and makes the game much more stable overall.
+
+For a more detailed overview of the precedence changes refer to the [precedence overview chart](new-filesystem-precedence.png).
 
 # Mod Settings Option
 
