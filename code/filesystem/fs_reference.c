@@ -321,7 +321,6 @@ typedef struct {
 
 	// For debug prints
 	int entry_id_counter;
-	int duplicates;
 
 	// Current command
 	char command_name[64];
@@ -422,10 +421,9 @@ static void reference_set_insert_entry(reference_set_work_t *rsw, const char *mo
 			// Found entry; check if new entry is higher priority
 			int compare_result = compare_reference_set_entry(&new_entry, target_entry);
 			if(fs_debug_references->integer) {
-				if(compare_result >= 0) Com_Printf("result: Skipping entry due to existing %s precedence entry id %i\n",
+				if(compare_result >= 0) Com_Printf("result: Duplicate hash - skipping entry due to existing %s precedence entry id %i\n",
 						compare_result > 0 ? "higher" : "equal", target_entry->entry_id);
-				else Com_Printf("result: Overwriting existing lower precedence entry id %i\n", target_entry->entry_id); }
-			++rsw->duplicates;
+				else Com_Printf("result: Duplicate hash - overwriting existing lower precedence entry id %i\n", target_entry->entry_id); }
 			if(compare_result < 0) *target_entry = new_entry;
 			return; } }
 
@@ -564,7 +562,7 @@ static void add_pak_by_name(reference_set_work_t *rsw, const char *string) {
 		if(count == 0) Com_Printf("WARNING: Command %s failed to match pk3.\n", rsw->command_name);
 		if(count > 1) Com_Printf("WARNING: Command %s matched multiple pk3s.\n", rsw->command_name); } }
 
-static void generate_reference_set(const char *manifest, fs_hashtable_t *output, int *duplicates_out) {
+static void generate_reference_set(const char *manifest, fs_hashtable_t *output) {
 	// Provide initialized hashtable for output
 	reference_set_work_t rsw;
 	Com_Memset(&rsw, 0, sizeof(rsw));
@@ -610,7 +608,6 @@ static void generate_reference_set(const char *manifest, fs_hashtable_t *output,
 		*rsw.command_name = 0;
 		rsw.exclude_mode = qfalse; }
 
-	if(duplicates_out) *duplicates_out = rsw.duplicates;
 	pk3_list_free(&rsw.exclude_set); }
 
 /* ******************************************************************************** */
@@ -673,7 +670,6 @@ static void generate_reference_strings(const char *manifest, fsc_stream_t *hash_
 	fs_hashtable_t reference_set;
 	reference_set_entry_t **reference_list;
 	int count = 0;
-	int duplicates = 0;
 	int allowDownload = Cvar_VariableIntegerValue("sv_allowDownload");
 
 	if(fs_debug_references->integer) Com_Printf("processing manifest: \"%s\"\n", manifest);
@@ -684,7 +680,7 @@ static void generate_reference_strings(const char *manifest, fsc_stream_t *hash_
 
 	// Generate reference set
 	fs_hashtable_initialize(&reference_set, MAX_REFERENCE_SET_ENTRIES);
-	generate_reference_set(manifest, &reference_set, &duplicates);
+	generate_reference_set(manifest, &reference_set);
 
 	// Generate reference list
 	{
@@ -763,7 +759,7 @@ static void generate_reference_strings(const char *manifest, fsc_stream_t *hash_
 	fs_hashtable_free(&reference_set, 0);
 	Z_Free(reference_list);
 
-	Com_Printf("Got %i unique paks (%i duplicate entries)\n", count, duplicates); }
+	Com_Printf("%i paks listed\n", count); }
 
 /* ******************************************************************************** */
 // General functions
