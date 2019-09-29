@@ -40,7 +40,7 @@ In short what this means is that in the standard Q3 filesystem, as you add more 
 
 NOTE that certain types of content such as crosshairs, enhanced texture mods, and VMs that work by overriding the ID paks will not work out of baseq3 due to the new precedence policy. These mods are still supported in this filesystem, but they need to be manually enabled by placing their pk3s in a directory called "basemod" instead of baseq3. This system gives the user control over which pk3s are allowed to modify the game and makes the game much more stable overall.
 
-For a more detailed overview of the precedence changes refer to the [precedence overview chart](new-filesystem-precedence.png).
+For a more detailed overview of the precedence changes refer to this [precedence chart](new-filesystem-precedence.png).
 
 # Mod Settings Option
 
@@ -51,6 +51,8 @@ This project introduces a command line cvar called "fs_mod_settings", with the f
 - fs_mod_settings 1: Existing ioquake3 behavior, with separately stored settings for each mod.
 
 I favor fs_mod_settings 0 as the default value, because it's usually easier to manage a few settings that need to be changed between mods than to have every setting change between mods. Mods that require custom settings will be fine if they use deconflicted cvar names to store their settings. It appears most mods work under this setting without significant issues.
+
+If you are wondering why this feature is relevant to a filesystem project, it is due the design of ioquake3. The function FS_ConditionalRestart, which is part of the filesystem, is responsible for initiating a reload of the game and settings when the mod changes. The functionality of fs_mod_settings 0 is achieved by modifying the restart conditions in FS_ConditionalRestart as well as adjusting the settings file paths to exclude mods.
 
 # Download Directory Options
 
