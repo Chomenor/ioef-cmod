@@ -949,6 +949,9 @@ void GfxInfo_f( void )
 	ri.Printf( PRINT_ALL, "\nGL_VENDOR: %s\n", glConfig.vendor_string );
 	ri.Printf( PRINT_ALL, "GL_RENDERER: %s\n", glConfig.renderer_string );
 	ri.Printf( PRINT_ALL, "GL_VERSION: %s\n", glConfig.version_string );
+#ifdef CMOD_REDUCE_WARNINGS
+	if(ri.Cvar_VariableIntegerValue("developer")) {
+#endif
 	ri.Printf( PRINT_ALL, "GL_EXTENSIONS: " );
 	if ( qglGetStringi )
 	{
@@ -966,6 +969,9 @@ void GfxInfo_f( void )
 		R_PrintLongString( glConfig.extensions_string );
 	}
 	ri.Printf( PRINT_ALL, "\n" );
+#ifdef CMOD_REDUCE_WARNINGS
+	}
+#endif
 	ri.Printf( PRINT_ALL, "GL_MAX_TEXTURE_SIZE: %d\n", glConfig.maxTextureSize );
 	ri.Printf( PRINT_ALL, "GL_MAX_TEXTURE_UNITS_ARB: %d\n", glConfig.numTextureUnits );
 	ri.Printf( PRINT_ALL, "\nPIXELFORMAT: color(%d-bits) Z(%d-bit) stencil(%d-bits)\n", glConfig.colorBits, glConfig.depthBits, glConfig.stencilBits );
