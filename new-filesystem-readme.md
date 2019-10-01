@@ -1,4 +1,4 @@
-This is an updated file handling system for the ioquake3 project. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with virtually all existing servers and content.
+This is an updated file handling system for ioquake3 and other Quake 3 based games. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with virtually all existing servers and content.
 
 Here are the key features:
 - Improved resource precedence system which significantly reduces conflicts between pk3s
@@ -16,6 +16,12 @@ Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
 Author: Noah Metzger <chomenor@gmail.com>
 
+# Installation & Usage
+
+If you are using Windows, you can download a binary from the Github release page and extract it to your Quake 3 directory. For other operating systems, you will need to compile a binary yourself; refer to the instructions below.
+
+In most cases everything will work under this filesystem the same as you are familiar with from ioquake3. One exception is that there are certain types of mods which will need to be moved from baseq3 to a directory called "basemod". If you are using mods installed in baseq3 please refer to the "precedence system" section below.
+
 # Compiling
 
 Should be very similar to regular ioquake3.
@@ -26,11 +32,15 @@ Should be very similar to regular ioquake3.
 
 There are some changes to the renderer dlls in the new filesystem. If you mix a renderer dll and main application that have different filesystem versions, the game should still run, but this isn't recommended or well tested.
 
-# ID Pak Precedence
+# Precedence System
 
-To prevent arbitrary pk3s from making unwanted to changes to the game, this filesystem prioritizes the ID paks (pak0.pk3 - pak8.pk3) over other pk3s in baseq3. Most normal maps and models will still work fine in baseq3, but other types of content such as crosshairs, enhanced texture mods, and VMs that work by overriding the ID paks may not work out of baseq3 due to this change.
+This filesystem uses improved logic to resolve conflicts between pk3s (i.e. when multiple pk3s contain conflicting resources). It follows a logical pattern that is roughly (mod paks > core game paks > current map pak > other paks), whereas the original filesystem uses a more archaic system where the base precedence for image-like content is approximately (shaders > tga images > jpg images) regardless of the filename/directory of the pk3s.
 
-These mods are still supported in this filesystem, but they need to be manually enabled by placing their pk3s in a directory called "basemod" instead of baseq3. This behavior gives the user more control over which pk3s are allowed to modify the game, and reduces the risk of game breakage due to buggy or misplaced pk3s in server downloads or map packs.
+In short what this means is that in the standard Q3 filesystem, as you add more paks (such as custom maps) manually or through ingame downloads, there is an increased risk of conflicts that cause broken textures, wrong textures, or other errors. This is because there are various means by which any pk3 can override any other pk3 and the more pk3s are installed, the higher the chance of conflicts. This filesystem is able to prioritize the current mod, core game paks, and current map over other pk3s so the game is stable like a clean install no matter how many pk3s are installed.
+
+NOTE that certain types of content such as crosshairs, enhanced texture mods, and VMs that work by overriding the ID paks will not work out of baseq3 due to the new precedence policy. These mods are still supported in this filesystem, but they need to be manually enabled by placing their pk3s in a directory called "basemod" instead of baseq3. This system gives the user control over which pk3s are allowed to modify the game and makes the game much more stable overall.
+
+For a more detailed overview of the precedence changes refer to this [precedence chart](new-filesystem-precedence.png).
 
 # Mod Settings Option
 
@@ -41,6 +51,8 @@ This project introduces a command line cvar called "fs_mod_settings", with the f
 - fs_mod_settings 1: Existing ioquake3 behavior, with separately stored settings for each mod.
 
 I favor fs_mod_settings 0 as the default value, because it's usually easier to manage a few settings that need to be changed between mods than to have every setting change between mods. Mods that require custom settings will be fine if they use deconflicted cvar names to store their settings. It appears most mods work under this setting without significant issues.
+
+If you are wondering why this feature is relevant to a filesystem project, it is due the design of ioquake3. The function FS_ConditionalRestart, which is part of the filesystem, is responsible for initiating a reload of the game and settings when the mod changes. The functionality of fs_mod_settings 0 is achieved by modifying the restart conditions in FS_ConditionalRestart as well as adjusting the settings file paths to exclude mods.
 
 # Download Directory Options
 
