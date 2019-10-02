@@ -1,13 +1,21 @@
 /* ******************************************************************************** */
+// Common library functions and code structure changes
+// This section is intended for components that are necessary for other features to
+//   work/compile but do not cause functional changes by themselves
+/* ******************************************************************************** */
+
+// [COMMON] Insert additional cMod headers into standard game includes
+#define CMOD_COMMON_HEADERS
+
+// [COMMON] Use cmod_cvar_defs.h header for declaring cmod feature cvars
+#define CMOD_CVAR_DEFS
+
+/* ******************************************************************************** */
 // Core Features
 /* ******************************************************************************** */
 
 // [COMMON] Core EF Defines
 #define ELITEFORCE
-
-// [COMMON] Core cMod defines
-#define CMOD_COMMON_CORE
-#define CMOD_CVAR_DEFS
 
 // [COMMON] Mp3 Support
 #define USE_CODEC_MP3
@@ -75,22 +83,6 @@
 
 // [BUGFIX] Fix potential crash issue on certain maps
 #define CMOD_FOGSIDE_FIX
-
-/* ******************************************************************************** */
-// Version Identification
-/* ******************************************************************************** */
-
-// [COMMON] Add cMod version info to version string
-#define CMOD_VERSION_STRING
-
-// [COMMON] Add version string to userinfo and clean up which other values are included
-#define CMOD_USERINFO
-
-// [COMMON] Use green theme for console
-#define CMOD_CONSOLE_COLOR
-
-// [COMMON] Use traditional EF application icon instead of quake one
-#define CMOD_EF_ICON
 
 /* ******************************************************************************** */
 // Server
@@ -174,3 +166,19 @@
 
 // [COMMON] Disable Quake 3-specific VM hash code in filesystem
 #define CMOD_DISABLE_QUAKE_VM_HASHES
+
+/* ******************************************************************************** */
+// Version Identification
+/* ******************************************************************************** */
+
+// [COMMON] Add cMod version info to version string
+#define CMOD_VERSION_STRING
+
+// [COMMON] Add version string to userinfo and clean up which other values are included
+#define CMOD_USERINFO
+
+// [COMMON] Use green theme for console
+#define CMOD_CONSOLE_COLOR
+
+// [COMMON] Use traditional EF application icon instead of quake one
+#define CMOD_EF_ICON

@@ -502,6 +502,6 @@ int SV_Netchan_TransmitNextFragment(client_t *client);
 qboolean SV_Netchan_Process( client_t *client, msg_t *msg );
 void SV_Netchan_FreeQueue(client_t *client);
 
-#ifdef CMOD_COMMON_CORE
+#ifdef CMOD_COMMON_HEADERS
 #include "../cmod/server/sv_misc.h"
 #endif
