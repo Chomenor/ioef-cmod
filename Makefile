@@ -1807,6 +1807,7 @@ Q3OBJ += \
   $(B)/client/mad_synth.o \
   $(B)/client/mad_timer.o \
   $(B)/client/mad_version.o \
+  $(B)/client/sv_cmd_tools.o \
   $(B)/client/sv_misc.o \
   $(B)/client/sv_record_common.o \
   $(B)/client/sv_record_convert.o \
@@ -2376,6 +2377,7 @@ Q3DOBJ += \
   $(B)/ded/cmod_cmd.o \
   $(B)/ded/cmod_cvar.o \
   $(B)/ded/cmod_misc.o \
+  $(B)/ded/sv_cmd_tools.o \
   $(B)/ded/sv_misc.o \
   $(B)/ded/sv_record_common.o \
   $(B)/ded/sv_record_convert.o \

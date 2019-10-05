@@ -751,6 +751,9 @@ void SV_Init (void)
 #ifdef CMOD_RECORD
 	record_initialize();
 #endif
+#ifdef CMOD_SERVER_CMD_TOOLS
+	cmod_sv_cmd_tools_init();
+#endif
 }
 
 

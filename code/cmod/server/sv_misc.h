@@ -39,3 +39,7 @@ void record_verify_visibility_check(int clientNum, int numSnapshotEntities, int 
 qboolean record_process_connection(netadr_t *address, const char *userinfo, qboolean compat);
 qboolean record_process_packet_event(netadr_t *address, msg_t *msg, int qport);
 #endif
+
+#ifdef CMOD_SERVER_CMD_TOOLS
+void cmod_sv_cmd_tools_init(void);
+#endif

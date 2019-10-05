@@ -100,6 +100,9 @@
 // [FEATURE] Allow scripts to override map command behavior via "cmod_sv_map_script" cvar
 #define CMOD_MAP_SCRIPT
 
+// [FEATURE] Additional console commands to enhance server script capabilities
+#define CMOD_SERVER_CMD_TOOLS
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DL_PROTOCOL_FIXES
 

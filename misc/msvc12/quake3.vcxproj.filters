@@ -684,6 +684,9 @@
     <ClCompile Include="..\..\code\cmod\mad\mad_layer3.c">
       <Filter>cmod\mad</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_cmd_tools.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\code\cmod\server\sv_misc.c">
       <Filter>cmod\server</Filter>
     </ClCompile>
