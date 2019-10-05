@@ -24,6 +24,27 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
+#ifdef CMOD_COMMON_STREAM
+void cmod_stream_append_string(cmod_stream_t *stream, const char *string) {
+	// If stream runs out of space, output is truncated.
+	// Non-zero size stream will always be null terminated.
+	if(stream->position >= stream->size) {
+		if(stream->size) stream->data[stream->size-1] = 0;
+		stream->overflowed = qtrue;
+		return; }
+	if(string) while(*string) {
+		if(stream->position >= stream->size-1) {
+			stream->overflowed = qtrue;
+			break; }
+		stream->data[stream->position++] = *(string++); }
+	stream->data[stream->position] = 0; }
+
+void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *string, const char *separator) {
+	// Appends string, adding separator prefix if both stream and input are non-empty
+	if(stream->position && string && *string) cmod_stream_append_string(stream, separator);
+	cmod_stream_append_string(stream, string); }
+#endif
+
 #ifdef CMOD_VM_STRNCPY_FIX
 // Simple strncpy function to avoid overlap check issues with some library implementations
 void vm_strncpy(char *dst, char *src, int length) {

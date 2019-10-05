@@ -10,6 +10,9 @@
 // [COMMON] Use cmod_cvar_defs.h header for declaring cmod feature cvars
 #define CMOD_CVAR_DEFS
 
+// [COMMON] Common string stream functions
+#define CMOD_COMMON_STREAM
+
 /* ******************************************************************************** */
 // Core Features
 /* ******************************************************************************** */

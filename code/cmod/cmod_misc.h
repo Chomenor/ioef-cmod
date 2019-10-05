@@ -23,6 +23,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // For misc cmod stuff, included at the end of qcommon.h
 
+#ifdef CMOD_COMMON_STREAM
+typedef struct {
+	char *data;
+	unsigned int position;
+	unsigned int size;
+	qboolean overflowed;
+} cmod_stream_t;
+void cmod_stream_append_string(cmod_stream_t *stream, const char *string);
+void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *string, const char *separator);
+#endif
+
 #ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
 void cmod_auto_brightness_configure(const char *mapname);
 #endif
