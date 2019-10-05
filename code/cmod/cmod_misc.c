@@ -21,6 +21,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+#include "../qcommon/q_shared.h"
+#include "../qcommon/qcommon.h"
+
 #ifdef CMOD_VM_STRNCPY_FIX
 // Simple strncpy function to avoid overlap check issues with some library implementations
 void vm_strncpy(char *dst, char *src, int length) {
