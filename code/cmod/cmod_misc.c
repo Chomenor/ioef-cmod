@@ -45,6 +45,43 @@ void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *stri
 	cmod_stream_append_string(stream, string); }
 #endif
 
+#ifdef CMOD_COMMON_TOKENIZER
+#define IS_WHITESPACE(chr) ((chr) == ' ' || (chr) == '\t' || (chr) == '\n' || (chr) == '\r')
+
+unsigned int cmod_read_token(const char **current, char *buffer, unsigned int buffer_size, char delimiter) {
+	// Returns number of characters read to output buffer (not including null terminator)
+	// Null delimiter uses any whitespace as delimiter
+	// Any leading and trailing whitespace characters will be skipped
+	unsigned int char_count = 0;
+	if(!buffer_size) return 0;
+
+	// Skip leading whitespace
+	while(**current && IS_WHITESPACE(**current)) ++(*current);
+
+	// Read item to buffer
+	while(**current && **current != delimiter) {
+		if(!delimiter && IS_WHITESPACE(**current)) break;
+		if(char_count < buffer_size - 1) {
+			buffer[char_count++] = **current; }
+		++(*current); }
+
+	// Skip input delimiter and trailing whitespace
+	if(**current) ++(*current);
+	while(**current && IS_WHITESPACE(**current)) ++(*current);
+
+	// Skip output trailing whitespace
+	while(char_count && IS_WHITESPACE(buffer[char_count-1])) --char_count;
+
+	// Add null terminator
+	buffer[char_count] = 0;
+	return char_count; }
+
+unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int buffer_size) {
+	// Reads whitespace-separated token from current to buffer, and advances current pointer
+	// Returns number of characters read to buffer (not including null terminator, 0 if no data remaining)
+	return cmod_read_token(current, buffer, buffer_size, 0); }
+#endif
+
 #ifdef CMOD_VM_STRNCPY_FIX
 // Simple strncpy function to avoid overlap check issues with some library implementations
 void vm_strncpy(char *dst, char *src, int length) {

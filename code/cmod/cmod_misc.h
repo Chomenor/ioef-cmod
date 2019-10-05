@@ -34,6 +34,11 @@ void cmod_stream_append_string(cmod_stream_t *stream, const char *string);
 void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *string, const char *separator);
 #endif
 
+#ifdef CMOD_COMMON_TOKENIZER
+unsigned int cmod_read_token(const char **current, char *buffer, unsigned int buffer_size, char delimiter);
+unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int buffer_size);
+#endif
+
 #ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
 void cmod_auto_brightness_configure(const char *mapname);
 #endif

@@ -13,6 +13,9 @@
 // [COMMON] Common string stream functions
 #define CMOD_COMMON_STREAM
 
+// [COMMON] Common string tokenizer functions
+#define CMOD_COMMON_TOKENIZER
+
 /* ******************************************************************************** */
 // Core Features
 /* ******************************************************************************** */
