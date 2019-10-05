@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // For misc cmod stuff, included at the end of qcommon.h
 
-#ifdef CMOD_COMMON_STREAM
+#ifdef CMOD_COMMON_STRING_FUNCTIONS
 typedef struct {
 	char *data;
 	unsigned int position;
@@ -32,9 +32,6 @@ typedef struct {
 } cmod_stream_t;
 void cmod_stream_append_string(cmod_stream_t *stream, const char *string);
 void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *string, const char *separator);
-#endif
-
-#ifdef CMOD_COMMON_TOKENIZER
 unsigned int cmod_read_token(const char **current, char *buffer, unsigned int buffer_size, char delimiter);
 unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int buffer_size);
 #endif

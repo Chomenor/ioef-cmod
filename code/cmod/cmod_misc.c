@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
-#ifdef CMOD_COMMON_STREAM
+#ifdef CMOD_COMMON_STRING_FUNCTIONS
 void cmod_stream_append_string(cmod_stream_t *stream, const char *string) {
 	// If stream runs out of space, output is truncated.
 	// Non-zero size stream will always be null terminated.
@@ -43,9 +43,7 @@ void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *stri
 	// Appends string, adding separator prefix if both stream and input are non-empty
 	if(stream->position && string && *string) cmod_stream_append_string(stream, separator);
 	cmod_stream_append_string(stream, string); }
-#endif
 
-#ifdef CMOD_COMMON_TOKENIZER
 #define IS_WHITESPACE(chr) ((chr) == ' ' || (chr) == '\t' || (chr) == '\n' || (chr) == '\r')
 
 unsigned int cmod_read_token(const char **current, char *buffer, unsigned int buffer_size, char delimiter) {
