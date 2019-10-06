@@ -36,6 +36,30 @@ unsigned int cmod_read_token(const char **current, char *buffer, unsigned int bu
 unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int buffer_size);
 #endif
 
+#ifdef CMOD_LOGGING
+// id, name, date mode
+#define CMLogList \
+	CMLogEntry(LOG_SERVER, "server", 1) \
+	CMLogEntry(LOG_RECORD, "record", 1) \
+	CMLogEntry(LOG_VOTING, "voting", 1)
+
+#define CMLogEntry(id, name, date_mode) id,
+typedef enum {
+	CMLogList
+	LOG_COUNT
+} cmod_log_id_t;
+#undef CMLogEntry
+
+// Flags
+#define LOGFLAG_COM_PRINTF 1
+#define LOGFLAG_FLUSH 2
+#define LOGFLAG_RAW_STRING 4
+
+void cmod_logging_initialize(void);
+void cmod_logging_frame(void);
+void QDECL cmLog(cmod_log_id_t log_id, int flags, const char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
+#endif
+
 #ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
 void cmod_auto_brightness_configure(const char *mapname);
 #endif

@@ -39,6 +39,10 @@ CVAR_DEF(cmod_console_mode, "1", CVAR_ARCHIVE)
 CVAR_DEF(in_mouse_warping, "0", CVAR_ARCHIVE);
 #endif
 
+#ifdef CMOD_LOGGING
+CVAR_DEF(cmod_log_flush, "1", 0)
+#endif
+
 #ifdef CMOD_MAP_SCRIPT
 CVAR_DEF(cmod_sv_map_script, "", 0)
 CVAR_DEF(cmod_sv_map_command, "", CVAR_ROM)

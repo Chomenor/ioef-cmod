@@ -1409,6 +1409,12 @@ fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
 	FSC_ASSERT(filename);
 	return fs_open_write_handle_path_gen(0, filename, qfalse, qfalse, 0); }
 
+#ifdef CMOD_LOGGING
+fileHandle_t FS_SV_FOpenFileAppend(const char *filename) {
+	FSC_ASSERT(filename);
+	return fs_open_write_handle_path_gen(0, filename, qtrue, qfalse, 0); }
+#endif
+
 void FS_FCloseFile(fileHandle_t f) {
 	if(!f) {
 		Com_DPrintf("FS_FCloseFile on null handle\n");

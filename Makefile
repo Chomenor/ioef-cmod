@@ -1794,6 +1794,7 @@ Q3OBJ += \
   $(B)/client/cmod_crosshair.o \
   $(B)/client/cmod_crosshair_builtins.o \
   $(B)/client/cmod_cvar.o \
+  $(B)/client/cmod_logging.o \
   $(B)/client/cmod_misc.o \
   $(B)/client/snd_codec_mp3.o \
   $(B)/client/mad_bit.o \
@@ -2376,6 +2377,7 @@ Q3DOBJ = \
 Q3DOBJ += \
   $(B)/ded/cmod_cmd.o \
   $(B)/ded/cmod_cvar.o \
+  $(B)/ded/cmod_logging.o \
   $(B)/ded/cmod_misc.o \
   $(B)/ded/sv_cmd_tools.o \
   $(B)/ded/sv_misc.o \

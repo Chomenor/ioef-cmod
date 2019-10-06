@@ -167,6 +167,11 @@
 // [BUGFIX] Extend some ioq3 overflow checks to EF-specific sections of msg.c
 #define CMOD_MSG_OVERFLOW_CHECKS
 
+// [COMMON] New logging system
+// Currently used for server-side logging, but capable of supporting client-side
+// logging as well for debugging purposes
+#define CMOD_LOGGING
+
 // [COMMON] Add protections against VMs writing config files for security purposes
 #define CMOD_RESTRICT_VM_CFG_WRITE
 

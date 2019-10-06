@@ -2845,6 +2845,10 @@ void Com_Init( char *commandLine ) {
 	Com_InitSmallZoneMemory();
 	Cvar_Init ();
 
+#ifdef CMOD_LOGGING
+	cmod_logging_initialize();
+#endif
+
 	// prepare enough of the subsystems to handle
 	// cvar and command buffer management
 	Com_ParseCommandLine( commandLine );
@@ -3498,6 +3502,9 @@ void Com_Frame( void ) {
 	Com_ReadFromPipe( );
 
 	com_frameNumber++;
+#ifdef CMOD_LOGGING
+	cmod_logging_frame();
+#endif
 }
 
 /*

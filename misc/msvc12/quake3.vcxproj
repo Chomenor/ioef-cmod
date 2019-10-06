@@ -478,6 +478,7 @@
     <ClCompile Include="..\..\code\cmod\cmod_crosshair.c" />
     <ClCompile Include="..\..\code\cmod\cmod_crosshair_builtins.c" />
     <ClCompile Include="..\..\code\cmod\cmod_cvar.c" />
+    <ClCompile Include="..\..\code\cmod\cmod_logging.c" />
     <ClCompile Include="..\..\code\cmod\cmod_misc.c" />
     <ClCompile Include="..\..\code\cmod\mad\mad_bit.c" />
     <ClCompile Include="..\..\code\cmod\mad\mad_decoder.c" />

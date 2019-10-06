@@ -645,6 +645,9 @@
     <ClCompile Include="..\..\code\cmod\cmod_cvar.c">
       <Filter>cmod</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\cmod_logging.c">
+      <Filter>cmod</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\code\cmod\cmod_misc.c">
       <Filter>cmod</Filter>
     </ClCompile>
