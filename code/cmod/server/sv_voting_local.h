@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Copyright (C) 1999-2005 Id Software, Inc.
-Copyright (C) 2017 Noah Metzger (chomenor@gmail.com)
+Copyright (C) 2019 Noah Metzger (chomenor@gmail.com)
 
 This file is part of Quake III Arena source code.
 
@@ -21,40 +21,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#ifdef CMOD_SETTINGS
-#ifndef DEDICATED
-CVAR_DEF(cmod_restrict_autoexec, "1", CVAR_ARCHIVE)
-#endif
-#endif
-
-#ifdef CMOD_FONT_SCALING
-CVAR_DEF(cmod_font_scaling, "0.5", CVAR_ARCHIVE)
-#endif
-
-#ifdef CMOD_CONSOLE_KEY_FIXES
-CVAR_DEF(cmod_console_mode, "1", CVAR_ARCHIVE)
-#endif
-
-#ifdef CMOD_MOUSE_WARPING_OPTION
-CVAR_DEF(in_mouse_warping, "0", CVAR_ARCHIVE);
-#endif
+#include "../../server/server.h"
 
 #ifdef CMOD_LOGGING
-CVAR_DEF(cmod_log_flush, "1", 0)
+#define VOTE_LOG(...) cmLog(LOG_VOTING, 0, __VA_ARGS__)
+#define VOTE_LOG_FLUSH(...) cmLog(LOG_VOTING, LOGFLAG_FLUSH, __VA_ARGS__)
+#else
+#define VOTE_LOG(...) Com_Printf(__VA_ARGS__)
+#define VOTE_LOG_FLUSH(...) Com_Printf(__VA_ARGS__)
 #endif
 
-#ifdef CMOD_MAP_SCRIPT
-CVAR_DEF(cmod_sv_map_script, "", 0)
-CVAR_DEF(cmod_sv_map_command, "", CVAR_ROM)
-#endif
+typedef struct {
+	char info_string[256];
+	char pass_command[1024];
+} vote_action_t;
 
-#ifdef CMOD_VOTING
-CVAR_DEF(cmod_sv_voting_enabled, "0", 0)
-CVAR_DEF(cmod_sv_voting_debug, "0", 0)
-CVAR_DEF(cmod_sv_voting_duration, "20", 0)
-CVAR_DEF(cmod_sv_voting_mode, "0", 0)		// 0 = normal, 1 = default no
-CVAR_DEF(cmod_sv_voting_max_voters_per_ip, "1", 0)
-CVAR_DEF(cmod_sv_voting_option_list, "", 0)
-CVAR_DEF(cmod_sv_voting_preoption_script, "", 0)
-CVAR_DEF(cmod_sv_voting_postoption_script, "", 0)
-#endif
+qboolean voteaction_process_callvote(client_t *client, qboolean vote_in_progress, vote_action_t *action_output);

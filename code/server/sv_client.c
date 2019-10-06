@@ -1714,6 +1714,10 @@ void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK ) {
 	
 	Cmd_TokenizeString( s );
 
+#ifdef CMOD_VOTING
+	if(cmod_voting_handle_command(cl, s)) return;
+#endif
+
 	// see if it is a server level command
 	for (u=ucmds ; u->name ; u++) {
 		if (!strcmp (Cmd_Argv(0), u->name) ) {

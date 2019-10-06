@@ -1814,7 +1814,9 @@ Q3OBJ += \
   $(B)/client/sv_record_convert.o \
   $(B)/client/sv_record_main.o \
   $(B)/client/sv_record_spectator.o \
-  $(B)/client/sv_record_writer.o
+  $(B)/client/sv_record_writer.o \
+  $(B)/client/sv_voting_action.o \
+  $(B)/client/sv_voting_main.o
 
 ifdef MINGW
   Q3OBJ += \
@@ -2385,7 +2387,9 @@ Q3DOBJ += \
   $(B)/ded/sv_record_convert.o \
   $(B)/ded/sv_record_main.o \
   $(B)/ded/sv_record_spectator.o \
-  $(B)/ded/sv_record_writer.o
+  $(B)/ded/sv_record_writer.o \
+  $(B)/ded/sv_voting_action.o \
+  $(B)/ded/sv_voting_main.o
 
 ifeq ($(ARCH),x86)
   Q3DOBJ += \

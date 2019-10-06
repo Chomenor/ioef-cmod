@@ -100,6 +100,9 @@
 // [FEATURE] Additional console commands to enhance server script capabilities
 #define CMOD_SERVER_CMD_TOOLS
 
+// [FEATURE] Support for engine-based voting system
+#define CMOD_VOTING
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DL_PROTOCOL_FIXES
 

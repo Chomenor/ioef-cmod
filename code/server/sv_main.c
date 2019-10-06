@@ -1196,6 +1196,9 @@ void SV_Frame( int msec ) {
 
 	// send a heartbeat to the master if needed
 	SV_MasterHeartbeat(HEARTBEAT_FOR_MASTER);
+#ifdef CMOD_VOTING
+	cmod_voting_frame();
+#endif
 }
 
 /*

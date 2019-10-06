@@ -708,6 +708,12 @@
     <ClCompile Include="..\..\code\cmod\server\sv_record_writer.c">
       <Filter>cmod\server</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_voting_action.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_voting_main.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\code\cgame\cg_public.h" />
@@ -834,6 +840,9 @@
       <Filter>cmod\server</Filter>
     </ClInclude>
     <ClInclude Include="..\..\code\cmod\server\sv_record_local.h">
+      <Filter>cmod\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\code\cmod\server\sv_voting_local.h">
       <Filter>cmod\server</Filter>
     </ClInclude>
   </ItemGroup>
