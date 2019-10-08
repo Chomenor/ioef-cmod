@@ -224,7 +224,7 @@ void fsc_free(void *allocation);
 #define FSC_SOURCETYPE_DIRECT 1
 #define FSC_SOURCETYPE_PK3 2
 
-#define FSC_FILEFLAG_LINKED_CONTENT 1	// This file has other content like shaders linked to it
+#define FSC_FILEFLAG_LINKED_CONTENT 1	// This file has other content like pk3 contents or shaders linked to it
 #define FSC_FILEFLAG_DLPK3 2	// This pk3 is located in a download directory
 
 typedef struct fsc_file_s {
@@ -345,9 +345,14 @@ char *fsc_extract_file_allocated(fsc_filesystem_t *index, fsc_file_t *file, fsc_
 int fsc_is_file_enabled(const fsc_file_t *file, const fsc_filesystem_t *fs);
 const char *fsc_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs);
 void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
-			int include_mod, int include_pk3_origin);
+		int include_mod, int include_pk3_origin);
 
 void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
+void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, const char *pk3dir_name,
+		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp, unsigned int filesize,
+		fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
+void fsc_load_file_full_path(int source_dir_id, const void *os_path, const char *full_qpath, unsigned int os_timestamp,
+		unsigned int filesize, fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
 
 void fsc_filesystem_initialize(fsc_filesystem_t *fs);
 void fsc_filesystem_free(fsc_filesystem_t *fs);

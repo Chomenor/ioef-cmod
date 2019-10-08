@@ -205,78 +205,47 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 			file->contents_cache = target_ptr;
 			fsc_free(source_data); } } }
 
-static int fsc_app_extension(const char *name) {
-	// Returns 1 if name matches mac app bundle extension, 0 otherwise
-	int length = fsc_strlen(name);
-	if(length < 4) return 0;
-	if(!fsc_stricmp(name + (length - 4), ".app")) return 1;
-	return 0; }
+static int fsc_nstring_compare(const char *s1, const char *s2) {
+	// Compares two potentially null strings, returns 1 if matching, 0 otherwise
+	if(!s1 && !s2) return 1;
+	if(!s1 || !s2) return 0;
+	return !fsc_strcmp(s1, s2); }
 
-static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod_dir, unsigned int os_timestamp, unsigned int filesize,
-			fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, const char *pk3dir_name,
+		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp, unsigned int filesize,
+		fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	fsc_stackptr_t file_ptr;
 	fsc_file_direct_t *file;
 	fsc_hashtable_iterator_t hti;
-
-	char qp_buffer[FSC_MAX_QPATH];
-	char qp_mod[FSC_MAX_MODDIR];
-	const char *qpath_start = 0;
-
-	int file_in_pk3dir = 0;
-	char pk3dir_buffer[FSC_MAX_QPATH];
-	const char *pk3dir_remainder = 0;
-
-	const char *qp_dir, *qp_name, *qp_ext;
-	fsc_stackptr_t qp_mod_ptr, qp_dir_ptr, qp_name_ptr, qp_ext_ptr;
-	unsigned int fs_hash;
-
-	int unindexed_file = 0;	// File was not present in the index at all
+	unsigned int fs_hash = fsc_string_hash(qp_name, qp_dir);
+	int unindexed_file = 0;		// File was not present in the index at all
 	int new_file = 0;	// File was not present in last refresh, but may have been in the index
 
-	// Get mod directory
-	if(!fsc_get_leading_directory(qpath_with_mod_dir, qp_mod, sizeof(qp_mod), &qpath_start)) return;
-	if(!qpath_start) return;
-	if(fsc_app_extension(qp_mod)) return;	// Don't index mac app bundles as mods
-
-	// Process pk3dir files
-	if(fsc_get_leading_directory(qpath_start, pk3dir_buffer, sizeof(pk3dir_buffer), &pk3dir_remainder)) {
-		if(pk3dir_remainder) {
-			int length = fsc_strlen(pk3dir_buffer);
-			if(length >= 7 && !fsc_stricmp(pk3dir_buffer + length - 7, ".pk3dir")) {
-				pk3dir_buffer[length - 7] = 0;
-				file_in_pk3dir = 1;
-				qpath_start = pk3dir_remainder; } } }
-
-	// Process qpath
-	if(!fsc_process_qpath(qpath_start, qp_buffer, &qp_dir, &qp_name, &qp_ext)) return;
-	qp_mod_ptr = fsc_string_repository_getstring(qp_mod, 1, &fs->string_repository, &fs->general_stack);
-	qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
-	qp_name_ptr = fsc_string_repository_getstring(qp_name, 1, &fs->string_repository, &fs->general_stack);
-	qp_ext_ptr = qp_ext ? fsc_string_repository_getstring(qp_ext, 1, &fs->string_repository, &fs->general_stack) : 0;
-	fs_hash = fsc_string_hash(qp_name, qp_dir);
-
-	// printf("qp_mod(%s) qp_dir(%s) qp_name(%s) qp_ext(%s) fs_hash(%u)\n", qp_mod, qp_dir, qp_name, qp_ext, fs_hash);
-	// printf("mod_dir(%u) qp_dir(%u) qp_name(%u) qp_ext(%u) fs_hash(%u)\n", mod_dir, qp_dir, qp_name, qp_ext, fs_hash);
+	FSC_ASSERT(os_path);
+	FSC_ASSERT(qp_name);
+	FSC_ASSERT(fs);
 
 	// Search filesystem to see if a sufficiently equivalent entry already exists
 	fsc_hashtable_open(&fs->files, fs_hash, &hti);
 	while((file_ptr = fsc_hashtable_next(&hti))) {
 		file = (fsc_file_direct_t *)STACKPTR(file_ptr);
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
-		if(file->f.qp_name_ptr != qp_name_ptr) continue;
-		if(file->f.qp_dir_ptr != qp_dir_ptr) continue;
-		if(file->f.qp_ext_ptr != qp_ext_ptr) continue;
-		if(fsc_get_mod_dir((fsc_file_t *)file, fs) != STACKPTR(qp_mod_ptr)) continue;
+		if(!fsc_nstring_compare((char *)STACKPTR(file->f.qp_name_ptr), qp_name)) continue;
+		if(!fsc_nstring_compare((char *)STACKPTRN(file->f.qp_dir_ptr), qp_dir)) continue;
+		if(!fsc_nstring_compare((char *)STACKPTRN(file->f.qp_ext_ptr), qp_ext)) continue;
+		if(!fsc_nstring_compare((char *)STACKPTRN(file->qp_mod_ptr), mod_dir)) continue;
+		if(!fsc_nstring_compare((char *)STACKPTRN(file->pk3dir_ptr), pk3dir_name)) continue;
 		if(file->os_path_ptr && fsc_compare_os_path(STACKPTR(file->os_path_ptr), os_path)) continue;
-		if(file->pk3dir_ptr && (!file_in_pk3dir || fsc_strcmp((const char *)STACKPTR(file->pk3dir_ptr), pk3dir_buffer))) continue;
-		if(!file->pk3dir_ptr && file_in_pk3dir) continue;
 		if(file->f.filesize != filesize || file->os_timestamp != os_timestamp) {
 			if(file->os_path_ptr && !(file->f.flags & FSC_FILEFLAG_LINKED_CONTENT) && !file->f.contents_cache) {
-				// Reuse the same file object to save memory
+				// Reuse the same file object to save memory (this prevents files actively written
+				// by the game such as logs generating a new file object every refresh)
 				file->f.filesize = filesize;
 				file->os_timestamp = os_timestamp;
 				break; }
-			continue; }
+			else {
+				// Otherwise treat the file as non-matching
+				continue; } }
 		break; }
 
 	if(file_ptr) {
@@ -297,12 +266,11 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 
 		// Set up fields (other fields are zeroed by default due to stack allocation)
 		file->f.sourcetype = FSC_SOURCETYPE_DIRECT;
-		file->f.qp_name_ptr = qp_name_ptr;
-		file->f.qp_dir_ptr = qp_dir_ptr;
-		file->f.qp_ext_ptr = qp_ext_ptr;
-		file->qp_mod_ptr = qp_mod_ptr;
-		if(file_in_pk3dir) file->pk3dir_ptr = fsc_string_repository_getstring(pk3dir_buffer, 1,
-				&fs->string_repository, &fs->general_stack);
+		file->f.qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
+		file->f.qp_name_ptr = fsc_string_repository_getstring(qp_name, 1, &fs->string_repository, &fs->general_stack);
+		file->f.qp_ext_ptr = qp_ext ? fsc_string_repository_getstring(qp_ext, 1, &fs->string_repository, &fs->general_stack) : 0;
+		file->qp_mod_ptr = mod_dir ? fsc_string_repository_getstring(mod_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
+		file->pk3dir_ptr = pk3dir_name ? fsc_string_repository_getstring(pk3dir_name, 1, &fs->string_repository, &fs->general_stack) : 0;
 		file->f.filesize = filesize;
 		file->os_timestamp = os_timestamp;
 		file->refresh_count = fs->refresh_count;
@@ -350,6 +318,44 @@ static void fsc_load_file(int source_dir_id, void *os_path, char *qpath_with_mod
 		if(unindexed_file) fsc_merge_stats(&stats, &fs->total_stats);
 		if(new_file) fsc_merge_stats(&stats, &fs->new_stats); } }
 
+static int fsc_app_extension(const char *name) {
+	// Returns 1 if name matches mac app bundle extension, 0 otherwise
+	int length = fsc_strlen(name);
+	if(length < 4) return 0;
+	if(!fsc_stricmp(name + (length - 4), ".app")) return 1;
+	return 0; }
+
+void fsc_load_file_full_path(int source_dir_id, const void *os_path, const char *full_qpath, unsigned int os_timestamp,
+		unsigned int filesize, fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+	char qp_buffer[FSC_MAX_QPATH];
+	char qp_mod[FSC_MAX_MODDIR];
+	const char *qpath_start = 0;
+	int file_in_pk3dir = 0;
+	char pk3dir_buffer[FSC_MAX_QPATH];
+	const char *pk3dir_remainder = 0;
+	const char *qp_dir, *qp_name, *qp_ext;
+
+	// Process mod directory prefix
+	if(!fsc_get_leading_directory(full_qpath, qp_mod, sizeof(qp_mod), &qpath_start)) return;
+	if(!qpath_start) return;
+	if(fsc_app_extension(qp_mod)) return;	// Don't index mac app bundles as mods
+
+	// Process pk3dir prefix
+	if(fsc_get_leading_directory(qpath_start, pk3dir_buffer, sizeof(pk3dir_buffer), &pk3dir_remainder)) {
+		if(pk3dir_remainder) {
+			int length = fsc_strlen(pk3dir_buffer);
+			if(length >= 7 && !fsc_stricmp(pk3dir_buffer + length - 7, ".pk3dir")) {
+				pk3dir_buffer[length - 7] = 0;
+				file_in_pk3dir = 1;
+				qpath_start = pk3dir_remainder; } } }
+
+	// Process qpath
+	if(!fsc_process_qpath(qpath_start, qp_buffer, &qp_dir, &qp_name, &qp_ext)) return;
+
+	// Load file
+	fsc_load_file(source_dir_id, os_path, qp_mod, file_in_pk3dir ? pk3dir_buffer : 0, qp_dir, qp_name, qp_ext,
+			os_timestamp, filesize, fs, eh); }
+
 typedef struct {
 	int source_dir_id;
 	fsc_filesystem_t *fs;
@@ -357,9 +363,9 @@ typedef struct {
 } iterate_context_t;
 
 static void load_file_from_iteration(iterate_data_t *file_data, void *iterate_context) {
-	iterate_context_t *iterate_context2 = (iterate_context_t *)iterate_context;
-	fsc_load_file(iterate_context2->source_dir_id, file_data->os_path, file_data->qpath_with_mod_dir,
-			file_data->os_timestamp, file_data->filesize, iterate_context2->fs, iterate_context2->eh); }
+	iterate_context_t *iterate_context_typed = (iterate_context_t *)iterate_context;
+	fsc_load_file_full_path(iterate_context_typed->source_dir_id, file_data->os_path, file_data->qpath_with_mod_dir,
+			file_data->os_timestamp, file_data->filesize, iterate_context_typed->fs, iterate_context_typed->eh); }
 
 void fsc_filesystem_initialize(fsc_filesystem_t *fs) {
 	fsc_memset(fs, 0, sizeof(*fs));
