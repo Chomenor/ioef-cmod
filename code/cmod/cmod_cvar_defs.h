@@ -58,3 +58,9 @@ CVAR_DEF(cmod_sv_voting_option_list, "", 0)
 CVAR_DEF(cmod_sv_voting_preoption_script, "", 0)
 CVAR_DEF(cmod_sv_voting_postoption_script, "", 0)
 #endif
+
+#ifdef CMOD_MAPTABLE
+CVAR_DEF(cmod_sv_maptable_source_dirs, "maps", 0)
+CVAR_DEF(cmod_sv_maptable_entry_count, "-1", CVAR_ROM);
+CVAR_DEF(cmod_sv_maptable_loaded, "false", CVAR_ROM);
+#endif

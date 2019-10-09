@@ -50,3 +50,21 @@ void cmod_voting_handle_map_restart(void);
 void cmod_voting_handle_map_change(void);
 void cmod_voting_frame(void);
 #endif
+
+#ifdef CMOD_MAPTABLE
+typedef struct {
+	char *key;
+	char *value;
+} cmod_maptable_entry_t;
+
+typedef struct {
+	cmod_maptable_entry_t *entries;		// may be null if no entries
+	unsigned int entry_count;
+	qboolean maptable_loaded;	// true if any maptable files (including empty files) were found for given map
+} cmod_maptable_t;
+
+cmod_maptable_t cmod_maptable_load(const char *map_name, qboolean verbose);
+void cmod_maptable_free(cmod_maptable_t *maptable);
+const char *cmod_maptable_get_value(cmod_maptable_t *maptable, const char *key);
+void cmod_maptable_init(void);
+#endif

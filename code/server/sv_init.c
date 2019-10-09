@@ -758,6 +758,9 @@ void SV_Init (void)
 #ifdef CMOD_SERVER_CMD_TOOLS
 	cmod_sv_cmd_tools_init();
 #endif
+#ifdef CMOD_MAPTABLE
+	cmod_maptable_init();
+#endif
 }
 
 

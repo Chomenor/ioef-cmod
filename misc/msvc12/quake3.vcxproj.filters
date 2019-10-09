@@ -693,6 +693,9 @@
     <ClCompile Include="..\..\code\cmod\server\sv_misc.c">
       <Filter>cmod\server</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cmod\server\sv_maptable.c">
+      <Filter>cmod\server</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\code\cmod\server\sv_record_common.c">
       <Filter>cmod\server</Filter>
     </ClCompile>

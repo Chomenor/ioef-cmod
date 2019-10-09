@@ -1810,6 +1810,7 @@ Q3OBJ += \
   $(B)/client/mad_version.o \
   $(B)/client/sv_cmd_tools.o \
   $(B)/client/sv_misc.o \
+  $(B)/client/sv_maptable.o \
   $(B)/client/sv_record_common.o \
   $(B)/client/sv_record_convert.o \
   $(B)/client/sv_record_main.o \
@@ -2383,6 +2384,7 @@ Q3DOBJ += \
   $(B)/ded/cmod_misc.o \
   $(B)/ded/sv_cmd_tools.o \
   $(B)/ded/sv_misc.o \
+  $(B)/ded/sv_maptable.o \
   $(B)/ded/sv_record_common.o \
   $(B)/ded/sv_record_convert.o \
   $(B)/ded/sv_record_main.o \

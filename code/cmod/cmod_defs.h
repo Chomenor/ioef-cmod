@@ -103,6 +103,9 @@
 // [FEATURE] Support for engine-based voting system
 #define CMOD_VOTING
 
+// [FEATURE] Support for map index system
+#define CMOD_MAPTABLE
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DL_PROTOCOL_FIXES
 

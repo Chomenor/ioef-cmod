@@ -155,6 +155,10 @@ typedef struct {
 
 	// Active vote options
 	qboolean vote_options_active[VOTE_MAX_OPTIONS];
+#ifdef CMOD_MAPTABLE
+	// Map table
+	cmod_maptable_t map_table;
+#endif
 } vote_process_t;
 
 static vote_config_entry_t *vote_get_config_entry(vote_process_t *process, const char *key) {
@@ -186,6 +190,9 @@ static const char *vote_getconfig(vote_process_t *process, const char *key) {
 static void vote_process_free(vote_process_t *process) {
 	// Free memory allocations in vote process structure
 	int i;
+#ifdef CMOD_MAPTABLE
+	cmod_maptable_free(&process->map_table);
+#endif
 	for(i=0; i<process->config_entry_count; ++i) {
 		Z_Free(process->config_entries[i].key);
 		Z_Free(process->config_entries[i].value); } }
@@ -318,6 +325,11 @@ static void vote_process_value(vote_process_t *process, const char **tokens, cha
 			else if(!Q_stricmp(buffer, "&fileexists")) {
 				vote_process_value(process, tokens, buffer, sizeof(buffer), qfalse, debug_context);
 				output_string = (*buffer && FS_ReadFile(buffer, NULL) > 0) ? "true" : "false"; }
+#ifdef CMOD_MAPTABLE
+			else if(!Q_stricmp(buffer, "&mtval")) {
+				vote_process_value(process, tokens, buffer, sizeof(buffer), qfalse, debug_context);
+				output_string = cmod_maptable_get_value(&process->map_table, buffer); }
+#endif
 			else vote_unexpected_error(va("%s: unknown value specifier '%s'", debug_context, buffer)); }
 		else if(*buffer == '#') {
 			output_string = buffer + 1; }
@@ -457,6 +469,17 @@ static void vote_process_server_command(vote_process_t *process, const char *com
 			vote_process_value(process, &command, buffer, sizeof(buffer), qfalse, debug_context);
 			const char *delimiter_active = *existing_value && *buffer ? delimiter : "";
 			vote_setconfig(process, key, va("%s%s%s", existing_value, delimiter_active, buffer), debug_context); }
+
+#ifdef CMOD_MAPTABLE
+		else if(!Q_stricmp(buffer, "maptable_load")) {
+			// Usage: maptable_load <map name>
+			// Sets "maptable_loaded" (boolean) and "maptable_entry_count" (integer) config keys to indicate result
+			vote_process_value(process, &command, buffer, sizeof(buffer), qfalse, debug_context);
+			cmod_maptable_free(&process->map_table);
+			process->map_table = cmod_maptable_load(buffer, qfalse);
+			vote_setconfig(process, "maptable_loaded", process->map_table.maptable_loaded ? "true" : "false", debug_context);
+			vote_setconfig(process, "maptable_entry_count", va("%u", process->map_table.entry_count), debug_context); }
+#endif
 
 		else vote_unexpected_error(va("%s: invalid command '%s'", debug_context, buffer)); } }
 

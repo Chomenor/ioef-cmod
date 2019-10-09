@@ -494,6 +494,7 @@
     <ClCompile Include="..\..\code\cmod\snd_codec_mp3.c" />
     <ClCompile Include="..\..\code\cmod\server\sv_cmd_tools.c" />
     <ClCompile Include="..\..\code\cmod\server\sv_misc.c" />
+    <ClCompile Include="..\..\code\cmod\server\sv_maptable.c" />
     <ClCompile Include="..\..\code\cmod\server\sv_record_common.c" />
     <ClCompile Include="..\..\code\cmod\server\sv_record_convert.c" />
     <ClCompile Include="..\..\code\cmod\server\sv_record_main.c" />
