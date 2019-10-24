@@ -94,7 +94,7 @@
 // [FEATURE] Server-side game recording and admin spectator support
 #define CMOD_RECORD
 
-// [FEATURE] Allow scripts to override map command behavior via "cmod_sv_map_script" cvar
+// [FEATURE] Allow scripts to override map command behavior via "cmod_sv_mapscript_script" cvar
 #define CMOD_MAP_SCRIPT
 
 // [FEATURE] Additional console commands to enhance server script capabilities

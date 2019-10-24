@@ -164,10 +164,24 @@ static void SV_Map_f( void ) {
 
 #ifdef CMOD_MAP_SCRIPT
 	if(Cmd_Argv(0)[0] != '_') {
-		Cvar_Set("cmod_sv_map_command", va("_%s", Cmd_ArgsFrom(0)));
-		if(*cmod_sv_map_script->string) {
+		Cvar_Set("cmod_sv_mapscript_mapcmd", va("_%s", Cmd_ArgsFrom(0)));
+		Cvar_Set("cmod_sv_mapscript_mapname", map);
+		if(*cmod_sv_mapscript_script->string) {
+			// Perform optional bsp check ahead of running map script, so script doesn't break settings
+			// on current map then error out trying to load the new map
+			if(cmod_sv_mapscript_bsp_check->integer) {
+				Com_sprintf(expanded, sizeof(expanded), "maps/%s.bsp", map);
+#ifdef NEW_FILESYSTEM
+				fs_refresh_auto();
+				if(!fs_general_lookup(expanded, LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse)) {
+#else
+				if ( FS_ReadFile (expanded, NULL) == -1 ) {
+#endif
+					Com_Printf("Can't find map %s\nSet cmod_sv_mapscript_bsp_check to 0 to force script execution\n", expanded);
+					return; } }
+
 			Com_Printf("Running custom map script...\n");
-			Cbuf_ExecuteText(EXEC_INSERT, "vstr cmod_sv_map_script");
+			Cbuf_ExecuteText(EXEC_INSERT, "vstr cmod_sv_mapscript_script");
 			return; } }
 #endif
 

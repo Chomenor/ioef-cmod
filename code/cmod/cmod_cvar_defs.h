@@ -44,8 +44,10 @@ CVAR_DEF(cmod_log_flush, "1", 0)
 #endif
 
 #ifdef CMOD_MAP_SCRIPT
-CVAR_DEF(cmod_sv_map_script, "", 0)
-CVAR_DEF(cmod_sv_map_command, "", CVAR_ROM)
+CVAR_DEF(cmod_sv_mapscript_script, "", 0)
+CVAR_DEF(cmod_sv_mapscript_bsp_check, "1", 0)
+CVAR_DEF(cmod_sv_mapscript_mapcmd, "", CVAR_ROM)
+CVAR_DEF(cmod_sv_mapscript_mapname, "", CVAR_ROM)
 #endif
 
 #ifdef CMOD_VOTING
