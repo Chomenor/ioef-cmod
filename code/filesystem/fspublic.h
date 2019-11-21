@@ -179,7 +179,8 @@ DEF_PUBLIC( void fs_set_mod_dir(const char *value, qboolean move_pid) )
 DEF_PUBLIC( qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) )
 
 // Filesystem Refresh
-DEF_PUBLIC( void fs_refresh(qboolean quiet) )
+DEF_LOCAL( void fs_refresh(qboolean quiet) )
+DEF_LOCAL( void fs_refresh_auto_ext(qboolean ignore_cvar, qboolean quiet) )
 DEF_PUBLIC( void fs_refresh_auto(void) )
 
 // Filesystem Initialization

@@ -365,10 +365,15 @@ static void index_directory(const char *directory, int dir_id, qboolean quiet) {
 				fs.total_stats.valid_pk3_count - old_total_stats.valid_pk3_count,
 				fs.total_stats.shader_count - old_total_stats.shader_count); } }
 
+extern int com_frameNumber;
+static int fs_refresh_frame = 0;
+
 void fs_refresh(qboolean quiet) {
 	int i;
 	if(fs_debug_refresh->integer) quiet = qfalse;
 	if(!quiet) Com_Printf("----- fs_refresh -----\n");
+
+	fs_refresh_frame = com_frameNumber;
 
 	fsc_filesystem_reset(&fs);
 
@@ -380,15 +385,22 @@ void fs_refresh(qboolean quiet) {
 	if(!quiet) Com_Printf("Index memory usage at %iMB.\n",
 			fsc_fs_size_estimate(&fs) / 1048576 + 1); }
 
-extern int com_frameNumber;
+void fs_refresh_auto_ext(qboolean ignore_cvar, qboolean quiet) {
+	// Calls fs_refresh if enabled by settings, but maximum once per several frames
+	//    to avoid redundant refreshes during load operations
+	// This can be called in any situation where there is a potential that files were
+	//    added or changed on disk
+	// The ignore_cvar option is used for the fs_refresh console command, which should
+	//    work for manual refreshes even if fs_auto_refresh setting is disabled
+	int frames_elapsed = com_frameNumber - fs_refresh_frame;
+	if(!ignore_cvar && !fs_auto_refresh->integer) return;
+	if(frames_elapsed >= 0 && frames_elapsed < 5) {
+		if(fs_debug_refresh->integer) Com_Printf("Skipping redundant filesystem auto refresh.\n");
+		return; }
+	fs_refresh(quiet); }
+
 void fs_refresh_auto(void) {
-	// Calls fs_refresh if enabled by settings, max once per frame
-	// For commands where there is a potential for new files to be added,
-	//    but a refresh is not strictly required
-	static int refresh_frame = 0;
-	if(fs_auto_refresh->integer && com_frameNumber != refresh_frame) {
-		refresh_frame = com_frameNumber;
-		fs_refresh(qtrue); } }
+	fs_refresh_auto_ext(qfalse, qtrue); }
 
 /* ******************************************************************************** */
 // Filesystem Initialization
