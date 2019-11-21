@@ -1,19 +1,4 @@
 /* ******************************************************************************** */
-// Common library functions and code structure changes
-// This section is intended for components that are necessary for other features to
-//   work/compile but do not cause functional changes by themselves
-/* ******************************************************************************** */
-
-// [COMMON] Insert additional cMod headers into standard game includes
-#define CMOD_COMMON_HEADERS
-
-// [COMMON] Use cmod_cvar_defs.h header for declaring cmod feature cvars
-#define CMOD_CVAR_DEFS
-
-// [COMMON] Common string stream and tokenizer functions
-#define CMOD_COMMON_STRING_FUNCTIONS
-
-/* ******************************************************************************** */
 // Core Features
 /* ******************************************************************************** */
 
@@ -199,3 +184,18 @@
 
 // [COMMON] Use traditional EF application icon instead of quake one
 #define CMOD_EF_ICON
+
+/* ******************************************************************************** */
+// Common library functions and code structure changes
+// This section is intended for components that are necessary for other features to
+//   work/compile but do not cause functional changes by themselves
+/* ******************************************************************************** */
+
+// [COMMON] Insert additional cMod headers into standard game includes
+#define CMOD_COMMON_HEADERS
+
+// [COMMON] Use cmod_cvar_defs.h header for declaring cmod feature cvars
+#define CMOD_CVAR_DEFS
+
+// [COMMON] Common string stream and tokenizer functions
+#define CMOD_COMMON_STRING_FUNCTIONS
