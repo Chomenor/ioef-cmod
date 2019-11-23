@@ -317,10 +317,20 @@ static void SV_MapRestart_f( void ) {
 	// map_restart has happened
 	svs.snapFlagServerBit ^= SNAPFLAG_SERVERCOUNT;
 
+#ifdef CMOD_MAP_RESTART_STATIC_SERVERID
+	// Save the netchan sequence so we can drop incoming client movement commands from before the
+	// map restart was received by the client. I'm not sure this is really necessary - I did some
+	// testing and it seemed okay without it - but this is closer to the original behavior and
+	// theoretically this could help prevent issues like incorrect view angles after a map restart.
+	for(i=0; i<sv_maxclients->integer; ++i) {
+		if(svs.clients[i].state == CS_ACTIVE) {
+			svs.clients[i].maprestart_netchan_sequence = svs.clients[i].netchan.outgoingSequence; } }
+#else
 	// generate a new serverid	
 	// TTimo - don't update restartedserverId there, otherwise we won't deal correctly with multiple map_restart
 	sv.serverId = com_frameTime;
 	Cvar_Set( "sv_serverid", va("%i", sv.serverId ) );
+#endif
 
 	// if a map_restart occurs while a client is changing maps, we need
 	// to give them the correct time so that when they finish loading

@@ -2176,6 +2176,12 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg ) {
 #endif
 	}
 
+#ifdef CMOD_MAP_RESTART_STATIC_SERVERID
+	if(cl->maprestart_netchan_sequence && cl->messageAcknowledge < cl->maprestart_netchan_sequence) {
+		// Skip movement commands from before the map restart
+		return; }
+#endif
+
 	// read the usercmd_t
 	if ( c == clc_move ) {
 		SV_UserMove( cl, msg, qtrue );

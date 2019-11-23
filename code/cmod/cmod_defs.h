@@ -109,6 +109,11 @@
 // rotations and causing "stuck" maps
 #define CMOD_NO_ENGINE_NEXTMAP_SET
 
+// [BUGFIX] Use alternative to changing serverid during map restarts
+// This avoids the need for a systeminfo update during map restarts and potentially fixes
+// some intermittent buggy behavior seen in the Elite Force 1.20 client
+#define CMOD_MAP_RESTART_STATIC_SERVERID
+
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */

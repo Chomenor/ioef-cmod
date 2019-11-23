@@ -201,6 +201,9 @@ typedef struct client_s {
 #ifdef LEGACY_PROTOCOL
 	qboolean		compat;
 #endif
+#ifdef CMOD_MAP_RESTART_STATIC_SERVERID
+	int maprestart_netchan_sequence;
+#endif
 } client_t;
 
 //=============================================================================
