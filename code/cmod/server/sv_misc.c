@@ -44,3 +44,39 @@ void write_download_dummy_snapshot(client_t *client, msg_t *msg) {
 	// Entities
 	MSG_WriteBits(msg, (MAX_GENTITIES-1), GENTITYNUM_BITS); }
 #endif
+
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+void sv_calculate_max_baselines(client_t *client, msg_t msg) {
+	// Determines amount of baselines that can be written to gamestate message without causing overflow
+	// and sets client->baseline_cutoff
+	byte		msgBuffer[MAX_MSGLEN];
+	int			start;
+	entityState_t	*base, nullstate;
+	int valid_baselines = 0;
+	int total_baselines = 0;
+	int highest_valid_baseline = -1;
+
+	msg.data = msgBuffer;	// Just to be safe
+
+	Com_Memset( &nullstate, 0, sizeof( nullstate ) );
+	for ( start = 0 ; start < MAX_GENTITIES; start++ ) {
+		base = &sv.svEntities[start].baseline;
+		if ( !base->number ) {
+			continue;
+		}
+		MSG_WriteByte( &msg, svc_baseline );
+		MSG_WriteDeltaEntity( &msg, &nullstate, base, qtrue );
+
+		++total_baselines;
+		if(msg.cursize + 24 < msg.maxsize) {
+			++valid_baselines;
+			highest_valid_baseline = start; }
+	}
+
+	if(valid_baselines != total_baselines) {
+		client->baseline_cutoff = highest_valid_baseline + 1;
+		cmLog(LOG_SERVER, LOGFLAG_COM_PRINTF, "Skipping baselines for client %i to avoid gamestate overflow - "
+				"writing %i of %i baselines", (int)(client-svs.clients), valid_baselines, total_baselines); }
+	else {
+		client->baseline_cutoff = -1; } }
+#endif

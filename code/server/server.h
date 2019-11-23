@@ -204,6 +204,9 @@ typedef struct client_s {
 #ifdef CMOD_MAP_RESTART_STATIC_SERVERID
 	int maprestart_netchan_sequence;
 #endif
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+	int baseline_cutoff;	// If >= 0, nullify all baselines with indexes >= this value
+#endif
 } client_t;
 
 //=============================================================================

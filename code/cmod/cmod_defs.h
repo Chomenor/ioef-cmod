@@ -114,6 +114,12 @@
 // some intermittent buggy behavior seen in the Elite Force 1.20 client
 #define CMOD_MAP_RESTART_STATIC_SERVERID
 
+// [BUGFIX] Prevent gamestate overflows by dropping entity baselines
+// This fixes issues that can cause errors on certain maps in certain circumstances
+// Dropping some entity baselines should not normally cause any issues except perhaps a
+// negligible drop in network efficiency, and is much better than the map failing to load
+#define CMOD_GAMESTATE_OVERFLOW_FIX
+
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */

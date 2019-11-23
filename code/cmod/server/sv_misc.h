@@ -68,3 +68,7 @@ void cmod_maptable_free(cmod_maptable_t *maptable);
 const char *cmod_maptable_get_value(cmod_maptable_t *maptable, const char *key);
 void cmod_maptable_init(void);
 #endif
+
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+void sv_calculate_max_baselines(client_t *client, msg_t msg);
+#endif

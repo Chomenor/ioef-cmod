@@ -789,6 +789,11 @@ static void SV_SendClientGameState( client_t *client ) {
 		}
 	}
 
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+	// update client->baseline_cutoff
+	sv_calculate_max_baselines(client, msg);
+#endif
+
 	// write the baselines
 	Com_Memset( &nullstate, 0, sizeof( nullstate ) );
 	for ( start = 0 ; start < MAX_GENTITIES; start++ ) {
@@ -796,6 +801,9 @@ static void SV_SendClientGameState( client_t *client ) {
 		if ( !base->number ) {
 			continue;
 		}
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+		if(client->baseline_cutoff >= 0 && start >= client->baseline_cutoff) continue;
+#endif
 		MSG_WriteByte( &msg, svc_baseline );
 		MSG_WriteDeltaEntity( &msg, &nullstate, base, qtrue );
 	}
@@ -814,6 +822,12 @@ static void SV_SendClientGameState( client_t *client ) {
 
 	// write the checksum feed
 	MSG_WriteLong( &msg, sv.checksumFeed);
+
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+	if(msg.overflowed) {
+		// Log warning if gamestate overflowed anyway despite baseline reduction effort
+		cmLog(LOG_SERVER, LOGFLAG_COM_PRINTF, "WARNING: Gamestate overflow for client %i", (int)(client-svs.clients)); }
+#endif
 
 	// deliver this to the client
 	SV_SendMessageToClient( &msg, client );

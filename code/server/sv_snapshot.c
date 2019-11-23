@@ -52,7 +52,11 @@ SV_EmitPacketEntities
 Writes a delta update of an entityState_t list to the message.
 =============
 */
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+static void SV_EmitPacketEntities( clientSnapshot_t *from, clientSnapshot_t *to, msg_t *msg, int baseline_cutoff ) {
+#else
 static void SV_EmitPacketEntities( clientSnapshot_t *from, clientSnapshot_t *to, msg_t *msg ) {
+#endif
 	entityState_t	*oldent, *newent;
 	int		oldindex, newindex;
 	int		oldnum, newnum;
@@ -96,6 +100,14 @@ static void SV_EmitPacketEntities( clientSnapshot_t *from, clientSnapshot_t *to,
 
 		if ( newnum < oldnum ) {
 			// this is a new entity, send it from the baseline
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+			if(baseline_cutoff >= 0 && newnum >= baseline_cutoff) {
+				// Treat baselines over the cutoff as null
+				entityState_t null_baseline;
+				Com_Memset(&null_baseline, 0, sizeof(null_baseline));
+				MSG_WriteDeltaEntity (msg, &null_baseline, newent, qtrue ); }
+			else
+#endif
 			MSG_WriteDeltaEntity (msg, &sv.svEntities[newnum].baseline, newent, qtrue );
 			newindex++;
 			continue;
@@ -200,7 +212,11 @@ static void SV_WriteSnapshotToClient( client_t *client, msg_t *msg ) {
 	}
 
 	// delta encode the entities
+#ifdef CMOD_GAMESTATE_OVERFLOW_FIX
+	SV_EmitPacketEntities (oldframe, frame, msg, client->baseline_cutoff);
+#else
 	SV_EmitPacketEntities (oldframe, frame, msg);
+#endif
 
 	// padding for rate debugging
 	if ( sv_padPackets->integer ) {
