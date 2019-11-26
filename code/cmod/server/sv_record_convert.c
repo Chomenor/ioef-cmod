@@ -41,6 +41,7 @@ typedef struct {
 	char pending_commands[MAX_RELIABLE_COMMANDS][MAX_STRING_CHARS];
 	int pending_command_count;
 
+	int baseline_cutoff;
 	int message_sequence;
 	int server_command_sequence;
 	int snapflags;
@@ -90,7 +91,7 @@ static void write_demo_gamestate(record_entityset_t *baselines, char **configstr
 		// lastClientCommand; always 0 for demo file
 		MSG_WriteLong(&msg, 0); }
 
-	record_write_gamestate_message(baselines, configstrings, clientNum, rdw->server_command_sequence, &msg);
+	record_write_gamestate_message(baselines, configstrings, clientNum, rdw->server_command_sequence, &msg, &rdw->baseline_cutoff);
 
 	finish_demo_message(&msg, rdw); }
 
@@ -127,9 +128,9 @@ static void write_demo_snapshot(record_entityset_t *entities, record_visibility_
 	// Write the snapshot
 	if(rdw->have_delta) {
 		record_write_snapshot_message(entities, visibility, ps, &rdw->delta_entities, &rdw->delta_visibility,
-				&rdw->delta_playerstate, &rdw->baselines, 0, 1, rdw->snapflags, sv_time, &msg); }
+				&rdw->delta_playerstate, &rdw->baselines, rdw->baseline_cutoff, 0, 1, rdw->snapflags, sv_time, &msg); }
 	else {
-		record_write_snapshot_message(entities, visibility, ps, 0, 0, 0, &rdw->baselines, 0, 0,
+		record_write_snapshot_message(entities, visibility, ps, 0, 0, 0, &rdw->baselines, rdw->baseline_cutoff, 0, 0,
 				rdw->snapflags, sv_time, &msg); }
 
 	// Store delta for next frame

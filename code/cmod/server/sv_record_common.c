@@ -571,8 +571,25 @@ void record_tweak_inactive_visibility(record_entityset_t *entityset, record_visi
 // Message Building
 /* ******************************************************************************** */
 
+static int record_calculate_baseline_cutoff(record_entityset_t *baselines, msg_t msg) {
+	// Baseline cutoff calculation similar to sv_calculate_max_baselines
+	// Returns -1 for no cutoff, otherwise returns first baseline index to drop
+	int i;
+	byte buffer[MAX_MSGLEN];
+	entityState_t nullstate;
+
+	msg.data = buffer;
+	Com_Memset(&nullstate, 0, sizeof(nullstate));
+	for(i=0; i<MAX_GENTITIES; ++i) {
+		if(!record_bit_get(baselines->active_flags, i)) continue;
+		MSG_WriteByte(&msg, svc_baseline);
+		MSG_WriteDeltaEntity(&msg, &nullstate, &baselines->entities[i], qtrue);
+		if(msg.cursize + 24 >= msg.maxsize) return i; }
+
+	return -1; }
+
 void record_write_gamestate_message(record_entityset_t *baselines, char **configstrings, int clientNum,
-		int serverCommandSequence, msg_t *msg) {
+		int serverCommandSequence, msg_t *msg, int *baseline_cutoff_out) {
 	int i;
 	entityState_t nullstate;
 
@@ -586,10 +603,13 @@ void record_write_gamestate_message(record_entityset_t *baselines, char **config
 		MSG_WriteShort(msg, i);
 		MSG_WriteBigString(msg, configstrings[i]); }
 
+	*baseline_cutoff_out = record_calculate_baseline_cutoff(baselines, *msg);
+
 	// Write the baselines
-	memset(&nullstate, 0, sizeof(nullstate));
+	Com_Memset(&nullstate, 0, sizeof(nullstate));
 	for(i=0; i<MAX_GENTITIES; ++i) {
 		if(!record_bit_get(baselines->active_flags, i)) continue;
+		if(*baseline_cutoff_out >= 0 && i >= *baseline_cutoff_out) continue;
 		MSG_WriteByte(msg, svc_baseline);
 		MSG_WriteDeltaEntity(msg, &nullstate, &baselines->entities[i], qtrue); }
 
@@ -605,7 +625,8 @@ void record_write_gamestate_message(record_entityset_t *baselines, char **config
 
 void record_write_snapshot_message(record_entityset_t *entities, record_visibility_state_t *visibility, playerState_t *ps,
 		record_entityset_t *delta_entities, record_visibility_state_t *delta_visibility, playerState_t *delta_ps,
-		record_entityset_t *baselines, int lastClientCommand, int deltaFrame, int snapFlags, int sv_time, msg_t *msg) {
+		record_entityset_t *baselines, int baseline_cutoff, int lastClientCommand, int deltaFrame, int snapFlags,
+		int sv_time, msg_t *msg) {
 	// Based on sv_snapshot.c->SV_SendClientSnapshot
 	// For non-delta snapshot, set delta_entities, delta_visibility, delta_ps, and deltaFrame to null
 	int i;
@@ -639,7 +660,12 @@ void record_write_snapshot_message(record_entityset_t *entities, record_visibili
 			// Active and visible entity
 			if(deltaFrame && record_bit_get(delta_entities->active_flags, i) && record_bit_get(delta_visibility->ent_visibility, i)) {
 				// Keep entity (delta from previous entity)
-				MSG_WriteDeltaEntity(msg, &delta_entities->entities[i], &entities->entities[i], qfalse); }
+				if(baseline_cutoff >= 0 && i >= baseline_cutoff) {
+					entityState_t nullstate;
+					Com_Memset(&nullstate, 0, sizeof(nullstate));
+					MSG_WriteDeltaEntity(msg, &nullstate, &entities->entities[i], qfalse); }
+				else {
+					MSG_WriteDeltaEntity(msg, &delta_entities->entities[i], &entities->entities[i], qfalse); } }
 			else {
 				// New entity (delta from baseline)
 				MSG_WriteDeltaEntity(msg, &baselines->entities[i], &entities->entities[i], qtrue); } }

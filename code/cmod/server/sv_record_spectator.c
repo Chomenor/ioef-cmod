@@ -39,6 +39,7 @@ typedef struct {
 	int target_client;	// Client currently being spectated
 	spectator_frame_t frames[PACKET_BACKUP];
 	int last_snapshot_sv_time;
+	int baseline_cutoff;
 	int target_firing_time;
 
 	// Client settings
@@ -204,7 +205,8 @@ static void send_spectator_gamestate(spectator_t *spectator) {
 	initialize_spectator_message(cl, &msg, msg_buf, sizeof(msg_buf));
 
 	// Write gamestate message
-	record_write_gamestate_message(&sps->current_baselines, sv.configstrings, 0, cl->reliableSequence, &msg);
+	record_write_gamestate_message(&sps->current_baselines, sv.configstrings, 0, cl->reliableSequence, &msg,
+			&spectator->baseline_cutoff);
 
 	// Send to client
 	SV_SendMessageToClient(&msg, cl); }
@@ -255,8 +257,8 @@ static void send_spectator_snapshot(spectator_t *spectator) {
 			&current_frame->visibility, &current_frame->ps,
 			delta_frame ? &sps->frame_entities[delta_frame->frame_entities_position % FRAME_ENTITY_COUNT] : 0,
 			delta_frame ? &delta_frame->visibility : 0, delta_frame ? &delta_frame->ps : 0,
-			&sps->current_baselines, cl->lastClientCommand, delta_frame ? delta_frame_offset : 0,
-			snapFlags, spectator->last_snapshot_sv_time, &msg);
+			&sps->current_baselines, spectator->baseline_cutoff, cl->lastClientCommand,
+			delta_frame ? delta_frame_offset : 0, snapFlags, spectator->last_snapshot_sv_time, &msg);
 
 	// Send to client
 	SV_SendMessageToClient(&msg, cl); }

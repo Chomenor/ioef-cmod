@@ -224,7 +224,8 @@ void record_tweak_inactive_visibility(record_entityset_t *entityset, record_visi
 // ***** Message Building *****
 
 void record_write_gamestate_message(record_entityset_t *baselines, char **configstrings, int clientNum,
-		int serverCommandSequence, msg_t *msg);
+		int serverCommandSequence, msg_t *msg, int *baseline_cutoff_out);
 void record_write_snapshot_message(record_entityset_t *entities, record_visibility_state_t *visibility, playerState_t *ps,
 		record_entityset_t *delta_entities, record_visibility_state_t *delta_visibility, playerState_t *delta_ps,
-		record_entityset_t *baselines, int lastClientCommand, int deltaFrame, int snapFlags, int sv_time, msg_t *msg);
+		record_entityset_t *baselines, int baseline_cutoff, int lastClientCommand, int deltaFrame, int snapFlags,
+		int sv_time, msg_t *msg);
