@@ -660,15 +660,15 @@ void record_write_snapshot_message(record_entityset_t *entities, record_visibili
 			// Active and visible entity
 			if(deltaFrame && record_bit_get(delta_entities->active_flags, i) && record_bit_get(delta_visibility->ent_visibility, i)) {
 				// Keep entity (delta from previous entity)
-				if(baseline_cutoff >= 0 && i >= baseline_cutoff) {
+				MSG_WriteDeltaEntity(msg, &delta_entities->entities[i], &entities->entities[i], qfalse); }
+			else {
+				// New entity (delta from baseline if valid)
+				if(record_bit_get(baselines->active_flags, i) && !(baseline_cutoff >= 0 && i >= baseline_cutoff)) {
+					MSG_WriteDeltaEntity(msg, &baselines->entities[i], &entities->entities[i], qtrue); }
+				else {
 					entityState_t nullstate;
 					Com_Memset(&nullstate, 0, sizeof(nullstate));
-					MSG_WriteDeltaEntity(msg, &nullstate, &entities->entities[i], qfalse); }
-				else {
-					MSG_WriteDeltaEntity(msg, &delta_entities->entities[i], &entities->entities[i], qfalse); } }
-			else {
-				// New entity (delta from baseline)
-				MSG_WriteDeltaEntity(msg, &baselines->entities[i], &entities->entities[i], qtrue); } }
+					MSG_WriteDeltaEntity(msg, &nullstate, &entities->entities[i], qtrue); } } }
 		else if(deltaFrame && record_bit_get(delta_entities->active_flags, i) && record_bit_get(delta_visibility->ent_visibility, i)) {
 			// Remove entity
 			MSG_WriteBits(msg, i, GENTITYNUM_BITS);
