@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../../server/server.h"
 
-#ifdef CMOD_DL_PROTOCOL_FIXES
+#ifdef CMOD_DOWNLOAD_PROTOCOL_FIXES
 void write_download_dummy_snapshot(client_t *client, msg_t *msg) {
 	// Legacy protocol requires a snapshot even in download messages, so send a minimal snapshot
 	MSG_WriteByte(msg, svc_snapshot);

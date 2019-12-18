@@ -388,7 +388,7 @@ static void SV_MapRestart_f( void ) {
 			continue;
 		}
 
-#ifdef CMOD_DL_PROTOCOL_FIXES
+#ifdef CMOD_DOWNLOAD_PROTOCOL_FIXES
 		if(*client->downloadName) continue;
 #endif
 

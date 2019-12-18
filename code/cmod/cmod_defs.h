@@ -92,7 +92,7 @@
 #define CMOD_MAPTABLE
 
 // [BUGFIX] Various server download support fixes and improvements
-#define CMOD_DL_PROTOCOL_FIXES
+#define CMOD_DOWNLOAD_PROTOCOL_FIXES
 
 // [BUGFIX] Various bot-related fixes and improvements
 #define CMOD_BOT_TWEAKS
