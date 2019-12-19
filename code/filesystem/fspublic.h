@@ -363,6 +363,11 @@ DEF_PUBLIC( const char *FS_ReferencedPakPureChecksums( void ) )
 DEF_PUBLIC( void fs_set_download_list(void) )
 DEF_PUBLIC( fileHandle_t fs_open_download_pak(const char *path, unsigned int *size_out) )
 DEF_PUBLIC( void fs_set_pure_list(void) )
+#ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
+DEF_PUBLIC( void *cmod_fs_obtain_download_map(void) )
+DEF_PUBLIC( void cmod_fs_free_download_map(void *dlmap) )
+DEF_PUBLIC( fileHandle_t cmod_fs_open_download_pak(const char *path, unsigned int *size_out, void *dlmap) )
+#endif
 
 /* ******************************************************************************** */
 // Misc

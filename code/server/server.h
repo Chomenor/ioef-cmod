@@ -207,6 +207,9 @@ typedef struct client_s {
 #ifdef CMOD_GAMESTATE_OVERFLOW_FIX
 	int baseline_cutoff;	// If >= 0, nullify all baselines with indexes >= this value
 #endif
+#ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
+	void *download_map;
+#endif
 } client_t;
 
 //=============================================================================

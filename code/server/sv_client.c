@@ -641,6 +641,11 @@ void SV_FreeClient(client_t *client)
 	client->queuedVoipPackets = 0;
 #endif
 
+#ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
+	if(client->download_map) cmod_fs_free_download_map(client->download_map);
+	client->download_map = 0;
+#endif
+
 	SV_Netchan_FreeQueue(client);
 	SV_CloseDownload(client);
 }
@@ -745,6 +750,14 @@ static void SV_SendClientGameState( client_t *client ) {
 #ifndef NEW_FILESYSTEM
 	client->pureAuthentic = 0;
 	client->gotCP = qfalse;
+#endif
+
+#ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
+	// Store download map for the client so all the pk3s in the gamestate will be available
+	// for the client to download even if the global download list changed during the client
+	// download sequence
+	if(client->download_map) cmod_fs_free_download_map(client->download_map);
+	client->download_map = cmod_fs_obtain_download_map();
 #endif
 
 	// when we receive the first packet from the client, we will
@@ -1008,7 +1021,11 @@ static qboolean SV_OpenDownload(client_t *cl, msg_t *msg) {
 				"Set autodownload to No in your settings and you might be able to join the game anyway.\n", cl->downloadName));
 		return qfalse; }
 
+#ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
+	cl->download = cmod_fs_open_download_pak(cl->downloadName, (unsigned int *)&cl->downloadSize, cl->download_map);
+#else
 	cl->download = fs_open_download_pak(cl->downloadName, (unsigned int *)&cl->downloadSize);
+#endif
 	if(!cl->download) {
 		// This could happen if the map changed during a client's download sequence
 		Com_Printf("clientDownload: %d : \"%s\" failed to load download pk3\n", (int) (cl - svs.clients), cl->downloadName);

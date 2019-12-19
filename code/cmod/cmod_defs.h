@@ -120,6 +120,12 @@
 // negligible drop in network efficiency, and is much better than the map failing to load
 #define CMOD_GAMESTATE_OVERFLOW_FIX
 
+// [BUGFIX] Support per-client download map storage, to avoid potential errors if map
+// changes during a multi-pk3 UDP download sequence
+#ifdef NEW_FILESYSTEM
+#define CMOD_PER_CLIENT_DOWNLOAD_MAP
+#endif
+
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */

@@ -848,4 +848,35 @@ void fs_set_pure_list(void) {
 				name_stream.position + SYSTEMINFO_RESERVED_SIZE < BIG_INFO_STRING) {
 			Cvar_Set("sv_pakNames", name_buffer); } } }
 
+#ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
+// Quick and dirty support for per-client download map storage
+// Technically this should be implemented as part of the filesystem, but since it's not
+// essential or practically significant to most Q3 servers I'm leaving it out of the Q3
+// filesystem project for now to reduce complexity
+void *cmod_fs_obtain_download_map(void) {
+	// Retrieve a copy of current download map to store in client data
+	if(!download_map) return 0;
+
+	fs_download_map_t *new_map = (fs_download_map_t *)Z_Malloc(sizeof(*new_map));
+	fs_hashtable_initialize(new_map, 16);
+
+	fs_hashtable_iterator_t it = fs_hashtable_iterate(download_map, 0, qtrue);
+	download_map_entry_t *old_entry;
+	while((old_entry = (download_map_entry_t *)fs_hashtable_next(&it))) {
+		download_map_entry_t *new_entry = (download_map_entry_t *)Z_Malloc(sizeof(*new_entry));
+		*new_entry = *old_entry;
+		new_entry->name = CopyString(old_entry->name);
+		fs_hashtable_insert(new_map, (fs_hashtable_entry_t *)new_entry, fsc_string_hash(new_entry->name, 0)); }
+
+	return new_map; }
+
+void cmod_fs_free_download_map(void *dlmap) {
+	if(!dlmap) return;
+	fs_free_download_map((fs_download_map_t *)dlmap); }
+
+fileHandle_t cmod_fs_open_download_pak(const char *path, unsigned int *size_out, void *dlmap) {
+	if(dlmap) return open_download_pak_by_map((fs_download_map_t *)dlmap, path, size_out);
+	return 0; }
+#endif
+
 #endif	// NEW_FILESYSTEM
