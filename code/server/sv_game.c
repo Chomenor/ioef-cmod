@@ -241,7 +241,11 @@ void SV_GetServerinfo( char *buffer, int bufferSize ) {
 	if ( bufferSize < 1 ) {
 		Com_Error( ERR_DROP, "SV_GetServerinfo: bufferSize == %i", bufferSize );
 	}
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+	Q_strncpyz( buffer, sv_get_serverinfo_string(qfalse), bufferSize );
+#else
 	Q_strncpyz( buffer, Cvar_InfoString( CVAR_SERVERINFO ), bufferSize );
+#endif
 }
 
 /*

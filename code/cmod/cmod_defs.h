@@ -95,6 +95,10 @@
 // and server entity file (replaces the normal entities from the bsp)
 #define CMOD_MAP_SOURCE_OVERRIDE
 
+// [FEATURE] Support cvars to override client map name and mod directory
+// Requires CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+#define CMOD_SERVER_INFOSTRING_OVERRIDE
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DOWNLOAD_PROTOCOL_FIXES
 
@@ -220,3 +224,6 @@
 
 // [COMMON] Common string stream and tokenizer functions
 #define CMOD_COMMON_STRING_FUNCTIONS
+
+// [COMMON] Restructure server serverinfo and systeminfo handling to use common access functions
+#define CMOD_COMMON_SERVER_INFOSTRING_HOOKS

@@ -23,6 +23,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../../server/server.h"
 
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+char *sv_get_serverinfo_string(qboolean status_query) {
+	char *info = Cvar_InfoString(CVAR_SERVERINFO);
+#ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
+	if(*cmod_sv_override_client_map->string) {
+		Info_SetValueForKey(info, "mapname", cmod_sv_override_client_map->string); }
+#endif
+	return info; }
+
+char *sv_get_systeminfo_string(void) {
+	char *info = Cvar_InfoString_Big(CVAR_SYSTEMINFO);
+#ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
+	if(*cmod_sv_override_client_mod->string) {
+		Info_SetValueForKey_Big(info, "fs_game", cmod_sv_override_client_mod->string); }
+#endif
+	return info; }
+#endif
+
 #ifdef CMOD_DOWNLOAD_PROTOCOL_FIXES
 void write_download_dummy_snapshot(client_t *client, msg_t *msg) {
 	// Legacy protocol requires a snapshot even in download messages, so send a minimal snapshot

@@ -1462,7 +1462,11 @@ static void SV_Serverinfo_f( void ) {
 	}
 
 	Com_Printf ("Server info settings:\n");
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+	Info_Print ( sv_get_serverinfo_string(qfalse) );
+#else
 	Info_Print ( Cvar_InfoString( CVAR_SERVERINFO ) );
+#endif
 }
 
 
@@ -1481,7 +1485,11 @@ static void SV_Systeminfo_f( void ) {
 	}
 
 	Com_Printf ("System info settings:\n");
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+	Info_Print ( sv_get_systeminfo_string() );
+#else
 	Info_Print ( Cvar_InfoString_Big( CVAR_SYSTEMINFO ) );
+#endif
 }
 
 

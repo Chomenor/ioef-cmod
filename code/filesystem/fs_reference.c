@@ -739,11 +739,21 @@ static void generate_reference_strings(const char *manifest, fsc_stream_t *hash_
 					mod_dir, name, entry->command_name); }
 
 			// Print warning if pak is from an inactive mod dir
+#ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
+			const char *client_mod_dir = Cvar_VariableString("cmod_sv_override_client_mod");
+			if(!*client_mod_dir) client_mod_dir = Cvar_VariableString("fs_game");
+			if(Q_stricmp(mod_dir, "baseEF") && Q_stricmp(mod_dir, client_mod_dir)) {
+				Com_Printf("WARNING: Download list file %s/%s from command %s does not match the client mod dir."
+					" This can cause problems for some clients. Consider moving this file or changing the"
+					" active mod to include it.\n",
+					mod_dir, name, entry->command_name); } }
+#else
 			if(fs_get_mod_type(mod_dir) <= MODTYPE_INACTIVE) {
 				Com_Printf("WARNING: Download list file %s/%s from command %s is from an inactive mod dir."
 					" This can cause problems for some clients. Consider moving this file or changing the"
 					" active mod to include it.\n",
 					mod_dir, name, entry->command_name); } }
+#endif
 
 		if(hash_output) {
 			Com_sprintf(buffer, sizeof(buffer), "%i", (int)entry->hash);

@@ -572,7 +572,11 @@ static void SVC_Status( netadr_t from ) {
 	if(strlen(Cmd_Argv(1)) > 128)
 		return;
 
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+	strcpy( infostring, sv_get_serverinfo_string(qtrue) );
+#else
 	strcpy( infostring, Cvar_InfoString( CVAR_SERVERINFO ) );
+#endif
 
 #ifdef CMOD_GETSTATUS_FIXES
 	Info_SetValueForKey( infostring, "version_cmod", "v" PRODUCT_VERSION " " PLATFORM_STRING " " PRODUCT_DATE);
@@ -1155,11 +1159,19 @@ void SV_Frame( int msec ) {
 
 	// update infostrings if anything has been changed
 	if ( cvar_modifiedFlags & CVAR_SERVERINFO ) {
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+		SV_SetConfigstring( CS_SERVERINFO, sv_get_serverinfo_string(qfalse) );
+#else
 		SV_SetConfigstring( CS_SERVERINFO, Cvar_InfoString( CVAR_SERVERINFO ) );
+#endif
 		cvar_modifiedFlags &= ~CVAR_SERVERINFO;
 	}
 	if ( cvar_modifiedFlags & CVAR_SYSTEMINFO ) {
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+		SV_SetConfigstring( CS_SYSTEMINFO, sv_get_systeminfo_string() );
+#else
 		SV_SetConfigstring( CS_SYSTEMINFO, Cvar_InfoString_Big( CVAR_SYSTEMINFO ) );
+#endif
 		cvar_modifiedFlags &= ~CVAR_SYSTEMINFO;
 	}
 

@@ -23,6 +23,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // For misc cmod server stuff, included at the end of server.h
 
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+char *sv_get_serverinfo_string(qboolean status_query);
+char *sv_get_systeminfo_string(void);
+#endif
+
 #ifdef CMOD_DOWNLOAD_PROTOCOL_FIXES
 void write_download_dummy_snapshot(client_t *client, msg_t *msg);
 #endif

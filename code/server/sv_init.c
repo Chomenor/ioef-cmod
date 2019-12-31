@@ -620,11 +620,19 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 #endif
 
 	// save systeminfo and serverinfo strings
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+	Q_strncpyz( systemInfo, sv_get_systeminfo_string(), sizeof( systemInfo ) );
+#else
 	Q_strncpyz( systemInfo, Cvar_InfoString_Big( CVAR_SYSTEMINFO ), sizeof( systemInfo ) );
+#endif
 	cvar_modifiedFlags &= ~CVAR_SYSTEMINFO;
 	SV_SetConfigstring( CS_SYSTEMINFO, systemInfo );
 
+#ifdef CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+	SV_SetConfigstring( CS_SERVERINFO, sv_get_serverinfo_string(qfalse) );
+#else
 	SV_SetConfigstring( CS_SERVERINFO, Cvar_InfoString( CVAR_SERVERINFO ) );
+#endif
 	cvar_modifiedFlags &= ~CVAR_SERVERINFO;
 
 	// any media configstring setting now should issue a warning

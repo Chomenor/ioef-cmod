@@ -72,3 +72,8 @@ CVAR_DEF(cmod_sv_override_ent_file, "", 0)
 CVAR_DEF(cmod_sv_override_aas_file, "", 0)
 CVAR_DEF(cmod_sv_override_bsp_file, "", 0)
 #endif
+
+#ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
+CVAR_DEF(cmod_sv_override_client_map, "", 0)
+CVAR_DEF(cmod_sv_override_client_mod, "", 0)
+#endif
