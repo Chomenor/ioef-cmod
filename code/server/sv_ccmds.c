@@ -187,6 +187,11 @@ static void SV_Map_f( void ) {
 
 	// make sure the level exists before trying to change, so that
 	// a typo at the server console won't end the game
+#ifdef CMOD_MAP_SOURCE_OVERRIDE
+	if(*cmod_sv_override_bsp_file->string) {
+		Q_strncpyz(expanded, cmod_sv_override_bsp_file->string, sizeof(expanded)); }
+	else
+#endif
 	Com_sprintf (expanded, sizeof(expanded), "maps/%s.bsp", map);
 #ifdef NEW_FILESYSTEM
 	// Refresh in case a map was just manually added

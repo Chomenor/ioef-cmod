@@ -66,3 +66,9 @@ CVAR_DEF(cmod_sv_maptable_source_dirs, "maps", 0)
 CVAR_DEF(cmod_sv_maptable_entry_count, "-1", CVAR_ROM);
 CVAR_DEF(cmod_sv_maptable_loaded, "false", CVAR_ROM);
 #endif
+
+#ifdef CMOD_MAP_SOURCE_OVERRIDE
+CVAR_DEF(cmod_sv_override_ent_file, "", 0)
+CVAR_DEF(cmod_sv_override_aas_file, "", 0)
+CVAR_DEF(cmod_sv_override_bsp_file, "", 0)
+#endif

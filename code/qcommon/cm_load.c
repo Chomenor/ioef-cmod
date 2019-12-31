@@ -448,6 +448,23 @@ CMod_LoadEntityString
 =================
 */
 void CMod_LoadEntityString( lump_t *l ) {
+#ifdef CMOD_MAP_SOURCE_OVERRIDE
+	if(*cmod_sv_override_ent_file->string) {
+		Com_Printf("Attempting to load entity override file '%s'\n", cmod_sv_override_ent_file->string);
+		void *data = 0;
+		int length = FS_ReadFile(cmod_sv_override_ent_file->string, &data);
+
+		if(!data || length < 0) {
+			if(data) FS_FreeFile(data);
+			Com_Printf("Failed to read entity override file - using standard bsp entities\n"); }
+
+		else {
+			cm.entityString = Hunk_Alloc(length + 1, h_high);
+			Com_Memcpy(cm.entityString, data, length);
+			cm.entityString[length] = 0;
+			Com_Printf("Loaded %i bytes from entity override file\n", length);
+			return; } }
+#endif
 	cm.entityString = Hunk_Alloc( l->filelen, h_high );
 	cm.numEntityChars = l->filelen;
 	Com_Memcpy (cm.entityString, cmod_base + l->fileofs, l->filelen);

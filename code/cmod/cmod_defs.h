@@ -91,6 +91,10 @@
 // [FEATURE] Support for map index system
 #define CMOD_MAPTABLE
 
+// [FEATURE] Support cvars to specify custom server bsp file, server aas file,
+// and server entity file (replaces the normal entities from the bsp)
+#define CMOD_MAP_SOURCE_OVERRIDE
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DOWNLOAD_PROTOCOL_FIXES
 

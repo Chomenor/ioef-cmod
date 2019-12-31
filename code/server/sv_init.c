@@ -487,6 +487,10 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	FS_Restart( sv.checksumFeed );
 #endif
 
+#ifdef CMOD_MAP_SOURCE_OVERRIDE
+	if(*cmod_sv_override_bsp_file->string) CM_LoadMap( cmod_sv_override_bsp_file->string, qfalse, &checksum );
+	else
+#endif
 	CM_LoadMap( va("maps/%s.bsp", server), qfalse, &checksum );
 
 	// set serverinfo visible name
