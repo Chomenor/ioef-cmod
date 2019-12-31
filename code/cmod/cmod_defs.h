@@ -103,6 +103,10 @@
 // Aas files are often valid to use even if this checksum doesn't match
 #define CMOD_IGNORE_AAS_CHECKSUM
 
+// [FEATURE] Ignore VM entity startsolid errors
+// Ignores error generated in g_items.c->FinishSpawningItem which can occur on Q3 maps
+#define CMOD_IGNORE_STARTSOLID_ERROR
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DOWNLOAD_PROTOCOL_FIXES
 

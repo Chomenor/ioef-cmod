@@ -299,6 +299,14 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		Com_Printf( "%s", (const char*)VMA(1) );
 		return 0;
 	case G_ERROR:
+#ifdef CMOD_IGNORE_STARTSOLID_ERROR
+	{
+		const char *error = VMA(1);
+		if(!strncmp(error, "FinishSpawningItem", 18) && Q_stristr(error, "startsolid")) {
+			Com_Printf("NOTE: Skipping VM startsolid error '%s'\n", error);
+			return 0; }
+	}
+#endif
 		Com_Error( ERR_DROP, "%s", (const char*)VMA(1) );
 		return 0;
 	case G_MILLISECONDS:
