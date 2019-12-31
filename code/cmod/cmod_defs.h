@@ -99,6 +99,10 @@
 // Requires CMOD_COMMON_SERVER_INFOSTRING_HOOKS
 #define CMOD_SERVER_INFOSTRING_OVERRIDE
 
+// [FEATURE] Support loading aas files even if they don't match bsp file checksum
+// Aas files are often valid to use even if this checksum doesn't match
+#define CMOD_IGNORE_AAS_CHECKSUM
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DOWNLOAD_PROTOCOL_FIXES
 
