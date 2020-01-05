@@ -337,7 +337,6 @@ DEF_PUBLIC( void fs_set_pure_list(void) )
 /* ******************************************************************************** */
 
 // Indented debug prints
-
 DEF_LOCAL( void fs_debug_indent_start(void) )
 DEF_LOCAL( void fs_debug_indent_stop(void) )
 DEF_LOCAL( void QDECL FS_DPrintf(const char *fmt, ...) __attribute__ ((format (printf, 1, 2))) )

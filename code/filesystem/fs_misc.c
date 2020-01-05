@@ -49,7 +49,7 @@ void QDECL FS_DPrintf(const char *fmt, ...) {
 	va_list argptr;
 	char msg[MAXPRINTMSG];
 	unsigned int indent = (unsigned int)fs_debug_indent_level;
-	char spaces[16] = "                ";
+	char spaces[16] = "               ";
 
 	va_start(argptr,fmt);
 	Q_vsnprintf(msg, sizeof(msg), fmt, argptr);
