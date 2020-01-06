@@ -369,8 +369,6 @@ void fs_refresh(qboolean quiet) {
 	if(fs_debug_refresh->integer) quiet = qfalse;
 	if(!quiet) Com_Printf("----- fs_refresh -----\n");
 
-	fs_refresh_frame = com_frameNumber;
-
 	fsc_filesystem_reset(&fs);
 
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
@@ -379,7 +377,10 @@ void fs_refresh(qboolean quiet) {
 		index_directory(fs_sourcedirs[i].path, i, quiet); }
 
 	if(!quiet) Com_Printf("Index memory usage at %iMB.\n",
-			fsc_fs_size_estimate(&fs) / 1048576 + 1); }
+			fsc_fs_size_estimate(&fs) / 1048576 + 1);
+
+	fs_refresh_frame = com_frameNumber;
+	fs_readback_tracker_reset(); }
 
 void fs_refresh_auto_ext(qboolean ignore_cvar, qboolean quiet) {
 	// Calls fs_refresh if enabled by settings, but maximum once per several frames
