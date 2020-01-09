@@ -1325,12 +1325,10 @@ static int FS_FOpenFileByModeGeneral(const char *qpath, fileHandle_t *f, fsMode_
 				// by the pure list when running a local game with sv_pure enabled.
 				lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST; }
 			else {
-				// For other VMs, allow some of the extensions from the list in the original FS_FOpenFileReadDir
-				// to access direct sourcetype files regardless of pure mode, for compatibility purposes
-				// NOTE: Consider enabling this regardless of extension?
-				if(COM_CompareExtension(qpath, ".cfg") || COM_CompareExtension(qpath, ".menu") ||
-						COM_CompareExtension(qpath, ".game") || COM_CompareExtension(qpath, ".dat"))
-					lookup_flags |= LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE; }
+				// For other VMs, allow opening files on disk when pure. This is a bit more permissive than
+				// the original filesystem, which only allowed certain extensions, but this allows more
+				// flexibility for mods and shouldn't cause any problems.
+				lookup_flags |= LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE; }
 
 			// Use read with direct handle support option, to ensure recently/actively written files
 			// on disk are opened properly, and to optimize for pk3 read operations that read only the
