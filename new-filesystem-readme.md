@@ -135,11 +135,6 @@ It is possible to specify pk3s by hash, to support conditions where the file may
 set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks baseq3/md3-bender:-722067772 baseq3/md3-laracroft:1134218139 baseq3/md3-spongebob:-871946717
 ```
 
-The order of the pure list determines the precedence of files on clients. Normally the server sorts the pure list according to filesystem precedence conventions, rather than the order in the pure manifest, but there may be special conditions where it is useful to force a certain order in the pure list. This can be accomplished by separating sections in the pure manifest with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering. Note that if the same pk3 is selected by multiple rules, its position will be determined by the first rule that selected it.
-```
-set fs_pure_manifest baseq3/somefile - *mod_paks *base_paks *currentmap_pak
-```
-
 In some cases it can be convenient to exclude a certain pk3 that would otherwise be selected by one or more rules within a manifest. This can be accomplished by using the "&block" command followed by a normal selector rule. All pk3s selected by the rule will be blocked, based on hash, from being selected by any subsequent rules. In this example, the "mod/somemap.pk3" file can be selected by the *currentmap_pak rule, but not subsequent rules such as *mod_paks because they come after the block command.
 ```
 set fs_download_manifest *currentmap_pak &block mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
@@ -149,6 +144,11 @@ Manifests can import other cvars using the "&cvar_import" command followed by a 
 ```
 set custom_cvar *base_paks
 set fs_pure_manifest *mod_paks &cvar_import custom_cvar *inactivemod_paks
+```
+
+The order of the pure list determines the precedence of files on clients. Normally the server sorts the pure list according to filesystem precedence conventions, rather than the order in the pure manifest, but there may be special conditions where it is useful to force a certain order in the pure list. This can be accomplished by separating sections in the pure manifest with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering. Note that if the same pk3 is selected by multiple rules, its position will be determined by the first rule that selected it.
+```
+set fs_pure_manifest baseq3/somefile - *mod_paks *base_paks *currentmap_pak
 ```
 
 NOTE: Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only supported to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
