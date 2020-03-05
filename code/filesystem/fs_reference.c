@@ -361,13 +361,13 @@ typedef struct {
 	// General state
 	const reference_query_t *query;
 	reference_set_t *reference_set;
-	pk3_list_t exclude_set;
+	pk3_list_t block_set;
 	int cluster;
 	qboolean overflowed;
 
 	// Current command
 	reference_set_pending_command_t pending_command;
-	qboolean exclude_mode;
+	qboolean block_mode;
 
 	// For debug prints
 	int entry_id_counter;
@@ -472,18 +472,18 @@ static void refset_insert_entry(reference_set_work_t *rsw, const char *mod_dir, 
 	}
 #endif
 
-	// Process exclude command
-	if(rsw->exclude_mode) {
-		if(pk3_list_lookup(&rsw->exclude_set, hash)) {
-			REF_DPRINTF("  result: Hash already in exclude list\n"); }
+	// Process block command
+	if(rsw->block_mode) {
+		if(pk3_list_lookup(&rsw->block_set, hash)) {
+			REF_DPRINTF("  result: Hash already in block list\n"); }
 		else {
-			REF_DPRINTF("  result: Hash added to exclude list\n");
-			pk3_list_insert(&rsw->exclude_set, hash); }
+			REF_DPRINTF("  result: Hash added to block list\n");
+			pk3_list_insert(&rsw->block_set, hash); }
 		return; }
 
-	// Check if hash is excluded
-	if(pk3_list_lookup(&rsw->exclude_set, hash)) {
-		REF_DPRINTF("  result: Skipping entry due to hash in exclude list\n");
+	// Check if hash is blocked
+	if(pk3_list_lookup(&rsw->block_set, hash)) {
+		REF_DPRINTF("  result: Skipping entry due to hash in block list\n");
 		return; }
 
 	// Look for existing entry with same hash
@@ -663,13 +663,13 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 		if(!Q_stricmp(token, "&cvar_import")) {
 			rsw->pending_command = RSPC_CVAR_IMPORT;
 			continue; }
-		else if(!Q_stricmp(token, "&exclude")) {
-			rsw->exclude_mode = qtrue;
+		else if(!Q_stricmp(token, "&block")) {
+			rsw->block_mode = qtrue;
 			continue; }
-		else if(!Q_stricmp(token, "&exclude_reset")) {
-			REF_DPRINTF("[manifest processing] Resetting excluded hash set.\n");
-			pk3_list_free(&rsw->exclude_set);
-			pk3_list_initialize(&rsw->exclude_set, 64);
+		else if(!Q_stricmp(token, "&block_reset")) {
+			REF_DPRINTF("[manifest processing] Resetting blocked hash set.\n");
+			pk3_list_free(&rsw->block_set);
+			pk3_list_initialize(&rsw->block_set, 64);
 			continue; }
 		else if(!Q_stricmp(token, "-")) {
 			++rsw->cluster;
@@ -677,7 +677,7 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 
 		// Save command_name for debug purposes
 		Com_sprintf(rsw->command_name, sizeof(rsw->command_name), "%s%s",
-				rsw->exclude_mode ? "&exclude " : "", token);
+				rsw->block_mode ? "&block " : "", token);
 
 		// Process selector commands
 		REF_DPRINTF("[manifest processing] Processing selector '%s'\n", rsw->command_name);
@@ -701,7 +701,7 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 			refset_add_pak_by_name(rsw, token); }
 
 		// Reset single-use modifiers
-		rsw->exclude_mode = qfalse; } }
+		rsw->block_mode = qfalse; } }
 
 static reference_set_t refset_uninitialized(void) {
 	return (reference_set_t){qfalse}; }
@@ -720,13 +720,13 @@ static reference_set_t refset_generate(const reference_query_t *query) {
 	Com_Memset(&rsw, 0, sizeof(rsw));
 	rsw.query = query;
 	rsw.reference_set = &output;
-	pk3_list_initialize(&rsw.exclude_set, 64);
+	pk3_list_initialize(&rsw.block_set, 64);
 
 	// Invoke manifest processing
 	refset_process_manifest(&rsw, query->manifest, 0);
 
 	// Free rsw
-	pk3_list_free(&rsw.exclude_set);
+	pk3_list_free(&rsw.block_set);
 
 	if(rsw.overflowed) {
 		// Clear structure in case of overflow

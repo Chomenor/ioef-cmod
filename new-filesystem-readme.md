@@ -140,9 +140,9 @@ The order of the pure list determines the precedence of files on clients. Normal
 set fs_pure_manifest baseq3/somefile - *mod_paks *base_paks *currentmap_pak
 ```
 
-In some cases it can be convenient to exclude a certain pk3 that would otherwise be selected by one or more rules within a manifest. This can be accomplished by using the "&exclude" command followed by a normal selector rule. All pk3s selected by the rule will be blocked, based on hash, from being selected by any subsequent rules. In this example, the "mod/somemap.pk3" file can be selected by the *currentmap_pak rule, but not subsequent rules such as *mod_paks because they come after the exclude command.
+In some cases it can be convenient to exclude a certain pk3 that would otherwise be selected by one or more rules within a manifest. This can be accomplished by using the "&block" command followed by a normal selector rule. All pk3s selected by the rule will be blocked, based on hash, from being selected by any subsequent rules. In this example, the "mod/somemap.pk3" file can be selected by the *currentmap_pak rule, but not subsequent rules such as *mod_paks because they come after the block command.
 ```
-set fs_download_manifest *currentmap_pak &exclude mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
+set fs_download_manifest *currentmap_pak &block mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
 ```
 
 Manifests can import other cvars using the "&cvar_import" command followed by a cvar name. The contents of the specified cvar are parsed the same as if they were entered in the place of the &cvar_import command. This can be helpful for organization or to load certain strings in both the pure and download manifests. As a simple example the following commands are equivalent to the default pure manifest.
