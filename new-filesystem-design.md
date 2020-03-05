@@ -347,13 +347,11 @@ This component handles constructing the pure and download lists when hosting a s
 
 - Pure validation: The FS_ReferencedPakPureChecksums function is used to satisfy the SV_VerifyPaks_f check on a remote pure server. By default, only the cgame and ui checksums are sent, which is usually faster and more reliable than sending all the referenced paks. If you want the old behavior of sending all the referenced paks, perhaps because you suspect a server may use some nonstandard validation behavior, you can enable it with the fs_full_pure_validation setting.
 
-- Manifest processing: This section is used to convert a pure or download manifest into a set of "reference set entries". Each reference set entry represents one pk3 and contains sorting and debug information. Only one reference set entry is created per pk3 hash, and conflicts are resolved to use the higher precedence pk3.
+- Manifest processing: This section is used to process pure/download manifests into lists of pk3s. It first generates a "reference set" (unordered set of pk3 references), then from a reference set a "reference list" (ordered list of pk3 references), and finally "reference strings" which contain the name and hash string format sent to clients.
 
 - Download map handling: This section is used to match a client download request to a physical file. In some cases the filename in the download list, and by extension the client request, may not match the physical filename on the server, so the download map is used to resolve the correct file.
 
-- Reference string generation: This section invokes the manifest processing functions to generate a reference set, then converts it into the output hash and name list format used by the server.
-
-- General functions: This section includes shared functions called by the server to set the download and pure lists.
+- Download / Pure List Generation: This section invokes the manifest processing functions to create reference strings and writes the download/pure list cvars for the server. It also handles overflows and other error checks, and updates the current download map.
 
 # FAQ
 

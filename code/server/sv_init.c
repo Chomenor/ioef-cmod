@@ -572,11 +572,8 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	svs.time += 100;
 
 #ifdef NEW_FILESYSTEM
-	// Set sv_referencedPaks and sv_referencedPakNames (download list)
-	fs_set_download_list();
-
-	// Set sv_paks and sv_pakNames (pure list)
-	fs_set_pure_list();
+	// Set download and pure list cvars
+	fs_generate_reference_lists();
 #else
 	if ( sv_pure->integer ) {
 		// the server sends these to the clients so they will only

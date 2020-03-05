@@ -145,7 +145,13 @@ In some cases it can be convenient to exclude a certain pk3 that would otherwise
 set fs_download_manifest *currentmap_pak &exclude mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
 ```
 
-Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only supported to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
+Manifests can import other cvars using the "&cvar_import" command followed by a cvar name. The contents of the specified cvar are parsed the same as if they were entered in the place of the &cvar_import command. This can be helpful for organization or to load certain strings in both the pure and download manifests. As a simple example the following commands are equivalent to the default pure manifest.
+```
+set custom_cvar *base_paks
+set fs_pure_manifest *mod_paks &cvar_import custom_cvar *inactivemod_paks
+```
+
+NOTE: Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only supported to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
 
 # Source Directory Options
 
