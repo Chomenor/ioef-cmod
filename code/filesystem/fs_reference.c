@@ -1000,11 +1000,11 @@ void fs_generate_reference_lists(void) {
 				entry->mod_dir, entry->name, entry->command_name); }
 
 		// Print warning if pak is from an inactive mod dir
-		if(fs_get_mod_type(mod_dir) <= MODTYPE_INACTIVE) {
+		if(fs_get_mod_type(entry->mod_dir) <= MODTYPE_INACTIVE) {
 			Com_Printf("WARNING: Download list pak '%s/%s' from command '%s' is from an inactive mod dir."
 				" This can cause problems for some clients. Consider moving this file or changing the"
 				" active mod to include it.\n",
-				mod_dir, name, entry->command_name); } }
+				entry->mod_dir, entry->name, entry->command_name); } }
 
 	// Generate download strings
 	download_strings = refstrings_generate(&download_list, MAX_DOWNLOAD_LIST_STRING);
