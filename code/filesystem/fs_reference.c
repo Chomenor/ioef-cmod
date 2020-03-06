@@ -704,7 +704,8 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 		rsw->block_mode = qfalse; } }
 
 static reference_set_t refset_uninitialized(void) {
-	return (reference_set_t){qfalse}; }
+	reference_set_t result = {REFSTATE_UNINITIALIZED};
+	return result; }
 
 static reference_set_t refset_generate(const reference_query_t *query) {
 	// Generates reference set for given query
@@ -758,7 +759,8 @@ static int reflist_sort_function(const void *e1, const void *e2) {
 	return refset_compare_entry(*(const reference_set_entry_t **)e1, *(const reference_set_entry_t **)e2); }
 
 static reference_list_t reflist_uninitialized(void) {
-	return (reference_list_t){qfalse}; }
+	reference_list_t result = {REFSTATE_UNINITIALIZED};
+	return result; }
 
 static reference_list_t reflist_generate(const reference_set_t *reference_set) {
 	// Converts reference set to reference list
@@ -822,12 +824,12 @@ typedef struct {
 
 static reference_substring_t refstrings_generate_substring(fsc_stream_t *source) {
 	// Convert source stream to reference string structure
-	reference_substring_t output = {REFSTATE_UNINITIALIZED, "", 0};
+	reference_substring_t output = {REFSTATE_UNINITIALIZED, (char *)"", 0};
 	if(source->overflowed) output.state = REFSTATE_OVERFLOWED;
 	if(source->position && !source->overflowed) {
 		output.state = REFSTATE_VALID;
 		output.length = source->position;
-		output.string = Z_Malloc(output.length + 1);
+		output.string = (char *)Z_Malloc(output.length + 1);
 		fsc_memcpy(output.string, source->data, output.length);
 		output.string[output.length] = 0; }
 	return output; }
@@ -837,9 +839,10 @@ static void refstrings_free_substring(reference_substring_t *substring) {
 		Z_Free(substring->string); } }
 
 static reference_strings_t refstrings_uninitialized(void) {
-	return (reference_strings_t){
-		(reference_substring_t){REFSTATE_UNINITIALIZED, "", 0},
-		(reference_substring_t){REFSTATE_UNINITIALIZED, "", 0} }; }
+	reference_strings_t result = {
+		{REFSTATE_UNINITIALIZED, (char *)"", 0},
+		{REFSTATE_UNINITIALIZED, (char *)"", 0} };
+	return result; }
 
 static reference_strings_t refstrings_generate(reference_list_t *reference_list, unsigned int max_length) {
 	// Result must be freed by refstrings_free
