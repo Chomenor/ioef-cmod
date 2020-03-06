@@ -856,8 +856,8 @@ static reference_strings_t refstrings_generate(reference_list_t *reference_list,
 	else {
 		int i;
 		char buffer[512];
-		fsc_stream_t name_stream = {Z_Malloc(max_length), 0, max_length, 0};
-		fsc_stream_t hash_stream = {Z_Malloc(max_length), 0, max_length, 0};
+		fsc_stream_t name_stream = {(char *)Z_Malloc(max_length), 0, max_length, 0};
+		fsc_stream_t hash_stream = {(char *)Z_Malloc(max_length), 0, max_length, 0};
 
 		// Generate strings
 		for(i=0; i<reference_list->entry_count; ++i) {
