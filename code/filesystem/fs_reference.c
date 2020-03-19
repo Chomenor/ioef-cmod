@@ -914,6 +914,7 @@ static fs_download_map_t *dlmap_generate(const reference_list_t *reference_list)
 	for(i=0; i<reference_list->entry_count; ++i) {
 		const reference_list_entry_t *entry = &reference_list->entries[i];
 		if(entry->disabled) continue;
+		if(!entry->pak_file) continue;
 		Com_sprintf(buffer, sizeof(buffer), "%s/%s.pk3", entry->mod_dir, entry->name);
 		dlmap_add_entry(dlmap, buffer, entry->pak_file); }
 	return dlmap; }
