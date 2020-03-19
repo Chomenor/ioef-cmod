@@ -366,7 +366,6 @@ typedef struct {
 	qboolean overflowed;
 
 	// Current command
-	reference_set_pending_command_t pending_command;
 	qboolean block_mode;
 
 	// For debug prints
@@ -644,24 +643,18 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 		const char *token = COM_ParseExt((char **)&string, qfalse);
 		if(!*token) break;
 
-		// Process pending multi-token commands
-		if(rsw->pending_command == RSPC_CVAR_IMPORT) {
-			// Static buffer from COM_ParseExt will be overwritten, so copy out token
+		// Process special commands
+		if(!Q_stricmp(token, "&cvar_import")) {
+			// Static buffer from COM_ParseExt will be overwritten, so copy out cvar name
 			char cvar_name[256];
+			token = COM_ParseExt((char **)&string, qfalse);
 			Q_strncpyz(cvar_name, token, sizeof(cvar_name));
-
-			rsw->pending_command = RSPC_NONE;
 
 			if(recursion_count >= 128) {
 				Com_Error(ERR_DROP, "Recursive overflow processing pk3 manifest"); }
 			REF_DPRINTF("[manifest processing] Entering import cvar '%s'\n", cvar_name);
 			refset_process_manifest(rsw, Cvar_VariableString(cvar_name), recursion_count + 1);
 			REF_DPRINTF("[manifest processing] Leaving import cvar '%s'\n", cvar_name);
-			continue; }
-
-		// Process special commands
-		if(!Q_stricmp(token, "&cvar_import")) {
-			rsw->pending_command = RSPC_CVAR_IMPORT;
 			continue; }
 		else if(!Q_stricmp(token, "&block")) {
 			rsw->block_mode = qtrue;
