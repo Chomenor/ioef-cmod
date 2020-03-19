@@ -674,21 +674,21 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 
 		// Process selector commands
 		REF_DPRINTF("[manifest processing] Processing selector '%s'\n", rsw->command_name);
-		if(!Q_stricmp(token, "*mod_paks")) {
+		if(!Q_stricmp(token, "#mod_paks")) {
 			refset_add_paks_by_category(rsw, PAKCATEGORY_ACTIVE_MOD); }
-		else if(!Q_stricmp(token, "*base_paks")) {
+		else if(!Q_stricmp(token, "#base_paks")) {
 			refset_add_paks_by_category(rsw, PAKCATEGORY_BASEGAME); }
-		else if(!Q_stricmp(token, "*inactivemod_paks")) {
+		else if(!Q_stricmp(token, "#inactivemod_paks")) {
 			refset_add_paks_by_category(rsw, PAKCATEGORY_INACTIVE_MOD); }
-		else if(!Q_stricmp(token, "*referenced_paks")) {
+		else if(!Q_stricmp(token, "#referenced_paks")) {
 			refset_add_referenced_paks(rsw); }
-		else if(!Q_stricmp(token, "*currentmap_pak")) {
+		else if(!Q_stricmp(token, "#currentmap_pak")) {
 			refset_add_pak_containing_file(rsw, va("maps/%s.bsp", Cvar_VariableString("mapname"))); }
-		else if(!Q_stricmp(token, "*cgame_pak")) {
+		else if(!Q_stricmp(token, "#cgame_pak")) {
 			refset_add_pak_containing_file(rsw, "vm/cgame.qvm"); }
-		else if(!Q_stricmp(token, "*ui_pak")) {
+		else if(!Q_stricmp(token, "#ui_pak")) {
 			refset_add_pak_containing_file(rsw, "vm/ui.qvm"); }
-		else if(*token == '*' || *token == '&') {
+		else if(*token == '#' || *token == '&') {
 			Com_Printf("WARNING: Unrecognized manifest selector '%s'\n", token); }
 		else {
 			refset_add_pak_by_name(rsw, token); }
