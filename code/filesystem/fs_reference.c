@@ -352,11 +352,6 @@ typedef struct {
 	unsigned int sort_key_length;
 } reference_set_entry_t;
 
-typedef enum {
-	RSPC_NONE,
-	RSPC_CVAR_IMPORT
-} reference_set_pending_command_t;
-
 typedef struct {
 	// General state
 	const reference_query_t *query;
@@ -373,14 +368,30 @@ typedef struct {
 	char command_name[64];
 } reference_set_work_t;
 
+static void refset_sanitize_string(const char *source, char *target, unsigned int size) {
+	// Sanitizes string to be suitable for output reference lists
+	// May write null string to target due to errors
+	char buffer[FSC_MAX_QPATH];
+	char *buf_ptr = buffer;
+	if(size > sizeof(buffer)) size = sizeof(buffer);
+	Q_strncpyz(buffer, source, size);
+
+	// Underscore a couple characters that cause issues in ref strings but
+	// aren't handled by fs_generate_path
+	while(*buf_ptr) {
+		if(*buf_ptr == ' ' || *buf_ptr == '@') *buf_ptr = '_';
+		++buf_ptr; }
+
+	fs_generate_path(buffer, 0, 0, 0, 0, 0, target, size); }
+
 static void refset_generate_entry(reference_set_work_t *rsw, const char *mod_dir, const char *name,
 		unsigned int hash, const fsc_file_direct_t *pak_file, reference_set_entry_t *target) {
 	// pak can be null; other parameters are required
 	fsc_stream_t sort_stream = {target->sort_key, 0, sizeof(target->sort_key), 0};
 
 	Com_Memset(target, 0, sizeof(*target));
-	Q_strncpyz(target->l.mod_dir, mod_dir, sizeof(target->l.mod_dir));
-	Q_strncpyz(target->l.name, name, sizeof(target->l.name));
+	refset_sanitize_string(mod_dir, target->l.mod_dir, sizeof(target->l.mod_dir));
+	refset_sanitize_string(name, target->l.name, sizeof(target->l.name));
 	target->l.hash = hash;
 	target->l.pak_file = pak_file;
 	target->cluster = rsw->cluster;
@@ -458,6 +469,11 @@ static void refset_insert_entry(reference_set_work_t *rsw, const char *mod_dir, 
 		else {
 			REF_DPRINTF("  pak file: <none>\n"); }
 		REF_DPRINTF("  cluster: %i\n", new_entry.cluster); }
+
+	// Check for invalid attributes
+	if(!*new_entry.l.mod_dir || !*new_entry.l.name || !new_entry.l.hash) {
+		REF_DPRINTF("  result: Skipping download list entry due to invalid mod, name, or hash\n");
+		return; }
 
 #ifndef STANDALONE
 	// Exclude paks that fail the ID pak check from download list because clients won't download
@@ -577,66 +593,168 @@ static unsigned int refset_string_to_hash(const char *string) {
 		if(fsc_strcmp(string, test_buffer)) return 0;
 		return hash; } }
 
-static void refset_add_pak_by_name(reference_set_work_t *rsw, const char *string) {
-	// Add any paks matching the specified filename to the reference set
-	char buffer[FSC_MAX_MODDIR+FSC_MAX_QPATH+32];
-	char *name_ptr = 0;
-	char *hash_ptr = 0;
+typedef struct {
 	char mod_dir[FSC_MAX_MODDIR];
 	char name[FSC_MAX_QPATH];
-	unsigned int hash = 0;
-	int count = 0;
+	unsigned int hash;	// 0 if hash not manually specified
+} pak_specifier_t;
 
-	// Determine mod_dir, name, and hash
-	Q_strncpyz(buffer, string, sizeof(buffer));
-	name_ptr = strchr(buffer, '/');
-	if(name_ptr) *(name_ptr++) = 0;
-	if(!name_ptr || !*name_ptr || strchr(name_ptr, '/')) {
-		Com_Printf("WARNING: Error reading name for rule '%s'\n", rsw->command_name);
-		return; }
-	hash_ptr = strchr(name_ptr, ':');
+static qboolean refset_parse_specifier(const char *command_name, const char *string, pak_specifier_t *output) {
+	// Converts specifier string to pak_specifier_t structure
+	// Returns qtrue on success, prints warning and returns qfalse on error
+	char buffer[FSC_MAX_MODDIR+FSC_MAX_QPATH];
+	const char *hash_ptr = strchr(string, ':');
+	const char *name_ptr = 0;
+
 	if(hash_ptr) {
-		*(hash_ptr++) = 0;
-		hash = refset_string_to_hash(hash_ptr);
-		if(!hash) {
-			Com_Printf("WARNING: Error reading hash for rule '%s'\n", rsw->command_name);
-			return; } }
-	fs_generate_path(buffer, 0, 0, 0, 0, 0, mod_dir, sizeof(mod_dir));
-	fs_generate_path(name_ptr, 0, 0, 0, 0, 0, name, sizeof(name));
+		// Copy section before colon to buffer
+		unsigned int length = (unsigned int)(hash_ptr - string);
+		if(length >= sizeof(buffer)) length = sizeof(buffer) - 1;
+		fsc_memcpy(buffer, string, length);
+		buffer[length] = 0;
 
-	if(hash) {
-		// Look for paks matching hash
-		fsc_hashtable_iterator_t hti;
-		fsc_pk3_hash_map_entry_t *entry;
-		fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
+		// Acquire hash value
+		output->hash = refset_string_to_hash(hash_ptr + 1);
+		if(!output->hash) {
+			Com_Printf("WARNING: Error reading hash for specifier '%s'\n", command_name);
+			return qfalse; } }
+	else {
+		Q_strncpyz(buffer, string, sizeof(buffer));
+		output->hash = 0; }
+
+	fsc_get_leading_directory(buffer, output->mod_dir, sizeof(output->mod_dir), &name_ptr);
+	if(!*output->mod_dir) {
+		Com_Printf("WARNING: Error reading mod directory for specifier '%s'\n", command_name);
+		return qfalse; }
+	if(!name_ptr || !*name_ptr || strchr(name_ptr, '/') || strchr(name_ptr, '\\')) {
+		Com_Printf("WARNING: Error reading pk3 name for specifier '%s'\n", command_name);
+		return qfalse; }
+	Q_strncpyz(output->name, name_ptr, sizeof(output->name));
+
+	return qtrue; }
+
+static void refset_process_specifier_by_name(reference_set_work_t *rsw, const char *string) {
+	// Process a pak specifier in format <mod dir>/<name>
+	pak_specifier_t specifier;
+	int count = 0;
+	fsc_hashtable_iterator_t hti;
+	const fsc_file_direct_t *file;
+
+	if(!refset_parse_specifier(rsw->command_name, string, &specifier)) return;
+	FSC_ASSERT(!specifier.hash);
+
+	// Search for pk3s matching name
+	fsc_hashtable_open(&fs.files, fsc_string_hash(specifier.name, 0), &hti);
+	while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
+		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
+		if(!file->pk3_hash) continue;
+		if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
+		if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), specifier.name)) continue;
+		if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), specifier.mod_dir)) continue;
+		refset_insert_entry(rsw, specifier.mod_dir, specifier.name, file->pk3_hash, file);
+		++count; }
+
+	if(count == 0) Com_Printf("WARNING: Specifier '%s' failed to match any pk3s.\n", rsw->command_name);
+	if(count > 1) Com_Printf("WARNING: Specifier '%s' matched multiple pk3s.\n", rsw->command_name); }
+
+static void refset_process_specifier_by_hash(reference_set_work_t *rsw, const char *string) {
+	// Process a pak specifier in format <mod dir>/<name>:<hash>
+	pak_specifier_t specifier;
+	int count = 0;
+	fsc_hashtable_iterator_t hti;
+	fsc_pk3_hash_map_entry_t *entry;
+
+	if(!refset_parse_specifier(rsw->command_name, string, &specifier)) return;
+	FSC_ASSERT(specifier.hash);
+
+	// Search for physical pk3s matching hash
+	fsc_hashtable_open(&fs.pk3_hash_lookup, specifier.hash, &hti);
+	while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
+		const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
+		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
+		if(file->pk3_hash != specifier.hash) continue;
+		refset_insert_entry(rsw, specifier.mod_dir, specifier.name, specifier.hash, file);
+		++count; }
+
+	// If no actual pak was found, create a hash-only entry
+	if(!count) {
+		refset_insert_entry(rsw, specifier.mod_dir, specifier.name, specifier.hash, 0);
+		++count; } }
+
+static qboolean refset_pattern_match(const char *string, const char *pattern) {
+	// Returns qtrue if string matches pattern containing '*' and '?' wildcards
+	while(1) {
+		if(*pattern == '*') {
+			// Skip asterisks; auto match if no pattern remaining
+			while(*pattern == '*') ++pattern;
+			if(!*pattern) return qtrue;
+
+			// Read string looking for match with remaining pattern
+			while(*string) {
+				if(*string == *pattern || *pattern == '?') {
+					if(refset_pattern_match(string+1, pattern+1)) return qtrue; }
+				++string; }
+
+			// Leftover pattern with no match
+			return qfalse; }
+
+		// Check for end of string cases
+		if(!*pattern) {
+			if(!*string) return qtrue;
+			return qfalse; }
+		if(!*string) return qfalse;
+
+		// Check for character discrepancy
+		if(*pattern != *string && *pattern != '?' && *pattern != *string) return qfalse;
+
+		// Advance strings
+		++pattern;
+		++string; } }
+
+static void refset_process_specifier_by_wildcard(reference_set_work_t *rsw, const char *string) {
+	// Process a pak specifier in format <mod dir>/<name> containing wildcard characters
+	int count = 0;
+	unsigned int i;
+	fsc_hashtable_iterator_t hti;
+	fsc_pk3_hash_map_entry_t *entry;
+	char specifier_buffer[FSC_MAX_MODDIR+FSC_MAX_QPATH];
+	char file_buffer[FSC_MAX_MODDIR+FSC_MAX_QPATH];
+	char *z = specifier_buffer;
+
+	Q_strncpyz(specifier_buffer, string, sizeof(specifier_buffer));
+	Q_strlwr(specifier_buffer);
+	while(*z) {
+		if(*z == '\\') *z = '/';
+		++z; }
+
+	// Iterate all pk3s in filesystem for potential matches
+	for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
+		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
+			const char *mod_dir = fsc_get_mod_dir((fsc_file_t *)file, &fs);
+			const char *name = (const char *)STACKPTR(file->f.qp_name_ptr);
 			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
-			if(file->pk3_hash != hash) continue;
-			refset_insert_entry(rsw, mod_dir, name, hash, file);
-			++count; }
 
-		// If no actual pak was found, create a hash-only entry
-		if(!count) {
-			refset_insert_entry(rsw, mod_dir, name, hash, 0);
+			// Check pattern match
+			Com_sprintf(file_buffer, sizeof(file_buffer), "%s/%s", mod_dir, name);
+			Q_strlwr(file_buffer);
+			if(!refset_pattern_match(file_buffer, specifier_buffer)) continue;
+
+			// Add pk3 to reference set
+			refset_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);
 			++count; } }
 
-	else {
-		// No user-specified hash, so add paks matching name instead
-		fsc_hashtable_iterator_t hti;
-		const fsc_file_direct_t *file;
-		fsc_hashtable_open(&fs.files, fsc_string_hash(name, 0), &hti);
-		while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-			if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
-			if(!file->pk3_hash) continue;
-			if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
-			if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), name)) continue;
-			if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), mod_dir)) continue;
-			refset_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);
-			++count; }
+	if(count == 0) Com_Printf("WARNING: Specifier '%s' failed to match any pk3s.\n", rsw->command_name); }
 
-		if(count == 0) Com_Printf("WARNING: Command %s failed to match pk3.\n", rsw->command_name);
-		if(count > 1) Com_Printf("WARNING: Command %s matched multiple pk3s.\n", rsw->command_name); } }
+static void refset_process_specifier(reference_set_work_t *rsw, const char *string) {
+	// Process pk3 specifier of any supported type (mod/name, mod/name:hash, wildcard)
+	if(strchr(string, '*') || strchr(string, '?')) {
+		refset_process_specifier_by_wildcard(rsw, string); }
+	else if(strchr(string, ':')) {
+		refset_process_specifier_by_hash(rsw, string); }
+	else {
+		refset_process_specifier_by_name(rsw, string); } }
 
 static void refset_process_manifest(reference_set_work_t *rsw, const char *string, int recursion_count) {
 	while(1) {
@@ -657,6 +775,7 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 			REF_DPRINTF("[manifest processing] Leaving import cvar '%s'\n", cvar_name);
 			continue; }
 		else if(!Q_stricmp(token, "&block")) {
+			REF_DPRINTF("[manifest processing] Blocking next selector due to 'block' command\n");
 			rsw->block_mode = qtrue;
 			continue; }
 		else if(!Q_stricmp(token, "&block_reset")) {
@@ -668,11 +787,8 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 			++rsw->cluster;
 			continue; }
 
-		// Save command_name for debug purposes
-		Com_sprintf(rsw->command_name, sizeof(rsw->command_name), "%s%s",
-				rsw->block_mode ? "&block " : "", token);
-
 		// Process selector commands
+		Q_strncpyz(rsw->command_name, token, sizeof(rsw->command_name));
 		REF_DPRINTF("[manifest processing] Processing selector '%s'\n", rsw->command_name);
 		if(!Q_stricmp(token, "#mod_paks")) {
 			refset_add_paks_by_category(rsw, PAKCATEGORY_ACTIVE_MOD); }
@@ -691,7 +807,7 @@ static void refset_process_manifest(reference_set_work_t *rsw, const char *strin
 		else if(*token == '#' || *token == '&') {
 			Com_Printf("WARNING: Unrecognized manifest selector '%s'\n", token); }
 		else {
-			refset_add_pak_by_name(rsw, token); }
+			refset_process_specifier(rsw, token); }
 
 		// Reset single-use modifiers
 		rsw->block_mode = qfalse; } }
