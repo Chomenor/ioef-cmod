@@ -80,11 +80,10 @@ static qboolean fs_generate_path_element(fsc_stream_t *stream, const char *name,
 	path_length = fsc_strlen(sanitized_path);	// Should equal path_stream.position, but recalculate to be safe
 	if(!path_length) return qfalse;
 
-	// Replace non-alphanumeric characters at beginning or end of string with underscores
-	// Exploits against OS-specific filename processing behavior often rely on symbols at beginning or end of filename
-	#define IS_ALPHANUMERIC(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9'))
-	if(!IS_ALPHANUMERIC(sanitized_path[0])) sanitized_path[0] = '_';
-	if(!IS_ALPHANUMERIC(sanitized_path[path_length-1])) sanitized_path[path_length-1] = '_';
+	// Also replace certain characters at beginning or end of string with underscores
+	#define INVALID_EDGE_CHAR(c) ((c) == ' ' || (c) == '.')
+	if(INVALID_EDGE_CHAR(sanitized_path[0])) sanitized_path[0] = '_';
+	if(INVALID_EDGE_CHAR(sanitized_path[path_length-1])) sanitized_path[path_length-1] = '_';
 
 	// Check for possible backwards path
 	if(strstr(sanitized_path, "..")) return qfalse;
