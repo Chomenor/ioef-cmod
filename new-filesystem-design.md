@@ -253,9 +253,7 @@ This is a list of the precedence rules ordered from highest to lowest priority. 
 
 ## Downloaded VM Restrictions
 
-The fs_restrict_dlfolder setting of 2 is used to restrict the loading of VMs from the downloads folder to those that match a set of known trusted hashes. If a VM fails to match a verified hash, the current behavior is to throw an ERR_DROP when connected to a pure server, and fall back to the best available qvm when not on a pure server. This helps provide an informative error message in the pure server scenario (where a specific qvm is likely required) but also avoids a single nonessential pk3 causing a mod to permanently error out on non-pure servers.
-
-The verification is handled in the query processing functions, after the resources have already been sorted by the normal precedence rules. This allows the hash calculation to only be done on the highest precedence VM and working down if necessary, instead of having to calculate the hash for every potential VM.
+When fs_restrict_dlfolder settings are enabled, QVM query results are sorted from highest to lowest priority, and tested in order until a valid entry is encountered. This allows the hash calculation to only be done on the highest precedence VM and working down if necessary, instead of having to calculate the hash for every potential VM.
 
 # File Reading / Writing (fs_fileio.c)
 
