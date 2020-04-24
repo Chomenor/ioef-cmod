@@ -39,6 +39,10 @@ CVAR_DEF(cmod_console_mode, "1", CVAR_ARCHIVE)
 CVAR_DEF(in_mouse_warping, "0", CVAR_ARCHIVE);
 #endif
 
+#ifdef CMOD_ANTI_BURNIN
+CVAR_DEF(cmod_anti_burnin, "0", CVAR_ARCHIVE);
+#endif
+
 #ifdef CMOD_LOGGING
 CVAR_DEF(cmod_log_flush, "1", 0)
 #endif

@@ -53,6 +53,9 @@
 // [FEATURE] Support modifying sky color in fastsky mode via r_fastskyColor cvar
 #define CMOD_FASTSKY_COLOR
 
+// [FEATURE] Support fading HUD graphics to reduce potential burn-in on OLED displays
+#define CMOD_ANTI_BURNIN
+
 // [BUGFIX] Fix potential graphics glitch during loading screen
 #define CMOD_LOADINGSCREEN_FIX
 

@@ -620,7 +620,22 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		re.RenderScene( VMA(1) );
 		return 0;
 	case CG_R_SETCOLOR:
+#ifdef CMOD_ANTI_BURNIN
+		{
+			float *src = VMA(1);
+			if(src && clc.state == CA_ACTIVE && cmod_anti_burnin->value != 0.0f) {
+				float buffer[4];
+				buffer[0] = cmod_anti_burnin_shift(src[0]);
+				buffer[1] = cmod_anti_burnin_shift(src[1]);
+				buffer[2] = cmod_anti_burnin_shift(src[2]);
+				buffer[3] = src[3];
+				re.SetColor(buffer); }
+			else {
+				re.SetColor(src); }
+		}
+#else
 		re.SetColor( VMA(1) );
+#endif
 		return 0;
 	case CG_R_DRAWSTRETCHPIC:
 #ifdef CMOD_CROSSHAIR

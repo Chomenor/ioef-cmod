@@ -79,6 +79,10 @@ In the original game, the console and chat font are displayed at a fixed size, u
 - A setting between 0 and 1 scales to some fraction of the font size represented by 1. However it will not scale below the original unscaled font size.
 - A setting of 0 produces the original unscaled font size.
 
+## Anti Burn-in Support
+
+The setting "cmod_anti_burnin" can be used to fade the in-game HUD graphics, to reduce possible burn-in effects on OLED-type displays. Valid values range from 0 (disabled) to 1 (maximum).
+
 ## Crosshair Handling
 
 cMod uses a new crosshair indexing system, which allows all the installed crosshairs to be accessed from the crosshair menu at once, and also adds new built-in crosshairs.

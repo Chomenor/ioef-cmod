@@ -83,3 +83,7 @@ fsc_file_t *crosshair_process_lookup(const char *name);
 #ifdef CMOD_VM_STRNCPY_FIX
 void vm_strncpy(char *dst, char *src, int length);
 #endif
+
+#ifdef CMOD_ANTI_BURNIN
+float cmod_anti_burnin_shift(float val);
+#endif

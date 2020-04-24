@@ -90,3 +90,13 @@ void vm_strncpy(char *dst, char *src, int length) {
 	for(; i<length; ++i) {
 		dst[i] = 0; } }
 #endif
+
+#ifdef CMOD_ANTI_BURNIN
+float cmod_anti_burnin_shift(float val) {
+	if(cmod_anti_burnin->value <= 0.0f) return val;
+	if(cmod_anti_burnin->value >= 1.0f) return 0.5f;
+	float result = val * (1.0f - cmod_anti_burnin->value) + 0.5f * cmod_anti_burnin->value;
+	if(result < 0.0f) result = 0.0f;
+	if(result > 1.0f) result = 1.0f;
+	return result; }
+#endif

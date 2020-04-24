@@ -1143,6 +1143,7 @@ special_cvar_t specials[] = {
 	{"r_mapLightingClampMax", "1", CVARTYPE_GRAPHICS, 0},
 	{"r_textureGamma", "1", CVARTYPE_GRAPHICS, 0},
 	{"cmod_auto_brightness_enabled", "1", CVARTYPE_GRAPHICS, 0},
+	{"cmod_anti_burnin", "0", CVARTYPE_GRAPHICS, 0},
 
 	// Sound settings
 	// Don't default to OpenAL since it currently doesn't work nicely with some EF maps
