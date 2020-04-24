@@ -373,8 +373,6 @@ void fs_refresh(qboolean quiet) {
 	if(fs_debug_refresh->integer) quiet = qfalse;
 	if(!quiet) Com_Printf("----- fs_refresh -----\n");
 
-	fs_refresh_frame = com_frameNumber;
-
 	fsc_filesystem_reset(&fs);
 
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
@@ -383,7 +381,10 @@ void fs_refresh(qboolean quiet) {
 		index_directory(fs_sourcedirs[i].path, i, quiet); }
 
 	if(!quiet) Com_Printf("Index memory usage at %iMB.\n",
-			fsc_fs_size_estimate(&fs) / 1048576 + 1); }
+			fsc_fs_size_estimate(&fs) / 1048576 + 1);
+
+	fs_refresh_frame = com_frameNumber;
+	fs_readback_tracker_reset(); }
 
 void fs_refresh_auto_ext(qboolean ignore_cvar, qboolean quiet) {
 	// Calls fs_refresh if enabled by settings, but maximum once per several frames
@@ -480,8 +481,8 @@ void fs_startup(void) {
 	fs_read_inactive_mods = Cvar_Get("fs_read_inactive_mods", "1", CVAR_ARCHIVE);
 	fs_list_inactive_mods = Cvar_Get("fs_list_inactive_mods", "1", CVAR_ARCHIVE);
 	fs_download_manifest = Cvar_Get("fs_download_manifest",
-			"*mod_paks *cgame_pak *ui_pak *currentmap_pak *referenced_paks", CVAR_ARCHIVE);
-	fs_pure_manifest = Cvar_Get("fs_pure_manifest", "*mod_paks *base_paks *inactivemod_paks", CVAR_ARCHIVE);
+			"#mod_paks #cgame_pak #ui_pak #currentmap_pak #referenced_paks", CVAR_ARCHIVE);
+	fs_pure_manifest = Cvar_Get("fs_pure_manifest", "#mod_paks #base_paks #inactivemod_paks", CVAR_ARCHIVE);
 	fs_redownload_across_mods = Cvar_Get("fs_redownload_across_mods", "1", CVAR_ARCHIVE);
 	fs_full_pure_validation = Cvar_Get("fs_full_pure_validation", "0", CVAR_ARCHIVE);
 	fs_saveto_dlfolder = Cvar_Get("fs_saveto_dlfolder", "0", CVAR_ARCHIVE);

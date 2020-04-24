@@ -82,7 +82,7 @@ static void register_attempted_download(unsigned int hash, qboolean http) {
 static qboolean check_attempted_download(unsigned int hash, qboolean http) {
 	// Returns qtrue if download already attempted
 	pk3_list_t *target = http ? &attempted_downloads_http : &attempted_downloads;
-	return pk3_list_lookup(target, hash, qfalse) ? qtrue : qfalse; }
+	return pk3_list_lookup(target, hash) ? qtrue : qfalse; }
 
 void fs_register_current_download_attempt(qboolean http) {
 	FSC_ASSERT(current_download);

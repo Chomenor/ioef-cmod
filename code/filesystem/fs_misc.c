@@ -49,7 +49,7 @@ void QDECL FS_DPrintf(const char *fmt, ...) {
 	va_list argptr;
 	char msg[MAXPRINTMSG];
 	unsigned int indent = (unsigned int)fs_debug_indent_level;
-	char spaces[16] = "                ";
+	char spaces[16] = "               ";
 
 	va_start(argptr,fmt);
 	Q_vsnprintf(msg, sizeof(msg), fmt, argptr);
@@ -129,28 +129,32 @@ void fs_hashtable_reset(fs_hashtable_t *hashtable, void (*free_entry)(fs_hashtab
 // Pk3 List
 /* ******************************************************************************** */
 
+// The pk3 list structure maps pk3 hashes to index value
+// First pk3 inserted has index 1, second pk3 has index 2, etc.
+// If same hash is inserted multiple times, the first index will be used
+
 void pk3_list_initialize(pk3_list_t *pk3_list, unsigned int bucket_count) {
 	FSC_ASSERT(pk3_list);
 	fs_hashtable_initialize(&pk3_list->ht, bucket_count); }
 
-void pk3_list_insert(pk3_list_t *pk3_list, unsigned int hash) {
-	pk3_list_entry_t *new_entry;
-	FSC_ASSERT(pk3_list);
-	new_entry = (pk3_list_entry_t *)S_Malloc(sizeof(pk3_list_entry_t));
-	fs_hashtable_insert(&pk3_list->ht, &new_entry->hte, hash);
-	new_entry->hash = hash;
-	new_entry->position = pk3_list->ht.element_count; }
-
-int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash, qboolean reverse) {
+int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash) {
 	fs_hashtable_iterator_t it;
 	pk3_list_entry_t *entry;
 	FSC_ASSERT(pk3_list);
 	it = fs_hashtable_iterate((fs_hashtable_t *)&pk3_list->ht, hash, qfalse);
 	while((entry = (pk3_list_entry_t *)fs_hashtable_next(&it))) {
 		if(entry->hash == hash) {
-			if(reverse) return pk3_list->ht.element_count - entry->position + 1;
 			return entry->position; } }
 	return 0; }
+
+void pk3_list_insert(pk3_list_t *pk3_list, unsigned int hash) {
+	pk3_list_entry_t *new_entry;
+	FSC_ASSERT(pk3_list);
+	if(pk3_list_lookup(pk3_list, hash)) return;
+	new_entry = (pk3_list_entry_t *)S_Malloc(sizeof(pk3_list_entry_t));
+	fs_hashtable_insert(&pk3_list->ht, &new_entry->hte, hash);
+	new_entry->hash = hash;
+	new_entry->position = pk3_list->ht.element_count; }
 
 void pk3_list_free(pk3_list_t *pk3_list) {
 	FSC_ASSERT(pk3_list);
@@ -255,7 +259,7 @@ void fs_print_file_location(const fsc_file_t *file) {
 
 static int get_pk3_list_position(const fsc_file_t *file) {
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
-	return pk3_list_lookup(&connected_server_pure_list, fsc_get_base_file(file, &fs)->pk3_hash, qfalse); }
+	return pk3_list_lookup(&connected_server_pure_list, fsc_get_base_file(file, &fs)->pk3_hash); }
 
 static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 	// Check if a file is disabled by inactive mod settings
@@ -270,7 +274,7 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 	if(level == 1) {
 		const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
 		if(base_file) {
-			if(pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash, qfalse)) return qfalse;
+			if(pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash)) return qfalse;
 			if(core_pk3_position(base_file->pk3_hash)) return qfalse; } }
 
 	return qtrue; }
@@ -334,7 +338,10 @@ static const unsigned char *get_string_sort_table(void) {
 
 static unsigned int server_pure_precedence(const fsc_file_t *file) {
 	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		return pk3_list_lookup(&connected_server_pure_list, fsc_get_base_file(file, &fs)->pk3_hash, qtrue); }
+		// Pure list stores pk3s by position, with index 1 at highest priority,
+		//   so index values need to be inverted to get precedence
+		unsigned int index = pk3_list_lookup(&connected_server_pure_list, fsc_get_base_file(file, &fs)->pk3_hash);
+		if(index) return ~index; }
 	return 0; }
 
 static unsigned int mod_dir_precedence(fs_modtype_t mod_type) {

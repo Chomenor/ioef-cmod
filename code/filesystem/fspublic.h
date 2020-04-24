@@ -296,9 +296,14 @@ DEF_PUBLIC( fileHandle_t fs_open_settings_file_write(const char *filename) )
 DEF_PUBLIC( fileHandle_t fs_open_global_settings_file_write(const char *filename) )
 #endif
 
-// Misc Handle Operations
+// Data reading operations
 DEF_PUBLIC( long FS_ReadFile(const char *qpath, void **buffer) )
 DEF_PUBLIC( void FS_FreeFile(void *buffer) )
+
+// "Read-back" tracking
+DEF_LOCAL( void fs_readback_tracker_reset(void) )
+
+// FS_FOpenFile functions
 DEF_PUBLIC( long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueFILE) )
 DEF_PUBLIC( fileHandle_t FS_FOpenFileWrite(const char *filename) )
 DEF_PUBLIC( fileHandle_t FS_FOpenFileAppend(const char *filename) )
@@ -307,6 +312,8 @@ DEF_PUBLIC( int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t 
 #ifdef CMOD_RESTRICT_VM_CFG_WRITE
 DEF_PUBLIC( fileHandle_t FS_FOpenConfigFileWrite(const char *filename) )
 #endif
+
+// Misc handle operations
 DEF_PUBLIC( long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) )
 DEF_PUBLIC( fileHandle_t FS_SV_FOpenFileWrite(const char *filename) )
 #ifdef CMOD_LOGGING
@@ -360,9 +367,8 @@ DEF_LOCAL( void fs_register_reference(const fsc_file_t *file) )
 DEF_PUBLIC( void FS_ClearPakReferences( int flags ) )
 DEF_PUBLIC( const char *FS_ReferencedPakNames( void ) )
 DEF_PUBLIC( const char *FS_ReferencedPakPureChecksums( void ) )
-DEF_PUBLIC( void fs_set_download_list(void) )
+DEF_PUBLIC( void fs_generate_reference_lists(void) )
 DEF_PUBLIC( fileHandle_t fs_open_download_pak(const char *path, unsigned int *size_out) )
-DEF_PUBLIC( void fs_set_pure_list(void) )
 #ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
 DEF_PUBLIC( void *cmod_fs_obtain_download_map(void) )
 DEF_PUBLIC( void cmod_fs_free_download_map(void *dlmap) )
@@ -374,7 +380,6 @@ DEF_PUBLIC( fileHandle_t cmod_fs_open_download_pak(const char *path, unsigned in
 /* ******************************************************************************** */
 
 // Indented debug prints
-
 DEF_LOCAL( void fs_debug_indent_start(void) )
 DEF_LOCAL( void fs_debug_indent_stop(void) )
 DEF_LOCAL( void QDECL FS_DPrintf(const char *fmt, ...) __attribute__ ((format (printf, 1, 2))) )
@@ -389,8 +394,8 @@ DEF_LOCAL( void fs_hashtable_reset(fs_hashtable_t *hashtable, void (*free_entry)
 
 // Pk3 List
 DEF_LOCAL( void pk3_list_initialize(pk3_list_t *pk3_list, unsigned int bucket_count) )
+DEF_LOCAL( int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash) )
 DEF_LOCAL( void pk3_list_insert(pk3_list_t *pk3_list, unsigned int hash) )
-DEF_LOCAL( int pk3_list_lookup(const pk3_list_t *pk3_list, unsigned int hash, qboolean reverse) )
 DEF_LOCAL( void pk3_list_free(pk3_list_t *pk3_list) )
 
 // Pk3 precedence functions

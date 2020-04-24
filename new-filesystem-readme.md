@@ -98,54 +98,86 @@ The memory cache is used to keep previously accessed files in memory for faster 
 
 # Download / Pure List Configuration
 
-Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow customizing which pk3s are added to the download and pure lists when running a server. Both cvars use a space-seperated list of selector rules that can be either specific pk3 names or one of the following keywords:
+Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow customizing which pk3s are added to the download and pure lists when running a server. Both cvars use a space-seperated list of selector rules that can be either specific pk3s in ```<mod>/<name>``` format or one of the following keywords:
 
-- *mod_paks - Selects all paks from the current active mod.
-- *base_paks - Selects all paks from com_basegame (baseq3).
-- *inactivemod_paks - Selects all paks in inactive mod directories (not baseq3 or the current mod) that are enabled by the fs_read_inactive_mods setting on the server. Under the default fs_read_inactive_mods setting of 1 this will select only the missionpack paks pak0-pak3.
-- *currentmap_pak - Selects the pak containing the bsp of the current running map.
-- *cgame_pak - Selects the pak containing the preferred cgame.qvm file.
-- *ui_pak - Selects the pak containing the preferred ui.qvm file.
-- *referenced_paks - Selects paks accessed during the loading process on the server.
+- ```#mod_paks``` - Selects all paks from the current active mod.
+- ```#base_paks``` - Selects all paks from com_basegame (baseq3).
+- ```#inactivemod_paks``` - Selects all paks in inactive mod directories (not baseq3 or the current mod) that are enabled by the fs_read_inactive_mods setting on the server. Under the default fs_read_inactive_mods setting of 1 this will select only the missionpack paks pak0-pak3.
+- ```#currentmap_pak``` - Selects the pak containing the bsp of the current running map.
+- ```#cgame_pak``` - Selects the pak containing the preferred cgame.qvm file.
+- ```#ui_pak``` - Selects the pak containing the preferred ui.qvm file.
+- ```#referenced_paks``` - Selects paks accessed during the loading process on the server.
 
-The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The *referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to the other rules and can be dropped without issue.
+### Default download manifest
+
+The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The #referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to the other rules and can be dropped without issue.
 ```
-set fs_download_manifest *mod_paks *cgame_pak *ui_pak *currentmap_pak *referenced_paks
+set fs_download_manifest #mod_paks #cgame_pak #ui_pak #currentmap_pak #referenced_paks
 ```
 
-Some server configurations have a lot of maps or optional mod files in the mod directory. This can lead to clients having too many files to download, since the default behavior is to place everything in the mod directory into the download list. To avoid this, you can specify only the core mod files that clients require instead of using the *mod_paks rule. For example, here is a reduced download manifest for the OSP mod.
+### Reduced download manifest example
+
+Some server configurations have a lot of maps or optional mod files in the mod directory. This can lead to clients having too many files to download, since the default behavior is to place everything in the mod directory into the download list. To avoid this, you can specify only the core mod files that clients require instead of using the #mod_paks rule. For example, here is a reduced download manifest for the OSP mod.
 ```
-set fs_download_manifest osp/zz-osp-pak3 osp/zz-osp-pak2 osp/zz-osp-pak1 osp/zz-osp-pak0 *currentmap_pak
+set fs_download_manifest osp/zz-osp-pak3 osp/zz-osp-pak2 osp/zz-osp-pak1 osp/zz-osp-pak0 #currentmap_pak
 ```
+
+### Default pure manifest
 
 The default pure manifest selects every pak normally available to the game.
 ```
-set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks
+set fs_pure_manifest #mod_paks #base_paks #inactivemod_paks
 ```
 
-Pure servers with a large number of pk3s in baseq3 (300+) can run into problems with the pure list overflowing. To avoid such issues you can replace the *base_baks rule in the pure manifest with specific core paks. Note that any auxiliary paks in baseq3 required by maps or mods, as well as optional content like player models, will need be included manually as well.
+### Reduced pure manifest example
+
+Pure servers with a large number of pk3s installed (e.g. 250+) can run into problems with the pure list overflowing. To avoid such issues you can replace the #base_baks rule in the pure manifest with specific core paks and add the #currentmap_pak to handle the current map. Note that any auxiliary paks in baseq3 required by maps or mods, as well as optional content like player models, will need be included manually as well.
 ```
-set fs_pure_manifest *mod_paks baseq3/pak8 baseq3/pak7 baseq3/pak6 baseq3/pak5 baseq3/pak4 baseq3/pak3 baseq3/pak2 baseq3/pak1 baseq3/pak0 *currentmap_pak
+set fs_pure_manifest #mod_paks baseq3/pak8 baseq3/pak7 baseq3/pak6 baseq3/pak5 baseq3/pak4 baseq3/pak3 baseq3/pak2 baseq3/pak1 baseq3/pak0 #currentmap_pak
 ```
 
 ## Advanced Features
 
-It is possible to specify pk3s by hash, to support conditions where the file may not physically exist on the server or may exist under a different name. If the file does not physically exist it can't be used for UDP downloads, but it can be used for pure lists and download lists on HTTP-only servers (with sv_dlURL active and sv_allowDownload set to 0). To use this feature, specify paks using the format [mod]/[name]:[hash]. The hash can be specified in either signed or unsigned integer format.
+### Block command
+
+In some cases it can be convenient to exclude a certain pk3 that would otherwise be selected by one or more rules within a manifest. This can be accomplished by using the "&block" command followed by a normal selector rule. All pk3s selected by the rule will be blocked, based on hash, from being selected by any subsequent rules. In this example, the "mod/somemap.pk3" file can be selected by the #currentmap_pak rule, but not subsequent rules such as #mod_paks because they come after the block command.
 ```
-set fs_pure_manifest *mod_paks *base_paks *inactivemod_paks baseq3/md3-bender:-722067772 baseq3/md3-laracroft:1134218139 baseq3/md3-spongebob:-871946717
+set fs_download_manifest #currentmap_pak &block mod/somemap #mod_paks #cgame_pak #ui_pak #referenced_paks
 ```
+It is also possible to clear the block list during manifest processing by using the "&block_reset" command.
+
+### Pk3 specifier wildcards
+
+Pk3 specifiers can contain wildcards to select a range of pk3s. Currently supported wildcards are '*' (matches 0 or more characters) and '?' (matches 1 character). This example shows a variation of the OSP mod download manifest using a wildcard. Warning: If your specifier happens to contain the character sequence ```/*``` you will need to enclose the manifest in quotes as shown here, or the set command will parse it as a comment.
+```
+set fs_download_manifest "osp/zz-osp-* #currentmap_pak"
+```
+
+### Manual hash specifiers
+
+It is possible to specify pk3s by hash, to support conditions where the file may not physically exist on the server or may exist under a different name. If the file does not physically exist it can't be used for UDP downloads, but it can be used for pure lists, as well as download lists on HTTP-only servers (e.g. with sv_dlURL active and sv_allowDownload set to 0). To use this feature, specify paks using the format ```<mod>/<name>:<hash>```. The hash can be specified in either signed or unsigned integer format.
+```
+set fs_pure_manifest #mod_paks #base_paks #inactivemod_paks baseq3/md3-bender:-722067772 baseq3/md3-laracroft:1134218139 baseq3/md3-spongebob:-871946717
+```
+
+### Cvar importing
+
+Manifests can import other cvars using the "&cvar_import" command followed by a cvar name. The contents of the specified cvar are parsed the same as if they were entered in the place of the &cvar_import command. This can be helpful for organization or to load certain commands in both the pure and download manifests. As a simple example the following commands are equivalent to the default pure manifest.
+```
+set custom_cvar #base_paks
+set fs_pure_manifest #mod_paks &cvar_import custom_cvar #inactivemod_paks
+```
+
+### Manual pure list ordering
 
 The order of the pure list determines the precedence of files on clients. Normally the server sorts the pure list according to filesystem precedence conventions, rather than the order in the pure manifest, but there may be special conditions where it is useful to force a certain order in the pure list. This can be accomplished by separating sections in the pure manifest with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering. Note that if the same pk3 is selected by multiple rules, its position will be determined by the first rule that selected it.
 ```
-set fs_pure_manifest baseq3/somefile - *mod_paks *base_paks *currentmap_pak
+set fs_pure_manifest baseq3/somefile - #mod_paks #base_paks #currentmap_pak
 ```
 
-In some cases it can be convenient to exclude a certain pk3 that would otherwise be selected by one or more rules within a manifest. This can be accomplished by using the "&exclude" command followed by a normal selector rule. All pk3s selected by the rule will be blocked, based on hash, from being selected by any subsequent rules. In this example, the "mod/somemap.pk3" file can be selected by the *currentmap_pak rule, but not subsequent rules such as *mod_paks because they come after the exclude command.
-```
-set fs_download_manifest *currentmap_pak &exclude mod/somemap *mod_paks *cgame_pak *ui_pak *referenced_paks
-```
+### Inactive mod directory support
 
-Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only supported to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
+Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only recommended to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
 
 # Source Directory Options
 

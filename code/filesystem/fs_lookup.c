@@ -91,7 +91,7 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
-			resource->server_pure_position = pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash, qfalse);
+			resource->server_pure_position = pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash);
 		if(base_file->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 
 		if(resource->mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
@@ -522,34 +522,22 @@ static void perform_lookup(const lookup_query_t *queries, int query_count, qbool
 				char buffer[FS_FILE_BUFFER_SIZE];
 				qboolean trusted_hash = fs_check_trusted_vm_file(selection_output.resources[i].file);
 				if(!trusted_hash) {
-					// Raise error if connected to pure server, otherwise just print a warning and skip
+					// Skip unstrusted hash
 					fs_file_to_buffer(selection_output.resources[i].file, buffer, sizeof(buffer),
 							qtrue, qtrue, qtrue, qfalse);
-					if(!com_sv_running->integer && fs_connected_server_pure_state()) {
-						free_selection_output(&selection_output);
-						Com_Error(ERR_DROP, "QVM file %s has an untrusted hash and was blocked due to your"
-								" fs_restrict_dlfolder setting. To remedy this, you may either:"
-								"\n- Move the pk3 out of the downloads folder. If you don't trust the server"
-								" you downloaded this file from, this may be a security risk."
-								"\n- Set fs_restrict_dlfolder to 0 to allow running all QVMs from"
-								" downloaded pk3s. This may lead to increased security risks.", buffer); }
 					Com_Printf("^3WARNING: QVM file %s has an untrusted hash and was blocked due to your"
-							" fs_restrict_dlfolder setting.\n", buffer);
+							" fs_restrict_dlfolder setting. You may need to move this pk3 out of the"
+							" downloads folder or set fs_restrict_dlfolder to 0 to play on this server."
+							" Note that these measures may increase security risks.\n", buffer);
 					continue; }
 				else if(fs_restrict_dlfolder->integer != 1) {
-					// Raise error if connected to pure server, otherwise just print a warning and skip
+					// Skip trusted hash as well with extra-restrictive fs_restrict_dlfolder setting
 					fs_file_to_buffer(selection_output.resources[i].file, buffer, sizeof(buffer),
 							qtrue, qtrue, qtrue, qfalse);
-					if(!com_sv_running->integer && fs_connected_server_pure_state()) {
-						free_selection_output(&selection_output);
-						Com_Error(ERR_DROP, "QVM file %s has a trusted hash but was blocked due to your"
-								" fs_restrict_dlfolder setting. To remedy this, you may either:"
-								"\n- Move the pk3 out of the downloads folder. If you don't trust the server"
-								" you downloaded this file from, this may be a security risk."
-								"\n- Set fs_restrict_dlfolder to 1 to allow running trusted QVMs from"
-								" downloaded pk3s.", buffer); }
 					Com_Printf("^3WARNING: QVM file %s has a trusted hash but was blocked due to your"
-							" fs_restrict_dlfolder setting.\n", buffer);
+							" fs_restrict_dlfolder setting. You may need to move this pk3 out of the"
+							" downloads folder or set fs_restrict_dlfolder to 0 to play on this server."
+							" Note that these measures may increase security risks.\n", buffer);
 					continue; } }
 
 			// Have non-blocked file

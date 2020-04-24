@@ -71,7 +71,6 @@ static const char *fs_valid_filename_char_table(void) {
 static qboolean fs_generate_path_element(fsc_stream_t *stream, const char *name, int flags) {
 	// Sanitize name of single file or directory and write to stream
 	// Returns qtrue on success, qfalse on error
-	int i;
 	char sanitized_path[MAX_SUBPATH_LENGTH];
 	int path_length;
 	fsc_stream_t path_stream = {sanitized_path, 0, sizeof(sanitized_path), 0};
@@ -81,15 +80,10 @@ static qboolean fs_generate_path_element(fsc_stream_t *stream, const char *name,
 	path_length = fsc_strlen(sanitized_path);	// Should equal path_stream.position, but recalculate to be safe
 	if(!path_length) return qfalse;
 
-	// Replace non-alphanumeric characters at beginning or end of string with underscores
-	// Exploits against OS-specific filename processing behavior often rely on symbols at beginning or end of filename
-	#define IS_ALPHANUMERIC(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9'))
-	for(i=0; i<path_length; ++i) {
-		if(IS_ALPHANUMERIC(sanitized_path[i])) break;
-		sanitized_path[i] = '_'; }
-	for(i=path_length-1; i>=0; --i) {
-		if(IS_ALPHANUMERIC(sanitized_path[i])) break;
-		sanitized_path[i] = '_'; }
+	// Also replace certain characters at beginning or end of string with underscores
+	#define INVALID_EDGE_CHAR(c) ((c) == ' ' || (c) == '.')
+	if(INVALID_EDGE_CHAR(sanitized_path[0])) sanitized_path[0] = '_';
+	if(INVALID_EDGE_CHAR(sanitized_path[path_length-1])) sanitized_path[path_length-1] = '_';
 
 	// Check for possible backwards path
 	if(strstr(sanitized_path, "..")) return qfalse;
@@ -130,11 +124,17 @@ static qboolean fs_generate_subpath(fsc_stream_t *stream, const char *path, int 
 		// Write each section of the path separated by slashes
 		char name[MAX_SUBPATH_LENGTH];
 		const char *path_ptr = path;
+		qboolean first_element = qtrue;
 		if(fsc_strlen(path) >= MAX_SUBPATH_LENGTH) return qfalse;
 		while(path_ptr) {
-			fsc_get_leading_directory(path_ptr, name, sizeof(name), &path_ptr);
-			if(!fs_generate_path_element(stream, name, flags)) return qfalse;
-			if(path_ptr) fsc_stream_append_string(stream, "/"); } }
+			if(!fsc_get_leading_directory(path_ptr, name, sizeof(name), &path_ptr)) {
+				// Ignore empty sections caused by excess slashes
+				continue; }
+			if(!first_element) fsc_stream_append_string(stream, "/");
+			if(!fs_generate_path_element(stream, name, flags)) {
+				// Abort on sanitize error
+				return qfalse; }
+			first_element = qfalse; } }
 
 	else {
 		// Write single path element
@@ -1199,44 +1199,105 @@ fileHandle_t fs_open_global_settings_file_write(const char *filename) {
 #endif
 
 /* ******************************************************************************** */
-// Misc Handle Operations
+// "Read-back" tracking
 /* ******************************************************************************** */
 
-static int fs_open_index_read_handle(const char *filename, fileHandle_t *handle, int lookup_flags, qboolean allow_direct_handle) {
-	// Can be called with a null filehandle pointer for a size/existance check
+// In rare cases, mods may attempt to read files that were just created by the mod/engine.
+//   This may fail if the file index is not refreshed after the file is created.
+// To handle this situation, this module stores a log of files written by the game since
+//   the last filesystem refresh. If a mod tries to open a file with the same path, a
+//   filesystem refresh will be performed ahead of the read operation.
+
+#define MAX_READBACK_TRACKER_ENTRIES 32
+static char *fs_readback_tracker_entries[MAX_READBACK_TRACKER_ENTRIES];
+static int fs_readback_tracker_entry_count = 0;
+
+static qboolean fs_readback_tracker_process_path(const char *path, qboolean insert) {
+	// Returns qtrue if path exists in registry, qfalse otherwise
+	// Set "insert" to qtrue to add path to registry
+	int i;
+	for(i=0; i<fs_readback_tracker_entry_count; ++i) {
+		if(!Q_stricmp(path, fs_readback_tracker_entries[i])) return qtrue; }
+	if(insert && fs_readback_tracker_entry_count < MAX_READBACK_TRACKER_ENTRIES) {
+		fs_readback_tracker_entries[fs_readback_tracker_entry_count++] = CopyString(path); }
+	return qfalse; }
+
+void fs_readback_tracker_reset(void) {
+	// Resets registry; should be called after filesystem refresh
+	int i;
+	for(i=0; i<fs_readback_tracker_entry_count; ++i) {
+		Z_Free(fs_readback_tracker_entries[i]); }
+	fs_readback_tracker_entry_count = 0; }
+
+/* ******************************************************************************** */
+// FS_FOpenFile Functions
+/* ******************************************************************************** */
+
+// The FS_FOpenFileByMode family of functions are accessed by both the engine and VM calls,
+//   and have some peculiar syntax and return values inherited from the original filesystem
+//   that need to be maintained for compatibility purposes.
+
+// FS_FOpenFileByMode with write-type mode (FS_WRITE, FS_APPEND, FS_APPEND_SYNC):
+//   On success, writes handle and returns 0
+//   On error, writes null handle and returns -1
+
+// FS_FOpenFileByMode with FS_READ and handle pointer set:
+//   On success, writes handle and returns file size value >= 0
+//   On error, writes null handle and returns -1
+
+// FS_FOpenFileByMode with FS_READ and null handle pointer (size check mode):
+//   If file invalid or doesn't exist, returns 0
+//   If file exists with size 0, returns 1
+//   If file exists with size > 0, returns size
+
+static int fs_fopenfile_read_handle_open(const char *filename, fileHandle_t *handle_out, int lookup_flags,
+		qboolean allow_direct_handle) {
+	// Can be called with null handle_out for a size/existance check
+	// Returns size according to original FS_FOpenFileReadDir conventions
 	const fsc_file_t *fscfile;
-	unsigned int size = 0;
+	int size = -1;
+	fileHandle_t handle = 0;
 
 	// Get the file
 	fscfile = fs_general_lookup(filename, lookup_flags, qfalse);
-	if(!handle) {
-		// Size check only; modify size as per original FS_FOpenFileReadDir
-		if(!fscfile || (long)(fscfile->filesize) < 0) return 0;
-		if((long)(fscfile->filesize) == 0) return 1;
-		return (long)(fscfile->filesize); }
-	if(!fscfile || (long)(fscfile->filesize) <= 0) {
-		*handle = 0;
-		return -1; }
+	if(!fscfile) goto finish;
 
-	// Get the handle
-	if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_PK3 && fscfile->filesize > 65536) {
-		*handle = fs_pk3_read_handle_open(fscfile);
-		size = fscfile->filesize; }
-	else if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_DIRECT && fscfile->filesize > 65536) {
-		*handle = fs_direct_read_handle_open(fscfile, 0, &size); }
+	// For most size-check cases we can just return the fsc filesize without trying to open the file
+	if(!handle_out && !(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_DIRECT)) {
+		size = (int)(fscfile->filesize);
+		goto finish; }
+
+	// Get the handle and size
+	if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_DIRECT) {
+		handle = fs_direct_read_handle_open(fscfile, 0, (unsigned int *)&size);
+		if(!handle) size = -1; }
+	else if(allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_PK3 && fscfile->filesize > 65536) {
+		handle = fs_pk3_read_handle_open(fscfile);
+		if(handle) size = (int)(fscfile->filesize); }
 	else {
-		*handle = fs_cache_read_handle_open(fscfile, 0, &size); }
-	if(!*handle) return -1;
+		handle = fs_cache_read_handle_open(fscfile, 0, (unsigned int *)&size);
+		if(!handle) size = -1; }
 
-	// Verify size is valid
-	if((long)size <= 0) {
-		fs_free_handle(*handle);
-		*handle = 0;
-		return -1; }
+	finish:
+	if(handle && size < 0) {
+		// This should be very unlikely, but if for some reason we got a handle with an invalid size,
+		// don't return it because it could cause bugs down the line
+		fs_handle_close(handle);
+		handle = 0;
+		size = -1; }
 
-	return (long)size; }
+	if(handle_out) {
+		// Caller wants to keep handle
+		*handle_out = handle; }
+	else {
+		// Size check only - modify size as per original FS_FOpenFileReadDir
+		if(size < 0) size = 0;
+		else if(size == 0) size = 1;
+		if(handle) fs_handle_close(handle); }
 
-static fileHandle_t fs_open_write_handle_path_gen(const char *mod_dir, const char *path, qboolean append,
+	return size; }
+
+static fileHandle_t fs_fopenfile_write_handle_open(const char *mod_dir, const char *path, qboolean append,
 		qboolean sync, int flags) {
 	// Includes directory creation and sanity checks
 	// Returns handle on success, null on error
@@ -1247,10 +1308,12 @@ static fileHandle_t fs_open_write_handle_path_gen(const char *mod_dir, const cha
 		if(fs_debug_fileio->integer) FS_DPrintf("WARNING: Failed to generate write path for %s/%s\n", mod_dir, path);
 		return 0; }
 
+	if(mod_dir) fs_readback_tracker_process_path(path, qtrue);
+
 	return fs_write_handle_open(full_path, append, sync); }
 
 static int FS_FOpenFileByModeGeneral(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
-	// Can be called with a null filehandle pointer for a size/existance check
+	// Can be called with a null filehandle pointer in read mode for a size/existance check
 	int size = 0;
 	fileHandle_t handle = 0;
 
@@ -1262,64 +1325,46 @@ static int FS_FOpenFileByModeGeneral(const char *qpath, fileHandle_t *f, fsMode_
 	if(mode == FS_READ) {
 		if(owner != FS_HANDLEOWNER_SYSTEM) {
 			int lookup_flags = 0;
+
+			if(fs_readback_tracker_process_path(qpath, qfalse)) {
+				// If file was potentially just written, run filesystem refresh to make sure it is registered
+				if(fs_debug_fileio->integer) {
+					FS_DPrintf("Running filesystem refresh due to recently written file %s\n", qpath); }
+				fs_refresh(qtrue); }
+
 			if(owner == FS_HANDLEOWNER_QAGAME) {
 				// Ignore pure list for server VM. This prevents the server mod from being affected
-				// by the pure list in a local game. Since the initial qagame init is done before the
-				// pure list setup, the behavior would be inconsistent anyway.
+				// by the pure list when running a local game with sv_pure enabled.
 				lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST; }
 			else {
-				// For other VMs, allow some of the extensions from the list in the original FS_FOpenFileReadDir
-				// to access direct sourcetype files regardless of pure mode, for compatibility purposes
-				// NOTE: Consider enabling this regardless of extension?
-				if(COM_CompareExtension(qpath, ".cfg") || COM_CompareExtension(qpath, ".menu") ||
-						COM_CompareExtension(qpath, ".game") || COM_CompareExtension(qpath, ".dat"))
-					lookup_flags |= LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE; }
+				// For other VMs, allow opening files on disk when pure. This is a bit more permissive than
+				// the original filesystem, which only allowed certain extensions, but this allows more
+				// flexibility for mods and shouldn't cause any problems.
+				lookup_flags |= LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE; }
 
-			if(((lookup_flags & (LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE)) ||
-					fs_connected_server_pure_state() != 1) && !COM_CompareExtension(qpath, ".arena") &&
-					!COM_CompareExtension(qpath, ".bot")) {
-				// Try to read directly from disk first, because some mods do weird things involving
-				// files that were just written/currently open that don't work with cache handles
-				char path[FS_MAX_PATH];
-				if(fs_generate_path_writedir(FS_GetCurrentGameDir(), qpath, 0, FS_ALLOW_DIRECTORIES,
-						path, sizeof(path))) {
-					handle = fs_direct_read_handle_open(0, path, (unsigned int *)&size); } }
-
-			// Use read with direct handle support option, to optimize for mods like UI Enhanced that do
-			// bulk .bsp handle opens on startup which would be very slow using normal cache handles
-			if(!handle) size = fs_open_index_read_handle(qpath, f ? &handle : 0, lookup_flags, qtrue); }
+			// Use read with direct handle support option, to ensure recently/actively written files
+			// on disk are opened properly, and to optimize for pk3 read operations that read only the
+			// beginning of the file (e.g. UI Enhanced mod doing bulk bsp reads on startup)
+			if(!handle) size = fs_fopenfile_read_handle_open(qpath, f ? &handle : 0, lookup_flags, qtrue); }
 
 		// Engine reads don't do anything fancy so just use the basic method
-		else size = fs_open_index_read_handle(qpath, f ? &handle : 0, 0, qfalse);
-
-		// Verify size is valid
-		if(size <= 0) {
-			if(handle) fs_free_handle(handle);
-			handle = 0;
-			size = -1; } }
+		else size = fs_fopenfile_read_handle_open(qpath, f ? &handle : 0, 0, qfalse); }
 	else if(mode == FS_WRITE) {
-		handle = fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qfalse, qfalse, 0); }
+		handle = fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), qpath, qfalse, qfalse, 0); }
 	else if(mode == FS_APPEND_SYNC) {
-		handle = fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qtrue, 0); }
+		handle = fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), qpath, qtrue, qtrue, 0); }
 	else if(mode == FS_APPEND) {
-		handle = fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), qpath, qtrue, qfalse, 0); }
+		handle = fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), qpath, qtrue, qfalse, 0); }
 	else {
 		Com_Error(ERR_DROP, "FS_FOpenFileByMode: bad mode"); }
 
 	if(f) {
 		// Caller wants to keep the handle
 		*f = handle;
-		if(handle) {
-			fs_handle_set_owner(handle, owner);
-			return size; }
-		else {
-			return -1; } }
-	else {
-		// Size check only; modify size as per original FS_FOpenFileReadDir
-		if(handle) fs_free_handle(handle);
-		if(size < 0) return 0;
-		if(size == 0) return 1;
-		return size; } }
+		if(handle) fs_handle_set_owner(handle, owner);
+		else size = -1; }
+
+	return size; }
 
 static const char *fs_mode_string(fsMode_t mode) {
 	if(mode == FS_READ) return "read";
@@ -1377,8 +1422,12 @@ int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
 #ifdef CMOD_RESTRICT_VM_CFG_WRITE
 fileHandle_t FS_FOpenConfigFileWrite(const char *filename) {
 	FSC_ASSERT(filename);
-	return fs_open_write_handle_path_gen(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
+	return fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
 #endif
+
+/* ******************************************************************************** */
+// Misc Handle Operations
+/* ******************************************************************************** */
 
 long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	int i;
@@ -1407,12 +1456,12 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 
 fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
 	FSC_ASSERT(filename);
-	return fs_open_write_handle_path_gen(0, filename, qfalse, qfalse, 0); }
+	return fs_fopenfile_write_handle_open(0, filename, qfalse, qfalse, 0); }
 
 #ifdef CMOD_LOGGING
 fileHandle_t FS_SV_FOpenFileAppend(const char *filename) {
 	FSC_ASSERT(filename);
-	return fs_open_write_handle_path_gen(0, filename, qtrue, qfalse, 0); }
+	return fs_fopenfile_write_handle_open(0, filename, qtrue, qfalse, 0); }
 #endif
 
 void FS_FCloseFile(fileHandle_t f) {

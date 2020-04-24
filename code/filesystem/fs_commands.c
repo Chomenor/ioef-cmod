@@ -192,7 +192,7 @@ static void FS_Path_f( void ) {
 					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count);
 					Com_Printf("    hash(%i) core_pk3_position(%i)\n", (int)pak->pk3_hash, core_pk3_position(pak->pk3_hash));
 					if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
-							pk3_list_lookup(&connected_server_pure_list, pak->pk3_hash, qfalse) ? "" : "not "); } } } }
+							pk3_list_lookup(&connected_server_pure_list, pak->pk3_hash) ? "" : "not "); } } } }
 
 	Com_Printf("\n");
 	fs_print_handle_list(); }
