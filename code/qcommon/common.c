@@ -348,6 +348,9 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		VM_Forced_Unload_Done();
 		FS_PureServerSetLoadedPaks("", "");
 		com_errorEntered = qfalse;
+#ifdef CMOD_ERROR_POPUP_FIXES
+		Cbuf_AddText(va("err_dialog \"%s\"\n", com_errorMessage));
+#endif
 		longjmp (abortframe, -1);
 	} else if ( code == ERR_NEED_CD ) {
 		VM_Forced_Unload_Start();

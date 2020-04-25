@@ -197,6 +197,9 @@
 // [BUGFIX] Increase concurrent sound limit to reduce rapidfire weapon stuttering
 #define CMOD_CONCURRENT_SOUNDS
 
+// [BUGFIX] Try to fix some issues with UI popup after errors
+#define CMOD_ERROR_POPUP_FIXES
+
 // [COMMON] New logging system
 // Currently used for server-side logging, but capable of supporting client-side
 // logging as well for debugging purposes

@@ -291,7 +291,11 @@ rescan:
 		// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=552
 		// allow server to indicate why they were disconnected
 #ifdef ELITEFORCE
+#ifdef CMOD_ERROR_POPUP_FIXES
+		Cbuf_AddText(va("err_dialog \"%s\"\n", Cmd_Argv(1)));
+#else
 		Cbuf_AddText(va("err_dialog \"%s\"", Cmd_Argv(1)));
+#endif
 #endif
 		if ( argc >= 2 )
 			Com_Error( ERR_SERVERDISCONNECT, "Server disconnected - %s", Cmd_Argv( 1 ) );
