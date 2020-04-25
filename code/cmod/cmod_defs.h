@@ -194,6 +194,9 @@
 // [BUGFIX] Extend some ioq3 overflow checks to EF-specific sections of msg.c
 #define CMOD_MSG_OVERFLOW_CHECKS
 
+// [BUGFIX] Increase concurrent sound limit to reduce rapidfire weapon stuttering
+#define CMOD_CONCURRENT_SOUNDS
+
 // [COMMON] New logging system
 // Currently used for server-side logging, but capable of supporting client-side
 // logging as well for debugging purposes

@@ -578,6 +578,10 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 		allowed = 8;
 	}
 
+#ifdef CMOD_CONCURRENT_SOUNDS
+	allowed *= 2;
+#endif
+
 	fullVolume = qfalse;
 	if (localSound || S_Base_HearingThroughEntity(entityNum, origin)) {
 		fullVolume = qtrue;
