@@ -83,6 +83,13 @@ In the original game, the console and chat font are displayed at a fixed size, u
 
 The setting "cmod_anti_burnin" can be used to fade the in-game HUD graphics, to reduce possible burn-in effects on OLED-type displays. Valid values range from 0 (disabled) to 1 (maximum).
 
+## Download Folder Support
+
+Two new settings are supported to customize pk3 download handling:
+
+- fs_saveto_dlfolder - When enabled (set to 1) this causes incoming downloads to be stored in the "downloads" folder in the target directory, e.g. baseEF/downloads. Pk3s in this folder are still loaded normally, but deprioritized compared to non-download pk3s. This can help organize downloads and reduce pk3 conflicts.
+- fs_restrict_dlfolder - When enabled (set to 1) this prevents certain types of content (cfg files and qvm files from untrusted mods) from being loaded from the downloads folder. Combined with fs_saveto_dlfolder, this setting can increase security when downloading from untrusted servers.
+
 ## Crosshair Handling
 
 cMod uses a new crosshair indexing system, which allows all the installed crosshairs to be accessed from the crosshair menu at once, and also adds new built-in crosshairs.

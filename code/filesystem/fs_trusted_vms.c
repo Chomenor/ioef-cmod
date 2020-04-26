@@ -30,10 +30,40 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //   does not necessarily mean it is even compatible with ioquake3, only that it belongs to a
 //   "legitimate" mod and is likely not malicious.
 
-#ifndef CMOD_DISABLE_QUAKE_VM_HASHES
 #define SHA(b0,b1,b2,b3,b4,b5,b6,b7) {0x##b0,0x##b1,0x##b2,0x##b3,0x##b4,0x##b5,0x##b6,0x##b7}
 
 static const unsigned int trusted_vms[][8] = {
+#ifdef ELITEFORCE
+	// Original Elite Force paks
+	SHA(3d825661,c2fcc6f9,329b6b31,998ab5f7,12cb334c,6e59b7f9,65ca3cf1,a4517f72),	// baseEF/pak2.pk3 cgame
+	SHA(b2f09c95,c37d3d67,69ad1735,b793bd99,b091028d,d3388bb3,929f8570,9e2a801d),	// baseEF/pak2.pk3 ui
+	SHA(8e6b83ee,28f46163,2358bed1,988b05fe,edd2679d,11027dd2,1c112060,212685e5),	// baseEF/pak2.pk3 qagame
+
+	// ioEF pak92.pk3 (https://www.gamefront.com/games/elite-force/file/ioef-v1-37-windows-installer-32-bit)
+	SHA(3ce42c12,42f5ca04,34372ae7,0222bb34,03d701e3,93b6f9cd,76ba288d,b5e3773c),	// baseEF/pak92.pk3 cgame
+	SHA(df6f3413,d62577eb,589a380f,165b4deb,196a564e,d4a5f9bd,9543e85a,6f41b274),	// baseEF/pak92.pk3 ui
+	SHA(46549106,4523e538,7408d826,17e1f164,f8be7002,665acbf9,5181c0d5,93fa0205),	// baseEF/pak92.pk3 qagame
+
+	// TOS Weapons 2 (https://www.gamefront.com/games/elite-force/file/tos-weapons-mod-2)
+	SHA(b2cc0953,61ae7249,088a2ce1,ff21d267,cbc5975e,35b3d93e,de0b49c1,c1828b17),	// tw2/pak0.pk3 cgame
+	SHA(27d81d9d,bbc7b496,18753383,e361eadd,8a93942c,f1d2583f,e54d383d,90460ec1),	// tw2/pak0.pk3 ui
+	SHA(dcfbc8d6,8d61d9ab,e95adec8,f52c5f7c,b06ffccf,68e66766,9c536a3f,960ca70e),	// tw2/pak0.pk3 qagame
+
+	// Team Elite 2.0 (https://www.gamefront.com/games/elite-force/file/team-elite)
+	SHA(e3bc9ce0,13ea3b83,16379573,44da9fb8,065277aa,7d5f1b0c,c768495d,7ae1a4f6),	// teamelite/teamelite.pk3 cgame
+	SHA(58d2401d,2058c17c,af0a3940,be6e9572,26fa874f,0b90c85e,14bf41a8,83ed2c54),	// teamelite/teamelite.pk3 ui
+	SHA(cd8d6e68,c8d23cf3,50350fde,25e8ba21,8f8d79c1,df8f82de,72ebfece,04161cec),	// teamelite/teamelite.pk3 qagame
+
+	// Super Mario Mod (https://www.gamefront.com/games/elite-force/file/super-mario-mod)
+	SHA(a172b8e8,c9b1cd62,9be3fa28,b85ef6e8,b11fb98f,4dfff54e,6d272c93,e13a11e7),	// marmod2/mariomod0.pk3 cgame
+	SHA(74fa7cf0,1a014558,9d630298,0652a476,516db5c7,8ace6556,b4caadb5,618165a2),	// marmod2/mariomod0.pk3 ui
+	SHA(29e2cf96,93519c8c,714466d9,99f74263,2dbaf851,2bf95e30,4cda5ef8,4ecc19d5),	// marmod2/mariomod0.pk3 qagame
+
+	// Xmas Mod (https://www.gamefront.com/games/elite-force/file/xmas-mod)
+	SHA(c60cd629,b05a4be7,05d0e939,21c928f9,7185d91a,2fa667d6,7cb80480,5bcb080e),	// XMasMod/xmas_pak0.pk3 cgame
+	SHA(75df17a5,b6716bfd,5554ad69,39b30467,7ee0f0a1,25f46dc4,ec2eb7aa,49f91b16),	// XMasMod/xmas_pak0.pk3 ui
+	SHA(4a39b6e1,b1359079,d2b3edce,8eab0610,8f87e10a,a04f4d79,5ade977a,64f88511),	// XMasMod/xmas_pak0.pk3 qagame
+#else
 	// Original Quake 3 VMs
 	SHA(4ea18569,bf56a282,d26dc89e,b9efcc5e,edbe0b69,c10182fc,38446174,c1e55b49),	// baseq3/pak8.pk3 cgame
 	SHA(3a6fd12b,889f5d35,df20a09b,51bf8eca,46966d01,4be55ffa,d38ddc2f,fb38c807),	// baseq3/pak8.pk3 ui
@@ -327,20 +357,16 @@ static const unsigned int trusted_vms[][8] = {
 	SHA(0370caba,bb1245d8,27190f6a,c944ae44,f7bb4964,01b07012,c64ddaf9,85eb6897),	// CorkScrew_216.pk3 cgame
 	SHA(e805c1d5,4a2b1fe2,33f0bb02,2e4c1a18,98ad6248,a7a3101a,1b233a11,6f2290c7),	// CorkScrew_216.pk3 ui
 	SHA(aaa3c7df,8656d11d,8caae055,b09a0759,4f99f840,410e6848,015d5fe2,6a498d9c),	// CorkScrew_216.pk3 qagame
-};
 #endif
+};
 
 qboolean fs_check_trusted_vm_hash(unsigned char *hash) {
 	// Returns qtrue if hash is trusted, qfalse otherwise
-#ifdef CMOD_DISABLE_QUAKE_VM_HASHES
-	// Hash list not yet implemented for EF
-#else
 	int i;
 	unsigned int int_hash[8];
 	for(i=0; i<8; ++i) int_hash[i] = (((unsigned int)(hash[4*i]))<<24) + (((unsigned int)(hash[4*i+1]))<<16) +
 			(((unsigned int)(hash[4*i+2]))<<8) + ((unsigned int)(hash[4*i+3]));
 	for(i=0; i<ARRAY_LEN(trusted_vms); ++i) if(!memcmp(int_hash, trusted_vms[i], 32)) return qtrue;
-#endif
 	return qfalse; }
 
 #endif	// NEW_FILESYSTEM

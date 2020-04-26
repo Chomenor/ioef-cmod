@@ -208,9 +208,6 @@
 // [COMMON] Add protections against VMs writing config files for security purposes
 #define CMOD_RESTRICT_VM_CFG_WRITE
 
-// [COMMON] Disable Quake 3-specific VM hash code in filesystem
-#define CMOD_DISABLE_QUAKE_VM_HASHES
-
 /* ******************************************************************************** */
 // Version Identification
 /* ******************************************************************************** */
