@@ -42,10 +42,8 @@
 #define CMOD_FRAMEBUFFER
 
 // [FEATURE] Support separate mode setting in windowed/fullscreen mode (r_mode and r_fullscreenMode)
-#define CMOD_FULLSCREEN
-
-// [COMMON] Fixes issues with CMOD_FULLSCREEN
-#define CMOD_IGNORE_RESIZE_MESSAGES
+// Also support directly specifying custom resolutions in r_mode and r_fullscreenMode
+#define CMOD_RESOLUTION_HANDLING
 
 // [FEATURE] Support scaling console/chat font with display resolution (controlled by cmod_font_scaling cvar)
 #define CMOD_FONT_SCALING
@@ -55,6 +53,9 @@
 
 // [FEATURE] Support fading HUD graphics to reduce potential burn-in on OLED displays
 #define CMOD_ANTI_BURNIN
+
+// [BUGFIX] Fixes potential vid restart loop issues (potentially related to r_fullscreenMode support)
+#define CMOD_IGNORE_RESIZE_MESSAGES
 
 // [BUGFIX] Fix potential graphics glitch during loading screen
 #define CMOD_LOADINGSCREEN_FIX

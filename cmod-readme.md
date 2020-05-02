@@ -34,13 +34,14 @@ If you are having trouble with framerates in cMod you can try lowering the graph
 
 ## Resolution Handling
 
-cMod uses separate mode settings for fullscreen and windowed display.
+cMod uses separate resolution mode settings for fullscreen and windowed display.
 
 - r_mode: Applies when display is in windowed mode (default 3).
 - r_fullscreenMode: Applies when display is in fullscreen mode (default -2).
 
 The most common values which you can use for these settings are as follows:
 
+- <width>x<height>: Specifies a specific custom resolution.
 - -2: Uses the current maximum resolution of your display.
 - -1: Uses the resolution specified by r_customWidth and r_customHeight.
 - 3: Uses a 640x480 resolution (the original EF default).

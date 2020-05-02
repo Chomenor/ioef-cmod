@@ -371,8 +371,14 @@ static void GLimp_ClearProcAddresses( void ) {
 GLimp_SetMode
 ===============
 */
+#ifdef CMOD_RESOLUTION_HANDLING
+static int GLimp_SetMode(const char *mode_string, qboolean fullscreen, qboolean noborder, qboolean fixedFunction)
+{
+	int mode = atoi(mode_string);
+#else
 static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qboolean fixedFunction)
 {
+#endif
 	const char *glstring;
 	int perChannelColorBits;
 	int colorBits, depthBits, stencilBits;
@@ -428,6 +434,38 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 				"Cannot determine display aspect, assuming 1.333\n" );
 	}
 
+#ifdef CMOD_RESOLUTION_HANDLING
+	if(strchr(mode_string, 'x') || strchr(mode_string, 'X')) {
+		// Read custom resolution string of format <width>x<height>
+		qboolean valid = qfalse;
+		char buffer[32];
+
+		Q_strncpyz(buffer, mode_string, sizeof(buffer));
+		char *x = strchr(buffer, 'x');
+		char *y = strchr(buffer, 'X');
+		if(!x || (y && y < x)) x = y;
+		if(x) {
+			*x = 0;
+			int width = atoi(buffer);
+			int height = atoi(x + 1);
+			if(width >= 100 && width <= 15360 && height >= 100 && height <= 15360) {
+				glConfig.vidWidth = width;
+				glConfig.vidHeight = height;
+				valid = qtrue; } }
+
+		if(valid) {
+			ri.Printf( PRINT_ALL, "...setting custom resolution mode %ix%i\n",
+				glConfig.vidWidth, glConfig.vidHeight); }
+		else {
+			glConfig.vidWidth = 640;
+			glConfig.vidHeight = 480;
+			ri.Printf( PRINT_ALL, "...invalid custom resolution mode '%s', using %ix%i instead\n",
+				mode_string, glConfig.vidWidth, glConfig.vidHeight); }
+
+		glConfig.windowAspect = (float)glConfig.vidWidth / (float)glConfig.vidHeight;
+		goto have_resolution; }
+#endif
+
 	ri.Printf (PRINT_ALL, "...setting mode %d:", mode );
 
 	if (mode == -2)
@@ -454,6 +492,10 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		return RSERR_INVALID_MODE;
 	}
 	ri.Printf( PRINT_ALL, " %d %d\n", glConfig.vidWidth, glConfig.vidHeight);
+
+#ifdef CMOD_RESOLUTION_HANDLING
+	have_resolution:;
+#endif
 
 	// Center window
 	if( r_centerWindow->integer && !fullscreen )
@@ -756,7 +798,11 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 GLimp_StartDriverAndSetMode
 ===============
 */
+#ifdef CMOD_RESOLUTION_HANDLING
+static qboolean GLimp_StartDriverAndSetMode(const char *mode, qboolean fullscreen, qboolean noborder, qboolean gl3Core)
+#else
 static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qboolean noborder, qboolean gl3Core)
+#endif
 {
 	rserr_t err;
 
@@ -994,9 +1040,9 @@ of OpenGL
 */
 void GLimp_Init( qboolean fixedFunction )
 {
-#ifdef CMOD_FULLSCREEN
+#ifdef CMOD_RESOLUTION_HANDLING
 	cvar_t *r_fullscreenMode = ri.Cvar_Get( "r_fullscreenMode", "-2", CVAR_ARCHIVE | CVAR_LATCH );
-	int mode;
+	const char *mode_string;
 #endif
 	ri.Printf( PRINT_DEVELOPER, "Glimp_Init( )\n" );
 
@@ -1013,15 +1059,15 @@ void GLimp_Init( qboolean fixedFunction )
 		ri.Cvar_Set( "com_abnormalExit", "0" );
 	}
 
-#ifdef CMOD_FULLSCREEN
-	mode = r_fullscreen->integer ? r_fullscreenMode->integer : r_mode->integer;
+#ifdef CMOD_RESOLUTION_HANDLING
+	mode_string = r_fullscreen->integer ? r_fullscreenMode->string : r_mode->string;
 #endif
 
 	ri.Sys_GLimpInit( );
 
 	// Create the window and set up the context
-#ifdef CMOD_FULLSCREEN
-	if(GLimp_StartDriverAndSetMode(mode, r_fullscreen->integer, r_noborder->integer, fixedFunction))
+#ifdef CMOD_RESOLUTION_HANDLING
+	if(GLimp_StartDriverAndSetMode(mode_string, r_fullscreen->integer, r_noborder->integer, fixedFunction))
 #else
 	if(GLimp_StartDriverAndSetMode(r_mode->integer, r_fullscreen->integer, r_noborder->integer, fixedFunction))
 #endif
@@ -1030,30 +1076,33 @@ void GLimp_Init( qboolean fixedFunction )
 	// Try again, this time in a platform specific "safe mode"
 	ri.Sys_GLimpSafeInit( );
 
-#ifdef CMOD_FULLSCREEN
-	if(GLimp_StartDriverAndSetMode(mode, r_fullscreen->integer, qfalse, fixedFunction))
+#ifdef CMOD_RESOLUTION_HANDLING
+	if(GLimp_StartDriverAndSetMode(mode_string, r_fullscreen->integer, qfalse, fixedFunction))
 #else
 	if(GLimp_StartDriverAndSetMode(r_mode->integer, r_fullscreen->integer, qfalse, fixedFunction))
 #endif
 		goto success;
 
 	// Finally, try the default screen resolution
-#ifdef CMOD_FULLSCREEN
-	if( mode != R_MODE_FALLBACK )
+#ifdef CMOD_RESOLUTION_HANDLING
+	if( strcmp(mode_string, XSTRING(R_MODE_FALLBACK)) )
+	{
+		ri.Printf( PRINT_ALL, "Setting r_mode '%s' failed, falling back on r_mode %d\n",
+				mode_string, R_MODE_FALLBACK );
+
+		if(GLimp_StartDriverAndSetMode(XSTRING(R_MODE_FALLBACK), qfalse, qfalse, fixedFunction))
+			goto success;
+	}
 #else
 	if( r_mode->integer != R_MODE_FALLBACK )
-#endif
 	{
 		ri.Printf( PRINT_ALL, "Setting r_mode %d failed, falling back on r_mode %d\n",
-#ifdef CMOD_FULLSCREEN
-				mode, R_MODE_FALLBACK );
-#else
 				r_mode->integer, R_MODE_FALLBACK );
-#endif
 
 		if(GLimp_StartDriverAndSetMode(R_MODE_FALLBACK, qfalse, qfalse, fixedFunction))
 			goto success;
 	}
+#endif
 
 	// Nothing worked, give up
 	ri.Error( ERR_FATAL, "GLimp_Init() - could not load OpenGL subsystem" );
@@ -1136,7 +1185,7 @@ void GLimp_EndFrame( void )
 	{
 		int         fullscreen;
 		qboolean    needToToggle;
-#ifndef CMOD_FULLSCREEN
+#ifndef CMOD_RESOLUTION_HANDLING
 		qboolean    sdlToggled = qfalse;
 #endif
 
@@ -1155,7 +1204,7 @@ void GLimp_EndFrame( void )
 
 		if( needToToggle )
 		{
-#ifndef CMOD_FULLSCREEN
+#ifndef CMOD_RESOLUTION_HANDLING
 			sdlToggled = SDL_SetWindowFullscreen( SDL_window, r_fullscreen->integer ) >= 0;
 
 			// SDL_WM_ToggleFullScreen didn't work, so do it the slow way
