@@ -1064,9 +1064,9 @@ special_cvar_t specials[] = {
 	{"s_sdlSpeed", "44100", CVARTYPE_NONE, 0},
 	{"com_altivec", "0", CVARTYPE_NONE, 0},
 	{"sv_master1", "master.stvef.org", CVARTYPE_NONE, 0},
-	{"sv_master2", "master.stef1.ravensoft.com", CVARTYPE_NONE, 0},
-	{"sv_master3", "efmaster.tjps.eu", CVARTYPE_NONE, 0},
-	{"sv_master4", "", CVARTYPE_NONE, 0},
+	{"sv_master2", "efmaster.tjps.eu", CVARTYPE_NONE, 0},
+	{"sv_master3", "master.stef1.daggolin.de", CVARTYPE_NONE, 0},
+	{"sv_master4", "master.stef1.ravensoft.com", CVARTYPE_NONE, 0},
 	{"sv_master5", "", CVARTYPE_NONE, 0},
 #ifdef DEDICATED
 	{"dedicated", "1", CVARTYPE_NONE, CVAR_NOARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
