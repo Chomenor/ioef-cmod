@@ -47,6 +47,10 @@ CVAR_DEF(cmod_anti_burnin, "0", CVAR_ARCHIVE);
 CVAR_DEF(cmod_log_flush, "1", 0)
 #endif
 
+#ifdef CMOD_MIN_SNAPS
+CVAR_DEF(sv_min_snaps, "50", CVAR_ARCHIVE);
+#endif
+
 #ifdef CMOD_MAP_SCRIPT
 CVAR_DEF(cmod_sv_mapscript_script, "", 0)
 CVAR_DEF(cmod_sv_mapscript_bsp_check, "1", 0)

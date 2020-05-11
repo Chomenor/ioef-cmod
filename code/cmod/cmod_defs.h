@@ -95,6 +95,10 @@
 // [FEATURE] Support for map index system
 #define CMOD_MAPTABLE
 
+// [FEATURE] Support minimium snaps value. This prevents older clients with low snaps
+// defaults from having impaired connections on servers with higher sv_fps settings.
+#define CMOD_MIN_SNAPS
+
 // [FEATURE] Support cvars to specify custom server bsp file, server aas file,
 // and server entity file (replaces the normal entities from the bsp)
 #define CMOD_MAP_SOURCE_OVERRIDE
