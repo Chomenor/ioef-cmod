@@ -41,7 +41,7 @@ cMod uses separate resolution mode settings for fullscreen and windowed display.
 
 The most common values which you can use for these settings are as follows:
 
-- <width>x<height>: Specifies a specific custom resolution.
+- \[width\]x\[height\]: Specifies a specific custom resolution.
 - -2: Uses the current maximum resolution of your display.
 - -1: Uses the resolution specified by r_customWidth and r_customHeight.
 - 3: Uses a 640x480 resolution (the original EF default).
@@ -54,7 +54,7 @@ The following are some of the main settings that can be used to adjust the brigh
 
 - r_mapLightingGamma: Performs a gamma-style adjustment on map lighting intensity. Values over 1 increase the map lighting levels on a curve, increasing the midrange levels without changing the minimum and maximum levels. Current default value is 1 (no change). Reasonable values for this setting range from 1.0 to around 2.0.
 
-- r_mapLightingFactor: Performs a linear scaling on map lighting intensity. If any rgb component is scaled passed the maximum, values are scaled back so the highest component equals the maximum. Current default is 2 (EF standard). Values from around 2.5 to 8 can reasonably be used to increase brightness. Note while this setting has very good results brightening some maps, it is relatively inconsistent between maps, so use with caution.
+- r_mapLightingFactor: Performs a linear scaling on map lighting intensity. If any rgb component is scaled passed the maximum, values are scaled back so the highest component equals the maximum. Current default is 2 (EF standard). Values from around 2.5 to 5 can reasonably be used to increase brightness. Note while this setting has good results brightening some maps, it is relatively inconsistent between maps, so use with caution.
 
 - r_mapLightingClampMin: Sets the minimum lighting intensity (per rgb component), on a scale from 0 to 1. This can be used to force a minimum lighting level in maps. The default setting is 0. A value around 0.2 can be used to make the darkest parts of maps brighter without affecting the rest of the map.
 
@@ -91,15 +91,15 @@ Two new settings are supported to customize pk3 download handling:
 - fs_saveto_dlfolder - When enabled (set to 1) this causes incoming downloads to be stored in the "downloads" folder in the target directory, e.g. baseEF/downloads. Pk3s in this folder are still loaded normally, but deprioritized compared to non-download pk3s. This can help organize downloads and reduce pk3 conflicts.
 - fs_restrict_dlfolder - When enabled (set to 1) this prevents certain types of content (cfg files and qvm files from untrusted mods) from being loaded from the downloads folder. Combined with fs_saveto_dlfolder, this setting can increase security when downloading from untrusted servers.
 
+## Mouse Input Mode
+
+By default, cMod tries to use raw input mode for mouse input, which bypasses OS acceleration settings and is generally more accurate for FPS games. If you prefer to make the mouse input work the same as older versions of EF, try setting in_mouse_warping to 1 and restart cMod.
+
 ## Crosshair Handling
 
 cMod uses a new crosshair indexing system, which allows all the installed crosshairs to be accessed from the crosshair menu at once, and also adds new built-in crosshairs.
 
 If you encounter crosshair-related issues, you can try disabling this feature by setting cmod_crosshair_enable to 0.
-
-## Mouse Input Mode
-
-By default, cMod tries to use raw input mode for mouse input, which bypasses OS acceleration settings and is generally more accurate for FPS games. If you prefer to make the mouse input work the same as older versions of EF, try setting in_mouse_warping to 1 and restart cMod.
 
 ## Console Key Notes
 
@@ -107,17 +107,51 @@ There are currently some issues with the console-opening key on non-English keyb
 
 # Server
 
-It is possible to use cMod for hosting servers, but this is currently very experimental. Let me know if you encounter any bugs. I hope to add more features, documentation, and server config templates in the future.
+The separate dedicated server application is recommended for hosting servers. You can use the binaries included in the zip releases or compile your own builds. Dedicated server support in cMod is currently experimental; let me know if you encounter any bugs or issues.
 
-## Usage
+## Settings Handling
 
-The separate dedicated server application is recommended for hosting servers. The binaries are included in the zip releases, or you can compile it yourself.
+The cMod dedicated server builds do not automatically load any settings files, such as cmod.cfg, hmconfig.cfg, or autoexec.cfg. No settings files are automatically written either. The dedicated server is meant to be launched with a startup config file manually specified on the command line. For example, if your startup config is located at baseEF/startup.cfg, you can use a command such as this to start the server:
+
+```./cmod_dedicated.x86_64 +exec startup```
+
+## Source Directory Handling
+
+By default the dedicated server uses the same homepath/basepath configuration as the client, which may not be ideal for server configurations. However the default can easily be overridden on the command line. For example, this command sets a single absolute path to use as the filesystem root.
+
+```./cmod_dedicated.x86_64 +set fs_dirs *fs_basepath +set fs_basepath /home/efuser/efinstall +exec startup```
+
+In that example, the startup.cfg file would be expected to be in a location such as ```/home/efuser/efinstall/baseEF/startup.cfg```. For more detailed information about the source directory configuration options, refer to the filesystem documentation [here](new-filesystem-readme.md#source-directory-options).
+
+## Mod Directory Handling
+
+As with the client, the cMod dedicated server has special prioritization of the Raven paks (pak0 - pak3) in the baseEF folder. Therefore some mod loading methods involving baseEF may not work in cMod. The following methods are recommended to correctly load mods on cMod servers and should work for most mods.
+
+### Server-Side Mods
+
+If you have a mod that is entirely server-side, such as Gladiator, EFAdmin, and many other mods, or a custom mod that you compiled yourself, then follow these steps for loading the mod.
+
+- Create a directory called "basemod" alongside baseEF in your server install directory. This directory is handled specially by cMod so that its contents override baseEF.
+- If your mod consists of one or more pk3 files, simply place them in the basemod folder.
+- If your mod consists of a qagame.qvm file, place it in the following location: "basemod/vm/qagame.qvm"
+- Don't set any fs_game setting on the command line.
+
+Although the fs_game method below should work as well, the above approach is preferred for server-side mods because it avoids some unwanted side effects on clients that can be caused by changing fs_game.
+
+### Client-Side Mods
+
+If you have a client-side mod that depends on certain pk3s being loaded on the client, use the standard method of mod loading, which involves setting fs_game.
+
+- Extract the mod so that it is saved to a directory alongside baseEF in your server install directory.
+- Load the mod by including ```+set fs_game [mod-directory]``` in the server startup command.
+
+If your server supports downloads (sv_allowDownload enabled) all pk3s in the mod directory will be included by default in the list of pk3s to be downloaded to clients.
 
 ## Server-Side Recording
 
 This feature is used to record games on a server. The recordings are created in a custom format which stores the game from every player's perspective, and can be converted to the standard demo format for playback later.
 
-To enable recording, set record_auto_recording to 1. The recording will automatically start when players connect to the server, and stop when all players have disconnected. You can also manually start and stop recording for a single game by using the "record_start" and "record_stop" commands. Records are stored as .rec files sorted by date and time under the "records" directory where the server is running.
+To enable recording, set record_auto_recording to 1. The recording will automatically start when players connect to the server, and stop when all players have disconnected. You can also manually start and stop recording for a single game by using the "record_start" and "record_stop" commands. Records are stored as .rec files sorted by date and time under the "records" folder in the server directory.
 
 To view the available demos that can be extracted from a certain .rec file, use the record_scan <filename> command, where the filename is the path to the file within the records directory. Example: "record_scan 2018-02-08/16-07-27.rec". The output shows the client number and instance numbers. The client number is the number assigned to the client when they connected to the server. The instance numbers differentiate sessions when a client reconnected during a recording session, or one client disconnected and another client connected and was assigned the same number.
 
