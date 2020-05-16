@@ -71,6 +71,7 @@ struct {
 	{-834364908, {2.0f, 0.5f, 0.0f}},		// ethora
 	{-1862613250, {2.0f, 0.5f, 0.0f}},		// goththang
 	{-383639493, {1.0f, 0.4f, 0.0f}},		// helmsdeep
+	{-1201980974, {2.5f, 0.5f, 0.0f}},		// ctf_kln4
 };
 
 static qboolean check_brightshift_hash(int hash) {
