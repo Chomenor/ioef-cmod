@@ -441,13 +441,13 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		char buffer[32];
 
 		Q_strncpyz(buffer, mode_string, sizeof(buffer));
-		char *x = strchr(buffer, 'x');
-		char *y = strchr(buffer, 'X');
-		if(!x || (y && y < x)) x = y;
-		if(x) {
-			*x = 0;
+		char *sep = strchr(buffer, 'x');
+		char *sep2 = strchr(buffer, 'X');
+		if(!sep || (sep2 && sep2 < sep)) sep = sep2;
+		if(sep) {
+			*sep = 0;
 			int width = atoi(buffer);
-			int height = atoi(x + 1);
+			int height = atoi(sep + 1);
 			if(width >= 100 && width <= 15360 && height >= 100 && height <= 15360) {
 				glConfig.vidWidth = width;
 				glConfig.vidHeight = height;
@@ -837,7 +837,11 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 			ri.Printf( PRINT_ALL, "...WARNING: fullscreen unavailable in this mode\n" );
 			return qfalse;
 		case RSERR_INVALID_MODE:
+#ifdef CMOD_RESOLUTION_HANDLING
+			ri.Printf( PRINT_ALL, "...WARNING: could not set the given mode (%s)\n", mode );
+#else
 			ri.Printf( PRINT_ALL, "...WARNING: could not set the given mode (%d)\n", mode );
+#endif
 			return qfalse;
 		default:
 			break;
