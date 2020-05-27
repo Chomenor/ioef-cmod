@@ -412,18 +412,18 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	Com_Printf ("------ Server Initialization ------\n");
 	Com_Printf ("Server: %s\n",server);
 
-#ifdef NEW_FILESYSTEM
-	// This is sometimes called in CL_MapLoading->CL_Disconnect, but not in the case
-	// of a previous local game, so do it here to be safe
-	fs_disconnect_cleanup();
-#endif
-
 	// if not running a dedicated server CL_MapLoading will connect the client to the server
 	// also print some status stuff
 	CL_MapLoading();
 
 	// make sure all the client stuff is unloaded
 	CL_ShutdownAll(qfalse);
+
+#ifdef NEW_FILESYSTEM
+	// This is sometimes called in CL_MapLoading->CL_Disconnect, but not in the case
+	// of a previous local game, so do it here to be safe
+	fs_disconnect_cleanup();
+#endif
 
 	// clear the whole hunk because we're (re)loading the server
 	Hunk_Clear();

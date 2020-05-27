@@ -158,7 +158,7 @@ DEF_PUBLIC( void fs_register_current_map(const char *name) )
 DEF_PUBLIC( void fs_set_connected_server_sv_pure_value(int sv_pure) )
 DEF_PUBLIC( void FS_PureServerSetLoadedPaks(const char *hash_list, const char *name_list) )
 DEF_PUBLIC( void fs_disconnect_cleanup(void) )
-DEF_PUBLIC( void fs_set_mod_dir(const char *value, qboolean move_pid) )
+DEF_PUBLIC( void fs_update_mod_dir(qboolean move_pid) )
 DEF_PUBLIC( qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) )
 
 // Filesystem Refresh

@@ -137,33 +137,26 @@ void fs_disconnect_cleanup(void) {
 	if(fs_debug_state->integer) Com_Printf("fs_state: disconnect cleanup\n   > current_map_pk3 cleared"
 		"\n   > connected_server_sv_pure set to 0\n   > connected_server_pure_list cleared\n"); }
 
-static void generate_current_mod_dir(const char *source, char *target) {
-	// Converts mod dir to format used in current_mod_dir, with com_basegame and basemod
-	//   replaced by empty string
-	// Target should be size FSC_MAX_MODDIR
-	fs_sanitize_mod_dir(source, target);
-	if(!Q_stricmp(target, "basemod")) *target = 0;
-	if(!Q_stricmp(target, com_basegame->string)) *target = 0; }
-
-static qboolean matches_current_mod_dir(const char *mod_dir) {
-	char generated_mod_dir[FSC_MAX_MODDIR];
-	generate_current_mod_dir(mod_dir, generated_mod_dir);
-	return strcmp(current_mod_dir, generated_mod_dir) ? qfalse : qtrue; }
-
 #ifndef STANDALONE
 void Com_AppendCDKey( const char *filename );
 void Com_ReadCDKey( const char *filename );
 #endif
 
-void fs_set_mod_dir(const char *value, qboolean move_pid) {
+void fs_update_mod_dir(qboolean move_pid) {
+	// Updates current_mod_dir with current fs_game value
 	char old_pid_dir[FSC_MAX_MODDIR];
 	Q_strncpyz(old_pid_dir, fs_pid_file_directory(), sizeof(old_pid_dir));
 
-	// Set current_mod_dir
-	generate_current_mod_dir(value, current_mod_dir);
+	// Update current_mod_dir and convert basegame to empty value
+	Cvar_Get("fs_game", "", 0);		// make sure unlatched
+	fs_sanitize_mod_dir(fs_game->string, current_mod_dir);
+	if(!Q_stricmp(current_mod_dir, "basemod")) current_mod_dir[0] = 0;
+	if(!Q_stricmp(current_mod_dir, com_basegame->string)) current_mod_dir[0] = 0;
 
 	// Move pid file to new mod dir if necessary
 	if(move_pid && strcmp(old_pid_dir, fs_pid_file_directory())) {
+		if(fs_debug_state->integer) Com_Printf("fs_state: switching PID file from %s to %s\n",
+			old_pid_dir, fs_pid_file_directory());
 		Sys_RemovePIDFile(old_pid_dir);
 		Sys_InitPIDFile(fs_pid_file_directory()); }
 
@@ -179,13 +172,21 @@ void fs_set_mod_dir(const char *value, qboolean move_pid) {
 			*current_mod_dir ? current_mod_dir : "<none>"); }
 
 qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) {
-	// This is used to activate a new mod dir, using a game restart if necessary to load
-	// new settings. It also sets the checksum feed (used for pure validation) and clears
-	// references from previous maps.
+	// Updates the current mod dir, using a game restart if necessary to load new settings.
+	// Also set the checksum feed (used for pure validation) and clear references
+	// from previous maps.
 	// Returns qtrue if restarting due to changed mod dir, qfalse otherwise
+	char old_mod_dir[FSC_MAX_MODDIR];
+	Q_strncpyz(old_mod_dir, current_mod_dir, sizeof(old_mod_dir));
+
 	if(fs_debug_state->integer) Com_Printf("fs_state: FS_ConditionalRestart invoked\n");
+
+	// Perform some state stuff traditionally done in this function
 	FS_ClearPakReferences(0);
 	checksum_feed = checksumFeed;
+
+	// Update mod dir
+	fs_update_mod_dir(qtrue);
 
 	// Check for default.cfg here and attempt an ERR_DROP if it isn't found, to avoid getting
 	// an ERR_FATAL later due to broken pure list
@@ -193,12 +194,10 @@ qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) {
 		Com_Error(ERR_DROP, "Failed to find default.cfg, assuming invalid configuration"); }
 
 	// Check if we need to do a restart to load new config files
-	if(fs_mod_settings->integer && !matches_current_mod_dir(fs_game->string)) {
+	if(fs_mod_settings->integer && strcmp(current_mod_dir, old_mod_dir)) {
 		Com_GameRestart(checksumFeed, disconnect);
 		return qtrue; }
 
-	// Just update the mod dir
-	fs_set_mod_dir(fs_game->string, qtrue);
 	return qfalse; }
 
 /* ******************************************************************************** */
@@ -490,7 +489,7 @@ void fs_startup(void) {
 	fs_initialize_index();
 
 	fs_game = Cvar_Get("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO);
-	fs_set_mod_dir(fs_game->string, qfalse);
+	fs_update_mod_dir(qfalse);
 
 	Com_Printf("\n");
 	if(fs_filesystem_refresh_tracked() && fs_index_cache->integer && !fs_read_only) {
