@@ -488,7 +488,11 @@ void fs_startup(void) {
 	fs_initialize_sourcedirs();
 	fs_initialize_index();
 
+#ifdef DEDICATED
+	fs_game = Cvar_Get("fs_game", "", CVAR_LATCH|CVAR_SYSTEMINFO);
+#else
 	fs_game = Cvar_Get("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO);
+#endif
 	fs_update_mod_dir(qfalse);
 
 	Com_Printf("\n");

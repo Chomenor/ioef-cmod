@@ -423,6 +423,11 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	// This is sometimes called in CL_MapLoading->CL_Disconnect, but not in the case
 	// of a previous local game, so do it here to be safe
 	fs_disconnect_cleanup();
+
+#ifdef DEDICATED
+	// Update mod directory in case fs_game was changed
+	fs_update_mod_dir(qtrue);
+#endif
 #endif
 
 	// clear the whole hunk because we're (re)loading the server
