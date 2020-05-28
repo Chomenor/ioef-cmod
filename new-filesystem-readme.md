@@ -193,23 +193,6 @@ Examples:
 - +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain files with the same name.
 - +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
 
-## Auxiliary Source Directories
-
-This is an advanced feature that allows source directories to be loaded, but with restricted effects on the game. It is primarily intended for server hosting configurations. An auxiliary source directory has the following properties:
-
-- For file reading operations, auxiliary source directories are strictly prioritized below non-auxiliary directories, even if the auxiliary directory contains a higher precedence mod directory or pk3 filename.
-- For file listing operations, auxiliary source directories are excluded entirely.
-- Auxiliary source directories do not affect the default order for pure list generation. Pk3s in auxiliary source directories are prioritized normally alongside other pk3s for pure server purposes.
-
-Auxiliary source directories can be useful in the following cases:
-
-- To prevent map pk3s from adding bots or causing conflicts with the server configuration. This can be especially useful for servers with hundreds or thousands of map pk3s installed, which may not be well vetted to be free of conflicts.
-- To include client mod pk3s needed for the pure or download list without allowing them to modify the configuration of the server itself.
-
-To specify an auxiliary source directory, include a number sign (#) in front of the directory name in fs_dirs. Example:
-
-+set fs_dirs *fs_basepath #fs_auxiliary +set fs_auxiliary /home/user/q3auxiliary
-
 # Servercfg Support
 
 The servercfg system provides some advanced features to help control the local configuration of servers, separate from client-linked settings such as fs_game. It is currently only supported for servers using the dedicated server binary.

@@ -267,7 +267,6 @@ void fs_initialize_sourcedirs(void) {
 	while(1) {
 		qboolean write_flag = qfalse;
 		qboolean write_dir = qfalse;
-		qboolean auxiliary_dir = qfalse;
 		const char *token;
 		const char *path;
 
@@ -275,12 +274,11 @@ void fs_initialize_sourcedirs(void) {
 		token = COM_ParseExt(&fs_dirs_ptr, qfalse);
 		if(!*token) break;
 
-		// Process prefixes
-		while(*token == '*' || *token == '#') {
-			if(*token == '*') write_flag = qtrue;
-			if(*token == '#') auxiliary_dir = qtrue;
-			++token; }
-		if(!*token) continue;
+		// Process writable flag
+		if(*token == '*') {
+			write_flag = qtrue;
+			++token;
+			if(!*token) continue; }
 
 		// Determine path from cvar
 		path = Cvar_VariableString(token);
@@ -309,7 +307,7 @@ void fs_initialize_sourcedirs(void) {
 
 		// Create entry in available slot
 		temp_dirs[i] = (temp_source_directory_t){
-			{CopyString(token), CopyString(path), qtrue, auxiliary_dir}, i, write_dir}; }
+			{CopyString(token), CopyString(path), qtrue}, i, write_dir}; }
 
 	// Sort temp_dirs
 	qsort(temp_dirs, ARRAY_LEN(temp_dirs), sizeof(*temp_dirs), compare_temp_source_dirs_qsort);
@@ -325,8 +323,8 @@ void fs_initialize_sourcedirs(void) {
 	// Transfer entries from temp_dirs to fs_sourcedirs
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		fs_sourcedirs[i] = temp_dirs[i].s;
-		if(fs_sourcedirs[i].active) Com_Printf("Source directory %i%s: %s (%s)\n", i+1,
-				fs_sourcedirs[i].auxiliary ? " [AUX]" : "", fs_sourcedirs[i].name, fs_sourcedirs[i].path); } }
+		if(fs_sourcedirs[i].active) Com_Printf("Source directory %i: %s (%s)\n", i+1,
+				fs_sourcedirs[i].name, fs_sourcedirs[i].path); } }
 
 /* ******************************************************************************** */
 // Filesystem Refresh

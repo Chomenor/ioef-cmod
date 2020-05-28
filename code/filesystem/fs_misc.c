@@ -349,12 +349,6 @@ int fs_file_disabled(const fsc_file_t *file, int checks) {
 				fs_read_inactive_mods->integer : fs_list_inactive_mods->integer;
 		if(inactive_mod_file_disabled(file, list_inactive_mods_level, qfalse)) return FD_CHECK_LIST_INACTIVE_MODS; }
 
-	// List auxiliary sourcedir check - blocks files from auxiliary source directories for file listing
-	if(checks & FD_CHECK_LIST_AUXILIARY_SOURCEDIR) {
-		const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
-		if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !get_pk3_list_position(file)) {
-			return FD_CHECK_LIST_AUXILIARY_SOURCEDIR; } }
-
 	// Servercfg list limit check - blocks files restricted by fs_servercfg_listlimit for file listing
 #ifdef FS_SERVERCFG_ENABLED
 	if((checks & FD_CHECK_LIST_SERVERCFG_LIMIT) && fs_servercfg_listlimit->integer &&
