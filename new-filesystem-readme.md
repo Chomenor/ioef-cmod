@@ -114,11 +114,11 @@ Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow
 - ```#currentmap_pak``` - Selects the pak containing the bsp of the current running map.
 - ```#cgame_pak``` - Selects the pak containing the preferred cgame.qvm file.
 - ```#ui_pak``` - Selects the pak containing the preferred ui.qvm file.
-- ```#referenced_paks``` - Selects paks accessed during the loading process on the server.
+- ```#referenced_paks``` - Selects paks accessed during the loading process on the server. Only selects paks from com_basegame (baseq3) and mod directories, not inactive mods or servercfg directories.
 
 #### Default download manifest
 
-The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The #referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to the other rules and can be dropped without issue.
+The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The #referenced_paks rule is currently added for potential mod compatibility reasons, but in most cases is redundant to the other rules and can be dropped without issue.
 ```
 set fs_download_manifest #mod_paks #cgame_pak #ui_pak #currentmap_pak #referenced_paks
 ```

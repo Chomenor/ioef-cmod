@@ -539,6 +539,9 @@ static void refset_add_referenced_paks(reference_set_work_t *rsw) {
 	fs_hashtable_iterator_t it = fs_hashtable_iterate(&reference_tracker, 0, qtrue);
 	reference_tracker_entry_t *entry;
 	while((entry = (reference_tracker_entry_t *)fs_hashtable_next(&it))) {
+		// The #referenced_paks rule explicitly excludes paks not in basegame or mod directories,
+		// regardless of fs_read_inactive_mods or servercfg directory status
+		if(fs_get_mod_type(fsc_get_mod_dir(entry->pak, &fs)) <= MODTYPE_INACTIVE) continue;
 		refset_insert_pak(rsw, entry->pak); } }
 
 static void refset_add_pak_containing_file(reference_set_work_t *rsw, const char *name) {
@@ -571,7 +574,7 @@ static void refset_add_paks_by_category(reference_set_work_t *rsw, pakcategory_t
 		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
 		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
 			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
-			// The *inactivemod_paks rule explicitly follows the fs_read_inactive_mods setting in order for
+			// The #inactivemod_paks rule explicitly follows the fs_read_inactive_mods setting in order for
 			//    fs_read_inactive_mods to work in the expected way when using the default pure manifest
 			// Note: Pure list from a previous client session should be cleared at this point in the map load process,
 			//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
