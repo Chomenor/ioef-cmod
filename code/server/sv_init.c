@@ -426,7 +426,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 
 #ifdef DEDICATED
 	// Update mod directory in case fs_game was changed
-	fs_update_mod_dir(qtrue);
+	fs_update_mod_dir();
 #endif
 #endif
 

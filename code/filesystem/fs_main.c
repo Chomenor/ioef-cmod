@@ -142,7 +142,7 @@ void Com_AppendCDKey( const char *filename );
 void Com_ReadCDKey( const char *filename );
 #endif
 
-void fs_update_mod_dir(qboolean move_pid) {
+static void fs_update_mod_dir_ext(qboolean move_pid) {
 	// Updates current_mod_dir with current fs_game value
 	char old_pid_dir[FSC_MAX_MODDIR];
 	Q_strncpyz(old_pid_dir, fs_pid_file_directory(), sizeof(old_pid_dir));
@@ -171,6 +171,9 @@ void fs_update_mod_dir(qboolean move_pid) {
 	if(fs_debug_state->integer) Com_Printf("fs_state: current_mod_dir set to %s\n",
 			*current_mod_dir ? current_mod_dir : "<none>"); }
 
+void fs_update_mod_dir(void) {
+	fs_update_mod_dir_ext(qtrue); }
+
 qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) {
 	// Updates the current mod dir, using a game restart if necessary to load new settings.
 	// Also set the checksum feed (used for pure validation) and clear references
@@ -186,7 +189,7 @@ qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) {
 	checksum_feed = checksumFeed;
 
 	// Update mod dir
-	fs_update_mod_dir(qtrue);
+	fs_update_mod_dir();
 
 	// Check for default.cfg here and attempt an ERR_DROP if it isn't found, to avoid getting
 	// an ERR_FATAL later due to broken pure list
@@ -493,7 +496,7 @@ void fs_startup(void) {
 #else
 	fs_game = Cvar_Get("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO);
 #endif
-	fs_update_mod_dir(qfalse);
+	fs_update_mod_dir_ext(qfalse);
 
 	Com_Printf("\n");
 	if(fs_filesystem_refresh_tracked() && fs_index_cache->integer && !fs_read_only) {

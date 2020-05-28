@@ -2421,7 +2421,7 @@ void Com_GameRestart(int checksumFeed, qboolean disconnect)
 		}
 
 #ifdef NEW_FILESYSTEM
-		fs_update_mod_dir(qtrue);
+		fs_update_mod_dir();
 #else
 		FS_Restart(checksumFeed);
 #endif
