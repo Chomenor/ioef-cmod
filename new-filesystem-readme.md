@@ -210,6 +210,42 @@ To specify an auxiliary source directory, include a number sign (#) in front of 
 
 +set fs_dirs *fs_basepath #fs_auxiliary +set fs_auxiliary /home/user/q3auxiliary
 
+# Servercfg Support
+
+The servercfg system provides some advanced features to help control the local configuration of servers, separate from client-linked settings such as fs_game. It is currently only supported for servers using the dedicated server binary.
+
+## Basic Configuration
+
+In the default configuration, the "servercfg" directory works like an always-active mod, similar to basemod. It overrides all other mod directories including basemod and fs_game.
+
+The servercfg directory can be used as an alternative to baseq3 or the fs_game directory for storing server-side mod and configuration files. This has the advantage of ensuring the server-side config remains stable and has maxiumum priority on the server even if the fs_game setting and contents change. It also prevents server-side pk3s from being auto-downloaded to clients by default.
+
+To use this feature, simply create the "servercfg" directory on the server and place server-side mods and config files in it. As long as you are using a dedicated server binary compiled with the new filesystem, the servercfg directory will be enabled and loaded by default.
+
+## Custom Servercfg Directories
+
+The name of the servercfg directory is controlled by the "fs_servercfg" cvar. The default is "servercfg" but a different directory can be set either at server startup or while the server is running. Server config scripts can modify this setting (typically preceding a map launch) to switch between mods on a running server.
+
+Multiple servercfg directories can also be combined by separating them with a space in fs_servercfg. The first directory specified has highest precedence and overrides later directories in case of conflicts. Example: ```set fs_servercfg server_mod server_base```
+
+## Custom Write Directory
+
+The standard fs_servercfg setting does not change the directory for game module logs and other files written by the server. Files will still be written to the standard locations (e.g. fs_game or com_basegame).
+
+The setting "fs_servercfg_writedir" can be set to force a certain write directory for the server. This could be the same directory as the primary fs_servercfg directory, but it is possible to use any directory name. Example: ```set fs_servercfg_writedir servercfg```
+
+## Server Source Limiting
+
+In some cases it can be useful to prevent pk3s on the server, such as maps, from making unwanted changes to the server configuration (such as adding bots). A setting called "fs_servercfg_listlimit" is supported to help address this issue.
+
+This setting applies limits to file listing operations used by the game module to locate files, and supports the following values:
+
+- 0 - no restrictions; all files normally available on server are accessed (default)
+- 1 - only files in servercfg and core pk3s (e.g. id paks pak0-pak8) are accessed
+- 2 - only files in servercfg are accessed
+
+A setting of 1 can be used to prevent conflicts such as the bot issue mentioned above. A setting of 2 can be used to support a fully self-contained servercfg that does not require any additional pk3s to function.
+
 # Shader Precedence
 
 In this filesystem, shader precedence follows the same rules as normal filesystem precedence, e.g. a shader in pak2.pk3 will override a shader in pak1.pk3, and a shader in a mod will override a shader in baseq3. However, the original filesystem uses the opposite precedence when shaders are defined in .shader files with different names, which can make things confusing for mod authors. Here are some tips for mod authors working with shader definitions:

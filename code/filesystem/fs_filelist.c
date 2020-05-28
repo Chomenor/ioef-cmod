@@ -218,7 +218,8 @@ static qboolean check_path_enabled(fsc_stream_t *stream, const filelist_work_t *
 
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_work_t *flw) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
-	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_AUXILIARY_SOURCEDIR;
+	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_AUXILIARY_SOURCEDIR|
+			FD_CHECK_LIST_SERVERCFG_LIMIT;
 	if(!(flw->flags & FLISTFLAG_IGNORE_PURE_LIST) &&
 			!((flw->flags & FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE) && file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
 		disabled_checks |= FD_CHECK_PURE_LIST; }

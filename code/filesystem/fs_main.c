@@ -43,6 +43,11 @@ cvar_t *fs_full_pure_validation;
 cvar_t *fs_saveto_dlfolder;
 cvar_t *fs_restrict_dlfolder;
 cvar_t *fs_auto_refresh;
+#ifdef FS_SERVERCFG_ENABLED
+cvar_t *fs_servercfg;
+cvar_t *fs_servercfg_listlimit;
+cvar_t *fs_servercfg_writedir;
+#endif
 
 cvar_t *fs_debug_state;
 cvar_t *fs_debug_refresh;
@@ -478,6 +483,11 @@ void fs_startup(void) {
 	fs_saveto_dlfolder = Cvar_Get("fs_saveto_dlfolder", "0", CVAR_ARCHIVE);
 	fs_restrict_dlfolder = Cvar_Get("fs_restrict_dlfolder", "0", CVAR_ARCHIVE);
 	fs_auto_refresh = Cvar_Get("fs_auto_refresh", "1", 0);
+#ifdef FS_SERVERCFG_ENABLED
+	fs_servercfg = Cvar_Get("fs_servercfg", "servercfg", 0);
+	fs_servercfg_listlimit = Cvar_Get("fs_servercfg_listlimit", "0", 0);
+	fs_servercfg_writedir = Cvar_Get("fs_servercfg_writedir", "", 0);
+#endif
 
 	fs_debug_state = Cvar_Get("fs_debug_state", "0", 0);
 	fs_debug_refresh = Cvar_Get("fs_debug_refresh", "0", 0);

@@ -192,6 +192,44 @@ fs_modtype_t fs_get_mod_type(const char *mod_dir) {
 		else if(!Q_stricmp(sanitized_mod_dir, com_basegame->string)) return MODTYPE_BASE; }
 	return MODTYPE_INACTIVE; }
 
+// For determining the presence and position of pk3s in servercfg directories
+
+#ifdef FS_SERVERCFG_ENABLED
+// Directory list
+#define MAX_SERVERCFG_FOLDERS 32
+static int servercfg_cvar_mod_count = -1;
+static int servercfg_folder_count = 0;
+static char servercfg_folders[MAX_SERVERCFG_FOLDERS][FSC_MAX_MODDIR];
+
+static void fs_servercfg_update_state(void) {
+	// Parse out servercfg directory names from fs_servercfg cvar
+	if(fs_servercfg->modificationCount != servercfg_cvar_mod_count) {
+		char *servercfg_ptr = fs_servercfg->string;
+		const char *token;
+
+		servercfg_folder_count = 0;
+		servercfg_cvar_mod_count = fs_servercfg->modificationCount;
+
+		while(1) {
+			token = COM_ParseExt(&servercfg_ptr, qfalse);
+			if(!*token) break;
+
+			if(servercfg_folder_count >= MAX_SERVERCFG_FOLDERS) {
+				Com_Printf("MAX_SERVERCFG_FOLDERS hit\n");
+				break; }
+
+			Q_strncpyz(servercfg_folders[servercfg_folder_count], token, sizeof(servercfg_folders[servercfg_folder_count]));
+			++servercfg_folder_count; } } }
+
+unsigned int fs_servercfg_priority(const char *mod_dir) {
+	// Returns 0 if no servercfg match; otherwise higher value = higher precedence
+	int i;
+	fs_servercfg_update_state();
+	for(i=0; i<servercfg_folder_count; ++i) {
+		if(!Q_stricmp(mod_dir, servercfg_folders[i])) return servercfg_folder_count - i; }
+	return 0; }
+#endif
+
 /* ******************************************************************************** */
 // File helper functions
 /* ******************************************************************************** */
@@ -261,7 +299,7 @@ static int get_pk3_list_position(const fsc_file_t *file) {
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) return 0;
 	return pk3_list_lookup(&connected_server_pure_list, fsc_get_base_file(file, &fs)->pk3_hash); }
 
-static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
+static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level, qboolean ignore_servercfg) {
 	// Check if a file is disabled by inactive mod settings
 
 	// Allow file if full inactive mod searching is enabled
@@ -277,6 +315,11 @@ static qboolean inactive_mod_file_disabled(const fsc_file_t *file, int level) {
 			if(pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash)) return qfalse;
 			if(core_pk3_position(base_file->pk3_hash)) return qfalse; } }
 
+#ifdef FS_SERVERCFG_ENABLED
+	// Allow files in servercfg directories, unless explicitly ignored
+	if(!ignore_servercfg && fs_servercfg_priority(fsc_get_mod_dir(file, &fs))) return qfalse;
+#endif
+
 	return qtrue; }
 
 int fs_file_disabled(const fsc_file_t *file, int checks) {
@@ -291,22 +334,39 @@ int fs_file_disabled(const fsc_file_t *file, int checks) {
 	if((checks & FD_CHECK_PURE_LIST) && fs_connected_server_pure_state() == 1) {
 		if(!get_pk3_list_position(file)) return FD_CHECK_PURE_LIST; }
 
-	// Search inactive mods check - blocks files disabled by inactive mod settings for file reading
-	if((checks & FD_CHECK_READ_INACTIVE_MODS) && inactive_mod_file_disabled(file, fs_read_inactive_mods->integer)) {
-		return FD_CHECK_READ_INACTIVE_MODS; }
+	// Read inactive mods check - blocks files disabled by inactive mod settings for file reading
+	if(checks & FD_CHECK_READ_INACTIVE_MODS) {
+		if(inactive_mod_file_disabled(file, fs_read_inactive_mods->integer, qfalse)) {
+			return FD_CHECK_READ_INACTIVE_MODS; } }
+	if(checks & FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG) {
+		if(inactive_mod_file_disabled(file, fs_read_inactive_mods->integer, qtrue)) {
+			return FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG; } }
 
 	// List inactive mods check - blocks files disabled by inactive mod settings for file listing
 	if(checks & FD_CHECK_LIST_INACTIVE_MODS) {
 		// Use read_inactive_mods setting if it is lower, because it doesn't make sense to list unreadable files
 		int list_inactive_mods_level = fs_read_inactive_mods->integer < fs_list_inactive_mods->integer ?
 				fs_read_inactive_mods->integer : fs_list_inactive_mods->integer;
-		if(inactive_mod_file_disabled(file, list_inactive_mods_level)) return FD_CHECK_LIST_INACTIVE_MODS; }
+		if(inactive_mod_file_disabled(file, list_inactive_mods_level, qfalse)) return FD_CHECK_LIST_INACTIVE_MODS; }
 
 	// List auxiliary sourcedir check - blocks files from auxiliary source directories for file listing
 	if(checks & FD_CHECK_LIST_AUXILIARY_SOURCEDIR) {
 		const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
 		if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !get_pk3_list_position(file)) {
 			return FD_CHECK_LIST_AUXILIARY_SOURCEDIR; } }
+
+	// Servercfg list limit check - blocks files restricted by fs_servercfg_listlimit for file listing
+#ifdef FS_SERVERCFG_ENABLED
+	if((checks & FD_CHECK_LIST_SERVERCFG_LIMIT) && fs_servercfg_listlimit->integer &&
+			!fs_servercfg_priority(fsc_get_mod_dir(file, &fs))) {
+		// Limiting enabled and file not in servercfg directory
+		if(fs_servercfg_listlimit->integer == 1) {
+			// Allow core paks
+			const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
+			if(!(base_file && core_pk3_position(base_file->pk3_hash))) return FD_CHECK_LIST_SERVERCFG_LIMIT; }
+		else {
+			return FD_CHECK_LIST_SERVERCFG_LIMIT; } }
+#endif
 
 	return 0; }
 
@@ -344,7 +404,7 @@ static unsigned int server_pure_precedence(const fsc_file_t *file) {
 		if(index) return ~index; }
 	return 0; }
 
-static unsigned int mod_dir_precedence(fs_modtype_t mod_type) {
+static unsigned int get_current_mod_precedence(fs_modtype_t mod_type) {
 	if(mod_type >= MODTYPE_OVERRIDE_DIRECTORY) return (unsigned int)mod_type;
 	return 0; }
 
@@ -395,13 +455,24 @@ void fs_generate_core_sort_key(const fsc_file_t *file, fsc_stream_t *output, qbo
 	// This sorts the mod/pk3 origin of the file, but not the actual file name, or the source directory
 	//    since the file list system handles file names separately and currently ignores source directory
 	fs_modtype_t mod_type = fs_get_mod_type(fsc_get_mod_dir(file, &fs));
+#ifdef FS_SERVERCFG_ENABLED
+	unsigned int servercfg_precedence = fs_servercfg_priority(fsc_get_mod_dir(file, &fs));
+#else
+	unsigned int servercfg_precedence = 0;
+#endif
+	unsigned int current_mod_precedence = get_current_mod_precedence(mod_type);
+
 	if(use_server_pure_list) fs_write_sort_value(server_pure_precedence(file), output);
-	fs_write_sort_value(mod_dir_precedence(mod_type), output);
-	fs_write_sort_value(core_pak_precedence(file, mod_type), output);
+	fs_write_sort_value(servercfg_precedence, output);
+	fs_write_sort_value(current_mod_precedence, output);
+	if(!servercfg_precedence && !current_mod_precedence) {
+		fs_write_sort_value(core_pak_precedence(file, mod_type), output); }
 	fs_write_sort_value(basegame_dir_precedence(mod_type), output);
+
 	// Deprioritize download folder pk3s, whether the flag is set for this file or this file's source pk3
 	fs_write_sort_value((file->flags & FSC_FILEFLAG_DLPK3) || (file->sourcetype == FSC_SOURCETYPE_PK3
 			&& (fsc_get_base_file(file, &fs)->f.flags & FSC_FILEFLAG_DLPK3)) ? 0 : 1, output);
+
 	if(file->sourcetype == FSC_SOURCETYPE_PK3 ||
 			(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr)) {
 		fs_write_sort_value(0, output);

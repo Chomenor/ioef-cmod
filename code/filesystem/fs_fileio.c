@@ -1300,6 +1300,13 @@ static fileHandle_t fs_fopenfile_write_handle_open(const char *mod_dir, const ch
 
 	return fs_write_handle_open(full_path, append, sync); }
 
+static const char *fs_write_mod_dir(void) {
+	// Returns default mod directory for writes
+#ifdef FS_SERVERCFG_ENABLED
+	if(*fs_servercfg_writedir->string) return fs_servercfg_writedir->string;
+#endif
+	return FS_GetCurrentGameDir(); }
+
 static int FS_FOpenFileByModeGeneral(const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner) {
 	// Can be called with a null filehandle pointer in read mode for a size/existance check
 	int size = 0;
@@ -1338,11 +1345,11 @@ static int FS_FOpenFileByModeGeneral(const char *qpath, fileHandle_t *f, fsMode_
 		// Engine reads don't do anything fancy so just use the basic method
 		else size = fs_fopenfile_read_handle_open(qpath, f ? &handle : 0, 0, qfalse); }
 	else if(mode == FS_WRITE) {
-		handle = fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), qpath, qfalse, qfalse, 0); }
+		handle = fs_fopenfile_write_handle_open(fs_write_mod_dir(), qpath, qfalse, qfalse, 0); }
 	else if(mode == FS_APPEND_SYNC) {
-		handle = fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), qpath, qtrue, qtrue, 0); }
+		handle = fs_fopenfile_write_handle_open(fs_write_mod_dir(), qpath, qtrue, qtrue, 0); }
 	else if(mode == FS_APPEND) {
-		handle = fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), qpath, qtrue, qfalse, 0); }
+		handle = fs_fopenfile_write_handle_open(fs_write_mod_dir(), qpath, qtrue, qfalse, 0); }
 	else {
 		Com_Error(ERR_DROP, "FS_FOpenFileByMode: bad mode"); }
 

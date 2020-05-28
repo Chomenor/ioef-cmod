@@ -55,8 +55,11 @@ typedef struct {
 	// finishes, since it gets saved for debug queries
 	const fsc_file_t *file;
 	const fsc_shader_t *shader;
-	int core_pak_priority;
 	int server_pure_position;
+#ifdef FS_SERVERCFG_ENABLED
+	unsigned int servercfg_priority;
+#endif
+	int core_pak_priority;
 	int extension_position;
 	fs_modtype_t mod_type;
 	int flags;
@@ -88,14 +91,23 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	// Determine mod dir match level
 	resource->mod_type = fs_get_mod_type(resource_mod_dir);
 
+#ifdef FS_SERVERCFG_ENABLED
+	// Determine servercfg priority
+	if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_SERVERCFG)) {
+		resource->servercfg_priority = fs_servercfg_priority(resource_mod_dir); }
+#endif
+
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
 			resource->server_pure_position = pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash);
 		if(base_file->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 
+		// Sort core paks and the current map pak specially, unless they are part of an active mod directory
+#ifdef FS_SERVERCFG_ENABLED
+		if(!resource->servercfg_priority)
+#endif
 		if(resource->mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
-			// Sort core paks or the current map pak specially unless they are mixed into an active mod directory
 			resource->core_pak_priority = core_pk3_position(base_file->pk3_hash);
 			if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && base_file == current_map_pk3)
 				resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; } }
@@ -311,6 +323,22 @@ PC_DEBUG(server_pure_position) {
 		ADD_STRING(va("Resource %i was selected because it has a lower server pure list position (%i) than resource %i (%i).",
 				high_num, high->server_pure_position, low_num, low->server_pure_position)); } }
 
+#ifdef FS_SERVERCFG_ENABLED
+	PC_COMPARE(servercfg_directory) {
+		if(r1->servercfg_priority > r2->servercfg_priority) return -1;
+		if(r2->servercfg_priority > r1->servercfg_priority) return 1;
+		return 0; }
+
+	PC_DEBUG(servercfg_directory) {
+		if(!low->servercfg_priority) {
+			ADD_STRING(va("Resource %i was selected because it is in a servercfg directory (%s) and resource %i is not.",
+					high_num, fsc_get_mod_dir(high->file, &fs), low_num)); }
+		else {
+			ADD_STRING(va("Resource %i was selected because it is in a higher priority servercfg directory (%s) than resource %i (%s)."
+					" The earlier directory listed in fs_servercfg has higher priority.",
+					high_num, fsc_get_mod_dir(high->file, &fs), low_num, fsc_get_mod_dir(low->file, &fs))); } }
+#endif
+
 PC_COMPARE(basemod_or_current_mod_dir) {
 	if(r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY || r2->mod_type >= MODTYPE_OVERRIDE_DIRECTORY) {
 		if(r1->mod_type > r2->mod_type) return -1;
@@ -458,6 +486,9 @@ static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(auxiliary_sourcedir),
 	ADD_CHECK(special_shaders),
 	ADD_CHECK(server_pure_position),
+#ifdef FS_SERVERCFG_ENABLED
+	ADD_CHECK(servercfg_directory),
+#endif
 	ADD_CHECK(basemod_or_current_mod_dir),
 	ADD_CHECK(core_paks),
 	ADD_CHECK(current_map_pak),
@@ -564,7 +595,7 @@ static selection_output_t debug_selection;
 /* *** Debug Lookup *** */
 
 static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
-	const char *flag_strings[8] = {0};
+	const char *flag_strings[9] = {0};
 	flag_strings[0] = (flags & LOOKUPFLAG_ENABLE_DDS) ? "enable_dds" : 0;
 	flag_strings[1] = (flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
 	flag_strings[2] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
@@ -573,6 +604,7 @@ static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
 	flag_strings[5] = (flags & LOOKUPFLAG_PK3_SOURCE_ONLY) ? "pk3_source_only" : 0;
 	flag_strings[6] = (flags & LOOKUPFLAG_SETTINGS_FILE) ? "settings_file" : 0;
 	flag_strings[7] = (flags & LOOKUPFLAG_NO_DOWNLOAD_FOLDER) ? "no_download_folder" : 0;
+	flag_strings[8] = (flags & LOOKUPFLAG_IGNORE_SERVERCFG) ? "ignore_servercfg" : 0;
 	fs_comma_separated_list(flag_strings, ARRAY_LEN(flag_strings), stream); }
 
 static void debug_print_lookup_query(const lookup_query_t *query) {

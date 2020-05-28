@@ -543,7 +543,8 @@ static void refset_add_referenced_paks(reference_set_work_t *rsw) {
 
 static void refset_add_pak_containing_file(reference_set_work_t *rsw, const char *name) {
 	// Add the pak containing the specified file to the reference set
-	const fsc_file_t *file = fs_general_lookup(name, LOOKUPFLAG_IGNORE_CURRENT_MAP|LOOKUPFLAG_PK3_SOURCE_ONLY, qfalse);
+	const fsc_file_t *file = fs_general_lookup(name,
+			LOOKUPFLAG_IGNORE_CURRENT_MAP|LOOKUPFLAG_PK3_SOURCE_ONLY|LOOKUPFLAG_IGNORE_SERVERCFG, qfalse);
 	if(!file || file->sourcetype != FSC_SOURCETYPE_PK3) {
 		return; }
 	refset_insert_pak(rsw, fsc_get_base_file(file, &fs)); }
@@ -574,7 +575,7 @@ static void refset_add_paks_by_category(reference_set_work_t *rsw, pakcategory_t
 			//    fs_read_inactive_mods to work in the expected way when using the default pure manifest
 			// Note: Pure list from a previous client session should be cleared at this point in the map load process,
 			//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
-			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
+			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG)) continue;
 			if(refset_get_pak_category(pk3) != category) continue;
 			refset_insert_pak(rsw, pk3); } } }
 
