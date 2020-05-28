@@ -67,6 +67,20 @@ There are two new settings that can be used to control automatic downloads.
 
 These settings can increase security, but may break compatibility with some servers unless you manually move files out of the downloads folder.
 
+# Source Directory Options
+
+A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
+
+Notes:
+- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.
+- You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
+- The write directory selected will always be treated as the highest precedence read directory.
+- If no directory passes a write test, or no write directory was set (no asterisks), the game will run in read-only mode.
+
+Examples:
+- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain files with the same name.
+- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
+
 # Inactive Mod Support
 
 This filesystem supports loading files from all mod directories, not just the current active mod. This can help smooth out discrepancies between server directory configurations and allow maps to work correctly even if they have dependencies that, for one reason or another, are located in the wrong mod directory.
@@ -87,14 +101,6 @@ Both cvars support the following settings:
 This feature allows clients to load external content (particularly player models) when playing on an otherwise pure server. It retains the stability and compatibility benefits of a pure server, because the pure pk3s are prioritized over other pk3s, but is less restrictive when it comes to allowing content that doesn't exist in any of the pure pk3s.
 
 To enable this feature, set sv_pure to 2 on the server. This will only affects clients using the new filesystem. Clients using the original filesystem will function the same as if sv_pure is 1.
-
-# Cache Mechanisms
-
-This filesystem adds two types of caches to improve load times, an index cache and a memory cache.
-
-The index cache stores pk3 index data in a file called fscache.dat to reduce the initial game startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.
-
-The memory cache is used to keep previously accessed files in memory for faster access and reduce load times between levels. The size of this buffer is controlled by the "fs_read_cache_megs" cvar. The default is currently 64 for the client and 4 for the dedicated server. This value can be set to 0 to disable the cache altogether.
 
 # Download / Pure List Configuration
 
@@ -179,20 +185,6 @@ set fs_pure_manifest baseq3/somefile - #mod_paks #base_paks #currentmap_pak
 
 Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only recommended to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
 
-# Source Directory Options
-
-A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
-
-Notes:
-- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.
-- You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
-- The write directory selected will always be treated as the highest precedence read directory.
-- If no directory passes a write test, or no write directory was set (no asterisks), the game will run in read-only mode.
-
-Examples:
-- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain files with the same name.
-- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
-
 # Servercfg Support
 
 The servercfg system provides some advanced features to help control the local configuration of servers, separate from client-linked settings such as fs_game. It is currently only supported for servers using the dedicated server binary.
@@ -238,6 +230,14 @@ In this filesystem, shader precedence follows the same rules as normal filesyste
 - If you wish to override a shader from paks in baseq3, such as the ID paks, you need to copy the most recent version of every .shader file containing that shader into your mod, then modify the shader within those files. If you simply define the shader without following these steps, it will work on the new filesystem, but not the original filesystem.
 
 - Conversely, make sure you don't accidentally define unwanted shaders that conflict with the ID paks or earlier paks from your mod in arbitrary .shader files. These will be overridden in the original filesystem but will take effect on the new filesystem, which could lead to problems.
+
+# Cache Mechanisms
+
+This filesystem adds two types of caches to improve load times, an index cache and a memory cache.
+
+The index cache stores pk3 index data in a file called fscache.dat to reduce the initial game startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.
+
+The memory cache is used to keep previously accessed files in memory for faster access and reduce load times between levels. The size of this buffer is controlled by the "fs_read_cache_megs" cvar. The default is currently 64 for the client and 4 for the dedicated server. This value can be set to 0 to disable the cache altogether.
 
 # Debugging Cvars
 
