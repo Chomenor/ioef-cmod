@@ -1,16 +1,17 @@
 This is an updated file handling system for ioquake3 and other Quake 3 based games. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with virtually all existing servers and content.
 
 Here are the key features:
-- Improved resource precedence system which significantly reduces conflicts between pk3s
-- Greatly improved load times, especially with lots of pk3s installed
+- Improved precedence system which prevents conflicts and unwanted game changes from custom pk3s
 - Ability to use missionpack maps and textures when team arena mode isn't active
-- Ability to customize the download and pure lists when hosting servers
+- Greatly improved load times, especially with lots of pk3s installed
 - Safer downloading options and other security improvements
-- New debugging commands to trace file/shader origins
 - Improved recovery from server download errors such as broken HTTP links
+- Ability to customize the download and pure lists when hosting servers
+- Improved server mod loading & ability to change mods on a running server
 - Fixed server-side pure list overflow issues
 - Semi-pure server support
-- Various other fixes and improvements
+- New debugging commands to trace file/shader origins
+- Various other features and improvements
 
 Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
@@ -40,7 +41,7 @@ In short what this means is that in the standard Q3 filesystem, as you add more 
 
 NOTE that certain types of content such as crosshairs, enhanced texture mods, and VMs that work by overriding the ID paks will not work out of baseq3 due to the new precedence policy. These mods are still supported in this filesystem, but they need to be manually enabled by placing their pk3s in a directory called "basemod" instead of baseq3. This system gives the user control over which pk3s are allowed to modify the game and makes the game much more stable overall.
 
-For a more detailed overview of the precedence changes refer to this [precedence chart](new-filesystem-precedence.png).
+For a more technical overview of the precedence changes refer to this [precedence chart](new-filesystem-precedence.png).
 
 # Mod Settings Option
 
@@ -51,8 +52,6 @@ This project introduces a command line cvar called "fs_mod_settings", with the f
 - fs_mod_settings 1: Existing ioquake3 behavior, with separately stored settings for each mod.
 
 I favor fs_mod_settings 0 as the default value, because it's usually easier to manage a few settings that need to be changed between mods than to have every setting change between mods. Mods that require custom settings will be fine if they use deconflicted cvar names to store their settings. It appears most mods work under this setting without significant issues.
-
-If you are wondering why this feature is relevant to a filesystem project, it is due the design of ioquake3. The function FS_ConditionalRestart, which is part of the filesystem, is responsible for initiating a reload of the game and settings when the mod changes. The functionality of fs_mod_settings 0 is achieved by modifying the restart conditions in FS_ConditionalRestart as well as adjusting the settings file paths to exclude mods.
 
 # Download Directory Options
 
@@ -209,7 +208,7 @@ Multiple servercfg directories can also be combined by separating them with a sp
 
 The standard fs_servercfg setting does not change the directory for game module logs and other files written by the server. Files will still be written to the standard locations (e.g. fs_game or com_basegame).
 
-The setting "fs_servercfg_writedir" can be set to force a certain write directory for the server. This could be the same directory as the primary fs_servercfg directory, but it is possible to use any directory name. Example: ```set fs_servercfg_writedir servercfg```
+The setting "fs_servercfg_writedir" can be set to force a certain write directory for the server. This could be the same directory as the primary fs_servercfg directory, but it is possible to use any directory name. Example: ```set fs_servercfg_writedir serverlogs```
 
 ### Server Source Limiting
 
