@@ -42,7 +42,7 @@ cvar_t *fs_redownload_across_mods;
 cvar_t *fs_full_pure_validation;
 cvar_t *fs_saveto_dlfolder;
 cvar_t *fs_restrict_dlfolder;
-cvar_t *fs_auto_refresh;
+cvar_t *fs_auto_refresh_enabled;
 #ifdef FS_SERVERCFG_ENABLED
 cvar_t *fs_servercfg;
 cvar_t *fs_servercfg_listlimit;
@@ -370,6 +370,7 @@ extern int com_frameNumber;
 static int fs_refresh_frame = 0;
 
 void fs_refresh(qboolean quiet) {
+	// Update file index to reflect files recently added/changed on disk
 	int i;
 	if(fs_debug_refresh->integer) quiet = qfalse;
 	if(!quiet) Com_Printf("----- fs_refresh -----\n");
@@ -387,22 +388,22 @@ void fs_refresh(qboolean quiet) {
 	fs_refresh_frame = com_frameNumber;
 	fs_readback_tracker_reset(); }
 
-void fs_refresh_auto_ext(qboolean ignore_cvar, qboolean quiet) {
-	// Calls fs_refresh if enabled by settings, but maximum once per several frames
-	//    to avoid redundant refreshes during load operations
-	// This can be called in any situation where there is a potential that files were
-	//    added or changed on disk
-	// The ignore_cvar option is used for the fs_refresh console command, which should
-	//    work for manual refreshes even if fs_auto_refresh setting is disabled
+qboolean fs_recently_refreshed(void) {
+	// Returns qtrue if filesystem has already been refreshed within the last few frames
 	int frames_elapsed = com_frameNumber - fs_refresh_frame;
-	if(!ignore_cvar && !fs_auto_refresh->integer) return;
-	if(frames_elapsed >= 0 && frames_elapsed < 5) {
-		if(fs_debug_refresh->integer) Com_Printf("Skipping redundant filesystem auto refresh.\n");
-		return; }
-	fs_refresh(quiet); }
+	if(frames_elapsed >= 0 && frames_elapsed < 5) return qtrue;
+	return qfalse; }
 
-void fs_refresh_auto(void) {
-	fs_refresh_auto_ext(qfalse, qtrue); }
+void fs_auto_refresh(void) {
+	// Calls fs_refresh to check for updated files, but maximum once per several frames
+	//    to avoid redundant refreshes during load operations
+	if(!fs_auto_refresh_enabled->integer) {
+		if(fs_debug_refresh->integer) Com_Printf("Skipping fs auto refresh due to disabled fs_auto_refresh_enabled cvar.\n");
+		return; }
+	if(fs_recently_refreshed()) {
+		if(fs_debug_refresh->integer) Com_Printf("Skipping fs auto refresh due to existing recent refresh.\n");
+		return; }
+	fs_refresh(qtrue); }
 
 /* ******************************************************************************** */
 // Filesystem Initialization
@@ -480,7 +481,7 @@ void fs_startup(void) {
 	fs_full_pure_validation = Cvar_Get("fs_full_pure_validation", "0", CVAR_ARCHIVE);
 	fs_saveto_dlfolder = Cvar_Get("fs_saveto_dlfolder", "0", CVAR_ARCHIVE);
 	fs_restrict_dlfolder = Cvar_Get("fs_restrict_dlfolder", "0", CVAR_ARCHIVE);
-	fs_auto_refresh = Cvar_Get("fs_auto_refresh", "1", 0);
+	fs_auto_refresh_enabled = Cvar_Get("fs_auto_refresh_enabled", "1", 0);
 #ifdef FS_SERVERCFG_ENABLED
 	fs_servercfg = Cvar_Get("fs_servercfg", "servercfg", 0);
 	fs_servercfg_listlimit = Cvar_Get("fs_servercfg_listlimit", "0", 0);

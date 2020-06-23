@@ -1081,7 +1081,7 @@ void CL_PlayDemo_f( void ) {
 
 #ifdef NEW_FILESYSTEM
 	// Refresh here in case a demo was just recorded or manually added
-	fs_refresh_auto();
+	fs_auto_refresh();
 #endif
 
 	// make sure a local server is killed
@@ -1980,7 +1980,7 @@ void CL_Vid_Restart_f( void ) {
 		CL_ResetPureClientAtServer();
 #ifdef NEW_FILESYSTEM
 		// Refresh in case files have been manually changed
-		fs_refresh_auto();
+		fs_auto_refresh();
 
 		// New filesystem currently doesn't store ui and cgame references
 #else

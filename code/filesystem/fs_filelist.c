@@ -606,7 +606,7 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 
 	if(!Q_stricmp(path, "demos")) {
 		// Check for new demos before displaying the UI demo menu
-		fs_refresh_auto(); }
+		fs_auto_refresh(); }
 
 	if(!Q_stricmp(path, "models/players") && extension && !Q_stricmp(extension, "/")
 			&& Q_stricmp(current_mod_dir, BASETA)) {
