@@ -172,7 +172,7 @@ static void SV_Map_f( void ) {
 			if(cmod_sv_mapscript_bsp_check->integer) {
 				Com_sprintf(expanded, sizeof(expanded), "maps/%s.bsp", map);
 #ifdef NEW_FILESYSTEM
-				fs_refresh_auto();
+				fs_auto_refresh();
 				if(!fs_general_lookup(expanded, LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse)) {
 #else
 				if ( FS_ReadFile (expanded, NULL) == -1 ) {

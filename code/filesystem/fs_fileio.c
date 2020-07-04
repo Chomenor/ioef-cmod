@@ -1429,7 +1429,7 @@ int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
 #ifdef CMOD_RESTRICT_VM_CFG_WRITE
 fileHandle_t FS_FOpenConfigFileWrite(const char *filename) {
 	FSC_ASSERT(filename);
-	return fs_fopenfile_write_handle_open(FS_GetCurrentGameDir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
+	return fs_fopenfile_write_handle_open(fs_write_mod_dir(), filename, qfalse, qfalse, FS_ALLOW_CFG); }
 #endif
 
 /* ******************************************************************************** */
