@@ -85,11 +85,15 @@ typedef enum {
 } fs_config_type_t;
 
 #ifdef FSLOCAL
+// Only enable servercfg directories on dedicated server builds
+#ifdef DEDICATED
+#define FS_SERVERCFG_ENABLED
+#endif
+
 typedef struct {
 	const char *name;
 	const char *path;
 	qboolean active;
-	qboolean auxiliary;
 } fs_source_directory_t;
 
 typedef struct fs_hashtable_entry_s {
@@ -138,7 +142,12 @@ DEF_LOCAL( extern cvar_t *fs_redownload_across_mods )
 DEF_LOCAL( extern cvar_t *fs_full_pure_validation )
 DEF_LOCAL( extern cvar_t *fs_saveto_dlfolder )
 DEF_LOCAL( extern cvar_t *fs_restrict_dlfolder )
-DEF_LOCAL( extern cvar_t *fs_auto_refresh )
+DEF_LOCAL( extern cvar_t *fs_auto_refresh_enabled )
+#ifdef FS_SERVERCFG_ENABLED
+DEF_LOCAL( extern cvar_t *fs_servercfg )
+DEF_LOCAL( extern cvar_t *fs_servercfg_listlimit )
+DEF_LOCAL( extern cvar_t *fs_servercfg_writedir )
+#endif
 
 DEF_LOCAL( extern cvar_t *fs_debug_state )
 DEF_LOCAL( extern cvar_t *fs_debug_refresh )
@@ -175,13 +184,13 @@ DEF_PUBLIC( void fs_register_current_map(const char *name) )
 DEF_PUBLIC( void fs_set_connected_server_sv_pure_value(int sv_pure) )
 DEF_PUBLIC( void FS_PureServerSetLoadedPaks(const char *hash_list, const char *name_list) )
 DEF_PUBLIC( void fs_disconnect_cleanup(void) )
-DEF_PUBLIC( void fs_set_mod_dir(const char *value, qboolean move_pid) )
+DEF_PUBLIC( void fs_update_mod_dir(void) )
 DEF_PUBLIC( qboolean FS_ConditionalRestart(int checksumFeed, qboolean disconnect) )
 
 // Filesystem Refresh
 DEF_LOCAL( void fs_refresh(qboolean quiet) )
-DEF_LOCAL( void fs_refresh_auto_ext(qboolean ignore_cvar, qboolean quiet) )
-DEF_PUBLIC( void fs_refresh_auto(void) )
+DEF_LOCAL( qboolean fs_recently_refreshed(void) )
+DEF_PUBLIC( void fs_auto_refresh(void) )
 
 // Filesystem Initialization
 DEF_LOCAL( void fs_indexcache_write(void) )
@@ -199,6 +208,7 @@ DEF_PUBLIC( void fs_startup(void) )
 #define LOOKUPFLAG_PK3_SOURCE_ONLY 32	// Only allow files in pk3s
 #define LOOKUPFLAG_SETTINGS_FILE 64		// Apply fs_mod_settings for auto-executed config files (e.g. q3config, autoexec, default)
 #define LOOKUPFLAG_NO_DOWNLOAD_FOLDER 128	// Don't allow files from download folder
+#define LOOKUPFLAG_IGNORE_SERVERCFG 256		// Ignore servercfg precedence (can still read servercfg directory; just don't prioritize)
 
 DEF_LOCAL( void debug_resource_comparison(int resource1_position, int resource2_position) )
 DEF_PUBLIC( const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) )
@@ -408,6 +418,9 @@ typedef enum {
 } fs_modtype_t;
 #endif
 DEF_LOCAL( int core_pk3_position(unsigned int hash) )
+#ifdef FS_SERVERCFG_ENABLED
+DEF_LOCAL( unsigned int fs_servercfg_priority(const char *mod_dir) )
+#endif
 DEF_LOCAL( fs_modtype_t fs_get_mod_type(const char *mod_dir) )
 
 // File helper functions
@@ -430,8 +443,9 @@ DEF_PUBLIC( void fs_print_file_location(const fsc_file_t *file) )
 #define FD_CHECK_FILE_ENABLED 1		// Check if file is disabled in index
 #define FD_CHECK_PURE_LIST 2		// Check if file is blocked by connected server pure configuration
 #define FD_CHECK_READ_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_read_inactive_mods setting
-#define FD_CHECK_LIST_INACTIVE_MODS 8		// Check if file is blocked for file listing by fs_list_inactive_mods setting
-#define FD_CHECK_LIST_AUXILIARY_SOURCEDIR 16	// Check if file is blocked for file listing due to auxiliary sourcedir
+#define FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG 8		// Same as above, but also treat servercfg as an inactive mod
+#define FD_CHECK_LIST_INACTIVE_MODS 16		// Check if file is blocked for file listing by fs_list_inactive_mods setting
+#define FD_CHECK_LIST_SERVERCFG_LIMIT 32	// Check if files is blocked for file listing due to fs_servercfg_listlimit
 DEF_LOCAL( int fs_file_disabled(const fsc_file_t *file, int checks) )
 #endif
 

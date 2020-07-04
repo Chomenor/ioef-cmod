@@ -48,15 +48,17 @@ typedef struct {
 #define RESFLAG_IN_CURRENT_MAP_PAK 2
 #define RESFLAG_FROM_DLL_QUERY 4
 #define RESFLAG_CASE_MISMATCH 8
-#define RESFLAG_AUXILIARY_SOURCEDIR 16
 
 typedef struct {
 	// This should contain only static data, i.e. no pointers that expire when the query
 	// finishes, since it gets saved for debug queries
 	const fsc_file_t *file;
 	const fsc_shader_t *shader;
-	int core_pak_priority;
 	int server_pure_position;
+#ifdef FS_SERVERCFG_ENABLED
+	unsigned int servercfg_priority;
+#endif
+	int core_pak_priority;
 	int extension_position;
 	fs_modtype_t mod_type;
 	int flags;
@@ -88,14 +90,23 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	// Determine mod dir match level
 	resource->mod_type = fs_get_mod_type(resource_mod_dir);
 
+#ifdef FS_SERVERCFG_ENABLED
+	// Determine servercfg priority
+	if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_SERVERCFG)) {
+		resource->servercfg_priority = fs_servercfg_priority(resource_mod_dir); }
+#endif
+
 	// Configure pk3-specific properties
 	if(resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
 		if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST))
 			resource->server_pure_position = pk3_list_lookup(&connected_server_pure_list, base_file->pk3_hash);
 		if(base_file->f.flags & FSC_FILEFLAG_DLPK3) resource->flags |= RESFLAG_IN_DOWNLOAD_PK3;
 
+		// Sort core paks and the current map pak specially, unless they are part of an active mod directory
+#ifdef FS_SERVERCFG_ENABLED
+		if(!resource->servercfg_priority)
+#endif
 		if(resource->mod_type < MODTYPE_OVERRIDE_DIRECTORY) {
-			// Sort core paks or the current map pak specially unless they are mixed into an active mod directory
 			resource->core_pak_priority = core_pk3_position(base_file->pk3_hash);
 			if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && base_file == current_map_pk3)
 				resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; } }
@@ -104,10 +115,6 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 	if((!Q_stricmp(resource_mod_dir, FS_GetCurrentGameDir()) && strcmp(resource_mod_dir, FS_GetCurrentGameDir()))
 			|| (!Q_stricmp(resource_mod_dir, com_basegame->string) && strcmp(resource_mod_dir, com_basegame->string))) {
 		resource->flags |= RESFLAG_CASE_MISMATCH; }
-
-	// Check for auxiliary source directory
-	if(base_file && fs_sourcedirs[base_file->source_dir_id].auxiliary && !resource->server_pure_position) {
-		resource->flags |= RESFLAG_AUXILIARY_SOURCEDIR; }
 
 	// Restrict source locations for settings (e.g. q3config.cfg, autoexec.cfg, or default.cfg) query
 	if(query->lookup_flags & LOOKUPFLAG_SETTINGS_FILE) {
@@ -273,14 +280,6 @@ PC_COMPARE(resource_disabled) {
 PC_DEBUG(resource_disabled) {
 	ADD_STRING(va("Resource %i was selected because resource %i is disabled: %s", high_num, low_num, low->disabled)); }
 
-PC_COMPARE(auxiliary_sourcedir) {
-	if((r1->flags & RESFLAG_AUXILIARY_SOURCEDIR) && !(r2->flags & RESFLAG_AUXILIARY_SOURCEDIR)) return 1;
-	if((r2->flags & RESFLAG_AUXILIARY_SOURCEDIR) && !(r1->flags & RESFLAG_AUXILIARY_SOURCEDIR)) return -1;
-	return 0; }
-
-PC_DEBUG(auxiliary_sourcedir) {
-	ADD_STRING(va("Resource %i was selected because resource %i is in an auxiliary source directory.", high_num, low_num)); }
-
 PC_COMPARE(special_shaders) {
 	qboolean r1_special = (r1->shader && (r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
 			r1->core_pak_priority || r1->server_pure_position)) ? qtrue : qfalse;
@@ -310,6 +309,22 @@ PC_DEBUG(server_pure_position) {
 	else {
 		ADD_STRING(va("Resource %i was selected because it has a lower server pure list position (%i) than resource %i (%i).",
 				high_num, high->server_pure_position, low_num, low->server_pure_position)); } }
+
+#ifdef FS_SERVERCFG_ENABLED
+	PC_COMPARE(servercfg_directory) {
+		if(r1->servercfg_priority > r2->servercfg_priority) return -1;
+		if(r2->servercfg_priority > r1->servercfg_priority) return 1;
+		return 0; }
+
+	PC_DEBUG(servercfg_directory) {
+		if(!low->servercfg_priority) {
+			ADD_STRING(va("Resource %i was selected because it is in a servercfg directory (%s) and resource %i is not.",
+					high_num, fsc_get_mod_dir(high->file, &fs), low_num)); }
+		else {
+			ADD_STRING(va("Resource %i was selected because it is in a higher priority servercfg directory (%s) than resource %i (%s)."
+					" The earlier directory listed in fs_servercfg has higher priority.",
+					high_num, fsc_get_mod_dir(high->file, &fs), low_num, fsc_get_mod_dir(low->file, &fs))); } }
+#endif
 
 PC_COMPARE(basemod_or_current_mod_dir) {
 	if(r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY || r2->mod_type >= MODTYPE_OVERRIDE_DIRECTORY) {
@@ -455,9 +470,11 @@ typedef struct {
 #define ADD_CHECK(check) { #check, pc_cmp_ ## check, pc_dbg_ ## check }
 static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(resource_disabled),
-	ADD_CHECK(auxiliary_sourcedir),
 	ADD_CHECK(special_shaders),
 	ADD_CHECK(server_pure_position),
+#ifdef FS_SERVERCFG_ENABLED
+	ADD_CHECK(servercfg_directory),
+#endif
 	ADD_CHECK(basemod_or_current_mod_dir),
 	ADD_CHECK(core_paks),
 	ADD_CHECK(current_map_pak),
@@ -564,7 +581,7 @@ static selection_output_t debug_selection;
 /* *** Debug Lookup *** */
 
 static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
-	const char *flag_strings[8] = {0};
+	const char *flag_strings[9] = {0};
 	flag_strings[0] = (flags & LOOKUPFLAG_ENABLE_DDS) ? "enable_dds" : 0;
 	flag_strings[1] = (flags & LOOKUPFLAG_IGNORE_PURE_LIST) ? "ignore_pure_list" : 0;
 	flag_strings[2] = (flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE) ? "pure_allow_direct_source" : 0;
@@ -573,6 +590,7 @@ static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
 	flag_strings[5] = (flags & LOOKUPFLAG_PK3_SOURCE_ONLY) ? "pk3_source_only" : 0;
 	flag_strings[6] = (flags & LOOKUPFLAG_SETTINGS_FILE) ? "settings_file" : 0;
 	flag_strings[7] = (flags & LOOKUPFLAG_NO_DOWNLOAD_FOLDER) ? "no_download_folder" : 0;
+	flag_strings[8] = (flags & LOOKUPFLAG_IGNORE_SERVERCFG) ? "ignore_servercfg" : 0;
 	fs_comma_separated_list(flag_strings, ARRAY_LEN(flag_strings), stream); }
 
 static void debug_print_lookup_query(const lookup_query_t *query) {

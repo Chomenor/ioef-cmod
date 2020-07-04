@@ -69,9 +69,11 @@ static void cmd_compare(void) {
 /* ******************************************************************************** */
 
 static void cmd_fs_refresh(void) {
-	// Runs filesystem refresh
-	// Can be called with parameter 1 for quiet mode
-	fs_refresh_auto_ext(qtrue, atoi(Cmd_Argv(1)) ? qtrue : qfalse); }
+	// Usage: fs_refresh <force> <quiet>
+	if(!atoi(Cmd_Argv(1)) && fs_recently_refreshed()) {
+		Com_Printf("Ignoring fs_refresh command due to existing recent refresh.\n");
+		return; }
+	fs_refresh(atoi(Cmd_Argv(2)) ? qtrue : qfalse); }
 
 static void cmd_readcache_debug(void) {
 	fs_readcache_debug(); }

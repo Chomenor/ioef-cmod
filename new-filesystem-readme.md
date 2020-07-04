@@ -1,16 +1,17 @@
 This is an updated file handling system for ioquake3 and other Quake 3 based games. It is a near complete rewrite of files.c and related components, designed to enhance the performance, stability, and security of the game while maintaining compatibility with virtually all existing servers and content.
 
 Here are the key features:
-- Improved resource precedence system which significantly reduces conflicts between pk3s
-- Greatly improved load times, especially with lots of pk3s installed
+- Improved precedence system which prevents conflicts and unwanted game changes from custom pk3s
 - Ability to use missionpack maps and textures when team arena mode isn't active
-- Ability to customize the download and pure lists when hosting servers
+- Greatly improved load times, especially with lots of pk3s installed
 - Safer downloading options and other security improvements
-- New debugging commands to trace file/shader origins
 - Improved recovery from server download errors such as broken HTTP links
+- Ability to customize the download and pure lists when hosting servers
+- Improved server mod loading & ability to change mods on a running server
 - Fixed server-side pure list overflow issues
 - Semi-pure server support
-- Various other fixes and improvements
+- New debugging commands to trace file/shader origins
+- Various other features and improvements
 
 Feel free to contact me if you have any suggestions, feedback, or bug reports!
 
@@ -40,7 +41,7 @@ In short what this means is that in the standard Q3 filesystem, as you add more 
 
 NOTE that certain types of content such as crosshairs, enhanced texture mods, and VMs that work by overriding the ID paks will not work out of baseq3 due to the new precedence policy. These mods are still supported in this filesystem, but they need to be manually enabled by placing their pk3s in a directory called "basemod" instead of baseq3. This system gives the user control over which pk3s are allowed to modify the game and makes the game much more stable overall.
 
-For a more detailed overview of the precedence changes refer to this [precedence chart](new-filesystem-precedence.png).
+For a more technical overview of the precedence changes refer to this [precedence chart](new-filesystem-precedence.png).
 
 # Mod Settings Option
 
@@ -51,8 +52,6 @@ This project introduces a command line cvar called "fs_mod_settings", with the f
 - fs_mod_settings 1: Existing ioquake3 behavior, with separately stored settings for each mod.
 
 I favor fs_mod_settings 0 as the default value, because it's usually easier to manage a few settings that need to be changed between mods than to have every setting change between mods. Mods that require custom settings will be fine if they use deconflicted cvar names to store their settings. It appears most mods work under this setting without significant issues.
-
-If you are wondering why this feature is relevant to a filesystem project, it is due the design of ioquake3. The function FS_ConditionalRestart, which is part of the filesystem, is responsible for initiating a reload of the game and settings when the mod changes. The functionality of fs_mod_settings 0 is achieved by modifying the restart conditions in FS_ConditionalRestart as well as adjusting the settings file paths to exclude mods.
 
 # Download Directory Options
 
@@ -66,6 +65,20 @@ There are two new settings that can be used to control automatic downloads.
 	* setting 2: All qvm files and config files will be blocked.
 
 These settings can increase security, but may break compatibility with some servers unless you manually move files out of the downloads folder.
+
+# Source Directory Options
+
+A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
+
+Notes:
+- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.
+- You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
+- The write directory selected will always be treated as the highest precedence read directory.
+- If no directory passes a write test, or no write directory was set (no asterisks), the game will run in read-only mode.
+
+Examples:
+- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain files with the same name.
+- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
 
 # Inactive Mod Support
 
@@ -88,15 +101,9 @@ This feature allows clients to load external content (particularly player models
 
 To enable this feature, set sv_pure to 2 on the server. This will only affects clients using the new filesystem. Clients using the original filesystem will function the same as if sv_pure is 1.
 
-# Cache Mechanisms
+# Server Features
 
-This filesystem adds two types of caches to improve load times, an index cache and a memory cache.
-
-The index cache stores pk3 index data in a file called fscache.dat to reduce the initial game startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.
-
-The memory cache is used to keep previously accessed files in memory for faster access and reduce load times between levels. The size of this buffer is controlled by the "fs_read_cache_megs" cvar. The default is currently 64 for the client and 4 for the dedicated server. This value can be set to 0 to disable the cache altogether.
-
-# Download / Pure List Configuration
+## Download & Pure List Configuration
 
 Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow customizing which pk3s are added to the download and pure lists when running a server. Both cvars use a space-seperated list of selector rules that can be either specific pk3s in ```<mod>/<name>``` format or one of the following keywords:
 
@@ -106,39 +113,39 @@ Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow
 - ```#currentmap_pak``` - Selects the pak containing the bsp of the current running map.
 - ```#cgame_pak``` - Selects the pak containing the preferred cgame.qvm file.
 - ```#ui_pak``` - Selects the pak containing the preferred ui.qvm file.
-- ```#referenced_paks``` - Selects paks accessed during the loading process on the server.
+- ```#referenced_paks``` - Selects paks accessed during the loading process on the server. Only selects paks from com_basegame (baseq3) and mod directories, not inactive mods or servercfg directories.
 
-### Default download manifest
+#### Default download manifest
 
-The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The #referenced_paks rule is currently added for consistency with original filesystem behavior, but in virtually all cases is redundant to the other rules and can be dropped without issue.
+The default download manifest selects all the paks from the current mod directory, as well as the current cgame and ui paks, and the current map pak. The #referenced_paks rule is currently added for potential mod compatibility reasons, but in most cases is redundant to the other rules and can be dropped without issue.
 ```
 set fs_download_manifest #mod_paks #cgame_pak #ui_pak #currentmap_pak #referenced_paks
 ```
 
-### Reduced download manifest example
+#### Reduced download manifest example
 
 Some server configurations have a lot of maps or optional mod files in the mod directory. This can lead to clients having too many files to download, since the default behavior is to place everything in the mod directory into the download list. To avoid this, you can specify only the core mod files that clients require instead of using the #mod_paks rule. For example, here is a reduced download manifest for the OSP mod.
 ```
 set fs_download_manifest osp/zz-osp-pak3 osp/zz-osp-pak2 osp/zz-osp-pak1 osp/zz-osp-pak0 #currentmap_pak
 ```
 
-### Default pure manifest
+#### Default pure manifest
 
 The default pure manifest selects every pak normally available to the game.
 ```
 set fs_pure_manifest #mod_paks #base_paks #inactivemod_paks
 ```
 
-### Reduced pure manifest example
+#### Reduced pure manifest example
 
 Pure servers with a large number of pk3s installed (e.g. 250+) can run into problems with the pure list overflowing. To avoid such issues you can replace the #base_baks rule in the pure manifest with specific core paks and add the #currentmap_pak to handle the current map. Note that any auxiliary paks in baseq3 required by maps or mods, as well as optional content like player models, will need be included manually as well.
 ```
 set fs_pure_manifest #mod_paks baseq3/pak8 baseq3/pak7 baseq3/pak6 baseq3/pak5 baseq3/pak4 baseq3/pak3 baseq3/pak2 baseq3/pak1 baseq3/pak0 #currentmap_pak
 ```
 
-## Advanced Features
+### Advanced Features
 
-### Block command
+#### Block command
 
 In some cases it can be convenient to exclude a certain pk3 that would otherwise be selected by one or more rules within a manifest. This can be accomplished by using the "&block" command followed by a normal selector rule. All pk3s selected by the rule will be blocked, based on hash, from being selected by any subsequent rules. In this example, the "mod/somemap.pk3" file can be selected by the #currentmap_pak rule, but not subsequent rules such as #mod_paks because they come after the block command.
 ```
@@ -146,21 +153,21 @@ set fs_download_manifest #currentmap_pak &block mod/somemap #mod_paks #cgame_pak
 ```
 It is also possible to clear the block list during manifest processing by using the "&block_reset" command.
 
-### Pk3 specifier wildcards
+#### Pk3 specifier wildcards
 
 Pk3 specifiers can contain wildcards to select a range of pk3s. Currently supported wildcards are '*' (matches 0 or more characters) and '?' (matches 1 character). This example shows a variation of the OSP mod download manifest using a wildcard. Warning: If your specifier happens to contain the character sequence ```/*``` you will need to enclose the manifest in quotes as shown here, or the set command will parse it as a comment.
 ```
 set fs_download_manifest "osp/zz-osp-* #currentmap_pak"
 ```
 
-### Manual hash specifiers
+#### Manual hash specifiers
 
 It is possible to specify pk3s by hash, to support conditions where the file may not physically exist on the server or may exist under a different name. If the file does not physically exist it can't be used for UDP downloads, but it can be used for pure lists, as well as download lists on HTTP-only servers (e.g. with sv_dlURL active and sv_allowDownload set to 0). To use this feature, specify paks using the format ```<mod>/<name>:<hash>```. The hash can be specified in either signed or unsigned integer format.
 ```
 set fs_pure_manifest #mod_paks #base_paks #inactivemod_paks baseq3/md3-bender:-722067772 baseq3/md3-laracroft:1134218139 baseq3/md3-spongebob:-871946717
 ```
 
-### Cvar importing
+#### Cvar importing
 
 Manifests can import other cvars using the "&cvar_import" command followed by a cvar name. The contents of the specified cvar are parsed the same as if they were entered in the place of the &cvar_import command. This can be helpful for organization or to load certain commands in both the pure and download manifests. As a simple example the following commands are equivalent to the default pure manifest.
 ```
@@ -168,49 +175,56 @@ set custom_cvar #base_paks
 set fs_pure_manifest #mod_paks &cvar_import custom_cvar #inactivemod_paks
 ```
 
-### Manual pure list ordering
+#### Manual pure list ordering
 
 The order of the pure list determines the precedence of files on clients. Normally the server sorts the pure list according to filesystem precedence conventions, rather than the order in the pure manifest, but there may be special conditions where it is useful to force a certain order in the pure list. This can be accomplished by separating sections in the pure manifest with a dash. In this example baseq3/somefile.pk3 will be the first entry on the pure list and have the highest precedence, regardless of where it stands in the normal filesystem ordering. Note that if the same pk3 is selected by multiple rules, its position will be determined by the first rule that selected it.
 ```
 set fs_pure_manifest baseq3/somefile - #mod_paks #base_paks #currentmap_pak
 ```
 
-### Inactive mod directory support
+#### Inactive mod directory support
 
 Paks from inactive mod directories can be added to the pure and download manifests, but clients will need to be using this filesystem or an engine with equivalent inactive mod support in order to use them. This can be used to support special configurations involving a hybrid of multiple mods. It is currently only recommended to use inactive mod pk3s in the download manifest if you assume all clients have inactive mod support, because otherwise other clients will encounter errors attempting the download.
 
-# Source Directory Options
+## Servercfg Support
 
-A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
+The servercfg system provides some advanced features to help control the local configuration of servers, separate from client-linked settings such as fs_game. It is currently only supported for servers using the dedicated server binary.
 
-Notes:
-- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.
-- You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
-- The write directory selected will always be treated as the highest precedence read directory.
-- If no directory passes a write test, or no write directory was set (no asterisks), the game will run in read-only mode.
+### Basic Configuration
 
-Examples:
-- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain files with the same name.
-- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
+In the default configuration, the "servercfg" directory works like an always-active mod, similar to basemod. It overrides all other mod directories including basemod and fs_game.
 
-## Auxiliary Source Directories
+The servercfg directory can be used as an alternative to baseq3 or the fs_game directory for storing server-side mod and configuration files. This has the advantage of ensuring the server-side config remains stable and has maxiumum priority on the server even if the fs_game setting and contents change. It also prevents server-side pk3s from being auto-downloaded to clients by default.
 
-This is an advanced feature that allows source directories to be loaded, but with restricted effects on the game. It is primarily intended for server hosting configurations. An auxiliary source directory has the following properties:
+To use this feature, simply create the "servercfg" directory on the server and place server-side mods and config files in it. As long as you are using a dedicated server binary compiled with the new filesystem, the servercfg directory will be enabled and loaded by default.
 
-- For file reading operations, auxiliary source directories are strictly prioritized below non-auxiliary directories, even if the auxiliary directory contains a higher precedence mod directory or pk3 filename.
-- For file listing operations, auxiliary source directories are excluded entirely.
-- Auxiliary source directories do not affect the default order for pure list generation. Pk3s in auxiliary source directories are prioritized normally alongside other pk3s for pure server purposes.
+### Custom Servercfg Directories
 
-Auxiliary source directories can be useful in the following cases:
+The name of the servercfg directory is controlled by the "fs_servercfg" cvar. The default is "servercfg" but a different directory can be set either at server startup or while the server is running. Server config scripts can modify this setting (typically preceding a map launch) to switch between mods on a running server.
 
-- To prevent map pk3s from adding bots or causing conflicts with the server configuration. This can be especially useful for servers with hundreds or thousands of map pk3s installed, which may not be well vetted to be free of conflicts.
-- To include client mod pk3s needed for the pure or download list without allowing them to modify the configuration of the server itself.
+Multiple servercfg directories can also be combined by separating them with a space in fs_servercfg. The first directory specified has highest precedence and overrides later directories in case of conflicts. Example: ```set fs_servercfg server_mod server_base```
 
-To specify an auxiliary source directory, include a number sign (#) in front of the directory name in fs_dirs. Example:
+### Custom Write Directory
 
-+set fs_dirs *fs_basepath #fs_auxiliary +set fs_auxiliary /home/user/q3auxiliary
+The standard fs_servercfg setting does not change the directory for game module logs and other files written by the server. Files will still be written to the standard locations (e.g. fs_game or com_basegame).
 
-# Shader Precedence
+The setting "fs_servercfg_writedir" can be set to force a certain write directory for the server. This could be the same directory as the primary fs_servercfg directory, but it is possible to use any directory name. Example: ```set fs_servercfg_writedir serverlogs```
+
+### Server Source Limiting
+
+In some cases it can be useful to prevent pk3s on the server, such as maps, from making unwanted changes to the server configuration (such as adding bots). A setting called "fs_servercfg_listlimit" is supported to help address this issue.
+
+This setting applies limits to file listing operations used by the game module to locate files, and supports the following values:
+
+- 0 - no restrictions; all files normally available on server are accessed (default)
+- 1 - only files in servercfg and core pk3s (e.g. id paks pak0-pak8) are accessed
+- 2 - only files in servercfg are accessed
+
+A setting of 1 can be used to prevent conflicts such as the bot issue mentioned above. A setting of 2 can be used to support a fully self-contained servercfg that does not require any additional pk3s to function.
+
+# Developer & Debugging Notes
+
+## Shader Precedence
 
 In this filesystem, shader precedence follows the same rules as normal filesystem precedence, e.g. a shader in pak2.pk3 will override a shader in pak1.pk3, and a shader in a mod will override a shader in baseq3. However, the original filesystem uses the opposite precedence when shaders are defined in .shader files with different names, which can make things confusing for mod authors. Here are some tips for mod authors working with shader definitions:
 
@@ -220,7 +234,15 @@ In this filesystem, shader precedence follows the same rules as normal filesyste
 
 - Conversely, make sure you don't accidentally define unwanted shaders that conflict with the ID paks or earlier paks from your mod in arbitrary .shader files. These will be overridden in the original filesystem but will take effect on the new filesystem, which could lead to problems.
 
-# Debugging Cvars
+## Cache Mechanisms
+
+This filesystem adds two types of caches to improve load times, an index cache and a memory cache.
+
+The index cache stores pk3 index data in a file called fscache.dat to reduce the initial game startup time. Cached data is matched to pk3s by filename, size, and timestamp, so it shouldn't cause problems when pk3s are modified. If you suspect the cache could be causing a problem, you can delete the cache file or disable it by setting "fs_index_cache" to 0 on the command line.
+
+The memory cache is used to keep previously accessed files in memory for faster access and reduce load times between levels. The size of this buffer is controlled by the "fs_read_cache_megs" cvar. The default is currently 64 for the client and 4 for the dedicated server. This value can be set to 0 to disable the cache altogether.
+
+## Debugging Cvars
 
 This project introduces some new cvars that can be set to 1 to enable debug prints.
 
@@ -231,7 +253,7 @@ This project introduces some new cvars that can be set to 1 to enable debug prin
 - fs_debug_references: logs pk3 referencing activity (used for downloads and pure lists)
 - fs_debug_filelist: logs directory listing calls
 
-# Debugging Commands
+## Debugging Commands
 
 The following commands can be used to get an idea of where resources will come from in the filesystem. They generate a list of resources sorted from highest to lowest precedence. The first resource is typically what will be used by the game.
 

@@ -218,7 +218,7 @@ static qboolean check_path_enabled(fsc_stream_t *stream, const filelist_work_t *
 
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_work_t *flw) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
-	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_AUXILIARY_SOURCEDIR;
+	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_SERVERCFG_LIMIT;
 	if(!(flw->flags & FLISTFLAG_IGNORE_PURE_LIST) &&
 			!((flw->flags & FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE) && file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
 		disabled_checks |= FD_CHECK_PURE_LIST; }
@@ -606,7 +606,7 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 
 	if(!Q_stricmp(path, "demos")) {
 		// Check for new demos before displaying the UI demo menu
-		fs_refresh_auto(); }
+		fs_auto_refresh(); }
 
 	if(!Q_stricmp(path, "models/players") && extension && !Q_stricmp(extension, "/")
 			&& Q_stricmp(current_mod_dir, BASETA)) {
