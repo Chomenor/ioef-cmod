@@ -545,7 +545,7 @@ static void refset_add_referenced_paks(reference_set_work_t *rsw) {
 	while((entry = (reference_tracker_entry_t *)fs_hashtable_next(&it))) {
 		// The #referenced_paks rule explicitly excludes paks not in basegame or mod directories,
 		// regardless of fs_read_inactive_mods or servercfg directory status
-		if(fs_get_mod_type(fsc_get_mod_dir(entry->pak, &fs)) <= MODTYPE_INACTIVE) continue;
+		if(fs_get_mod_type(fsc_get_mod_dir((fsc_file_t *)entry->pak, &fs)) <= MODTYPE_INACTIVE) continue;
 		refset_insert_pak(rsw, entry->pak); } }
 
 static void refset_add_pak_containing_file(reference_set_work_t *rsw, const char *name) {
