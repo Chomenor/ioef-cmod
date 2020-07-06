@@ -44,6 +44,17 @@ void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *stri
 	if(stream->position && string && *string) cmod_stream_append_string(stream, separator);
 	cmod_stream_append_string(stream, string); }
 
+void cmod_stream_append_data(cmod_stream_t *stream, const char *data, unsigned int length) {
+	// Appends bytes to stream. Does not add null terminator.
+	if(stream->position > stream->size) {
+		stream->overflowed = qtrue;
+		return; }
+	if(length > stream->size - stream->position) {
+		length = stream->size - stream->position;
+		stream->overflowed = qtrue; }
+	Com_Memcpy(stream->data + stream->position, data, length);
+	stream->position += length; }
+
 #define IS_WHITESPACE(chr) ((chr) == ' ' || (chr) == '\t' || (chr) == '\n' || (chr) == '\r')
 
 unsigned int cmod_read_token(const char **current, char *buffer, unsigned int buffer_size, char delimiter) {
@@ -51,7 +62,6 @@ unsigned int cmod_read_token(const char **current, char *buffer, unsigned int bu
 	// Null delimiter uses any whitespace as delimiter
 	// Any leading and trailing whitespace characters will be skipped
 	unsigned int char_count = 0;
-	if(!buffer_size) return 0;
 
 	// Skip leading whitespace
 	while(**current && IS_WHITESPACE(**current)) ++(*current);
@@ -59,7 +69,7 @@ unsigned int cmod_read_token(const char **current, char *buffer, unsigned int bu
 	// Read item to buffer
 	while(**current && **current != delimiter) {
 		if(!delimiter && IS_WHITESPACE(**current)) break;
-		if(char_count < buffer_size - 1) {
+		if(buffer_size && char_count < buffer_size - 1) {
 			buffer[char_count++] = **current; }
 		++(*current); }
 
@@ -71,7 +81,7 @@ unsigned int cmod_read_token(const char **current, char *buffer, unsigned int bu
 	while(char_count && IS_WHITESPACE(buffer[char_count-1])) --char_count;
 
 	// Add null terminator
-	buffer[char_count] = 0;
+	if(buffer_size) buffer[char_count] = 0;
 	return char_count; }
 
 unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int buffer_size) {

@@ -32,6 +32,7 @@ typedef struct {
 } cmod_stream_t;
 void cmod_stream_append_string(cmod_stream_t *stream, const char *string);
 void cmod_stream_append_string_separated(cmod_stream_t *stream, const char *string, const char *separator);
+void cmod_stream_append_data(cmod_stream_t *stream, const char *data, unsigned int length);
 unsigned int cmod_read_token(const char **current, char *buffer, unsigned int buffer_size, char delimiter);
 unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int buffer_size);
 #endif
