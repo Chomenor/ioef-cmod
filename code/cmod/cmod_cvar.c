@@ -1350,6 +1350,12 @@ static qboolean cvar_matches_default(const localCvar_t *cvar, const char *value)
 		if(!strcmp(value, cvar->system_default)) return qtrue; }
 	return qfalse; }
 
+static qboolean cvar_string_requires_quoting(const char *string) {
+	// Returns qtrue if string needs quotes to avoid config file parsing issues
+	if(!*string || strchr(string, ' ') || strchr(string, ';') ||
+			Q_stristr(string, "//") || Q_stristr(string, "/*")) return qtrue;
+	return qfalse; }
+
 static int write_cvars_by_category(fileHandle_t f, int category, qboolean (enabled_fn)(localCvar_t *cvar), char *prelude) {
 	int count = 0;
 	localCvar_t *cvar;
@@ -1396,7 +1402,7 @@ static int write_cvars_by_category(fileHandle_t f, int category, qboolean (enabl
 
 		// cvar name
 		ADD_TEXT(" ");
-		if(strchr(cvar->s.name, ' ') || strchr(cvar->s.name, ';')) {
+		if(cvar_string_requires_quoting(cvar->s.name)) {
 			ADD_TEXT("\"");
 			ADD_TEXT(cvar->s.name);
 			ADD_TEXT("\""); }
@@ -1405,7 +1411,7 @@ static int write_cvars_by_category(fileHandle_t f, int category, qboolean (enabl
 
 		// cvar value
 		ADD_TEXT(" ");
-		if(!*value || strchr(value, ' ') || strchr(value, ';')) {
+		if(cvar_string_requires_quoting(value)) {
 			ADD_TEXT("\"");
 			ADD_TEXT(value);
 			ADD_TEXT("\""); }
