@@ -550,7 +550,7 @@ qboolean record_spectator_process_connection(netadr_t *address, const char *user
 	const char *password = Info_ValueForKey(userinfo, "password");
 	if(Q_stricmpn(password, "spect_", 6)) return qfalse;
 
-	if(!admin_spectator_enabled->integer) {
+	if(!*admin_spectator_password->string) {
 		NET_OutOfBandPrint(NS_SERVER, *address, "print\nSpectator mode not enabled on this server.\n");
 		return qtrue; }
 

@@ -26,7 +26,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static qboolean record_initialized = qfalse;
 
-cvar_t *admin_spectator_enabled;
 cvar_t *admin_spectator_password;
 cvar_t *admin_spectator_slots;
 
@@ -88,8 +87,7 @@ qboolean record_process_packet_event(netadr_t *address, msg_t *msg, int qport) {
 /* ******************************************************************************** */
 
 void record_initialize(void) {
-	admin_spectator_enabled = Cvar_Get("admin_spectator_enabled", "0", 0);
-	admin_spectator_password = Cvar_Get("admin_spectator_password", "pwd", 0);
+	admin_spectator_password = Cvar_Get("admin_spectator_password", "", 0);
 	admin_spectator_slots = Cvar_Get("admin_spectator_slots", "32", 0);
 	Cvar_CheckRange(admin_spectator_slots, 1, 1024, qtrue);
 

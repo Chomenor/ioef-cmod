@@ -164,7 +164,7 @@ To convert the demo, use the record_convert <filename> <clientnum> <instance> co
 
 This feature allows admins to spectate players on the server without joining the server, which can be useful to monitor for cheating.
 
-To enable this feature, set admin_spectator_enabled to 1 and admin_spectator_password to a password of your choosing on the server.
+To enable this feature, set admin_spectator_password to a password of your choosing on the server.
 
 To connect to the server in spectator mode, set "password" on the client to "spect_" plus the password on the server. For example if admin_spectator_password is set to "xyz" on the server, then set the password value on the client to "spect_xyz" before connecting to the server in order to enter spectator mode.
 
