@@ -53,18 +53,16 @@ This project introduces a command line cvar called "fs_mod_settings", with the f
 
 I favor fs_mod_settings 0 as the default value, because it's usually easier to manage a few settings that need to be changed between mods than to have every setting change between mods. Mods that require custom settings will be fine if they use deconflicted cvar names to store their settings. It appears most mods work under this setting without significant issues.
 
-# Download Directory Options
+# Download Directory Support
 
-There are two new settings that can be used to control automatic downloads.
+The "fs_download_mode" setting can be used to customize pk3 download handling on the client. It supports the following values:
 
-- fs_saveto_dlfolder: If enabled, this will cause incoming downloads to be saved in the "downloads" folder within the target mod directory. For example, "baseq3/somefile.pk3" will be rewritten to "baseq3/downloads/somefile.pk3". Pk3s directly in the mod directory will take precedence over those in the downloads folder.
+- 0 (default): Pk3 files are downloaded to the normal location.
+- 1: Pk3 files are saved to the "downloads" folder within the target mod directory. For example, "baseq3/somefile.pk3" will be rewritten to "baseq3/downloads/somefile.pk3". Pk3s in the downloads folder are deprioritized compared to pk3s directly in the mod directory.
+- 2: Same as 1, but also disables loading certain less secure content (cfg files and qvm files that don't match a list of trusted mod hashes) from the downloads folder.
+- 3: Same as 2, but blocks all qvm files from the downloads folder regardless of hash.
 
-- fs_restrict_dlfolder: This setting blocks potentially less secure content from pk3s in the downloads folder. It has three modes:
-    * setting 0: No restrictions.
-	* setting 1: Qvm files that do not match a list of known trusted mod hashes, and all config files, will be blocked.
-	* setting 2: All qvm files and config files will be blocked.
-
-These settings can increase security, but may break compatibility with some servers unless you manually move files out of the downloads folder.
+A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 conflicts. A setting of 2 or 3 can help increase security when downloading from untrusted servers, at the expense of possible mod compatibility issues.
 
 # Source Directory Options
 
