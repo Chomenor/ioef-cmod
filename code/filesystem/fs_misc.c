@@ -523,7 +523,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	else {
 		const fsc_file_t *file;
 		int lookup_flags = LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE | LOOKUPFLAG_IGNORE_CURRENT_MAP;
-		if(fs_restrict_dlfolder->integer) {
+		if(fs_download_mode->integer >= 2) {
 			// Don't allow config files from restricted download folder pk3s, because they could disable the download folder
 			// restrictions to unrestrict themselves
 			lookup_flags |= LOOKUPFLAG_NO_DOWNLOAD_FOLDER; }

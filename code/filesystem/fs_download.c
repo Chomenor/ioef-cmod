@@ -198,7 +198,7 @@ static download_entry_t *create_download_entry(const char *name, unsigned int ha
 
 	// Set the download entry strings
 	entry = (download_entry_t *)Z_Malloc(sizeof(*entry));
-	entry->local_name = CopyString(va("%s/%s%s.pk3", mod_dir, fs_saveto_dlfolder->integer ? "downloads/" : "", filename));
+	entry->local_name = CopyString(va("%s/%s%s.pk3", mod_dir, fs_download_mode->integer > 0 ? "downloads/" : "", filename));
 	entry->remote_name = CopyString(va("%s.pk3", name));
 	entry->mod_dir = CopyString(mod_dir);
 	entry->filename = CopyString(filename);
@@ -315,7 +315,7 @@ void fs_finalize_download(void) {
 			Com_Printf("WARNING: Downloaded pk3 %s has unexpected hash.\n", current_download->local_name); } }
 
 	if(FS_FileInPathExists(target_path)) {
-		const char *new_name = va("%s/%s%s.%08x.pk3", current_download->mod_dir, fs_saveto_dlfolder->integer ? "downloads/" : "",
+		const char *new_name = va("%s/%s%s.%08x.pk3", current_download->mod_dir, fs_download_mode->integer > 0 ? "downloads/" : "",
 				current_download->filename, actual_hash);
 		Com_Printf("WARNING: Downloaded pk3 %s conflicts with existing file. Using name %s instead.\n",
 				current_download->local_name, new_name);

@@ -40,8 +40,7 @@ cvar_t *fs_download_manifest;
 cvar_t *fs_pure_manifest;
 cvar_t *fs_redownload_across_mods;
 cvar_t *fs_full_pure_validation;
-cvar_t *fs_saveto_dlfolder;
-cvar_t *fs_restrict_dlfolder;
+cvar_t *fs_download_mode;
 cvar_t *fs_auto_refresh_enabled;
 #ifdef FS_SERVERCFG_ENABLED
 cvar_t *fs_servercfg;
@@ -491,8 +490,7 @@ void fs_startup(void) {
 	fs_pure_manifest = Cvar_Get("fs_pure_manifest", "#mod_paks #base_paks #inactivemod_paks", CVAR_ARCHIVE);
 	fs_redownload_across_mods = Cvar_Get("fs_redownload_across_mods", "1", CVAR_ARCHIVE);
 	fs_full_pure_validation = Cvar_Get("fs_full_pure_validation", "0", CVAR_ARCHIVE);
-	fs_saveto_dlfolder = Cvar_Get("fs_saveto_dlfolder", "0", CVAR_ARCHIVE);
-	fs_restrict_dlfolder = Cvar_Get("fs_restrict_dlfolder", "0", CVAR_ARCHIVE);
+	fs_download_mode = Cvar_Get("fs_download_mode", "0", CVAR_ARCHIVE);
 	fs_auto_refresh_enabled = Cvar_Get("fs_auto_refresh_enabled", "1", 0);
 #ifdef FS_SERVERCFG_ENABLED
 	fs_servercfg = Cvar_Get("fs_servercfg", "servercfg", 0);

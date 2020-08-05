@@ -531,7 +531,7 @@ static void perform_lookup(const lookup_query_t *queries, int query_count, qbool
 		free_selection_output(&selection_output);
 		return; }
 
-	if(protected_vm_lookup && fs_restrict_dlfolder->integer) {
+	if(protected_vm_lookup && fs_download_mode->integer >= 2) {
 		// Select the first resource that meets download folder restriction requirements
 		selection_sort(&selection_output);
 		for(i=0; i<selection_output.resource_count; ++i) {
@@ -543,18 +543,18 @@ static void perform_lookup(const lookup_query_t *queries, int query_count, qbool
 					fs_file_to_buffer(selection_output.resources[i].file, buffer, sizeof(buffer),
 							qtrue, qtrue, qtrue, qfalse);
 					Com_Printf("^3WARNING: QVM file %s has an untrusted hash and was blocked due to your"
-							" fs_restrict_dlfolder setting. You may need to move this pk3 out of the"
-							" downloads folder or set fs_restrict_dlfolder to 0 to play on this server."
-							" Note that these measures may increase security risks.\n", buffer);
+							" fs_download_mode setting. You may need to move this pk3 out of the"
+							" downloads folder or set fs_download_mode to 0 or 1 to play on this server."
+							" Note that these measures may reduce security.\n", buffer);
 					continue; }
-				else if(fs_restrict_dlfolder->integer != 1) {
-					// Skip trusted hash as well with extra-restrictive fs_restrict_dlfolder setting
+				else if(fs_download_mode->integer >= 3) {
+					// Skip trusted hash as well with extra-restrictive fs_download_mode setting
 					fs_file_to_buffer(selection_output.resources[i].file, buffer, sizeof(buffer),
 							qtrue, qtrue, qtrue, qfalse);
 					Com_Printf("^3WARNING: QVM file %s has a trusted hash but was blocked due to your"
-							" fs_restrict_dlfolder setting. You may need to move this pk3 out of the"
-							" downloads folder or set fs_restrict_dlfolder to 0 to play on this server."
-							" Note that these measures may increase security risks.\n", buffer);
+							" fs_download_mode setting. You may need to move this pk3 out of the"
+							" downloads folder or set fs_download_mode to 0, 1, or 2 to play on this server."
+							" Note that these measures may reduce security.\n", buffer);
 					continue; } }
 
 			// Have non-blocked file
