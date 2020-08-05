@@ -86,10 +86,13 @@ The setting "cmod_anti_burnin" can be used to fade the in-game HUD graphics, to 
 
 ## Download Folder Support
 
-Two new settings are supported to customize pk3 download handling:
+The "fs_download_mode" setting can be used to customize pk3 download handling on the client. It supports the following values:
 
-- fs_saveto_dlfolder - When enabled (set to 1) this causes incoming downloads to be stored in the "downloads" folder in the target directory, e.g. baseEF/downloads. Pk3s in this folder are still loaded normally, but deprioritized compared to non-download pk3s. This can help organize downloads and reduce pk3 conflicts.
-- fs_restrict_dlfolder - When enabled (set to 1) this prevents certain types of content (cfg files and qvm files from untrusted mods) from being loaded from the downloads folder. Combined with fs_saveto_dlfolder, this setting can increase security when downloading from untrusted servers.
+- 0 (default): Pk3 files are downloaded to the normal location.
+- 1: Pk3 files are saved to the "downloads" folder within the target mod directory. For example, "baseq3/somefile.pk3" will be rewritten to "baseq3/downloads/somefile.pk3". Pk3s in the downloads folder are deprioritized compared to pk3s directly in the mod directory.
+- 2: Same as 1, but also disables loading certain less secure content (cfg files and qvm files that don't match a list of trusted mod hashes) from the downloads folder.
+
+A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 conflicts. A setting of 2 can help increase security when downloading from untrusted servers, at the expense of possible mod compatibility issues.
 
 ## Mouse Input Mode
 
