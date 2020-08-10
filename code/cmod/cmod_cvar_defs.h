@@ -85,3 +85,7 @@ CVAR_DEF(cmod_sv_override_bsp_file, "", 0)
 CVAR_DEF(cmod_sv_override_client_map, "", 0)
 CVAR_DEF(cmod_sv_override_client_mod, "", 0)
 #endif
+
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+CVAR_DEF(cmod_trigger_debug, "0", 0)
+#endif

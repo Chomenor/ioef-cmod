@@ -89,6 +89,9 @@
 // [FEATURE] Additional console commands to enhance server script capabilities
 #define CMOD_SERVER_CMD_TOOLS
 
+// [FEATURE] Console command event trigger support (requires CMOD_SERVER_CMD_TOOLS)
+#define CMOD_SERVER_CMD_TRIGGERS
+
 // [FEATURE] Support for engine-based voting system
 #define CMOD_VOTING
 

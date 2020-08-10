@@ -250,6 +250,11 @@ void Cbuf_Execute (void)
 	}
 }
 
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+qboolean Cbuf_IsEmpty(void) {
+	return cmd_text.cursize ? qfalse : qtrue; }
+#endif
+
 
 /*
 ==============================================================================

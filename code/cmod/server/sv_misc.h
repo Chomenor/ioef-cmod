@@ -77,3 +77,18 @@ void cmod_maptable_init(void);
 #ifdef CMOD_GAMESTATE_OVERFLOW_FIX
 void sv_calculate_max_baselines(client_t *client, msg_t msg);
 #endif
+
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+typedef enum {
+	TRIGGER_NONE,
+	TRIGGER_TIMER,
+	TRIGGER_REPEAT,
+	TRIGGER_MAP_CHANGE,
+	TRIGGER_MAP_RESTART,
+	TRIGGER_CLIENT_CONNECT,
+	TRIGGER_CLIENT_DISCONNECT,
+	TRIGGER_CLIENT_ENTERWORLD
+} cmd_trigger_type_t;
+
+void trigger_exec_type(cmd_trigger_type_t type);
+#endif

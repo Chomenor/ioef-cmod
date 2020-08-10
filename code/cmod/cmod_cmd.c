@@ -617,6 +617,11 @@ void Cbuf_Execute (void) {
 		mode = cbuf_get_command(&main_cbuf, cmd, sizeof(cmd));
 		if(*cmd) Cmd_ExecuteStringByMode(cmd, mode); } }
 
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+qboolean Cbuf_IsEmpty(void) {
+	return main_cbuf.first ? qfalse : qtrue; }
+#endif
+
 /* ******************************************************************************** */
 // Misc Commands
 /* ******************************************************************************** */

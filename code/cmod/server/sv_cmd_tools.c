@@ -324,7 +324,7 @@ typedef struct {
 	const char *cmd_name;
 	int min_parameters;
 	int max_parameters;
-	const void (*fn)(const char *target_cvar);
+	void (*fn)(const char *target_cvar);
 	const char *parameter_info;
 } setop_command_t;
 
@@ -375,11 +375,271 @@ static void cmd_setop(void) {
 		cmd->fn(cmdtools_process_parameter(Cmd_Argv(1))); } }
 
 /* ******************************************************************************** */
+// Misc
+/* ******************************************************************************** */
+
+static void cmd_servercmd(void) {
+	int clientnum = atoi(cmdtools_process_parameter(Cmd_Argv(1)));
+	const char *cmd = cmdtools_process_parameter(Cmd_Argv(2));
+
+	if(!*cmd) {
+		Com_Printf("Usage: servercmd <clientnum> <cmd>\n");
+		return; }
+	if(!com_sv_running->integer) {
+		Com_Printf("servercmd: Server not running.\n");
+		return; }
+	if(clientnum < -1 || clientnum > sv_maxclients->integer) {
+		Com_Printf("servercmd: Invalid client number.\n");
+		return; }
+	if(clientnum >= 0 && svs.clients[clientnum].state < CS_PRIMED) {
+		Com_Printf("servercmd: Client %i is not active.\n", clientnum);
+		return; }
+
+	// Convert "\n", "\q", and "\\" inputs
+	char buffer[1020];
+	cmod_stream_t stream = {buffer, 0, sizeof(buffer), qfalse};
+	while(*cmd) {
+		char next = *(cmd++);
+		if(next == '\\') {
+			next = *(cmd++);
+			if(next == 'n') next = '\n';
+			if(next == 'q') next = '\"'; }
+		cmod_stream_append_data(&stream, &next, 1); }
+	cmod_stream_append_string(&stream, "");		// null terminate
+	if(stream.overflowed) {
+		Com_Printf("servercmd: Command length overflow.\n");
+		return; }
+
+	SV_SendServerCommand(clientnum >= 0 ? &svs.clients[clientnum] : 0, "%s", stream.data); }
+
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+/* ******************************************************************************** */
+// Triggers
+/* ******************************************************************************** */
+
+#define MAX_TRIGGERS 256
+
+/* *** Time functions *** */
+
+#include <sys/timeb.h>
+
+static uint64_t trigger_curtime_ms(void) {
+	// https://stackoverflow.com/a/44616416
+#if defined(_WIN32) || defined(_WIN64)
+	struct _timeb timebuffer;
+	_ftime(&timebuffer);
+	return (uint64_t)(((timebuffer.time * 1000) + timebuffer.millitm));
+#else
+	struct timeb timebuffer;
+	ftime(&timebuffer);
+	return (uint64_t)(((timebuffer.time * 1000) + timebuffer.millitm));
+#endif
+}
+
+/* *** Trigger defs *** */
+
+static const char *trigger_type_to_string(cmd_trigger_type_t type) {
+	switch(type) {
+		default: return "none";
+		case TRIGGER_TIMER: return "timer";
+		case TRIGGER_REPEAT: return "repeat";
+		case TRIGGER_MAP_CHANGE: return "map_change";
+		case TRIGGER_MAP_RESTART: return "map_restart";
+		case TRIGGER_CLIENT_CONNECT: return "client_connect";
+		case TRIGGER_CLIENT_DISCONNECT: return "client_disconnect";
+		case TRIGGER_CLIENT_ENTERWORLD: return "client_enterworld"; } }
+
+static cmd_trigger_type_t string_to_trigger_type(const char *string) {
+	if(!Q_stricmp(string, "timer")) return TRIGGER_TIMER;
+	if(!Q_stricmp(string, "repeat")) return TRIGGER_REPEAT;
+	if(!Q_stricmp(string, "map_change")) return TRIGGER_MAP_CHANGE;
+	if(!Q_stricmp(string, "map_restart")) return TRIGGER_MAP_RESTART;
+	if(!Q_stricmp(string, "client_connect")) return TRIGGER_CLIENT_CONNECT;
+	if(!Q_stricmp(string, "client_disconnect")) return TRIGGER_CLIENT_DISCONNECT;
+	if(!Q_stricmp(string, "client_enterworld")) return TRIGGER_CLIENT_ENTERWORLD;
+	return TRIGGER_NONE; }
+
+typedef struct {
+	cmd_trigger_type_t type;
+	char *tag;
+	char *cmd;
+	uint64_t trigger_time;
+	unsigned int duration;
+} cmd_trigger_t;
+
+/* *** Implementation *** */
+
+static cmd_trigger_t triggers[MAX_TRIGGERS];
+static qboolean triggers_enabled = qfalse;
+
+static cmd_trigger_t *get_trigger_by_tag(const char *tag) {
+	// Returns matching trigger if found, null otherwise
+	int i;
+	for(i=0; i<MAX_TRIGGERS; ++i) {
+		if(triggers[i].type == TRIGGER_NONE) continue;
+		if(!Q_stricmp(tag, triggers[i].tag)) return &triggers[i]; }
+	return 0; }
+
+static cmd_trigger_t *get_free_trigger(void) {
+	// Returns free trigger slot if available, null otherwise
+	int i;
+	for(i=0; i<MAX_TRIGGERS; ++i) {
+		if(triggers[i].type == TRIGGER_NONE) return &triggers[i]; }
+	return 0; }
+
+static void trigger_delete(cmd_trigger_t *trigger) {
+	// Deallocate trigger
+	if(trigger->type != TRIGGER_NONE) {
+		Z_Free(trigger->tag);
+		Z_Free(trigger->cmd); }
+	trigger->type = TRIGGER_NONE; }
+
+static void cmd_trigger_set(void) {
+	const char *arg_type = cmdtools_process_parameter(Cmd_Argv(1));
+	const char *arg_tag = cmdtools_process_parameter(Cmd_Argv(2));
+	const char *arg_cmd = cmdtools_process_parameter(Cmd_Argv(3));
+	if(!*arg_type || !*arg_tag || !*arg_cmd) {
+		Com_Printf("Usage: trigger_set <type> <tag> <command> <...>\n");
+		return; }
+
+	// Get type
+	cmd_trigger_type_t type = string_to_trigger_type(arg_type);
+	if(type == TRIGGER_NONE) {
+		Com_Printf("trigger_set: Invalid trigger type '%s'\n", Cmd_Argv(1));
+		return; }
+
+	// If a trigger already exists with tag, free it
+	cmd_trigger_t *trigger = get_trigger_by_tag(arg_tag);
+	if(trigger) trigger_delete(trigger);
+
+	// Create new trigger (don't necessarily use the slot from get_trigger_by_tag for ordering reasons)
+	trigger = get_free_trigger();
+	if(!trigger) {
+		Com_Printf("trigger_set: No trigger slots available\n");
+		return; }
+	trigger->type = type;
+	trigger->tag = CopyString(arg_tag);
+	trigger->cmd = CopyString(arg_cmd);
+
+	// Set the time for time-based triggers
+	if(type == TRIGGER_TIMER || type == TRIGGER_REPEAT) {
+		trigger->duration = (unsigned int)atoi(cmdtools_process_parameter(Cmd_Argv(4)));
+		trigger->trigger_time = trigger_curtime_ms() + trigger->duration; }
+
+	triggers_enabled = qtrue; }
+
+static void cmd_trigger_clear(void) {
+	// Remove triggers matching filter
+	const char *filter = cmdtools_process_parameter(Cmd_Argv(1));
+	int i;
+	for(i=0; i<MAX_TRIGGERS; ++i) {
+		if(triggers[i].type == TRIGGER_NONE) continue;
+		if(Com_Filter((char *)filter, triggers[i].tag, 0)) trigger_delete(&triggers[i]); } }
+
+static void cmd_trigger_status(void) {
+	// Debug command to show trigger info
+	qboolean have_trigger = qfalse;
+	uint64_t curtime = trigger_curtime_ms();
+	int i;
+	char buffer[65536];
+	cmod_stream_t stream = {buffer, 0, sizeof(buffer), qfalse};
+	#define ADD_TEXT(s) cmod_stream_append_string(&stream, s);
+
+	for(i=0; i<MAX_TRIGGERS; ++i) {
+		if(triggers[i].type == TRIGGER_NONE) continue;
+		have_trigger = qtrue;
+
+		stream.position = 0;
+		ADD_TEXT(va("trigger %i: type(%s) tag(%s) cmd(%s)", i, trigger_type_to_string(triggers[i].type),
+				triggers[i].tag, triggers[i].cmd));
+
+		if(triggers[i].type == TRIGGER_TIMER || triggers[i].type == TRIGGER_REPEAT) {
+			uint64_t remaining = triggers[i].trigger_time > curtime ? triggers[i].trigger_time - curtime : 0;
+			unsigned int msec = remaining % 1000;
+			remaining /= 1000;
+			unsigned int sec = remaining % 1000;
+			remaining /= 60;
+			unsigned int min = remaining % 60;
+			remaining /= 60;
+			unsigned int hour = (unsigned int)remaining;
+
+			ADD_TEXT(" remaining(");
+			if(hour) ADD_TEXT(va("%uh ", hour));
+			if(hour || min) ADD_TEXT(va("%um ", min));
+			if(hour || min || sec) ADD_TEXT(va("%us ", sec));
+			ADD_TEXT(va("%ums)", msec)); }
+
+		if(triggers[i].type == TRIGGER_REPEAT) {
+			ADD_TEXT(va(" interval(%u)", triggers[i].duration)); }
+
+		Com_Printf("%s\n", stream.data); }
+
+	if(!have_trigger) Com_Printf("No triggers active.\n"); }
+
+// cmod_cmd.c / cmd.c
+qboolean Cbuf_IsEmpty(void);
+
+static void trigger_exec(cmd_trigger_t *trigger) {
+	// Execute the command action for trigger
+	qboolean empty = Cbuf_IsEmpty();
+	Cbuf_ExecuteText(EXEC_APPEND, "\n");
+	Cbuf_ExecuteText(EXEC_APPEND, trigger->cmd);
+	Cbuf_ExecuteText(EXEC_APPEND, "\n");
+
+	if(cmod_trigger_debug->integer) {
+		Com_Printf("Running trigger '%s'\n", trigger->tag); }
+
+	// Only exec now if there were no previous commands in command buffer
+	if(empty) {
+		Cbuf_Execute(); }
+	else {
+		Com_Printf("note: trigger '%s' deferred due to nonempty command buffer\n", trigger->tag); } }
+
+void trigger_exec_type(cmd_trigger_type_t type) {
+	// Execute all triggers for given type
+	if(!triggers_enabled) return;
+
+	uint64_t curtime = 0;
+	if(type == TRIGGER_TIMER || type == TRIGGER_REPEAT) {
+		curtime = trigger_curtime_ms(); }
+
+	int i;
+	for(i=0; i<MAX_TRIGGERS; ++i) {
+		cmd_trigger_t *trigger = &triggers[i];
+		if(trigger->type != type) continue;
+
+		// Only fire timer triggers when time has elapsed
+		if(type == TRIGGER_TIMER || type == TRIGGER_REPEAT) {
+			if(trigger->duration && curtime < trigger->trigger_time) continue; }
+
+		// Execute the trigger
+		trigger_exec(trigger);
+
+		if(type == TRIGGER_TIMER) {
+			// Timer triggers only fire once, so delete it
+			trigger_delete(trigger); }
+
+		if(type == TRIGGER_REPEAT) {
+			// Update next fire time
+			trigger->trigger_time += trigger->duration;
+			if(trigger->trigger_time < curtime) {
+				// Shouldn't normally happen...
+				trigger->trigger_time = curtime + trigger->duration; } } } }
+#endif
+
+/* ******************************************************************************** */
 // Init
 /* ******************************************************************************** */
 
 void cmod_sv_cmd_tools_init(void) {
 	Cmd_AddCommand("if", cmd_if);
-	Cmd_AddCommand("setop", cmd_setop); }
+	Cmd_AddCommand("setop", cmd_setop);
+	Cmd_AddCommand("servercmd", cmd_servercmd);
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+	Cmd_AddCommand("trigger_set", cmd_trigger_set);
+	Cmd_AddCommand("trigger_clear", cmd_trigger_clear);
+	Cmd_AddCommand("trigger_status", cmd_trigger_status);
+#endif
+}
 
 #endif

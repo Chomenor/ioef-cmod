@@ -617,6 +617,10 @@ gotnewcl:
 	if ( count == 1 || count == sv_maxclients->integer ) {
 		SV_Heartbeat_f();
 	}
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+	Cvar_Set("triggerinfo_client_connect_clientnum", va("%i", clientNum));
+	trigger_exec_type(TRIGGER_CLIENT_CONNECT);
+#endif
 }
 
 /*
@@ -725,6 +729,10 @@ void SV_DropClient( client_t *drop, const char *reason ) {
 	if ( i == sv_maxclients->integer ) {
 		SV_Heartbeat_f();
 	}
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+	Cvar_Set("triggerinfo_client_disconnect_clientnum", va("%i", (int)(drop-svs.clients)));
+	trigger_exec_type(TRIGGER_CLIENT_DISCONNECT);
+#endif
 }
 
 /*
@@ -1938,6 +1946,10 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 	// this gamestate, put the client into the world
 	if ( cl->state == CS_PRIMED ) {
 		SV_ClientEnterWorld( cl, &cmds[0] );
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+		Cvar_Set("triggerinfo_client_enterworld_clientnum", va("%i", (int)(cl-svs.clients)));
+		trigger_exec_type(TRIGGER_CLIENT_ENTERWORLD);
+#endif
 		// the moves can be processed normaly
 	}
 	

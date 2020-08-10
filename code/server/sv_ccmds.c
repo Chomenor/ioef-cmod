@@ -415,6 +415,9 @@ static void SV_MapRestart_f( void ) {
 #ifdef CMOD_VOTING
 	cmod_voting_handle_map_restart();
 #endif
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+	trigger_exec_type(TRIGGER_MAP_RESTART);
+#endif
 }
 
 //===============================================================
