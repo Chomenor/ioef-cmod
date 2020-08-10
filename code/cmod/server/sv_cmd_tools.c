@@ -582,9 +582,9 @@ qboolean Cbuf_IsEmpty(void);
 static void trigger_exec(cmd_trigger_t *trigger) {
 	// Execute the command action for trigger
 	qboolean empty = Cbuf_IsEmpty();
-	Cbuf_ExecuteText(EXEC_APPEND, "\n");
+	Cbuf_ExecuteText(EXEC_APPEND, "\nset cmod_in_trigger 1\n");
 	Cbuf_ExecuteText(EXEC_APPEND, trigger->cmd);
-	Cbuf_ExecuteText(EXEC_APPEND, "\n");
+	Cbuf_ExecuteText(EXEC_APPEND, "\nset cmod_in_trigger 0\n");
 
 	if(cmod_trigger_debug->integer) {
 		Com_Printf("Running trigger '%s'\n", trigger->tag); }

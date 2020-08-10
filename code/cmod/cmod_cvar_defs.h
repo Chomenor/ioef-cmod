@@ -88,4 +88,5 @@ CVAR_DEF(cmod_sv_override_client_mod, "", 0)
 
 #ifdef CMOD_SERVER_CMD_TRIGGERS
 CVAR_DEF(cmod_trigger_debug, "0", 0)
+CVAR_DEF(cmod_in_trigger, "0", 0)
 #endif
