@@ -407,7 +407,7 @@ void fs_auto_refresh(void) {
 		if(fs_debug_refresh->integer) Com_Printf("Skipping fs auto refresh due to existing recent refresh.\n");
 		return; }
 #ifdef CMOD_SERVER_CMD_TRIGGERS
-	if(Cvar_VariableString("cmod_in_trigger")) {
+	if(Cvar_VariableIntegerValue("cmod_in_trigger")) {
 		if(fs_debug_refresh->integer) Com_Printf("Skipping fs auto refresh due to active trigger.\n");
 		return; }
 #endif
