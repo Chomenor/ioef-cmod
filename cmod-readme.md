@@ -48,7 +48,7 @@ The most common values which you can use for these settings are as follows:
 
 ## Brightness Settings
 
-The following are some of the main settings that can be used to adjust the brightness of the game. Most of these settings require cMod version 1.04 or higher. Check the version you are running in the console and if you have an old version download the latest version from the Release page.
+The following settings can be changed in order to adjust the brightness of the game.
 
 - r_gamma: Performs a gamma adjustment on the final renderer output. This is the default brightness setting changed by the in-game brightness slider. Values over 1 increase the game brightness on a curve, increasing the midrange levels without changing the minimum and maximum levels. Current default value is 1.4.
 
@@ -110,7 +110,7 @@ There are currently some issues with the console-opening key on non-English keyb
 
 # Server
 
-The separate dedicated server application is recommended for hosting servers. You can use the binaries included in the zip releases or compile your own builds. Dedicated server support in cMod is currently experimental; let me know if you encounter any bugs or issues.
+The separate dedicated server application is recommended for hosting servers. You can use the binaries included in the zip releases or compile your own builds.
 
 ## Settings Handling
 
@@ -134,9 +134,9 @@ As with the client, the cMod dedicated server has special prioritization of the 
 
 If you have a mod that is entirely server-side, such as Gladiator, EFAdmin, and many other mods, or a custom mod that you compiled yourself, then follow these steps for loading the mod.
 
-- Create a directory called "basemod" alongside baseEF in your server install directory. This directory is handled specially by cMod so that its contents override baseEF.
-- If your mod consists of one or more pk3 files, simply place them in the basemod folder.
-- If your mod consists of a qagame.qvm file, place it in the following location: "basemod/vm/qagame.qvm"
+- Create a directory called "servercfg" alongside baseEF in your server install directory. This directory is handled specially by cMod so that its contents override baseEF.
+- If your mod consists of one or more pk3 files, simply place them in the servercfg folder.
+- If your mod consists of a qagame.qvm file, place it in the following location: "servercfg/vm/qagame.qvm"
 - Don't set any fs_game setting on the command line.
 
 Although the fs_game method below should work as well, the above approach is preferred for server-side mods because it avoids some unwanted side effects on clients that can be caused by changing fs_game.
