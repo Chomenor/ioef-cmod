@@ -208,6 +208,10 @@
 // [BUGFIX] Try to fix some issues with UI popup after errors
 #define CMOD_ERROR_POPUP_FIXES
 
+// [BUGFIX] Prevent overwriting argv[0] (can cause problems with server scripts accessing
+//   process name, for example)
+#define CMOD_ARGV_PATCH
+
 // [COMMON] New logging system
 // Currently used for server-side logging, but capable of supporting client-side
 // logging as well for debugging purposes
