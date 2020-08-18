@@ -153,6 +153,9 @@
 #define CMOD_PER_CLIENT_DOWNLOAD_MAP
 #endif
 
+// [BUGFIX] Improved server ping calculation, enabled by sv_pingFix cvar
+#define CMOD_SV_PINGFIX
+
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */

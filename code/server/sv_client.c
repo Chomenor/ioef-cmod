@@ -1924,7 +1924,13 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 	}
 
 	// save time for ping calculation
+#ifdef CMOD_SV_PINGFIX
+	// With sv_pingFix enabled we store the time of the first acknowledge, instead of the last. And we use a time value that is not limited by sv_fps.
+	if ( !sv_pingFix->integer || cl->frames[ cl->messageAcknowledge & PACKET_MASK ].messageAcked == -1 )
+		cl->frames[ cl->messageAcknowledge & PACKET_MASK ].messageAcked = (sv_pingFix->integer ? Sys_Milliseconds() : svs.time);
+#else
 	cl->frames[ cl->messageAcknowledge & PACKET_MASK ].messageAcked = svs.time;
+#endif
 
 #ifndef NEW_FILESYSTEM
 	// TTimo

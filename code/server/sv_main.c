@@ -955,7 +955,11 @@ static void SV_CalcPings( void ) {
 		total = 0;
 		count = 0;
 		for ( j = 0 ; j < PACKET_BACKUP ; j++ ) {
+#ifdef CMOD_SV_PINGFIX
+			if ( cl->frames[j].messageAcked == -1 ) {
+#else
 			if ( cl->frames[j].messageAcked <= 0 ) {
+#endif
 				continue;
 			}
 			delta = cl->frames[j].messageAcked - cl->frames[j].messageSent;
@@ -969,6 +973,12 @@ static void SV_CalcPings( void ) {
 			if ( cl->ping > 999 ) {
 				cl->ping = 999;
 			}
+#ifdef CMOD_SV_PINGFIX
+			if ( sv_pingFix->integer && cl->ping < 1 )
+			{ // Botfilters assume that players with 0 ping are bots. So put the minimum ping for humans at 1. At least with the new ping calculation enabled.
+				cl->ping = 1;
+			}
+#endif
 		}
 
 		// let the game dll know about the ping
