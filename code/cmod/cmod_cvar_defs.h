@@ -92,5 +92,5 @@ CVAR_DEF(cmod_in_trigger, "0", 0)
 #endif
 
 #ifdef CMOD_SV_PINGFIX
-CVAR_DEF(sv_pingFix, "1", 0)
+CVAR_DEF(sv_pingFix, "2", 0)
 #endif

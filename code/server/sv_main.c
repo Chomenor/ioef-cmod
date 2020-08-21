@@ -954,18 +954,46 @@ static void SV_CalcPings( void ) {
 
 		total = 0;
 		count = 0;
-		for ( j = 0 ; j < PACKET_BACKUP ; j++ ) {
 #ifdef CMOD_SV_PINGFIX
-			if ( cl->frames[j].messageAcked == -1 ) {
+		if(sv_pingFix->integer >= 2) {
+			int current_frame = cl->netchan.outgoingSequence - 1;
+			int current_ack_time = -1;
+			for ( j = 0 ; j < PACKET_BACKUP && current_frame > 0 ; j++ ) {
+				// Read frames backwards from latest to earliest
+				clientSnapshot_t *frame = &cl->frames[(current_frame--) & PACKET_MASK];
+
+				// Use the earliest valid ack time as current
+				if(frame->messageAcked != -1 && (current_ack_time == -1 || frame->messageAcked < current_ack_time)) {
+					current_ack_time = frame->messageAcked;
+				}
+
+				if(current_ack_time != -1) {
+					delta = current_ack_time - frame->messageSent;
+					count++;
+					total += delta;
+				}
+			}
+		}
+		else {
+			for ( j = 0 ; j < PACKET_BACKUP ; j++ ) {
+				if ( cl->frames[j].messageAcked == -1 ) {
+					continue;
+				}
+				delta = cl->frames[j].messageAcked - cl->frames[j].messageSent;
+				count++;
+				total += delta;
+			}
+		}
 #else
+		for ( j = 0 ; j < PACKET_BACKUP ; j++ ) {
 			if ( cl->frames[j].messageAcked <= 0 ) {
-#endif
 				continue;
 			}
 			delta = cl->frames[j].messageAcked - cl->frames[j].messageSent;
 			count++;
 			total += delta;
 		}
+#endif
 		if (!count) {
 			cl->ping = 999;
 		} else {
