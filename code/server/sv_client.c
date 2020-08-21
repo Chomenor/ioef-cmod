@@ -1622,8 +1622,8 @@ void SV_UserinfoChanged( client_t *cl ) {
 		i = atoi(val);
 		
 #ifdef CMOD_MIN_SNAPS
-		if(i < sv_min_snaps->integer)
-			i = sv_min_snaps->integer;
+		if(i < sv_minSnaps->integer)
+			i = sv_minSnaps->integer;
 #endif
 		if(i < 1)
 			i = 1;
