@@ -319,11 +319,16 @@ static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, qboolean down )
 	}
 
 #ifdef CMOD_CONSOLE_KEY_FIXES
-	if(keysym->scancode == 0x35) {
-		if((cmod_console_mode->integer & 1) && !(keysym->sym >= '0' && keysym->sym <= '9')
-				&& !(keysym->sym >= 'a' && keysym->sym <= 'z')
-				&& !(keysym->sym >= 'A' && keysym->sym <= 'Z')) {
-			key = K_CONSOLE; }
+	if(keysym->scancode == SDL_SCANCODE_GRAVE) {
+		if(cmod_console_mode->integer & 1) {
+			// Not sure if necessary, but copy caret key check from OpenJK to be safe
+			SDL_Keycode translated = SDL_GetKeyFromScancode( SDL_SCANCODE_GRAVE );
+			qboolean non_caret = (translated != SDLK_CARET) || (translated == SDLK_CARET && (keysym->mod & KMOD_SHIFT));
+
+			// Do some random checks to try to avoid overriding important keys...
+			if(non_caret && !(key >= '0' && key <= '9') && !(key >= 'a' && key <= 'z') && !(key >= 'A' && key <= 'Z')) {
+				key = K_CONSOLE; } }
+
 		if(cmod_console_mode->integer & 4) {
 			key = K_CONSOLE; } }
 #endif
