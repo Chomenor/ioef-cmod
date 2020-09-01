@@ -25,11 +25,7 @@ In most cases everything will work under this filesystem the same as you are fam
 
 # Compiling
 
-Should be very similar to regular ioquake3.
-
-- For make builds, run "make NEW_FILESYSTEM=1".
-- If you are using one of the build scripts instead of calling make directly, add the line "NEW_FILESYSTEM=1" to "Makefile.local"
-- For visual studio, set "NEW_FILESYSTEM" in the preprocessor definitions for both the main game and renderer dlls.
+The build process should be the same as regular ioquake3. Refer to the ioquake3 instructions at <http://wiki.ioquake3.org/Building_ioquake3>.
 
 There are some changes to the renderer dlls in the new filesystem. If you mix a renderer dll and main application that have different filesystem versions, the game should still run, but this isn't recommended or well tested.
 

@@ -896,22 +896,11 @@ void fs_check_core_paks(void) {
 		generate_pak_warnings("missionpack", va("pak%i", i), &missionpack_states[i], &warning_popup_stream); }
 #endif
 
-	// Check for missing default.cfg
-	if(!check_default_cfg_pk3(BASEGAME, "pak0", core_hashes[0])) {
-		if(core_states[0].name_match || core_states[0].hash_match) Com_Error(ERR_FATAL,
-			BASEGAME "/pak0.pk3 appears to be corrupt (missing default.cfg). Please recopy"
-#ifdef ELITEFORCE
-			" this file from your Elite Force CD or reinstall Elite Force. You may also try"
-#else
-			" this file from your Quake 3 CD or reinstall Quake 3. You may also try"
-#endif
-			" deleting fscache.dat in case it has become corrupt");
-		else Com_Error(ERR_FATAL, BASEGAME "/pak0.pk3 is missing. Please recopy"
-#ifdef ELITEFORCE
-			" this file from your Elite Force CD or reinstall Elite Force"); }
-#else
-			" this file from your Quake 3 CD or reinstall Quake 3"); }
-#endif
+	// Print additional warning if pak0.pk3 exists by name or hash, but doesn't contain default.cfg
+	if((core_states[0].name_match || core_states[0].hash_match) &&
+			!check_default_cfg_pk3(BASEGAME, "pak0", core_hashes[0])) {
+		Com_Printf("WARNING: default.cfg not found - pak0.pk3 may be corrupt\n");
+		fsc_stream_append_string(&warning_popup_stream, "default.cfg not found - pak0.pk3 may be corrupt\n"); }
 
 #ifndef DEDICATED
 	// If warning popup info was generated, display warning popup
