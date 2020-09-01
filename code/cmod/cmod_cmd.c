@@ -777,6 +777,10 @@ static const char *base_protectable_commands[] = {
 	"-button14",
 	"+mlook",
 	"-mlook",
+	"messagemode",
+	"messagemode2",
+	"messagemode3",
+	"messagemode4"
 };
 
 static void init_base_protectable_commands(void) {
