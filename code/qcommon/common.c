@@ -528,6 +528,23 @@ void Com_StartupVariable( const char *match ) {
 
 	for (i=0 ; i < com_numConsoleLines ; i++) {
 		Cmd_TokenizeString( com_consoleLines[i] );
+#ifdef CMOD_CVAR_HANDLING
+		int flags = 0;
+		if ( !strcmp( Cmd_Argv(0), "set" ) )
+			flags = 0;
+		else if ( !strcmp( Cmd_Argv(0), "setn" ) )
+			flags = CVAR_NORESTART;
+		else if ( !strcmp( Cmd_Argv(0), "setr" ) )
+			flags = CVAR_ROM;
+		else
+			continue;
+
+		s = Cmd_Argv(1);
+
+		if(!match || !strcmp(s, match)) {
+			cvar_command_set(s, Cmd_ArgsFrom(2), flags, CMD_NORMAL, qtrue, qtrue);
+		}
+#else
 		if ( strcmp( Cmd_Argv(0), "set" ) ) {
 			continue;
 		}
@@ -536,15 +553,12 @@ void Com_StartupVariable( const char *match ) {
 		
 		if(!match || !strcmp(s, match))
 		{
-#ifdef CMOD_CVAR_HANDLING
-			Cvar_StartupSet(s, Cmd_ArgsFrom(2));
-#else
 			if(Cvar_Flags(s) == CVAR_NONEXISTENT)
 				Cvar_Get(s, Cmd_ArgsFrom(2), CVAR_USER_CREATED);
 			else
 				Cvar_Set2(s, Cmd_ArgsFrom(2), qfalse);
-#endif
 		}
+#endif
 	}
 }
 
@@ -572,9 +586,17 @@ qboolean Com_AddStartupCommands( void ) {
 		}
 
 		// set commands already added with Com_StartupVariable
+#ifdef CMOD_CVAR_HANDLING
+		if ( !Q_stricmpn( com_consoleLines[i], "set ", 4 )
+			|| !Q_stricmpn( com_consoleLines[i], "setn ", 5 )
+			|| !Q_stricmpn( com_consoleLines[i], "setr ", 5 ) ) {
+			continue;
+		}
+#else
 		if ( !Q_stricmpn( com_consoleLines[i], "set ", 4 ) ) {
 			continue;
 		}
+#endif
 
 		added = qtrue;
 		Cbuf_AddText( com_consoleLines[i] );

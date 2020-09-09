@@ -27,16 +27,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 char *sv_get_serverinfo_string(qboolean status_query) {
 	char *info = Cvar_InfoString(CVAR_SERVERINFO);
 #ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
-	if(*cmod_sv_override_client_map->string) {
-		Info_SetValueForKey(info, "mapname", cmod_sv_override_client_map->string); }
+	if(*sv_override_client_map->string) {
+		Info_SetValueForKey(info, "mapname", sv_override_client_map->string); }
 #endif
 	return info; }
 
 char *sv_get_systeminfo_string(void) {
 	char *info = Cvar_InfoString_Big(CVAR_SYSTEMINFO);
 #ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
-	if(*cmod_sv_override_client_mod->string) {
-		Info_SetValueForKey_Big(info, "fs_game", cmod_sv_override_client_mod->string); }
+	if(*sv_override_client_mod->string) {
+		Info_SetValueForKey_Big(info, "fs_game", sv_override_client_mod->string); }
 #endif
 	return info; }
 #endif

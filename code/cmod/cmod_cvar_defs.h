@@ -52,10 +52,10 @@ CVAR_DEF(sv_minSnaps, "50", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_MAP_SCRIPT
-CVAR_DEF(cmod_sv_mapscript_script, "", 0)
-CVAR_DEF(cmod_sv_mapscript_bsp_check, "1", 0)
-CVAR_DEF(cmod_sv_mapscript_mapcmd, "", CVAR_ROM)
-CVAR_DEF(cmod_sv_mapscript_mapname, "", CVAR_ROM)
+CVAR_DEF(sv_mapscript, "", 0)
+CVAR_DEF(sv_mapscript_bsp_check, "1", 0)
+CVAR_DEF(sv_mapscript_mapcmd, "", CVAR_ROM)
+CVAR_DEF(sv_mapscript_mapname, "", CVAR_ROM)
 #endif
 
 #ifdef CMOD_VOTING
@@ -70,20 +70,20 @@ CVAR_DEF(cmod_sv_voting_postoption_script, "", 0)
 #endif
 
 #ifdef CMOD_MAPTABLE
-CVAR_DEF(cmod_sv_maptable_source_dirs, "maps", 0)
-CVAR_DEF(cmod_sv_maptable_entry_count, "-1", CVAR_ROM);
-CVAR_DEF(cmod_sv_maptable_loaded, "false", CVAR_ROM);
+CVAR_DEF(sv_maptable_source_dirs, "maps", 0)
+CVAR_DEF(sv_maptable_entry_count, "-1", CVAR_ROM)
+CVAR_DEF(sv_maptable_loaded, "false", CVAR_ROM)
 #endif
 
 #ifdef CMOD_MAP_SOURCE_OVERRIDE
-CVAR_DEF(cmod_sv_override_ent_file, "", 0)
-CVAR_DEF(cmod_sv_override_aas_file, "", 0)
-CVAR_DEF(cmod_sv_override_bsp_file, "", 0)
+CVAR_DEF(sv_override_ent_file, "", 0)
+CVAR_DEF(sv_override_aas_file, "", 0)
+CVAR_DEF(sv_override_bsp_file, "", 0)
 #endif
 
 #ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
-CVAR_DEF(cmod_sv_override_client_map, "", 0)
-CVAR_DEF(cmod_sv_override_client_mod, "", 0)
+CVAR_DEF(sv_override_client_map, "", 0)
+CVAR_DEF(sv_override_client_mod, "", 0)
 #endif
 
 #ifdef CMOD_SERVER_CMD_TRIGGERS

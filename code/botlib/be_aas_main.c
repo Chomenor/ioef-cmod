@@ -218,7 +218,7 @@ void AAS_ProjectPointOntoVector( vec3_t point, vec3_t vStart, vec3_t vEnd, vec3_
 // Changes Globals:		-
 //===========================================================================
 #ifdef CMOD_MAP_SOURCE_OVERRIDE
-extern cvar_t *cmod_sv_override_aas_file;
+extern cvar_t *sv_override_aas_file;
 #endif
 int AAS_LoadFiles(const char *mapname)
 {
@@ -235,8 +235,8 @@ int AAS_LoadFiles(const char *mapname)
 
 	//load the aas file
 #ifdef CMOD_MAP_SOURCE_OVERRIDE
-	if(cmod_sv_override_aas_file && *cmod_sv_override_aas_file->string)
-		Q_strncpyz(aasfile, cmod_sv_override_aas_file->string, sizeof(aasfile));
+	if(sv_override_aas_file && *sv_override_aas_file->string)
+		Q_strncpyz(aasfile, sv_override_aas_file->string, sizeof(aasfile));
 	else
 #endif
 	Com_sprintf(aasfile, sizeof(aasfile), "maps/%s.aas", mapname);

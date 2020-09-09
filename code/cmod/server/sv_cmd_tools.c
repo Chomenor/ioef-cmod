@@ -66,10 +66,17 @@ static qboolean cmdtools_str_to_bool(const char *value) {
 
 static void cmdtools_advance_token(const char **ptr, const char *delim, char *buffer, int buffer_size) {
 	// Copies next token to buffer and advances ptr
-	int delim_len = strlen(delim);
+	int delim_len = delim ? strlen(delim) : 0;
 	int input_size;
 	int output_size;
-	const char *next = delim_len ? Q_stristr(*ptr, delim) : 0;
+	const char *next;
+
+	if(!delim_len) {
+		// Null delimiter - read next character
+		next = **ptr ? *ptr + 1 : 0; }
+	else {
+		// Read next token
+		next = Q_stristr(*ptr, delim); }
 
 	if(next) {
 		input_size = next - *ptr + delim_len;
@@ -228,10 +235,8 @@ static void setop_str_contains_str(const char *target_cvar) {
 static void setop_str_contains_term(const char *target_cvar) {
 	const char *source_string = setop_argv(0);
 	const char *search_term = setop_argv(1);
-	const char *delim = setop_argv(2);
-	char buffer[1024];
-
-	if(!*delim) delim = " ";
+	const char *delim = setop_argc() >= 3 ? setop_argv(2) : " ";
+	char buffer[65536];
 
 	while(*source_string) {
 		cmdtools_advance_token(&source_string, delim, buffer, sizeof(buffer));
@@ -241,40 +246,64 @@ static void setop_str_contains_term(const char *target_cvar) {
 
 	CVAR_SET(target_cvar, "false"); }
 
-static void setop_token_cmn(const char *target_cvar, const char *mode) {
-	int index = atoi(setop_argv(0));
-	const char *delim = setop_argv(1);
-	const char *input = setop_argv(2);
+static int setop_count_tokens(const char *input, const char *delim) {
+	int count = 0;
+	while(*input) {
+		cmdtools_advance_token(&input, delim, 0, 0);
+		++count; }
+	return count; }
 
-	while(index-- > 0 && *input) {
-		cmdtools_advance_token(&input, delim, 0, 0); }
+static void setop_token_range(const char *target_cvar, const char *input, const char *delim,
+		int start_index, int end_index) {
+	// Writes tokens in range [start, end)
+	int i;
+	char buffer_out[65536];
+	cmod_stream_t stream = {buffer_out, 0, sizeof(buffer_out), qfalse};
+	char token[65536];
 
-	if(!Q_stricmp(mode, "token_at")) {
-		char buffer[65536];
-		cmdtools_advance_token(&input, delim, buffer, sizeof(buffer));
-		CVAR_SET(target_cvar, buffer); }
-	else {
-		CVAR_SET(target_cvar, input); } }
+	if(start_index < 0 || end_index < 0) {
+		// Handle negative indices
+		int count = setop_count_tokens(input, delim);
+		if(start_index < 0) start_index += count;
+		if(end_index < 0) end_index += count; }
+
+	for(i=0; *input && i<end_index; ++i) {
+		if(i >= start_index) {
+			cmdtools_advance_token(&input, delim, token, sizeof(token));
+			if(stream.position) cmod_stream_append_string(&stream, delim);
+			cmod_stream_append_string(&stream, token); }
+		else {
+			cmdtools_advance_token(&input, delim, 0, 0); } }
+
+	cmod_stream_append_string(&stream, "");		// null terminate
+	CVAR_SET(target_cvar, buffer_out); }
 
 static void setop_token_at(const char *target_cvar) {
-	setop_token_cmn(target_cvar, "token_at"); }
+	int index = atoi(setop_argv(1));
+	const char *delim = setop_argc() >= 3 ? setop_argv(2) : " ";
+	setop_token_range(target_cvar, setop_argv(0), delim, index, index == -1 ? 65536 : index + 1); }
 
 static void setop_tokens_from(const char *target_cvar) {
-	setop_token_cmn(target_cvar, "tokens_from"); }
+	int index = atoi(setop_argv(1));
+	const char *delim = setop_argc() >= 3 ? setop_argv(2) : " ";
+	setop_token_range(target_cvar, setop_argv(0), delim, index, 65536); }
+
+static void setop_tokens_until(const char *target_cvar) {
+	int index = atoi(setop_argv(1));
+	const char *delim = setop_argc() >= 3 ? setop_argv(2) : " ";
+	setop_token_range(target_cvar, setop_argv(0), delim, 0, index); }
 
 static void setop_char_at(const char *target_cvar) {
-	int index = atoi(setop_argv(0));
-	const char *input = setop_argv(1);
-	char output[2] = {0, 0};
-	if(index >= 0 && index < strlen(input)) output[0] = input[index];
-	CVAR_SET(target_cvar, output); }
+	int index = (unsigned int)atoi(setop_argv(1));
+	setop_token_range(target_cvar, setop_argv(0), "", index, index == -1 ? 65536 : index + 1); }
 
 static void setop_chars_from(const char *target_cvar) {
-	int index = atoi(setop_argv(0));
-	const char *input = setop_argv(1);
-	const char *output = "";
-	if(index >= 0 && index < strlen(input)) output = input + index;
-	CVAR_SET(target_cvar, output); }
+	int index = (unsigned int)atoi(setop_argv(1));
+	setop_token_range(target_cvar, setop_argv(0), "", index, 65536); }
+
+static void setop_chars_until(const char *target_cvar) {
+	int index = (unsigned int)atoi(setop_argv(1));
+	setop_token_range(target_cvar, setop_argv(0), "", 0, index); }
 
 static void setop_add(const char *target_cvar) {
 	int i;
@@ -337,11 +366,13 @@ setop_command_t setop_commands[] = {
 	{"replace", 1, 256, setop_replace, "<input> <search_term> <replace_term> <...>"},
 	{"str_contains_str", 2, 2, setop_str_contains_str, "<string> <search_term>"},
 	{"str_contains_term", 2, 3, setop_str_contains_term, "<string> <search_term> <delimiter>"},
-	{"token_at", 3, 3, setop_token_at, "<index> <delimiter> <input_string>"},
-	{"tokens_from", 3, 3, setop_tokens_from, "<index> <delimiter> <input_string>"},
+	{"token_at", 2, 3, setop_token_at, "<string> <index> <delimiter>"},
+	{"tokens_from", 2, 3, setop_tokens_from, "<string> <index> <delimiter>"},
+	{"tokens_until", 2, 3, setop_tokens_until, "<string> <index> <delimiter>"},
 	{"char_at", 2, 2, setop_char_at, "<index> <input_string>"},
 	{"chars_from", 2, 2, setop_chars_from, "<index> <input_string>"},
-	{"add", 1, 256, setop_add, "<value> <...>"},
+	{"chars_until", 2, 2, setop_chars_until, "<index> <input_string>"},
+	{"add", 2, 256, setop_add, "<value> <value> <...>"},
 	{"subtract", 2, 2, setop_subtract, "<value> <value>"},
 	{"multiply", 2, 2, setop_multiply, "<value> <value>"},
 	{"divide", 2, 2, setop_divide, "<value> <value>"},

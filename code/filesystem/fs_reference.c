@@ -1122,7 +1122,7 @@ void fs_generate_reference_lists(void) {
 
 		// Print warning if pak is from an inactive mod dir
 #ifdef CMOD_SERVER_INFOSTRING_OVERRIDE
-		const char *client_mod_dir = Cvar_VariableString("cmod_sv_override_client_mod");
+		const char *client_mod_dir = Cvar_VariableString("sv_override_client_mod");
 		if(!*client_mod_dir) client_mod_dir = Cvar_VariableString("fs_game");
 		if(Q_stricmp(entry->mod_dir, "baseEF") && Q_stricmp(entry->mod_dir, client_mod_dir)) {
 			Com_Printf("WARNING: Download list pak '%s/%s' from command '%s' does not match the client mod dir."

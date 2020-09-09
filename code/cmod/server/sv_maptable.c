@@ -63,7 +63,7 @@ static void cmod_maptable_load_file(const char *path, cmod_maptable_t *table, qb
 		char key[1024];
 		char value[1024];
 		if(!cmod_read_token(&data_ptr, line, sizeof(line), '\n')) break;
-		cmod_read_token_ws(&line_ptr, key, sizeof(key));
+		cmod_read_token(&line_ptr, key, sizeof(key), '=');
 		cmod_read_token(&line_ptr, value, sizeof(value), '\n');
 		if(maptable_entry_loaded(key, table)) {
 			++duplicate_count; }
@@ -87,8 +87,8 @@ cmod_maptable_t cmod_maptable_load(const char *map_name, qboolean verbose) {
 	cmod_maptable_entry_t entry_buffer[MAPTABLE_MAX_ENTRIES];
 	cmod_maptable_t table = {entry_buffer, 0, qfalse};
 
-	// Load maptable files from each directory indicated by cmod_sv_maptable_source_dirs
-	const char *srcdir_ptr = cmod_sv_maptable_source_dirs->string;
+	// Load maptable files from each directory indicated by sv_maptable_source_dirs
+	const char *srcdir_ptr = sv_maptable_source_dirs->string;
 	char srcdir[256];
 	while(cmod_read_token_ws(&srcdir_ptr, srcdir, sizeof(srcdir))) {
 		char path[256];
@@ -128,14 +128,25 @@ static cmod_maptable_t current_maptable;
 
 static void update_maptable_info_cvars(void) {
 	if(current_maptable.maptable_loaded) {
-		Cvar_Set("cmod_sv_maptable_loaded", "true");
-		Cvar_Set("cmod_sv_maptable_entry_count", va("%u", current_maptable.entry_count)); }
+		Cvar_Set("sv_maptable_loaded", "true");
+		Cvar_Set("sv_maptable_entry_count", va("%u", current_maptable.entry_count)); }
 	else {
-		Cvar_Set("cmod_sv_maptable_loaded", "false");
-		Cvar_Set("cmod_sv_maptable_entry_count", "-1"); } }
+		Cvar_Set("sv_maptable_loaded", "false");
+		Cvar_Set("sv_maptable_entry_count", "-1"); } }
+
+static const char *maptable_cvar_deref(const char *value) {
+	// Support cmdtools-like asterisk arguments
+	int ref_count = 0;
+	while(*value == '*') {
+		++ref_count;
+		++value; }
+	while(ref_count) {
+		value = Cvar_VariableString(value);
+		--ref_count; }
+	return value; }
 
 static void maptable_load_cmd(void) {
-	const char *map_name = Cmd_Argv(1);
+	const char *map_name = maptable_cvar_deref(Cmd_Argv(1));
 
 	if(!*map_name) {
 		Com_Printf("Usage: maptable_load <map name>\n");
@@ -152,8 +163,8 @@ static void maptable_unload_cmd(void) {
 	update_maptable_info_cvars(); }
 
 static void maptable_retrieve_cmd(void) {
-	const char *maptable_key = Cmd_Argv(1);
-	const char *target_cvar = Cmd_Argv(2);
+	const char *maptable_key = maptable_cvar_deref(Cmd_Argv(1));
+	const char *target_cvar = maptable_cvar_deref(Cmd_Argv(2));
 
 	if(!*maptable_key || !*target_cvar) {
 		Com_Printf("Usage: maptable_retrieve <maptable key> <target_cvar>\n");

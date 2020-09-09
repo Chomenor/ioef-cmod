@@ -449,10 +449,10 @@ CMod_LoadEntityString
 */
 void CMod_LoadEntityString( lump_t *l ) {
 #ifdef CMOD_MAP_SOURCE_OVERRIDE
-	if(*cmod_sv_override_ent_file->string) {
-		Com_Printf("Attempting to load entity override file '%s'\n", cmod_sv_override_ent_file->string);
+	if(*sv_override_ent_file->string) {
+		Com_Printf("Attempting to load entity override file '%s'\n", sv_override_ent_file->string);
 		void *data = 0;
-		int length = FS_ReadFile(cmod_sv_override_ent_file->string, &data);
+		int length = FS_ReadFile(sv_override_ent_file->string, &data);
 
 		if(!data || length < 0) {
 			if(data) FS_FreeFile(data);

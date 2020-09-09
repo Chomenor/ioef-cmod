@@ -1464,7 +1464,7 @@ void Cvar_WriteVariables(fileHandle_t f) {
 
 void Cvar_Init(void) {
 	int i;
-	const char *set_aliases[] = {"set", "sets", "setu", "seta", "setp", "setap", "setr"};
+	const char *set_aliases[] = {"set", "sets", "setu", "seta", "setp", "setap", "setr", "setn"};
 
 	sv_cheats = Cvar_Get("sv_cheats", "1", CVAR_ROM | CVAR_SYSTEMINFO);
 
