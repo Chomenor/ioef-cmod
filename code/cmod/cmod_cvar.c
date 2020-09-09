@@ -1083,6 +1083,7 @@ special_cvar_t specials[] = {
 	{"cl_run", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"nextmap", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"sv_minRate", "25000", CVARTYPE_NONE, 0},
+	{"sv_fps", "30", CVARTYPE_NONE, 0},
 	{"sv_voip", "0", CVARTYPE_NONE, 0},
 
 	// Preferences
