@@ -2931,6 +2931,10 @@ void Com_Init( char *commandLine ) {
 	Cmd_SetCommandCompletionFunc( "writeconfig", Cmd_CompleteCfgName );
 	Cmd_AddCommand("game_restart", Com_GameRestart_f);
 
+#ifdef CMOD_COPYDEBUG_CMD
+	Cmd_AddCommand("copydebug", cmod_copydebug_cmd);
+#endif
+
 #ifdef CMOD_SETTINGS
 #ifndef DEDICATED
 	load_default_binds();

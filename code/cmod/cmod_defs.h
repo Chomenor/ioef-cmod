@@ -223,6 +223,9 @@
 // [COMMON] Add protections against VMs writing config files for security purposes
 #define CMOD_RESTRICT_VM_CFG_WRITE
 
+// [COMMON] Add console command to copy debug info to clipboard
+#define CMOD_COPYDEBUG_CMD
+
 /* ******************************************************************************** */
 // Version Identification
 /* ******************************************************************************** */
@@ -256,3 +259,12 @@
 
 // [COMMON] Restructure server serverinfo and systeminfo handling to use common access functions
 #define CMOD_COMMON_SERVER_INFOSTRING_HOOKS
+
+/* ******************************************************************************** */
+// Setup
+/* ******************************************************************************** */
+
+#if defined(CMOD_COPYDEBUG_CMD) && defined(_WIN32) && !defined(DEDICATED) && defined(CMOD_SETTINGS) \
+	&& defined(NEW_FILESYSTEM)
+#define CMOD_COPYDEBUG_CMD_SUPPORTED
+#endif

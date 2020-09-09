@@ -88,3 +88,8 @@ void vm_strncpy(char *dst, char *src, int length);
 #ifdef CMOD_ANTI_BURNIN
 float cmod_anti_burnin_shift(float val);
 #endif
+
+#ifdef CMOD_COPYDEBUG_CMD
+void cmod_copydebug_cmd(void);
+void cmod_debug_get_console(cmod_stream_t *stream);
+#endif

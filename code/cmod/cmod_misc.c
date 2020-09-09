@@ -21,6 +21,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+#ifdef CMOD_COPYDEBUG_CMD_SUPPORTED
+#include "../filesystem/fslocal.h"
+#include <windows.h>
+#endif
+
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
@@ -109,4 +114,104 @@ float cmod_anti_burnin_shift(float val) {
 	if(result < 0.0f) result = 0.0f;
 	if(result > 1.0f) result = 1.0f;
 	return result; }
+#endif
+
+#ifdef CMOD_COPYDEBUG_CMD
+#ifdef CMOD_COPYDEBUG_CMD_SUPPORTED
+static void cmod_debug_get_config(cmod_stream_t *stream) {
+	// Based on fs_execute_config_file
+	char *data = 0;
+	char path[FS_MAX_PATH];
+	if(fs_generate_path_sourcedir(0, "cmod.cfg", 0, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof(path))) {
+		data = fs_read_data(0, path, 0, "cmod_debug_get_config"); }
+
+	cmod_stream_append_string_separated(stream, data ? data : "[file not found]", "\n"); }
+
+static void cmod_debug_get_autoexec(cmod_stream_t *stream) {
+	// Based on fs_execute_config_file
+	const fsc_file_t *file;
+	const char *data = 0;
+	unsigned int size;
+	int lookup_flags = LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE | LOOKUPFLAG_IGNORE_CURRENT_MAP;
+	if(fs_download_mode->integer >= 2) {
+		// Don't allow config files from restricted download folder pk3s, because they could disable the download folder
+		// restrictions to unrestrict themselves
+		lookup_flags |= LOOKUPFLAG_NO_DOWNLOAD_FOLDER; }
+	// For q3config.cfg and autoexec.cfg - only load files on disk and from appropriate fs_mod_settings locations
+	lookup_flags |= (LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY);
+
+	file = fs_general_lookup("autoexec.cfg", lookup_flags, qfalse);
+	if(file) {
+		data = fs_read_data(file, 0, &size, "cmod_debug_get_autoexec"); }
+
+	cmod_stream_append_string_separated(stream, data ? data : "[file not found]", "\n"); }
+
+static void cmod_debug_get_filelist(cmod_stream_t *stream) {
+	int i;
+	fsc_hashtable_iterator_t hti;
+	const fsc_file_t *file;
+	char buffer[FS_FILE_BUFFER_SIZE];
+
+	for(i=0; i<fs.files.bucket_count; ++i) {
+		fsc_hashtable_open(&fs.files, i, &hti);
+		while((file = (fsc_file_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
+			if(!fsc_is_file_enabled(file, &fs)) continue;
+			if(file->sourcetype != FSC_SOURCETYPE_DIRECT) continue;
+
+			fs_file_to_buffer(file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
+			cmod_stream_append_string_separated(stream, buffer, "\n");
+
+			if(((fsc_file_direct_t *)file)->pk3_hash) {
+				cmod_stream_append_string(stream, va(" (hash:%i)", (int)((fsc_file_direct_t *)file)->pk3_hash)); } } } }
+
+static void copydebug_write_clipboard(cmod_stream_t *stream) {
+	// Based on sys_win32.c->Sys_ErrorDialog
+	HGLOBAL memoryHandle;
+	char *clipMemory;
+
+	memoryHandle = GlobalAlloc( GMEM_MOVEABLE|GMEM_DDESHARE, stream->position+1);
+	clipMemory = (char *)GlobalLock( memoryHandle );
+
+	if( clipMemory )
+	{
+		Com_Memcpy(clipMemory, stream->data, stream->position);
+		clipMemory[stream->position+1] = 0;
+
+		if( OpenClipboard( NULL ) && EmptyClipboard( ) )
+			SetClipboardData( CF_TEXT, memoryHandle );
+
+		GlobalUnlock( clipMemory );
+		CloseClipboard( );
+	}
+}
+#endif
+
+void cmod_copydebug_cmd(void) {
+#ifdef CMOD_COPYDEBUG_CMD_SUPPORTED
+	char buffer[65536];
+	cmod_stream_t stream = {buffer, 0, sizeof(buffer), qfalse};
+
+	cmod_stream_append_string_separated(&stream, "console history\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "\n\n");
+	cmod_debug_get_console(&stream);
+	cmod_stream_append_string_separated(&stream, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", "\n");
+
+	cmod_stream_append_string_separated(&stream, "cmod.cfg\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "\n\n");
+	cmod_debug_get_config(&stream);
+	cmod_stream_append_string_separated(&stream, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", "\n");
+
+	cmod_stream_append_string_separated(&stream, "autoexec.cfg\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "\n\n");
+	cmod_debug_get_autoexec(&stream);
+	cmod_stream_append_string_separated(&stream, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", "\n");
+
+	cmod_stream_append_string_separated(&stream, "file list\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "\n\n");
+	cmod_debug_get_filelist(&stream);
+	cmod_stream_append_string_separated(&stream, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", "\n");
+
+	cmod_stream_append_string_separated(&stream, "End of debug output.", "\n\n");
+	copydebug_write_clipboard(&stream);
+	Com_Printf("Debug info copied to clipboard.\n");
+#else
+	Com_Printf("Command not supported on this operating system or build configuration.\n");
+#endif
+}
 #endif

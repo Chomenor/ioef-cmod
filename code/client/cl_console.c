@@ -294,6 +294,50 @@ void Con_Dump_f (void)
 	FS_FCloseFile( f );
 }
 
+#ifdef CMOD_COPYDEBUG_CMD_SUPPORTED
+void cmod_debug_get_console(cmod_stream_t *stream) {
+	int		l, x, i;
+	short	*line;
+	int		bufferlen;
+	char	*buffer;
+
+	// skip empty lines
+	for (l = con.current - con.totallines + 1 ; l <= con.current ; l++)
+	{
+		line = con.text + (l%con.totallines)*con.linewidth;
+		for (x=0 ; x<con.linewidth ; x++)
+			if ((line[x] & 0xff) != ' ')
+				break;
+		if (x != con.linewidth)
+			break;
+	}
+
+	bufferlen = con.linewidth + 2 * sizeof ( char );
+
+	buffer = Hunk_AllocateTempMemory( bufferlen );
+
+	// write the remaining lines
+	buffer[bufferlen-1] = 0;
+	for ( ; l <= con.current ; l++)
+	{
+		line = con.text + (l%con.totallines)*con.linewidth;
+		for(i=0; i<con.linewidth; i++)
+			buffer[i] = line[i] & 0xff;
+		for (x=con.linewidth-1 ; x>=0 ; x--)
+		{
+			if (buffer[x] == ' ')
+				buffer[x] = 0;
+			else
+				break;
+		}
+		cmod_stream_append_string(stream, "\n");
+		cmod_stream_append_string(stream, buffer);
+	}
+
+	Hunk_FreeTempMemory( buffer );
+}
+#endif
+
 						
 /*
 ================
