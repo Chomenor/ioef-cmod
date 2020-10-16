@@ -1180,14 +1180,8 @@ void fs_generate_reference_lists(void) {
 		for(i=0; i<download_list.entry_count; ++i) {
 			reference_list_entry_t *entry = &download_list.entries[i];
 			if(!hash_in_reference_list(&pure_list, entry->hash)) {
-				Com_Printf("WARNING: Skipping download list pak '%s/%s' due to being missing"
-					" from pure list. Check to make sure all download manifest contents are also"
-					" included in the pure manifest.\n", entry->mod_dir, entry->name);
-				entry->disabled = qtrue; } }
-
-		// Rebuild download strings to account for potential disabled entries from the previous check
-		refstrings_free(&download_strings);
-		download_strings = refstrings_generate(&download_list, MAX_DOWNLOAD_LIST_STRING); }
+				Com_Printf("WARNING: Download list pak '%s/%s' is missing from the pure list"
+					" and may not be loaded by clients.\n", entry->mod_dir, entry->name); } } }
 
 	// Write output cvars
 	if(download_valid) {
