@@ -432,7 +432,7 @@ typedef struct {
 
 	// Internal
 	fsc_filesystem_t *fs;
-	int current_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
+	int next_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
 	fsc_hashtable_iterator_t hti;
 	const char *dir;
 	const char *name;
@@ -448,7 +448,7 @@ typedef struct {
 
 	// Internal
 	fsc_filesystem_t *fs;
-	int current_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
+	int next_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
 	fsc_hashtable_iterator_t hti;
 	unsigned int hash;
 } fsc_pk3_iterator_t;
@@ -463,7 +463,7 @@ typedef struct {
 
 	// Internal
 	fsc_filesystem_t *fs;
-	int current_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
+	int next_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
 	fsc_hashtable_iterator_t hti;
 	const char *name;
 } fsc_shader_iterator_t;

@@ -129,7 +129,7 @@ fsc_file_iterator_t fsc_file_iterator_open(fsc_filesystem_t *fs, const char *dir
 	fsc_memset(&it, 0, sizeof(it));
 
 	fsc_hashtable_open(&fs->files, fsc_string_hash(name, dir), &it.hti);
-	it.current_bucket = -1;
+	it.next_bucket = -1;
 	it.fs = fs;
 	it.dir = dir;
 	it.name = name;
@@ -142,7 +142,7 @@ fsc_file_iterator_t fsc_file_iterator_open_all(fsc_filesystem_t *fs) {
 	fsc_memset(&it, 0, sizeof(it));
 
 	fsc_hashtable_open(&fs->files, 0, &it.hti);
-	it.current_bucket = 0;
+	it.next_bucket = 1;
 	it.fs = fs;
 	return it; }
 
@@ -156,15 +156,15 @@ int fsc_file_iterator_advance(fsc_file_iterator_t *it) {
 		if(it->file_ptr) {
 			it->file = (fsc_file_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file_ptr, 0);
 			if(!fsc_is_file_enabled(it->file, it->fs)) continue;
-			if(it->current_bucket == -1) {
+			if(it->next_bucket == -1) {
 				if(fsc_stricmp(FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file->qp_name_ptr, 0), it->name)) continue;
 				if(it->file->qp_dir_ptr && (!it->dir || fsc_stricmp(
 						FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file->qp_dir_ptr, 0), it->dir))) continue;
 				if(!it->file->qp_dir_ptr && it->dir) continue; }
 			return 1; }
 
-		if(it->current_bucket >= 0 && it->current_bucket < it->fs->files.bucket_count) {
-			fsc_hashtable_open(&it->fs->files, it->current_bucket++, &it->hti);
+		if(it->next_bucket >= 0 && it->next_bucket < it->fs->files.bucket_count) {
+			fsc_hashtable_open(&it->fs->files, it->next_bucket++, &it->hti);
 			continue; }
 
 		it->file = 0;
@@ -177,7 +177,7 @@ fsc_pk3_iterator_t fsc_pk3_iterator_open(fsc_filesystem_t *fs, unsigned int hash
 	fsc_memset(&it, 0, sizeof(it));
 
 	fsc_hashtable_open(&fs->pk3_hash_lookup, hash, &it.hti);
-	it.current_bucket = -1;
+	it.next_bucket = -1;
 	it.fs = fs;
 	it.hash = hash;
 	return it; }
@@ -189,7 +189,7 @@ fsc_pk3_iterator_t fsc_pk3_iterator_open_all(fsc_filesystem_t *fs) {
 	fsc_memset(&it, 0, sizeof(it));
 
 	fsc_hashtable_open(&fs->pk3_hash_lookup, 0, &it.hti);
-	it.current_bucket = 0;
+	it.next_bucket = 1;
 	it.fs = fs;
 	return it; }
 
@@ -205,11 +205,11 @@ int fsc_pk3_iterator_advance(fsc_pk3_iterator_t *it) {
 			it->pk3_ptr = hashmap_entry->pk3;
 			it->pk3 = (fsc_file_direct_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->pk3_ptr, 0);
 			if(!fsc_is_file_enabled((fsc_file_t *)(it->pk3), it->fs)) continue;
-			if(it->current_bucket == -1 && it->pk3->pk3_hash != it->hash) continue;
+			if(it->next_bucket == -1 && it->pk3->pk3_hash != it->hash) continue;
 			return 1; }
 
-		if(it->current_bucket >= 0 && it->current_bucket < it->fs->pk3_hash_lookup.bucket_count) {
-			fsc_hashtable_open(&it->fs->pk3_hash_lookup, it->current_bucket++, &it->hti);
+		if(it->next_bucket >= 0 && it->next_bucket < it->fs->pk3_hash_lookup.bucket_count) {
+			fsc_hashtable_open(&it->fs->pk3_hash_lookup, it->next_bucket++, &it->hti);
 			continue; }
 
 		it->pk3 = 0;
@@ -225,7 +225,7 @@ fsc_shader_iterator_t fsc_shader_iterator_open(fsc_filesystem_t *fs, const char 
 	fsc_memset(&it, 0, sizeof(it));
 
 	fsc_hashtable_open(&fs->shaders, fsc_string_hash(name, 0), &it.hti);
-	it.current_bucket = -1;
+	it.next_bucket = -1;
 	it.fs = fs;
 	it.name = name;
 	return it; }
@@ -237,7 +237,7 @@ fsc_shader_iterator_t fsc_shader_iterator_open_all(fsc_filesystem_t *fs) {
 	fsc_memset(&it, 0, sizeof(it));
 
 	fsc_hashtable_open(&fs->shaders, 0, &it.hti);
-	it.current_bucket = 0;
+	it.next_bucket = 1;
 	it.fs = fs;
 	return it; }
 
@@ -253,12 +253,12 @@ int fsc_shader_iterator_advance(fsc_shader_iterator_t *it) {
 			it->shader = (fsc_shader_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->shader_ptr, 0);
 			src_file = (const fsc_file_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->shader->source_file_ptr, 0);
 			if(!fsc_is_file_enabled(src_file, it->fs)) continue;
-			if(it->current_bucket == -1 &&
+			if(it->next_bucket == -1 &&
 					fsc_stricmp(FSC_STACK_RETRIEVE(&it->fs->general_stack, it->shader->shader_name_ptr, 0), it->name)) continue;
 			return 1; }
 
-		if(it->current_bucket >= 0 && it->current_bucket < it->fs->shaders.bucket_count) {
-			fsc_hashtable_open(&it->fs->shaders, it->current_bucket++, &it->hti);
+		if(it->next_bucket >= 0 && it->next_bucket < it->fs->shaders.bucket_count) {
+			fsc_hashtable_open(&it->fs->shaders, it->next_bucket++, &it->hti);
 			continue; }
 
 		it->shader = 0;
