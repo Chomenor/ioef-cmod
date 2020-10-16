@@ -23,15 +23,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-// This section is used to provide faster file iteration when starting at a certain
-// directory, rather than iterating over the entire filesystem.
-
 #define STACKPTR_LCL(pointer) ( FSC_STACK_RETRIEVE(stack, pointer, 0) )		// non-null, local stack parameter
 #define STACKPTRN_LCL(pointer) ( FSC_STACK_RETRIEVE(stack, pointer, 1) )	// null allowed, local stack parameter
 
 /* ******************************************************************************** */
-// File Registration
+// Directory iteration
 /* ******************************************************************************** */
+
+// This section is used to provide faster file iteration when starting at a certain
+// directory, rather than iterating over the entire filesystem.
 
 static int get_parent_qp_dir(const char *qp_dir, char *target) {
 	// Converts qp_dir string to parent dir
@@ -112,5 +112,156 @@ void fsc_iteration_register_file(fsc_stackptr_t file_ptr, fsc_hashtable_t *direc
 	// Add file to directory's sub_file linked list
 	file->next_in_directory = directory->sub_file;
 	directory->sub_file = file_ptr; }
+
+/* ******************************************************************************** */
+// Filesystem Iterators
+/* ******************************************************************************** */
+
+// Abstracted iterators for convenient filesystem access
+// Only files that are enabled and match input criteria should be returned by these iterators
+
+fsc_file_iterator_t fsc_file_iterator_open(fsc_filesystem_t *fs, const char *dir, const char *name) {
+	// Open file iterator to iterate files matching a specific directory and name
+	// 'dir' and 'name' pointers should remain valid throughout iteration
+	fsc_file_iterator_t it;
+	FSC_ASSERT(fs);
+	FSC_ASSERT(name);
+	fsc_memset(&it, 0, sizeof(it));
+
+	fsc_hashtable_open(&fs->files, fsc_string_hash(name, dir), &it.hti);
+	it.current_bucket = -1;
+	it.fs = fs;
+	it.dir = dir;
+	it.name = name;
+	return it; }
+
+fsc_file_iterator_t fsc_file_iterator_open_all(fsc_filesystem_t *fs) {
+	// Open file iterator to iterate all files in filesystem
+	fsc_file_iterator_t it;
+	FSC_ASSERT(fs);
+	fsc_memset(&it, 0, sizeof(it));
+
+	fsc_hashtable_open(&fs->files, 0, &it.hti);
+	it.current_bucket = 0;
+	it.fs = fs;
+	return it; }
+
+int fsc_file_iterator_advance(fsc_file_iterator_t *it) {
+	// Returns 1 on success, 0 on end of iteration
+	// Sets it->file and it->file_ptr on success
+	FSC_ASSERT(it);
+
+	while(1) {
+		it->file_ptr = fsc_hashtable_next(&it->hti);
+		if(it->file_ptr) {
+			it->file = (fsc_file_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file_ptr, 0);
+			if(!fsc_is_file_enabled(it->file, it->fs)) continue;
+			if(it->current_bucket == -1) {
+				if(fsc_stricmp(FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file->qp_name_ptr, 0), it->name)) continue;
+				if(it->file->qp_dir_ptr && (!it->dir || fsc_stricmp(
+						FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file->qp_dir_ptr, 0), it->dir))) continue;
+				if(!it->file->qp_dir_ptr && it->dir) continue; }
+			return 1; }
+
+		if(it->current_bucket >= 0 && it->current_bucket < it->fs->files.bucket_count) {
+			fsc_hashtable_open(&it->fs->files, it->current_bucket++, &it->hti);
+			continue; }
+
+		it->file = 0;
+		return 0; } }
+
+fsc_pk3_iterator_t fsc_pk3_iterator_open(fsc_filesystem_t *fs, unsigned int hash) {
+	// Open pk3 iterator to iterate pk3s matching specific hash
+	fsc_pk3_iterator_t it;
+	FSC_ASSERT(fs);
+	fsc_memset(&it, 0, sizeof(it));
+
+	fsc_hashtable_open(&fs->pk3_hash_lookup, hash, &it.hti);
+	it.current_bucket = -1;
+	it.fs = fs;
+	it.hash = hash;
+	return it; }
+
+fsc_pk3_iterator_t fsc_pk3_iterator_open_all(fsc_filesystem_t *fs) {
+	// Open pk3 iterator to iterate all pk3s in filesystem
+	fsc_pk3_iterator_t it;
+	FSC_ASSERT(fs);
+	fsc_memset(&it, 0, sizeof(it));
+
+	fsc_hashtable_open(&fs->pk3_hash_lookup, 0, &it.hti);
+	it.current_bucket = 0;
+	it.fs = fs;
+	return it; }
+
+int fsc_pk3_iterator_advance(fsc_pk3_iterator_t *it) {
+	// Returns 1 on success, 0 on end of iteration
+	// Sets it->pk3 and it->pk3_ptr on success
+	FSC_ASSERT(it);
+
+	while(1) {
+		fsc_pk3_hash_map_entry_t *hashmap_entry = (fsc_pk3_hash_map_entry_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack,
+				fsc_hashtable_next(&it->hti), 1);
+		if(hashmap_entry) {
+			it->pk3_ptr = hashmap_entry->pk3;
+			it->pk3 = (fsc_file_direct_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->pk3_ptr, 0);
+			if(!fsc_is_file_enabled((fsc_file_t *)(it->pk3), it->fs)) continue;
+			if(it->current_bucket == -1 && it->pk3->pk3_hash != it->hash) continue;
+			return 1; }
+
+		if(it->current_bucket >= 0 && it->current_bucket < it->fs->pk3_hash_lookup.bucket_count) {
+			fsc_hashtable_open(&it->fs->pk3_hash_lookup, it->current_bucket++, &it->hti);
+			continue; }
+
+		it->pk3 = 0;
+		it->pk3_ptr = 0;
+		return 0; } }
+
+fsc_shader_iterator_t fsc_shader_iterator_open(fsc_filesystem_t *fs, const char *name) {
+	// Open shader iterator to iterate shaders matching a specific name
+	// 'name' pointer should remain valid throughout iteration
+	fsc_shader_iterator_t it;
+	FSC_ASSERT(fs);
+	FSC_ASSERT(name);
+	fsc_memset(&it, 0, sizeof(it));
+
+	fsc_hashtable_open(&fs->shaders, fsc_string_hash(name, 0), &it.hti);
+	it.current_bucket = -1;
+	it.fs = fs;
+	it.name = name;
+	return it; }
+
+fsc_shader_iterator_t fsc_shader_iterator_open_all(fsc_filesystem_t *fs) {
+	// Open shader iterator to iterate all shaders in filesystem
+	fsc_shader_iterator_t it;
+	FSC_ASSERT(fs);
+	fsc_memset(&it, 0, sizeof(it));
+
+	fsc_hashtable_open(&fs->shaders, 0, &it.hti);
+	it.current_bucket = 0;
+	it.fs = fs;
+	return it; }
+
+int fsc_shader_iterator_advance(fsc_shader_iterator_t *it) {
+	// Returns 1 on success, 0 on end of iteration
+	// Sets it->shader and it->shader_ptr on success
+	const fsc_file_t *src_file;
+	FSC_ASSERT(it);
+
+	while(1) {
+		it->shader_ptr = fsc_hashtable_next(&it->hti);
+		if(it->shader_ptr) {
+			it->shader = (fsc_shader_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->shader_ptr, 0);
+			src_file = (const fsc_file_t *)FSC_STACK_RETRIEVE(&it->fs->general_stack, it->shader->source_file_ptr, 0);
+			if(!fsc_is_file_enabled(src_file, it->fs)) continue;
+			if(it->current_bucket == -1 &&
+					fsc_stricmp(FSC_STACK_RETRIEVE(&it->fs->general_stack, it->shader->shader_name_ptr, 0), it->name)) continue;
+			return 1; }
+
+		if(it->current_bucket >= 0 && it->current_bucket < it->fs->shaders.bucket_count) {
+			fsc_hashtable_open(&it->fs->shaders, it->current_bucket++, &it->hti);
+			continue; }
+
+		it->shader = 0;
+		return 0; } }
 
 #endif	// NEW_FILESYSTEM

@@ -218,7 +218,7 @@ static qboolean check_path_enabled(fsc_stream_t *stream, const filelist_work_t *
 
 static qboolean check_file_enabled(const fsc_file_t *file, const filelist_work_t *flw) {
 	// Returns qtrue if file is valid to use, qfalse otherwise
-	int disabled_checks = FD_CHECK_FILE_ENABLED|FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_SERVERCFG_LIMIT;
+	int disabled_checks = FD_CHECK_LIST_INACTIVE_MODS|FD_CHECK_LIST_SERVERCFG_LIMIT;
 	if(!(flw->flags & FLISTFLAG_IGNORE_PURE_LIST) &&
 			!((flw->flags & FLISTFLAG_PURE_ALLOW_DIRECT_SOURCE) && file->sourcetype == FSC_SOURCETYPE_DIRECT)) {
 		disabled_checks |= FD_CHECK_PURE_LIST; }
@@ -242,7 +242,7 @@ static void temp_file_set_populate(const fsc_directory_t *base, fs_hashtable_t *
 
 	file = (fsc_file_t *)STACKPTRN(base->sub_file);
 	while(file) {
-		if(check_file_enabled(file, flw)) {
+		if(fsc_is_file_enabled(file, &fs) && check_file_enabled(file, flw)) {
 			int directory_depth = DIRECT_NON_PK3DIR(file) ? flw->direct_directory_depth : flw->general_directory_depth;
 			int file_depth = DIRECT_NON_PK3DIR(file) ? flw->direct_file_depth : flw->general_file_depth;
 			int i, j;

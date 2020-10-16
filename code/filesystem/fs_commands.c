@@ -174,27 +174,22 @@ static void FS_TouchFile_f( void ) {
 
 static void FS_Path_f( void ) {
 	// Quick implementation without sorting
-	fsc_hashtable_iterator_t hti;
-	fsc_pk3_hash_map_entry_t *hash_entry;
+	fsc_pk3_iterator_t it;
 	int sourceid;
-	int i;
 
 	for(sourceid=0; sourceid<FS_MAX_SOURCEDIRS; ++sourceid) {
 		if(!fs_sourcedirs[sourceid].active) continue;
 		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path);
 
-		for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
-			fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-			while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-				const fsc_file_direct_t *pak = (const fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
-				if(pak->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)pak,
-						FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) {
-					char buffer[FS_FILE_BUFFER_SIZE];
-					fs_file_to_buffer((fsc_file_t *)pak, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
-					Com_Printf("%s (%i files)\n", buffer, pak->pk3_subfile_count);
-					Com_Printf("    hash(%i) core_pk3_position(%i)\n", (int)pak->pk3_hash, core_pk3_position(pak->pk3_hash));
-					if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
-							pk3_list_lookup(&connected_server_pure_list, pak->pk3_hash) ? "" : "not "); } } } }
+		it = fsc_pk3_iterator_open_all(&fs);
+		while(fsc_pk3_iterator_advance(&it)) {
+			if(it.pk3->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)it.pk3, FD_CHECK_READ_INACTIVE_MODS)) {
+				char buffer[FS_FILE_BUFFER_SIZE];
+				fs_file_to_buffer((fsc_file_t *)it.pk3, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
+				Com_Printf("%s (%i files)\n", buffer, it.pk3->pk3_subfile_count);
+				Com_Printf("    hash(%i) core_pk3_position(%i)\n", (int)it.pk3->pk3_hash, core_pk3_position(it.pk3->pk3_hash));
+				if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
+						pk3_list_lookup(&connected_server_pure_list, it.pk3->pk3_hash) ? "" : "not "); } } }
 
 	Com_Printf("\n");
 	fs_print_handle_list(); }

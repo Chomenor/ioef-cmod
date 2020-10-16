@@ -402,12 +402,11 @@ DEF_PUBLIC( void fs_print_file_location(const fsc_file_t *file) )
 
 // File disabled check function
 #ifdef FSLOCAL
-#define FD_CHECK_FILE_ENABLED 1		// Check if file is disabled in index
-#define FD_CHECK_PURE_LIST 2		// Check if file is blocked by connected server pure configuration
-#define FD_CHECK_READ_INACTIVE_MODS 4		// Check if file is blocked for file lookup by fs_read_inactive_mods setting
-#define FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG 8		// Same as above, but also treat servercfg as an inactive mod
-#define FD_CHECK_LIST_INACTIVE_MODS 16		// Check if file is blocked for file listing by fs_list_inactive_mods setting
-#define FD_CHECK_LIST_SERVERCFG_LIMIT 32	// Check if files is blocked for file listing due to fs_servercfg_listlimit
+#define FD_CHECK_PURE_LIST 1		// Check if file is blocked by connected server pure configuration
+#define FD_CHECK_READ_INACTIVE_MODS 2		// Check if file is blocked for file lookup by fs_read_inactive_mods setting
+#define FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG 4		// Same as above, but also treat servercfg as an inactive mod
+#define FD_CHECK_LIST_INACTIVE_MODS 8		// Check if file is blocked for file listing by fs_list_inactive_mods setting
+#define FD_CHECK_LIST_SERVERCFG_LIMIT 16	// Check if files is blocked for file listing due to fs_servercfg_listlimit
 DEF_LOCAL( int fs_file_disabled(const fsc_file_t *file, int checks) )
 #endif
 

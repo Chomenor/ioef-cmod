@@ -410,6 +410,8 @@ int is_crosshair_enabled(fsc_filesystem_t *fs, const fsc_crosshair_t *crosshair)
 // Iteration (fsc_iteration.c)
 /* ******************************************************************************** */
 
+// ***** Directory Iteration *****
+
 typedef struct {
 	// Hash table compliance
 	fsc_hashtable_entry_t hte;
@@ -422,8 +424,56 @@ typedef struct {
 
 void fsc_iteration_register_file(fsc_stackptr_t file_ptr, fsc_hashtable_t *directories, fsc_hashtable_t *string_repository, fsc_stack_t *stack);
 
+// ***** Filesystem Iterators *****
+
+typedef struct {
+	const fsc_file_t *file;
+	fsc_stackptr_t file_ptr;
+
+	// Internal
+	fsc_filesystem_t *fs;
+	int current_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
+	fsc_hashtable_iterator_t hti;
+	const char *dir;
+	const char *name;
+} fsc_file_iterator_t;
+
+fsc_file_iterator_t fsc_file_iterator_open(fsc_filesystem_t *fs, const char *dir, const char *name);
+fsc_file_iterator_t fsc_file_iterator_open_all(fsc_filesystem_t *fs);
+int fsc_file_iterator_advance(fsc_file_iterator_t *it);
+
+typedef struct {
+	const fsc_file_direct_t *pk3;
+	fsc_stackptr_t pk3_ptr;
+
+	// Internal
+	fsc_filesystem_t *fs;
+	int current_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
+	fsc_hashtable_iterator_t hti;
+	unsigned int hash;
+} fsc_pk3_iterator_t;
+
+fsc_pk3_iterator_t fsc_pk3_iterator_open(fsc_filesystem_t *fs, unsigned int hash);
+fsc_pk3_iterator_t fsc_pk3_iterator_open_all(fsc_filesystem_t *fs);
+int fsc_pk3_iterator_advance(fsc_pk3_iterator_t *it);
+
+typedef struct {
+	const fsc_shader_t *shader;
+	fsc_stackptr_t shader_ptr;
+
+	// Internal
+	fsc_filesystem_t *fs;
+	int current_bucket;		// -1 - single-bucket search; >=0 - iterate-all mode
+	fsc_hashtable_iterator_t hti;
+	const char *name;
+} fsc_shader_iterator_t;
+
+fsc_shader_iterator_t fsc_shader_iterator_open(fsc_filesystem_t *fs, const char *name);
+fsc_shader_iterator_t fsc_shader_iterator_open_all(fsc_filesystem_t *fs);
+int fsc_shader_iterator_advance(fsc_shader_iterator_t *it);
+
 /* ******************************************************************************** */
-// Index Cache (fsc_index.c)
+// Index Cache (fsc_cache.c)
 /* ******************************************************************************** */
 
 int fsc_cache_export_file(fsc_filesystem_t *source_fs, void *os_path, fsc_errorhandler_t *eh);

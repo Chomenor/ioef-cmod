@@ -96,21 +96,15 @@ void fs_clear_attempted_downloads(void) {
 // Needed Download Checks
 /* ******************************************************************************** */
 
-static qboolean entry_match_in_index(download_entry_t *entry, fsc_file_direct_t **different_moddir_match_out) {
+static qboolean entry_match_in_index(download_entry_t *entry, const fsc_file_direct_t **different_moddir_match_out) {
 	// Returns qtrue if download entry matches a file already in main index
-	fsc_hashtable_iterator_t hti;
-	fsc_pk3_hash_map_entry_t *hashmap_entry;
-
-	fsc_hashtable_open(&fs.pk3_hash_lookup, entry->hash, &hti);
-	while((hashmap_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-		fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hashmap_entry->pk3);
-		if(!fsc_is_file_enabled((fsc_file_t *)pk3, &fs)) continue;
-		if(pk3->pk3_hash != entry->hash) continue;
+	fsc_pk3_iterator_t it = fsc_pk3_iterator_open(&fs, entry->hash);
+	while(fsc_pk3_iterator_advance(&it)) {
 		if(fs_redownload_across_mods->integer &&
-				Q_stricmp(fsc_get_mod_dir((fsc_file_t *)pk3, &fs), entry->mod_dir)) {
+				Q_stricmp(fsc_get_mod_dir((fsc_file_t *)it.pk3, &fs), entry->mod_dir)) {
 			// If "fs_redownload_across_mods" is set, ignore match from different mod dir,
 			// but record it so fs_is_valid_download can display a warning later
-			if(different_moddir_match_out) *different_moddir_match_out = pk3;
+			if(different_moddir_match_out) *different_moddir_match_out = it.pk3;
 			continue; }
 		return qtrue; }
 
@@ -129,7 +123,7 @@ static qboolean fs_is_valid_download(download_entry_t *entry, unsigned int reche
 	// Returns qtrue if file should be downloaded, qfalse otherwise.
 	// recheck_hash can be set to retest a file that was downloaded and has an unexpected hash
 	unsigned int hash = recheck_hash ? recheck_hash : entry->hash;
-	fsc_file_direct_t *different_moddir_match = 0;
+	const fsc_file_direct_t *different_moddir_match = 0;
 
 	if(fs_read_only) {
 		Com_Printf("WARNING: Ignoring download %s because filesystem is in read-only state.\n",

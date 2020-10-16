@@ -327,9 +327,6 @@ int fs_file_disabled(const fsc_file_t *file, int checks) {
 	// Returns value of one of the triggering checks if file is disabled, null otherwise
 	FSC_ASSERT(file);
 
-	// File disabled check - blocks files disabled in the file index (they should never be accessed)
-	if((checks & FD_CHECK_FILE_ENABLED) && !fsc_is_file_enabled(file, &fs)) return FD_CHECK_FILE_ENABLED;
-
 	// Pure list check - blocks files disabled by pure settings of server we are connected to
 	if((checks & FD_CHECK_PURE_LIST) && fs_connected_server_pure_state() == 1) {
 		if(!get_pk3_list_position(file)) return FD_CHECK_PURE_LIST; }
@@ -732,19 +729,15 @@ static const unsigned int missionpack_hashes[] = {2430342401u, 511014160u,
 
 static qboolean check_default_cfg_pk3(const char *mod, const char *filename, unsigned int hash) {
 	// Returns qtrue if there is a pk3 containing default.cfg with either the given name or hash
-	fsc_hashtable_iterator_t hti;
-	fsc_file_t *file;
+	fsc_file_iterator_t it = fsc_file_iterator_open(&fs, 0, "default");
 
-	fsc_hashtable_open(&fs.files, fsc_string_hash("default", 0), &hti);
-	while((file = (fsc_file_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
+	while(fsc_file_iterator_advance(&it)) {
 		const fsc_file_direct_t *source_pk3;
-		if(fs_file_disabled(file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
-		if(file->sourcetype != FSC_SOURCETYPE_PK3) continue;
-		if(Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), "default")) continue;
-		if(!file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "cfg")) continue;
-		if(file->qp_dir_ptr) continue;
+		if(fs_file_disabled(it.file, FD_CHECK_READ_INACTIVE_MODS)) continue;
+		if(it.file->sourcetype != FSC_SOURCETYPE_PK3) continue;
+		if(!it.file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(it.file->qp_ext_ptr), "cfg")) continue;
 
-		source_pk3 = fsc_get_base_file(file, &fs);
+		source_pk3 = fsc_get_base_file(it.file, &fs);
 		if(source_pk3->pk3_hash == hash) return qtrue;
 		if(mod && Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)source_pk3, &fs), mod)) continue;
 		if(!Q_stricmp((const char *)STACKPTR(source_pk3->f.qp_name_ptr), filename)) return qtrue; }
@@ -759,30 +752,24 @@ typedef struct {
 static core_pak_state_t get_pak_state(const char *mod, const char *filename, unsigned int hash) {
 	// Locates name and hash matches for a given pak
 	const fsc_file_direct_t *name_match = 0;
-	fsc_hashtable_iterator_t hti;
-	fsc_pk3_hash_map_entry_t *entry;
-	const fsc_file_direct_t *file;
+	fsc_file_iterator_t it_files = fsc_file_iterator_open(&fs, 0, filename);
+	fsc_pk3_iterator_t it_pk3s = fsc_pk3_iterator_open(&fs, hash);
 
-	fsc_hashtable_open(&fs.files, fsc_string_hash(filename, 0), &hti);
-	while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
-		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
-		if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), filename)) continue;
-		if(!file->f.qp_ext_ptr || Q_stricmp((const char *)STACKPTR(file->f.qp_ext_ptr), "pk3")) continue;
-		if(file->f.qp_dir_ptr) continue;
-		if(mod && Q_stricmp(fsc_get_mod_dir((fsc_file_t *)file, &fs), mod)) continue;
-		if(file->pk3_hash == hash) {
-			core_pak_state_t result = {file, file};
+	while(fsc_file_iterator_advance(&it_files)) {
+		const fsc_file_direct_t *pk3 = (fsc_file_direct_t *)it_files.file;
+		if(it_files.file->sourcetype != FSC_SOURCETYPE_DIRECT) continue;
+		if(fs_file_disabled(it_files.file, FD_CHECK_READ_INACTIVE_MODS)) continue;
+		if(!it_files.file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(it_files.file->qp_ext_ptr), "pk3")) continue;
+		if(mod && Q_stricmp(fsc_get_mod_dir(it_files.file, &fs), mod)) continue;
+		if(pk3->pk3_hash == hash) {
+			core_pak_state_t result = {pk3, pk3};
 			return result; }
-		name_match = file; }
+		name_match = pk3; }
 
-	fsc_hashtable_open(&fs.pk3_hash_lookup, hash, &hti);
-	while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-		file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS)) continue;
-		if((file->pk3_hash == hash)) {
-			core_pak_state_t result = {name_match, file};
-			return result; } }
+	while(fsc_pk3_iterator_advance(&it_pk3s)) {
+		if(fs_file_disabled((fsc_file_t *)it_pk3s.pk3, FD_CHECK_READ_INACTIVE_MODS)) continue;
+		core_pak_state_t result = {name_match, it_pk3s.pk3};
+		return result; }
 
 	{ core_pak_state_t result = {name_match, 0};
 	return result; } }

@@ -566,21 +566,15 @@ static pakcategory_t refset_get_pak_category(const fsc_file_direct_t *pak) {
 
 static void refset_add_paks_by_category(reference_set_work_t *rsw, pakcategory_t category) {
 	// Add all loaded paks in specified category to the pak set
-	int i;
-	fsc_hashtable_iterator_t hti;
-	fsc_pk3_hash_map_entry_t *hash_entry;
-
-	for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
-		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-		while((hash_entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-			fsc_file_direct_t *pk3 = (fsc_file_direct_t *)STACKPTR(hash_entry->pk3);
-			// The #inactivemod_paks rule explicitly follows the fs_read_inactive_mods setting in order for
-			//    fs_read_inactive_mods to work in the expected way when using the default pure manifest
-			// Note: Pure list from a previous client session should be cleared at this point in the map load process,
-			//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
-			if(fs_file_disabled((fsc_file_t *)pk3, FD_CHECK_FILE_ENABLED|FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG)) continue;
-			if(refset_get_pak_category(pk3) != category) continue;
-			refset_insert_pak(rsw, pk3); } } }
+	fsc_pk3_iterator_t it = fsc_pk3_iterator_open_all(&fs);
+	while(fsc_pk3_iterator_advance(&it)) {
+		// The #inactivemod_paks rule explicitly follows the fs_read_inactive_mods setting in order for
+		//    fs_read_inactive_mods to work in the expected way when using the default pure manifest
+		// Note: Pure list from a previous client session should be cleared at this point in the map load process,
+		//    so the potential pure list check in FD_CHECK_READ_INACTIVE_MODS should not be a factor here.
+		if(fs_file_disabled((fsc_file_t *)it.pk3, FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG)) continue;
+		if(refset_get_pak_category(it.pk3) != category) continue;
+		refset_insert_pak(rsw, it.pk3); } }
 
 static unsigned int refset_string_to_hash(const char *string) {
 	// Converts a user-specified string (signed or unsigned) to hash value
@@ -641,19 +635,17 @@ static void refset_process_specifier_by_name(reference_set_work_t *rsw, const ch
 	// Process a pak specifier in format <mod dir>/<name>
 	pak_specifier_t specifier;
 	int count = 0;
-	fsc_hashtable_iterator_t hti;
-	const fsc_file_direct_t *file;
+	fsc_file_iterator_t it;
 
 	if(!refset_parse_specifier(rsw->command_name, string, &specifier)) return;
 	FSC_ASSERT(!specifier.hash);
 
 	// Search for pk3s matching name
-	fsc_hashtable_open(&fs.files, fsc_string_hash(specifier.name, 0), &hti);
-	while((file = (const fsc_file_direct_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
+	it = fsc_file_iterator_open(&fs, 0, specifier.name);
+	while(fsc_file_iterator_advance(&it)) {
+		const fsc_file_direct_t *file = (const fsc_file_direct_t *)it.file;
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(!file->pk3_hash) continue;
-		if(fs_file_disabled((const fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
-		if(Q_stricmp((const char *)STACKPTR(file->f.qp_name_ptr), specifier.name)) continue;
 		if(Q_stricmp(fsc_get_mod_dir((const fsc_file_t *)file, &fs), specifier.mod_dir)) continue;
 		refset_insert_entry(rsw, specifier.mod_dir, specifier.name, file->pk3_hash, file);
 		++count; }
@@ -665,19 +657,15 @@ static void refset_process_specifier_by_hash(reference_set_work_t *rsw, const ch
 	// Process a pak specifier in format <mod dir>/<name>:<hash>
 	pak_specifier_t specifier;
 	int count = 0;
-	fsc_hashtable_iterator_t hti;
-	fsc_pk3_hash_map_entry_t *entry;
+	fsc_pk3_iterator_t it;
 
 	if(!refset_parse_specifier(rsw->command_name, string, &specifier)) return;
 	FSC_ASSERT(specifier.hash);
 
 	// Search for physical pk3s matching hash
-	fsc_hashtable_open(&fs.pk3_hash_lookup, specifier.hash, &hti);
-	while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-		const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-		if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
-		if(file->pk3_hash != specifier.hash) continue;
-		refset_insert_entry(rsw, specifier.mod_dir, specifier.name, specifier.hash, file);
+	it = fsc_pk3_iterator_open(&fs, specifier.hash);
+	while(fsc_pk3_iterator_advance(&it)) {
+		refset_insert_entry(rsw, specifier.mod_dir, specifier.name, specifier.hash, it.pk3);
 		++count; }
 
 	// If no actual pak was found, create a hash-only entry
@@ -718,9 +706,7 @@ static qboolean refset_pattern_match(const char *string, const char *pattern) {
 static void refset_process_specifier_by_wildcard(reference_set_work_t *rsw, const char *string) {
 	// Process a pak specifier in format <mod dir>/<name> containing wildcard characters
 	int count = 0;
-	unsigned int i;
-	fsc_hashtable_iterator_t hti;
-	fsc_pk3_hash_map_entry_t *entry;
+	fsc_pk3_iterator_t it;
 	char specifier_buffer[FSC_MAX_MODDIR+FSC_MAX_QPATH];
 	char file_buffer[FSC_MAX_MODDIR+FSC_MAX_QPATH];
 	char *z = specifier_buffer;
@@ -732,22 +718,19 @@ static void refset_process_specifier_by_wildcard(reference_set_work_t *rsw, cons
 		++z; }
 
 	// Iterate all pk3s in filesystem for potential matches
-	for(i=0; i<fs.pk3_hash_lookup.bucket_count; ++i) {
-		fsc_hashtable_open(&fs.pk3_hash_lookup, i, &hti);
-		while((entry = (fsc_pk3_hash_map_entry_t *)STACKPTRN(fsc_hashtable_next(&hti)))) {
-			const fsc_file_direct_t *file = (const fsc_file_direct_t *)STACKPTR(entry->pk3);
-			const char *mod_dir = fsc_get_mod_dir((fsc_file_t *)file, &fs);
-			const char *name = (const char *)STACKPTR(file->f.qp_name_ptr);
-			if(fs_file_disabled((fsc_file_t *)file, FD_CHECK_FILE_ENABLED)) continue;
+	it = fsc_pk3_iterator_open_all(&fs);
+	while(fsc_pk3_iterator_advance(&it)) {
+		const char *mod_dir = fsc_get_mod_dir((fsc_file_t *)it.pk3, &fs);
+		const char *name = (const char *)STACKPTR(it.pk3->f.qp_name_ptr);
 
-			// Check pattern match
-			Com_sprintf(file_buffer, sizeof(file_buffer), "%s/%s", mod_dir, name);
-			Q_strlwr(file_buffer);
-			if(!refset_pattern_match(file_buffer, specifier_buffer)) continue;
+		// Check pattern match
+		Com_sprintf(file_buffer, sizeof(file_buffer), "%s/%s", mod_dir, name);
+		Q_strlwr(file_buffer);
+		if(!refset_pattern_match(file_buffer, specifier_buffer)) continue;
 
-			// Add pk3 to reference set
-			refset_insert_entry(rsw, mod_dir, name, file->pk3_hash, file);
-			++count; } }
+		// Add pk3 to reference set
+		refset_insert_entry(rsw, mod_dir, name, it.pk3->pk3_hash, it.pk3);
+		++count; }
 
 	if(count == 0) Com_Printf("WARNING: Specifier '%s' failed to match any pk3s.\n", rsw->command_name); }
 

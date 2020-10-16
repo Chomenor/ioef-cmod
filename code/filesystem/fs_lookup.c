@@ -203,7 +203,6 @@ static qboolean string_match(const char *string1, const char *string2, qboolean 
 static int is_file_selected(const fsc_file_t *file, const lookup_query_t *query, int *extension_index_out, qboolean *case_mismatch_out) {
 	// Returns 1 if selected, 0 otherwise
 	int i;
-	if(!fsc_is_file_enabled(file, &fs)) return 0;
 	if(!string_match(query->qp_name, (const char *)STACKPTR(file->qp_name_ptr), case_mismatch_out)) return 0;
 	if(!string_match(query->qp_dir, (const char *)STACKPTRN(file->qp_dir_ptr), case_mismatch_out)) return 0;
 
@@ -216,31 +215,21 @@ static int is_file_selected(const fsc_file_t *file, const lookup_query_t *query,
 
 static void perform_file_selection(const lookup_query_t *query, selection_output_t *output) {
 	// Adds files matching criteria to output
-	fsc_hashtable_iterator_t hti;
-	fsc_stackptr_t file_ptr;
-
-	fsc_hashtable_open(&fs.files, fsc_string_hash(query->qp_name, query->qp_dir), &hti);
-	while((file_ptr = fsc_hashtable_next(&hti))) {
-		const fsc_file_t *file = (const fsc_file_t *)STACKPTR(file_ptr);
+	fsc_file_iterator_t it = fsc_file_iterator_open(&fs, query->qp_dir, query->qp_name);
+	while(fsc_file_iterator_advance(&it)) {
 		int extension_index = 0;
 		qboolean case_mismatch = qfalse;
-		if(is_file_selected(file, query, &extension_index, &case_mismatch)) {
+		if(is_file_selected(it.file, query, &extension_index, &case_mismatch)) {
 			lookup_resource_t *resource = allocate_lookup_resource(output);
-			file_to_lookup_resource(query, file, extension_index, case_mismatch, resource); } } }
+			file_to_lookup_resource(query, it.file, extension_index, case_mismatch, resource); } } }
 
 /* *** Shader Selection *** */
 
 static void perform_shader_selection(const lookup_query_t *query, selection_output_t *output) {
 	// Adds shaders matching criteria to output
-	fsc_hashtable_iterator_t hti;
-	fsc_stackptr_t shader_ptr;
-
-	fsc_hashtable_open(&fs.shaders, fsc_string_hash(query->shader_name, 0), &hti);
-	while((shader_ptr = fsc_hashtable_next(&hti))) {
-		const fsc_shader_t *shader = (fsc_shader_t *)STACKPTR(shader_ptr);
-		if(!fsc_is_file_enabled((const fsc_file_t *)STACKPTR(shader->source_file_ptr), &fs)) continue;
-		if(Q_stricmp((const char *)STACKPTR(shader->shader_name_ptr), query->shader_name)) continue;
-		shader_to_lookup_resource(query, shader, allocate_lookup_resource(output)); } }
+	fsc_shader_iterator_t it = fsc_shader_iterator_open(&fs, query->shader_name);
+	while(fsc_shader_iterator_advance(&it)) {
+		shader_to_lookup_resource(query, it.shader, allocate_lookup_resource(output)); } }
 
 /* *** Selection Main *** */
 
