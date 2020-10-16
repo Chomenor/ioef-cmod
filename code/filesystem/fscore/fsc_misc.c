@@ -118,6 +118,7 @@ void fsc_stream_append_string(fsc_stream_t *stream, const char *string) {
 #define STACK_BUCKET_DATA_SIZE (STACK_BUCKET_SIZE - sizeof(fsc_stack_bucket_t))
 
 static void stack_add_bucket(fsc_stack_t *stack) {
+	FSC_ASSERT(stack);
 	stack->buckets_position++;
 	FSC_ASSERT(stack->buckets_position >= 0);
 	FSC_ASSERT(stack->buckets_position < STACK_MAX_BUCKETS);
@@ -143,6 +144,7 @@ static void stack_add_bucket(fsc_stack_t *stack) {
 	stack->buckets[stack->buckets_position]->position = 0; }
 
 void fsc_stack_initialize(fsc_stack_t *stack) {
+	FSC_ASSERT(stack);
 	stack->buckets_position = -1;	// stack_add_bucket will increment to 0
 	stack->buckets_size = STACK_INITIAL_BUCKETS;
 	stack->buckets = (fsc_stack_bucket_t **)fsc_malloc(stack->buckets_size * sizeof(fsc_stack_bucket_t *));
@@ -151,6 +153,7 @@ void fsc_stack_initialize(fsc_stack_t *stack) {
 void *fsc_stack_retrieve(const fsc_stack_t *stack, const fsc_stackptr_t pointer, int allow_null,
 			const char *caller, const char *expression) {
 	// Converts stackptr for a given stack to actual pointer
+	FSC_ASSERT(stack);
 	if(pointer) {
 		int bucket = pointer >> STACK_BUCKET_POSITION_BITS;
 		unsigned int offset = pointer & ((1 << STACK_BUCKET_POSITION_BITS) - 1);
@@ -166,9 +169,13 @@ void *fsc_stack_retrieve(const fsc_stack_t *stack, const fsc_stackptr_t pointer,
 
 fsc_stackptr_t fsc_stack_allocate(fsc_stack_t *stack, unsigned int size) {
 	// Returns 0 on error
-	fsc_stack_bucket_t *bucket = stack->buckets[stack->buckets_position];
-	unsigned int aligned_position = (bucket->position + 3) & ~3;
+	fsc_stack_bucket_t *bucket;
+	unsigned int aligned_position;
 	char *output;
+	FSC_ASSERT(stack);
+
+	bucket = stack->buckets[stack->buckets_position];
+	aligned_position = (bucket->position + 3) & ~3;
 
 	// Add a new bucket if we are out of space
 	FSC_ASSERT(size < STACK_BUCKET_DATA_SIZE);
@@ -186,6 +193,8 @@ fsc_stackptr_t fsc_stack_allocate(fsc_stack_t *stack, unsigned int size) {
 void fsc_stack_free(fsc_stack_t *stack) {
 	// Can be called on a nulled, freed, initialized, or in some cases partially initialized stack
 	int i;
+	FSC_ASSERT(stack);
+
 	if(stack->buckets) {
 		for(i=0; i<=stack->buckets_position; ++i) {
 			if(stack->buckets[i]) fsc_free(stack->buckets[i]); }
@@ -195,6 +204,7 @@ void fsc_stack_free(fsc_stack_t *stack) {
 unsigned int fsc_stack_get_export_size(fsc_stack_t *stack) {
 	unsigned int size = 4;	// 4 bytes for bucket count field
 	int i;
+	FSC_ASSERT(stack);
 
 	// Then add the actual length of each bucket + 4 bytes for position field
 	for(i=0; i<=stack->buckets_position; ++i) {
@@ -205,6 +215,8 @@ unsigned int fsc_stack_get_export_size(fsc_stack_t *stack) {
 int fsc_stack_export(fsc_stack_t *stack, fsc_stream_t *stream) {
 	// Returns 1 on error, 0 on success
 	int i;
+	FSC_ASSERT(stack);
+	FSC_ASSERT(stream);
 
 	// Write the number of buckets
 	if(fsc_write_stream_data(stream, &stack->buckets_position, 4)) return 1;
@@ -220,6 +232,8 @@ int fsc_stack_export(fsc_stack_t *stack, fsc_stream_t *stream) {
 int fsc_stack_import(fsc_stack_t *stack, fsc_stream_t *stream) {
 	// Returns 1 on error, 0 on success
 	int i;
+	FSC_ASSERT(stack);
+	FSC_ASSERT(stream);
 
 	// Read number of active buckets
 	if(fsc_read_stream_data(stream, &stack->buckets_position, 4)) return 1;
