@@ -544,7 +544,7 @@ char *fs_read_data(const fsc_file_t *file, const char *path, unsigned int *size_
 
 	// Extract data into buffer
 	if(fsc_file_handle) {
-		int read_size = fsc_fread(data, size + 1, fsc_file_handle);
+		unsigned int read_size = fsc_fread(data, size + 1, fsc_file_handle);
 		fsc_fclose(fsc_file_handle);
 		if(read_size != size) goto error; }
 	else {
@@ -613,11 +613,11 @@ char *fs_read_shader(const fsc_shader_t *shader) {
 	return shader_data; }
 
 /* ******************************************************************************** */
-// File handle management
+// File Handles
 /* ******************************************************************************** */
 
 typedef enum {
-	FS_HANDLE_INVALID,
+	FS_HANDLE_NONE,
 	FS_HANDLE_CACHE_READ,
 	FS_HANDLE_DIRECT_READ,
 	FS_HANDLE_PK3_READ,
@@ -627,157 +627,279 @@ typedef enum {
 
 typedef struct {
 	fs_handle_type_t type;
+	fileHandle_t ref;
 	fs_handle_owner_t owner;
 	char *debug_path;
+	void *state;
 } fs_handle_t;
 
 typedef struct {
-	fs_handle_t h;
-	char *data;
-	unsigned int position;
-	unsigned int size;
-} fs_cache_read_handle_t;
+	fs_handle_type_t type;
+	const char *type_string;
 
-typedef struct {
-	fs_handle_t h;
-	void *fsc_handle;
-} fs_direct_read_handle_t;
+	// Returns length successfully read
+	unsigned int (*read)(fs_handle_t *handle, char *buffer, unsigned int length);
 
-typedef struct {
-	fs_handle_t h;
-	const fsc_file_frompk3_t *file;
-	void *fsc_handle;
-	unsigned int position;
-} fs_pk3_read_handle_t;
+	// Returns length successfully written
+	unsigned int (*write)(fs_handle_t *handle, const char *buffer, unsigned int length);
 
-typedef struct {
-	fs_handle_t h;
-	void *fsc_handle;
-	qboolean sync;
-} fs_write_handle_t;
+	// Returns 0 on success, -1 on error
+	int (*fseek)(fs_handle_t *handle, int offset, fsOrigin_t mode);
 
-typedef struct {
-	fs_handle_t h;
-	FILE *handle;
-} fs_pipe_handle_t;
+	// Returns seek position
+	unsigned int (*ftell)(fs_handle_t *handle);
+
+	// Frees any allocated handles or resources in handle state
+	void (*free)(fs_handle_t *handle);
+} fs_handle_config_t;
 
 // Note fileHandle_t values are incremented by 1 compared to the indices in this array.
 #define MAX_HANDLES 64
-fs_handle_t *handles[MAX_HANDLES];
+fs_handle_t fs_handles[MAX_HANDLES];
 
-static fileHandle_t fs_allocate_handle(fs_handle_type_t type) {
+static fs_handle_t *fs_handle_init(fs_handle_type_t type, fs_handle_owner_t owner, const char *debug_path, int state_size) {
 	int index;
-	int size;
+	FSC_ASSERT(type > FS_HANDLE_NONE);
 
 	// Locate free handle
 	for(index=0; index<MAX_HANDLES; ++index) {
-		if(!handles[index]) break; }
-	if(index >= MAX_HANDLES) Com_Error(ERR_DROP, "fs_allocate_handle failed to find free handle");
+		if(fs_handles[index].type == FS_HANDLE_NONE) break; }
+	if(index >= MAX_HANDLES) Com_Error(ERR_FATAL, "fs_handle_init failed to find free handle");
 
-	// Get size
-	switch(type) {
-		case FS_HANDLE_CACHE_READ: size = sizeof(fs_cache_read_handle_t); break;
-		case FS_HANDLE_DIRECT_READ: size = sizeof(fs_direct_read_handle_t); break;
-		case FS_HANDLE_PK3_READ: size = sizeof(fs_pk3_read_handle_t); break;
-		case FS_HANDLE_WRITE: size = sizeof(fs_write_handle_t); break;
-		case FS_HANDLE_PIPE: size = sizeof(fs_pipe_handle_t); break;
-		default: Com_Error(ERR_DROP, "fs_allocate_handle with invalid type"); }
+	// Configure
+	Com_Memset(&fs_handles[index], 0, sizeof(fs_handles[index]));
+	fs_handles[index].type = type;
+	fs_handles[index].ref = index + 1;
+	fs_handles[index].owner = owner;
+	fs_handles[index].debug_path = CopyString(debug_path);
+	fs_handles[index].state = S_Malloc(state_size);
+	Com_Memset(fs_handles[index].state, 0, state_size);
 
-	// Allocate
-	handles[index] = (fs_handle_t *)Z_Malloc(size);
-	handles[index]->type = type;
-	handles[index]->owner = FS_HANDLEOWNER_SYSTEM;
-	return index + 1; }
+	return &fs_handles[index]; }
 
-static void fs_free_handle(fileHandle_t handle) {
-	int index = handle - 1;
-	if(index < 0 || index > MAX_HANDLES || !handles[index]) Com_Error(ERR_DROP, "fs_free_handle on invalid handle");
-	Z_Free(handles[index]);
-	handles[index] = 0; }
+static fs_handle_t *fs_get_handle_object(fileHandle_t handle) {
+	// Returns handle object for handle reference, or null if not valid handle
+	fs_handle_t *fs_handle;
+	if(handle <= 0 || handle > MAX_HANDLES) return 0;
+	fs_handle = &fs_handles[handle - 1];
+	if(fs_handle->type == FS_HANDLE_NONE) return 0;
+	FSC_ASSERT(fs_handle->ref == handle);
+	return fs_handle; }
 
-static fs_handle_t *fs_get_handle_entry(fileHandle_t handle) {
-	// Returns null if handle is invalid
-	int index = handle - 1;
-	if(index < 0 || index > MAX_HANDLES || !handles[index]) return 0;
-	return handles[index]; }
+static const fs_handle_config_t *fs_get_handle_config(fs_handle_type_t type);
 
-/* ******************************************************************************** */
-// Cache read handle operations
-/* ******************************************************************************** */
+void fs_handle_close(fileHandle_t handle) {
+	fs_handle_t *fs_handle = fs_get_handle_object(handle);
+	const fs_handle_config_t *config;
+	if(!fs_handle) {
+		Com_Error(ERR_DROP, "fs_handle_close on invalid handle"); }
+	config = fs_get_handle_config(fs_handle->type);
+	FSC_ASSERT(config);
+	if(config->free) config->free(fs_handle);
+	Z_Free(fs_handle->debug_path);
+	Z_Free(fs_handle->state);
+	fs_handle->type = FS_HANDLE_NONE; }
+
+static unsigned int fs_handle_read(fileHandle_t handle, char *buffer, unsigned int length) {
+	fs_handle_t *fs_handle = fs_get_handle_object(handle);
+	const fs_handle_config_t *config;
+	if(!fs_handle) {
+		Com_Error(ERR_DROP, "fs_handle_read on invalid handle"); }
+	config = fs_get_handle_config(fs_handle->type);
+	FSC_ASSERT(config);
+	if(!config->read) {
+		Com_Error(ERR_DROP, "fs_handle_read on unsupported handle type"); }
+	return config->read(fs_handle, buffer, length); }
+
+static unsigned int fs_handle_write(fileHandle_t handle, const char *buffer, unsigned int length) {
+	fs_handle_t *fs_handle = fs_get_handle_object(handle);
+	const fs_handle_config_t *config;
+	if(!fs_handle) {
+		Com_Error(ERR_DROP, "fs_handle_write on invalid handle"); }
+	config = fs_get_handle_config(fs_handle->type);
+	FSC_ASSERT(config);
+	if(!config->write) {
+		Com_Error(ERR_DROP, "fs_handle_write on unsupported handle type"); }
+	return config->write(fs_handle, buffer, length); }
+
+static int fs_handle_fseek(fileHandle_t handle, int offset, fsOrigin_t origin_mode) {
+	fs_handle_t *fs_handle = fs_get_handle_object(handle);
+	const fs_handle_config_t *config;
+	if(!fs_handle) {
+		Com_Error(ERR_DROP, "fs_handle_fseek on invalid handle"); }
+	config = fs_get_handle_config(fs_handle->type);
+	FSC_ASSERT(config);
+	if(!config->fseek) {
+		Com_Error(ERR_DROP, "fs_handle_fseek on unsupported handle type"); }
+	return config->fseek(fs_handle, offset, origin_mode); }
+
+static unsigned int fs_handle_ftell(fileHandle_t handle) {
+	fs_handle_t *fs_handle = fs_get_handle_object(handle);
+	const fs_handle_config_t *config;
+	if(!fs_handle) {
+		Com_Error(ERR_DROP, "fs_handle_ftell on invalid handle"); }
+	config = fs_get_handle_config(fs_handle->type);
+	FSC_ASSERT(config);
+	if(!config->ftell) {
+		Com_Error(ERR_DROP, "fs_handle_ftell on unsupported handle type"); }
+	return config->ftell(fs_handle); }
+
+static void fs_handle_set_owner(fileHandle_t handle, fs_handle_owner_t owner) {
+	fs_handle_t *handle_entry = fs_get_handle_object(handle);
+	if(!handle_entry) Com_Error(ERR_DROP, "fs_handle_set_owner on invalid handle");
+	handle_entry->owner = owner; }
+
+fs_handle_owner_t fs_handle_get_owner(fileHandle_t handle) {
+	fs_handle_t *handle_entry = fs_get_handle_object(handle);
+	if(!handle_entry) return FS_HANDLEOWNER_SYSTEM;
+	return handle_entry->owner; }
+
+static const char *fs_handle_type_string(fs_handle_type_t type) {
+	const fs_handle_config_t *config = fs_get_handle_config(type);
+	if(!config) return "unknown";
+	return config->type_string; }
+
+static const char *fs_handle_owner_string(fs_handle_owner_t owner) {
+	if(owner == FS_HANDLEOWNER_SYSTEM) return "system";
+	if(owner == FS_HANDLEOWNER_CGAME) return "cgame";
+	if(owner == FS_HANDLEOWNER_UI) return "ui";
+	if(owner == FS_HANDLEOWNER_QAGAME) return "qagame";
+	return "unknown"; }
+
+void fs_print_handle_list(void) {
+	int i;
+	for(i=0; i<MAX_HANDLES; ++i) {
+		if(fs_handles[i].type == FS_HANDLE_NONE) continue;
+		Com_Printf("********** handle %i **********\n  type: %s\n  owner: %s\n  path: %s\n",
+				i+1, fs_handle_type_string(fs_handles[i].type), fs_handle_owner_string(fs_handles[i].owner),
+				fs_handles[i].debug_path); } }
+
+void fs_close_owner_handles(fs_handle_owner_t owner) {
+	// Can be called when a VM is shutting down to avoid leaked handles
+	int i;
+	for(i=0; i<MAX_HANDLES; ++i) {
+		if(fs_handles[i].type != FS_HANDLE_NONE && fs_handles[i].owner == owner) {
+			Com_Printf("^1*****************\nWARNING: Auto-closing possible leaked handle\n"
+					"type: %s\nowner: %s\npath: %s\n*****************\n", fs_handle_type_string(fs_handles[i].type),
+					fs_handle_owner_string(fs_handles[i].owner), fs_handles[i].debug_path);
+			fs_handle_close(i + 1); } } }
+
+void fs_close_all_handles(void) {
+	// Can be called when the whole program is terminating, just to be safe
+	int i;
+	for(i=0; i<MAX_HANDLES; ++i) {
+		if(fs_handles[i].type != FS_HANDLE_NONE) fs_handle_close(i + 1); } }
+
+// ##################################
+// ####### Cache Read Handles #######
+// ##################################
+
+typedef struct {
+	char *data;
+	unsigned int position;
+	unsigned int size;
+} fs_cache_read_handle_state_t;
 
 static fileHandle_t fs_cache_read_handle_open(const fsc_file_t *file, const char *path, unsigned int *size_out) {
 	// Only file or path should be set, not both
 	// Does not include sanity check on path
 	// Returns handle on success, null on error
+	char buffer[FS_FILE_BUFFER_SIZE];
+	const char *debug_path;
+	char *data;
+	fs_handle_t *handle;
+	unsigned int size;
+	fs_cache_read_handle_state_t *state;
 
-	fileHandle_t handle = fs_allocate_handle(FS_HANDLE_CACHE_READ);
-	fs_cache_read_handle_t *handle_entry = (fs_cache_read_handle_t *)fs_get_handle_entry(handle);
+	// Get debug path
+	if(file) {
+		fs_file_to_buffer(file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
+		debug_path = buffer; }
+	else {
+		debug_path = path; }
 
 	// Set up handle entry
-	handle_entry->data = fs_read_data(file, path, &handle_entry->size, "fs_cache_read_handle_open");
-	if(!handle_entry->data) {
-		fs_free_handle(handle);
+	data = fs_read_data(file, path, &size, "fs_cache_read_handle_open");
+	if(!data) {
+		fs_free_data(data);
 		return 0; }
-	handle_entry->position = 0;
 
-	// Set debug path
-	if(file) {
-		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer(file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-		handle_entry->h.debug_path = CopyString(buffer); }
-	else {
-		handle_entry->h.debug_path = CopyString(path); }
+	handle = fs_handle_init(FS_HANDLE_CACHE_READ, FS_HANDLEOWNER_SYSTEM, debug_path, sizeof(fs_cache_read_handle_state_t));
+	state = (fs_cache_read_handle_state_t *)handle->state;
+	state->data = data;
+	state->size = size;
 
-	if(size_out) *size_out = handle_entry->size;
-	return handle; }
+	if(size_out) *size_out = size;
+	return handle->ref; }
 
-static unsigned int fs_cache_read_handle_read(char *buffer, unsigned int length, fs_cache_read_handle_t *handle_entry) {
+static unsigned int fs_cache_read_handle_read(fs_handle_t *handle, char *buffer, unsigned int length) {
+	fs_cache_read_handle_state_t *state = (fs_cache_read_handle_state_t *)handle->state;
+
 	// Don't read past end of file...
-	if(length > handle_entry->size - handle_entry->position) length = handle_entry->size - handle_entry->position;
+	if(length > state->size - state->position) length = state->size - state->position;
 
 	// Read data to buffer and advance position
-	fsc_memcpy(buffer, handle_entry->data + handle_entry->position, length);
-	handle_entry->position += length;
+	fsc_memcpy(buffer, state->data + state->position, length);
+	state->position += length;
 	return length; }
 
-static int fs_cache_read_handle_seek(fs_cache_read_handle_t *handle_entry, int offset, fsOrigin_t origin_mode) {
-	unsigned int origin;
+static int fs_cache_read_handle_seek(fs_handle_t *handle, int offset, fsOrigin_t mode) {
+	fs_cache_read_handle_state_t *state = (fs_cache_read_handle_state_t *)handle->state;
+	unsigned int origin = 0;
 	unsigned int offset_origin;
 
 	// Get origin
-	switch(origin_mode) {
-		case FS_SEEK_CUR: origin = handle_entry->position; break;
-		case FS_SEEK_END: origin = handle_entry->size; break;
+	switch(mode) {
+		case FS_SEEK_CUR: origin = state->position; break;
+		case FS_SEEK_END: origin = state->size; break;
 		case FS_SEEK_SET: origin = 0; break;
 		default: Com_Error(ERR_DROP, "fs_cache_read_handle_seek with invalid origin mode"); }
 
 	// Get offset_origin and correct overflow conditions
 	offset_origin = origin + offset;
 	if(offset < 0 && offset_origin > origin) offset_origin = 0;
-	if((offset > 0 && offset_origin < origin) || offset_origin > handle_entry->size) offset_origin = handle_entry->size;
+	if((offset > 0 && offset_origin < origin) || offset_origin > state->size) offset_origin = state->size;
 
 	// Write the new position
-	handle_entry->position = offset_origin;
+	state->position = offset_origin;
 
 	if(offset_origin == origin + offset) return 0;
 	return -1; }
 
-static void fs_cache_read_handle_close(fs_cache_read_handle_t *handle_entry) {
-	fs_free_data(handle_entry->data); }
+static unsigned int fs_cache_read_handle_ftell(fs_handle_t *handle) {
+	fs_cache_read_handle_state_t *state = (fs_cache_read_handle_state_t *)handle->state;
+	return state->position; }
 
-/* ******************************************************************************** */
-// Direct read handle operations
-/* ******************************************************************************** */
+static void fs_cache_read_handle_free(fs_handle_t *handle) {
+	fs_cache_read_handle_state_t *state = (fs_cache_read_handle_state_t *)handle->state;
+	fs_free_data(state->data); }
+
+static const fs_handle_config_t cache_read_handle_config = {
+	FS_HANDLE_CACHE_READ,
+	"cache read",
+	fs_cache_read_handle_read,
+	0,
+	fs_cache_read_handle_seek,
+	fs_cache_read_handle_ftell,
+	fs_cache_read_handle_free };
+
+// ###################################
+// ####### Direct Read Handles #######
+// ###################################
+
+typedef struct {
+	void *fsc_handle;
+} fs_direct_read_handle_state_t;
 
 fileHandle_t fs_direct_read_handle_open(const fsc_file_t *file, const char *path, unsigned int *size_out) {
 	// Only file or path should be set, not both
 	// Does not include sanity check on path
 	// Returns handle on success, null on error
 	char debug_path[FS_MAX_PATH];
-	void *os_path;
+	void *os_path = 0;
 	void *fsc_handle;
-	fileHandle_t handle;
-	fs_direct_read_handle_t *handle_entry;
+	fs_handle_t *handle;
+	fs_direct_read_handle_state_t *state;
 
 	if(file) {
 		if(file->sourcetype != FSC_SOURCETYPE_DIRECT) Com_Error(ERR_FATAL, "fs_direct_read_handle_open on non direct file");
@@ -799,10 +921,9 @@ fileHandle_t fs_direct_read_handle_open(const fsc_file_t *file, const char *path
 		return 0; }
 
 	// Set up handle entry
-	handle = fs_allocate_handle(FS_HANDLE_DIRECT_READ);
-	handle_entry = (fs_direct_read_handle_t *)fs_get_handle_entry(handle);
-	handle_entry->fsc_handle = fsc_handle;
-	handle_entry->h.debug_path = CopyString(debug_path);
+	handle = fs_handle_init(FS_HANDLE_DIRECT_READ, FS_HANDLEOWNER_SYSTEM, debug_path, sizeof(fs_direct_read_handle_state_t));
+	state = (fs_direct_read_handle_state_t *)handle->state;
+	state->fsc_handle = fsc_handle;
 
 	// Get size
 	if(size_out) {
@@ -811,34 +932,58 @@ fileHandle_t fs_direct_read_handle_open(const fsc_file_t *file, const char *path
 		fsc_fseek(fsc_handle, 0, FSC_SEEK_SET); }
 
 	if(fs_debug_fileio->integer) FS_DPrintf("  result: success\n");
-	return handle; }
+	return handle->ref; }
 
-static unsigned int fs_direct_read_handle_read(char *buffer, unsigned int length, fs_direct_read_handle_t *handle_entry) {
-	return fsc_fread(buffer, length, handle_entry->fsc_handle); }
+static unsigned int fs_direct_read_handle_read(fs_handle_t *handle, char *buffer, unsigned int length) {
+	fs_direct_read_handle_state_t *state = (fs_direct_read_handle_state_t *)handle->state;
+	return fsc_fread(buffer, length, state->fsc_handle); }
 
-static int fs_direct_read_handle_seek(fs_direct_read_handle_t *handle_entry, int offset, fsOrigin_t origin_mode) {
+static int fs_direct_read_handle_seek(fs_handle_t *handle, int offset, fsOrigin_t origin_mode) {
+	fs_direct_read_handle_state_t *state = (fs_direct_read_handle_state_t *)handle->state;
+
 	// Get type
-	fsc_seek_type_t type;
+	fsc_seek_type_t type = FSC_SEEK_SET;
 	switch(origin_mode) {
 		case FS_SEEK_CUR: type = FSC_SEEK_CUR; break;
 		case FS_SEEK_END: type = FSC_SEEK_END; break;
 		case FS_SEEK_SET: type = FSC_SEEK_SET; break;
 		default: Com_Error(ERR_DROP, "fs_direct_read_handle_seek with invalid origin mode"); }
-	return fsc_fseek(handle_entry->fsc_handle, offset, type); }
 
-static void fs_direct_read_handle_close(fs_direct_read_handle_t *handle_entry) {
-	fsc_fclose(handle_entry->fsc_handle); }
+	return fsc_fseek(state->fsc_handle, offset, type); }
 
-/* ******************************************************************************** */
-// Pk3 read handle operations
-/* ******************************************************************************** */
+static unsigned int fs_direct_read_handle_ftell(fs_handle_t *handle) {
+	fs_direct_read_handle_state_t *state = (fs_direct_read_handle_state_t *)handle->state;
+	return fsc_ftell(state->fsc_handle); }
+
+static void fs_direct_read_handle_free(fs_handle_t *handle) {
+	fs_direct_read_handle_state_t *state = (fs_direct_read_handle_state_t *)handle->state;
+	fsc_fclose(state->fsc_handle); }
+
+static const fs_handle_config_t direct_read_handle_config = {
+	FS_HANDLE_DIRECT_READ,
+	"direct read",
+	fs_direct_read_handle_read,
+	0,
+	fs_direct_read_handle_seek,
+	fs_direct_read_handle_ftell,
+	fs_direct_read_handle_free };
+
+// ################################
+// ####### Pk3 Read Handles #######
+// ################################
+
+typedef struct {
+	const fsc_file_frompk3_t *file;
+	void *fsc_handle;
+	unsigned int position;
+} fs_pk3_read_handle_state_t;
 
 static fileHandle_t fs_pk3_read_handle_open(const fsc_file_t *file) {
 	// Returns handle on success, null on error
 	char debug_path[FS_MAX_PATH];
 	void *fsc_handle;
-	fileHandle_t handle;
-	fs_pk3_read_handle_t *handle_entry;
+	fs_handle_t *handle;
+	fs_pk3_read_handle_state_t *state;
 
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) Com_Error(ERR_FATAL, "fs_pk3_read_handle_open on non pk3 file");
 	fs_file_to_buffer((fsc_file_t *)file, debug_path, sizeof(debug_path), qtrue, qtrue, qtrue, qfalse);
@@ -853,81 +998,101 @@ static fileHandle_t fs_pk3_read_handle_open(const fsc_file_t *file) {
 		return 0; }
 
 	// Set up handle entry
-	handle = fs_allocate_handle(FS_HANDLE_PK3_READ);
-	handle_entry = (fs_pk3_read_handle_t *)fs_get_handle_entry(handle);
-	handle_entry->file = (fsc_file_frompk3_t *)file;
-	handle_entry->fsc_handle = fsc_handle;
-	handle_entry->position = 0;
-	handle_entry->h.debug_path = CopyString(debug_path);
+	handle = fs_handle_init(FS_HANDLE_PK3_READ, FS_HANDLEOWNER_SYSTEM, debug_path, sizeof(fs_pk3_read_handle_state_t));
+	state = (fs_pk3_read_handle_state_t *)handle->state;
+	state->file = (fsc_file_frompk3_t *)file;
+	state->fsc_handle = fsc_handle;
+	state->position = 0;
 
 	if(fs_debug_fileio->integer) FS_DPrintf("  result: success\n");
-	return handle; }
+	return handle->ref; }
 
-static unsigned int fs_pk3_read_handle_read(char *buffer, unsigned int length, fs_pk3_read_handle_t *handle_entry) {
-	unsigned int max_length = handle_entry->file->f.filesize - handle_entry->position;
+static unsigned int fs_pk3_read_handle_read(fs_handle_t *handle, char *buffer, unsigned int length) {
+	fs_pk3_read_handle_state_t *state = (fs_pk3_read_handle_state_t *)handle->state;
+	unsigned int max_length = state->file->f.filesize - state->position;
 	if(length > max_length) length = max_length;
-	length = fsc_pk3_handle_read(handle_entry->fsc_handle, buffer, length);
-	handle_entry->position += length;
+	length = fsc_pk3_handle_read(state->fsc_handle, buffer, length);
+	state->position += length;
 	return length; }
 
-static int fs_pk3_read_handle_seek(fs_pk3_read_handle_t *handle_entry, int offset, fsOrigin_t origin_mode) {
+static int fs_pk3_read_handle_seek(fs_handle_t *handle, int offset, fsOrigin_t origin_mode) {
 	// Uses very similar, not very efficient, method as the original filesystem
 	// This function is very rarely used but needs to be supported for mod compatibility
-	unsigned int origin;
+	fs_pk3_read_handle_state_t *state = (fs_pk3_read_handle_state_t *)handle->state;
+	unsigned int origin = 0;
 	unsigned int offset_origin;
 
 	// Get origin
 	switch(origin_mode) {
-		case FS_SEEK_CUR: origin = handle_entry->position; break;
-		case FS_SEEK_END: origin = handle_entry->file->f.filesize; break;
+		case FS_SEEK_CUR: origin = state->position; break;
+		case FS_SEEK_END: origin = state->file->f.filesize; break;
 		case FS_SEEK_SET: origin = 0; break;
 		default: Com_Error(ERR_DROP, "fs_pk3_read_handle_seek with invalid origin mode"); }
 
 	// Get offset_origin and correct overflow conditions
 	offset_origin = origin + offset;
 	if(offset < 0 && offset_origin > origin) offset_origin = 0;
-	if((offset > 0 && offset_origin < origin) || offset_origin > handle_entry->file->f.filesize)
-		offset_origin = handle_entry->file->f.filesize;
+	if((offset > 0 && offset_origin < origin) || offset_origin > state->file->f.filesize)
+		offset_origin = state->file->f.filesize;
 
 	// If seeking to end, just set the position
-	if(offset_origin >= handle_entry->file->f.filesize) {
-		handle_entry->position = handle_entry->file->f.filesize;
+	if(offset_origin >= state->file->f.filesize) {
+		state->position = state->file->f.filesize;
 		return 0; }
 
 	// If seeking backwards, reset the handle
-	if(offset_origin < handle_entry->position) {
-		fsc_pk3_handle_close(handle_entry->fsc_handle);
-		handle_entry->fsc_handle = fsc_pk3_handle_open(handle_entry->file, 16384, &fs, 0);
-		if(!handle_entry->fsc_handle) Com_Error(ERR_FATAL, "fs_pk3_read_handle_seek failed to reopen handle");
-		handle_entry->position = 0; }
+	if(offset_origin < state->position) {
+		fsc_pk3_handle_close(state->fsc_handle);
+		state->fsc_handle = fsc_pk3_handle_open(state->file, 16384, &fs, 0);
+		if(!state->fsc_handle) Com_Error(ERR_FATAL, "fs_pk3_read_handle_seek failed to reopen handle");
+		state->position = 0; }
 
 	// Seek forwards by reading data to a temp buffer
-	while(handle_entry->position < offset_origin) {
+	while(state->position < offset_origin) {
 		char buffer[65536];
 		unsigned int read_amount;
-		unsigned int read_target = offset_origin - handle_entry->position;
+		unsigned int read_target = offset_origin - state->position;
 		if(read_target > sizeof(buffer)) read_target = sizeof(buffer);
-		read_amount = fsc_pk3_handle_read(handle_entry->fsc_handle, buffer, read_target);
-		handle_entry->position += read_amount;
+		read_amount = fsc_pk3_handle_read(state->fsc_handle, buffer, read_target);
+		state->position += read_amount;
 		if(read_amount != read_target) return -1; }
 
 	if(offset_origin == origin + offset) return 0;
 	return -1; }
 
-static void fs_pk3_read_handle_close(fs_pk3_read_handle_t *handle_entry) {
-	fsc_pk3_handle_close(handle_entry->fsc_handle); }
+static unsigned int fs_pk3_read_handle_ftell(fs_handle_t *handle) {
+	fs_pk3_read_handle_state_t *state = (fs_pk3_read_handle_state_t *)handle->state;
+	return state->position; }
 
-/* ******************************************************************************** */
-// Write handle operations
-/* ******************************************************************************** */
+static void fs_pk3_read_handle_free(fs_handle_t *handle) {
+	fs_pk3_read_handle_state_t *state = (fs_pk3_read_handle_state_t *)handle->state;
+	fsc_pk3_handle_close(state->fsc_handle); }
+
+static const fs_handle_config_t pk3_read_handle_config = {
+	FS_HANDLE_PK3_READ,
+	"pk3 read",
+	fs_pk3_read_handle_read,
+	0,
+	fs_pk3_read_handle_seek,
+	fs_pk3_read_handle_ftell,
+	fs_pk3_read_handle_free };
+
+// #############################
+// ####### Write Handles #######
+// #############################
+
+typedef struct {
+	void *fsc_handle;
+	qboolean sync;
+} fs_write_handle_state_t;
 
 static fileHandle_t fs_write_handle_open(const char *path, qboolean append, qboolean sync) {
 	// Does not include directory creation or sanity checks
 	// Returns handle on success, null on error
-	fileHandle_t handle;
-	fs_write_handle_t *handle_entry;
 	void *os_path = fsc_string_to_os_path(path);
 	void *fsc_handle;
+	fs_handle_t *handle;
+	fs_write_handle_state_t *state;
 
 	if(fs_debug_fileio->integer) {
 		FS_DPrintf("********** opening write handle **********\n");
@@ -946,50 +1111,71 @@ static fileHandle_t fs_write_handle_open(const char *path, qboolean append, qboo
 		return 0; }
 
 	// Set up handle entry
-	handle = fs_allocate_handle(FS_HANDLE_WRITE);
-	handle_entry = (fs_write_handle_t *)fs_get_handle_entry(handle);
-	handle_entry->fsc_handle = fsc_handle;
-	handle_entry->sync = sync;
-	handle_entry->h.debug_path = CopyString(path);
+	handle = fs_handle_init(FS_HANDLE_WRITE, FS_HANDLEOWNER_SYSTEM, path, sizeof(fs_write_handle_state_t));
+	state = (fs_write_handle_state_t *)handle->state;
+	state->fsc_handle = fsc_handle;
+	state->sync = sync;
 	if(fs_debug_fileio->integer) FS_DPrintf("  result: success\n");
-	return handle; }
+	return handle->ref; }
 
-static void fs_write_handle_write(fileHandle_t handle, const char *data, unsigned int length) {
-	fs_write_handle_t *handle_entry = (fs_write_handle_t *)fs_get_handle_entry(handle);
-	if(!handle_entry || handle_entry->h.type != FS_HANDLE_WRITE) Com_Error(ERR_DROP, "fs_write_handle_write on invalid handle");
+static unsigned int fs_write_handle_write(fs_handle_t *handle, const char *data, unsigned int length) {
+	fs_write_handle_state_t *state = (fs_write_handle_state_t *)handle->state;
+	unsigned int result = fsc_fwrite(data, length, state->fsc_handle);
+	if(state->sync) fsc_fflush(state->fsc_handle);
+	return result; }
 
-	fsc_fwrite(data, length, handle_entry->fsc_handle);
-	if(handle_entry->sync) fsc_fflush(handle_entry->fsc_handle); }
+static int fs_write_handle_seek(fs_handle_t *handle, int offset, fsOrigin_t origin_mode) {
+	fs_write_handle_state_t *state = (fs_write_handle_state_t *)handle->state;
 
-static void fs_write_handle_flush(fileHandle_t handle, qboolean enable_sync) {
-	fs_write_handle_t *handle_entry = (fs_write_handle_t *)fs_get_handle_entry(handle);
-	if(!handle_entry || handle_entry->h.type != FS_HANDLE_WRITE) Com_Error(ERR_DROP, "fs_write_handle_flush on invalid handle");
-
-	fsc_fflush(handle_entry->fsc_handle);
-	if(enable_sync) handle_entry->sync = qtrue; }
-
-static int fs_write_handle_seek(fs_write_handle_t *handle_entry, int offset, fsOrigin_t origin_mode) {
 	// Get type
-	fsc_seek_type_t type;
+	fsc_seek_type_t type = FSC_SEEK_SET;
 	switch(origin_mode) {
 		case FS_SEEK_CUR: type = FSC_SEEK_CUR; break;
 		case FS_SEEK_END: type = FSC_SEEK_END; break;
 		case FS_SEEK_SET: type = FSC_SEEK_SET; break;
 		default: Com_Error(ERR_DROP, "fs_write_handle_seek with invalid origin mode"); }
-	return fsc_fseek(handle_entry->fsc_handle, offset, type); }
 
-static void fs_write_handle_close(fs_write_handle_t *handle_entry) {
-	fsc_fclose(handle_entry->fsc_handle); }
+	return fsc_fseek(state->fsc_handle, offset, type); }
 
-/* ******************************************************************************** */
-// Pipe Files
-/* ******************************************************************************** */
+static unsigned int fs_write_handle_ftell(fs_handle_t *handle) {
+	fs_write_handle_state_t *state = (fs_write_handle_state_t *)handle->state;
+	return fsc_ftell(state->fsc_handle); }
+
+static void fs_write_handle_free(fs_handle_t *handle) {
+	fs_write_handle_state_t *state = (fs_write_handle_state_t *)handle->state;
+	fsc_fclose(state->fsc_handle); }
+
+static const fs_handle_config_t write_handle_config = {
+	FS_HANDLE_WRITE,
+	"write",
+	0,
+	fs_write_handle_write,
+	fs_write_handle_seek,
+	fs_write_handle_ftell,
+	fs_write_handle_free };
+
+static void fs_write_handle_flush(fileHandle_t handle, qboolean enable_sync) {
+	fs_handle_t *fs_handle = fs_get_handle_object(handle);
+	if(!fs_handle || fs_handle->type != FS_HANDLE_WRITE) {
+		Com_Error(ERR_DROP, "fs_write_handle_flush on invalid handle"); }
+	else {
+		fs_write_handle_state_t *state = (fs_write_handle_state_t *)fs_handle->state;
+		if(enable_sync) state->sync = qtrue;
+		fsc_fflush(state->fsc_handle); } }
+
+// ############################
+// ####### Pipe Handles #######
+// ############################
+
+typedef struct {
+	FILE *handle;
+} fs_pipe_handle_state_t;
 
 fileHandle_t FS_FCreateOpenPipeFile(const char *filename) {
 	char path[FS_MAX_PATH];
 	FILE *fifo = 0;
-	fileHandle_t handle;
-	fs_pipe_handle_t *handle_entry;
+	fs_handle_t *handle;
+	fs_pipe_handle_state_t *state;
 
 	if(fs_generate_path_writedir(FS_GetCurrentGameDir(), filename,
 			0, FS_ALLOW_DIRECTORIES|FS_CREATE_DIRECTORIES_FOR_FILE, path, sizeof(path))) {
@@ -1004,131 +1190,45 @@ fileHandle_t FS_FCreateOpenPipeFile(const char *filename) {
 	//	Com_Printf( "FS_FCreateOpenPipeFile: %s\n", ospath ); }
 
 	// Set up handle entry
-	handle = fs_allocate_handle(FS_HANDLE_PIPE);
-	handle_entry = (fs_pipe_handle_t *)fs_get_handle_entry(handle);
-	handle_entry->handle = fifo;
-	handle_entry->h.debug_path = CopyString(filename);
-	return handle; }
+	handle = fs_handle_init(FS_HANDLE_PIPE, FS_HANDLEOWNER_SYSTEM, filename, sizeof(fs_pipe_handle_state_t));
+	state = (fs_pipe_handle_state_t *)handle->state;
+	state->handle = fifo;
+	return handle->ref; }
 
-static unsigned int fs_pipe_handle_read(void *buffer, int len, fs_pipe_handle_t *handle_entry) {
-	return fread(buffer, 1, len, handle_entry->handle); }
+static unsigned int fs_pipe_handle_read(fs_handle_t *handle, char *buffer, unsigned int len) {
+	fs_pipe_handle_state_t *state = (fs_pipe_handle_state_t *)handle->state;
+	return fread(buffer, 1, len, state->handle); }
 
-static void fs_pipe_handle_close(fs_pipe_handle_t *handle_entry) {
-	fclose(handle_entry->handle); }
+static void fs_pipe_handle_free(fs_handle_t *handle) {
+	fs_pipe_handle_state_t *state = (fs_pipe_handle_state_t *)handle->state;
+	fclose(state->handle); }
 
-/* ******************************************************************************** */
-// Common handle operations
-/* ******************************************************************************** */
+static const fs_handle_config_t pipe_handle_config = {
+	FS_HANDLE_PIPE,
+	"pipe",
+	fs_pipe_handle_read,
+	0,
+	0,
+	0,
+	fs_pipe_handle_free };
 
-void fs_handle_close(fileHandle_t handle) {
-	// Get handle entry
-	fs_handle_t *handle_entry;
-	if(!handle) {
-		Com_Printf("^1WARNING: fs_handle_close on null handle\n");
-		return; }
-	handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) {
-		Com_Printf("^1WARNING: fs_handle_close on invalid handle\n");
-		return; }
+// ################################
+// ####### Handle Type List #######
+// ################################
 
-	switch(handle_entry->type) {
-		case FS_HANDLE_CACHE_READ: fs_cache_read_handle_close((fs_cache_read_handle_t *)handle_entry); break;
-		case FS_HANDLE_DIRECT_READ: fs_direct_read_handle_close((fs_direct_read_handle_t *)handle_entry); break;
-		case FS_HANDLE_PK3_READ: fs_pk3_read_handle_close((fs_pk3_read_handle_t *)handle_entry); break;
-		case FS_HANDLE_WRITE: fs_write_handle_close((fs_write_handle_t *)handle_entry); break;
-		case FS_HANDLE_PIPE: fs_pipe_handle_close((fs_pipe_handle_t *)handle_entry); break;
-		default: Com_Error(ERR_DROP, "fs_handle_close invalid handle type"); }
+static const fs_handle_config_t *handle_configs[] = {
+	&cache_read_handle_config,
+	&direct_read_handle_config,
+	&pk3_read_handle_config,
+	&write_handle_config,
+	&pipe_handle_config };
 
-	Z_Free(handle_entry->debug_path);
-	fs_free_handle(handle); }
-
-void fs_close_all_handles(void) {
-	// Can be used when the whole program is terminating, just to be safe
+static const fs_handle_config_t *fs_get_handle_config(fs_handle_type_t type) {
+	// Returns null if type is invalid
 	int i;
-	for(i=0; i<MAX_HANDLES; ++i) {
-		if(handles[i]) fs_handle_close(i+1); } }
-
-static unsigned int fs_handle_read(char *buffer, unsigned int length, fileHandle_t handle) {
-	// Get handle entry
-	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) {
-		Com_Error(ERR_DROP, "fs_handle_read on invalid handle"); }
-
-	switch(handle_entry->type) {
-		case FS_HANDLE_CACHE_READ: return fs_cache_read_handle_read(buffer, length, (fs_cache_read_handle_t *)handle_entry);
-		case FS_HANDLE_DIRECT_READ: return fs_direct_read_handle_read(buffer, length, (fs_direct_read_handle_t *)handle_entry);
-		case FS_HANDLE_PK3_READ: return fs_pk3_read_handle_read(buffer, length, (fs_pk3_read_handle_t *)handle_entry);
-		case FS_HANDLE_PIPE: return fs_pipe_handle_read(buffer, length, (fs_pipe_handle_t *)handle_entry);
-		default: Com_Error(ERR_DROP, "fs_handle_read invalid handle type"); }
+	for(i=0; i<ARRAY_LEN(handle_configs); ++i) {
+		if(handle_configs[i]->type == type) return handle_configs[i]; }
 	return 0; }
-
-static int fs_handle_seek(fileHandle_t handle, int offset, fsOrigin_t origin_mode) {
-	// Get handle entry
-	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) {
-		Com_Error(ERR_DROP, "fs_handle_seek on invalid handle"); }
-
-	switch(handle_entry->type) {
-		case FS_HANDLE_CACHE_READ: return fs_cache_read_handle_seek((fs_cache_read_handle_t *)handle_entry, offset, origin_mode);
-		case FS_HANDLE_DIRECT_READ: return fs_direct_read_handle_seek((fs_direct_read_handle_t *)handle_entry, offset, origin_mode);
-		case FS_HANDLE_PK3_READ: return fs_pk3_read_handle_seek((fs_pk3_read_handle_t *)handle_entry, offset, origin_mode);
-		case FS_HANDLE_WRITE: return fs_write_handle_seek((fs_write_handle_t *)handle_entry, offset, origin_mode);
-		default: Com_Error(ERR_DROP, "fs_handle_seek invalid handle type"); }
-	return 1; }
-
-static unsigned int fs_handle_ftell(fileHandle_t handle) {
-	// Get handle entry
-	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) Com_Error(ERR_DROP, "fs_handle_ftell on invalid handle");
-
-	switch(handle_entry->type) {
-		case FS_HANDLE_CACHE_READ: return ((fs_cache_read_handle_t *)(handle_entry))->position;
-		case FS_HANDLE_WRITE: return fsc_ftell(((fs_write_handle_t *)(handle_entry))->fsc_handle);
-		default: Com_Error(ERR_DROP, "fs_handle_ftell invalid handle type"); }
-	return 0; }
-
-static void fs_handle_set_owner(fileHandle_t handle, fs_handle_owner_t owner) {
-	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) Com_Error(ERR_DROP, "fs_handle_set_owner on invalid handle");
-	handle_entry->owner = owner; }
-
-fs_handle_owner_t fs_handle_get_owner(fileHandle_t handle) {
-	fs_handle_t *handle_entry = fs_get_handle_entry(handle);
-	if(!handle_entry) return FS_HANDLEOWNER_SYSTEM;
-	return handle_entry->owner; }
-
-static const char *fs_handletype_string(fs_handle_type_t type) {
-	if(type == FS_HANDLE_CACHE_READ) return "cache read";
-	if(type == FS_HANDLE_DIRECT_READ) return "direct read";
-	if(type == FS_HANDLE_PK3_READ) return "pk3 read";
-	if(type == FS_HANDLE_WRITE) return "write";
-	if(type == FS_HANDLE_PIPE) return "pipe";
-	return "unknown"; }
-
-static const char *fs_owner_string(fs_handle_owner_t owner) {
-	if(owner == FS_HANDLEOWNER_SYSTEM) return "system";
-	if(owner == FS_HANDLEOWNER_CGAME) return "cgame";
-	if(owner == FS_HANDLEOWNER_UI) return "ui";
-	if(owner == FS_HANDLEOWNER_QAGAME) return "qagame";
-	return "unknown"; }
-
-void fs_print_handle_list(void) {
-	int i;
-	for(i=0; i<MAX_HANDLES; ++i) {
-		if(!handles[i]) continue;
-		Com_Printf("********** handle %i **********\n  type: %s\n  owner: %s\n  path: %s\n",
-				i+1, fs_handletype_string(handles[i]->type), fs_owner_string(handles[i]->owner),
-				handles[i]->debug_path); } }
-
-void fs_close_owner_handles(fs_handle_owner_t owner) {
-	// Can be called when a VM is shutting down to avoid leaked handles
-	int i;
-	for(i=0; i<MAX_HANDLES; ++i) {
-		if(handles[i] && handles[i]->owner == owner) {
-			Com_Printf("^1*****************\nWARNING: Auto-closing possible leaked handle\n"
-					"type: %s\nowner: %s\npath: %s\n*****************\n", fs_handletype_string(handles[i]->type),
-					fs_owner_string(handles[i]->owner), handles[i]->debug_path);
-			fs_handle_close(i+1); } } }
 
 /* ******************************************************************************** */
 // Journal Data File Functions
@@ -1163,7 +1263,7 @@ char *fs_read_journal_data(void) {
 
 	// Attempt to read data
 	r = FS_Read(data, length, com_journalDataFile);
-	if(r != length) Com_Error(ERR_FATAL, "Failed to read data from journal data file");
+	if((unsigned int)r != length) Com_Error(ERR_FATAL, "Failed to read data from journal data file");
 	data[length] = 0;
 	return data; }
 
@@ -1381,7 +1481,7 @@ static int FS_FOpenFileByModeLogged(const char *qpath, fileHandle_t *f, fsMode_t
 			FS_DPrintf("mode: read (size check)\n"); }
 		else {
 			FS_DPrintf("mode: %s\n", fs_mode_string(mode)); }
-		FS_DPrintf("owner: %s\n", fs_owner_string(owner)); }
+		FS_DPrintf("owner: %s\n", fs_handle_owner_string(owner)); }
 
 	result = FS_FOpenFileByModeGeneral(qpath, f, mode, owner);
 
@@ -1421,7 +1521,7 @@ int FS_FOpenFileByMode(const char *qpath, fileHandle_t *f, fsMode_t mode) {
 long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 	int i;
 	char path[FS_MAX_PATH];
-	unsigned int size = -1;
+	int size = -1;
 	FSC_ASSERT(filename);
 	FSC_ASSERT(fp);
 	*fp = 0;
@@ -1433,7 +1533,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_DIRECTORIES, 0, path, sizeof(path))) {
-			*fp = fs_cache_read_handle_open(0, path, &size);
+			*fp = fs_cache_read_handle_open(0, path, (unsigned int *)&size);
 			if(*fp) break; } }
 	if(!*fp) size = -1;
 
@@ -1455,7 +1555,7 @@ void FS_FCloseFile(fileHandle_t f) {
 
 int FS_Read(void *buffer, int len, fileHandle_t f) {
 	FSC_ASSERT(buffer);
-	return fs_handle_read((char *)buffer, len, f); }
+	return fs_handle_read(f, (char *)buffer, len); }
 
 int FS_Read2(void *buffer, int len, fileHandle_t f) {
 	// This seems pretty much identical to FS_Read in the original filesystem as well
@@ -1464,11 +1564,11 @@ int FS_Read2(void *buffer, int len, fileHandle_t f) {
 
 int FS_Write(const void *buffer, int len, fileHandle_t h) {
 	FSC_ASSERT(buffer);
-	fs_write_handle_write(h, (const char *)buffer, len);
+	fs_handle_write(h, (const char *)buffer, len);
 	return len; }
 
 int FS_Seek(fileHandle_t f, long offset, int origin) {
-	return fs_handle_seek(f, offset, (fsOrigin_t)origin); }
+	return fs_handle_fseek(f, offset, (fsOrigin_t)origin); }
 
 int FS_FTell(fileHandle_t f) {
 	return fs_handle_ftell(f); }
