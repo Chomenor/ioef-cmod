@@ -821,7 +821,7 @@ static fileHandle_t fs_cache_read_handle_open(const fsc_file_t *file, const char
 	// Set up handle entry
 	data = fs_read_data(file, path, &size, "fs_cache_read_handle_open");
 	if(!data) {
-		fs_free_data(data);
+		if(size_out) *size_out = 0;
 		return 0; }
 
 	handle = fs_handle_init(FS_HANDLE_CACHE_READ, FS_HANDLEOWNER_SYSTEM, debug_path, sizeof(fs_cache_read_handle_state_t));
