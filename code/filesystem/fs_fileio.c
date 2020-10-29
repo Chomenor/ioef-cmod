@@ -264,9 +264,9 @@ typedef struct cache_entry_s {
 #define CACHE_LOOKUP_TABLE_SIZE 4096
 static cache_entry_t *cache_lookup_table[CACHE_LOOKUP_TABLE_SIZE];
 
-static unsigned int cache_hash(const fsc_file_t *file) {
+static unsigned int fs_cache_hash(const fsc_file_t *file) {
 	if(!file) return 0;
-	return fsc_string_hash((const char *)STACKPTR(file->qp_name_ptr), (const char *)STACKPTRN(file->qp_dir_ptr)); }
+	return fsc_string_hash((const char *)STACKPTR(file->qp_name_ptr), (const char *)STACKPTR(file->qp_dir_ptr)); }
 
 static void cache_lookup_table_register(cache_entry_t *entry) {
 	int position = entry->lookup_hash % CACHE_LOOKUP_TABLE_SIZE;
@@ -296,7 +296,7 @@ static qboolean cache_entry_matches_file(const fsc_file_t *file, const cache_ent
 	return qtrue; }
 
 static cache_entry_t *cache_lookup_search(const fsc_file_t *file) {
-	cache_entry_t *entry = cache_lookup_table[cache_hash(file) % CACHE_LOOKUP_TABLE_SIZE];
+	cache_entry_t *entry = cache_lookup_table[fs_cache_hash(file) % CACHE_LOOKUP_TABLE_SIZE];
 	cache_entry_t *best_entry = 0;
 
 	while(entry) {
@@ -367,7 +367,7 @@ static cache_entry_t *cache_allocate(const fsc_file_t *file, unsigned int size) 
 	new_entry->file = file;
 	new_entry->file_size = file ? file->filesize : 0;
 	new_entry->file_timestamp = file && file->sourcetype == FSC_SOURCETYPE_DIRECT ? ((fsc_file_direct_t *)file)->os_timestamp : 0;
-	new_entry->lookup_hash = cache_hash(file);
+	new_entry->lookup_hash = fs_cache_hash(file);
 
 	cache_lookup_table_register(new_entry);
 

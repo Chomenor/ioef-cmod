@@ -958,7 +958,7 @@ void R_LoadImageNewFS( const char *name, byte **pic, int *width, int *height ) {
 
 	// Get extension
 	extension = ri.fs_file_extension(file);
-	if(!extension) extension = "";
+	if(extension[0] == '.') extension = &extension[1];	// Skip leading dot
 
 	for(i=0; i<numImageLoaders; ++i) {
 		if(!Q_stricmp(extension, imageLoaders[i].ext)) {

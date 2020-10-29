@@ -194,7 +194,6 @@ static lookup_resource_t *allocate_lookup_resource(selection_output_t *output) {
 /* *** File Selection *** */
 
 static qboolean string_match(const char *string1, const char *string2, qboolean *case_mismatch_out) {
-	if(!string1 || !string2) return string1 == string2 ? qtrue : qfalse;
 	if(!Q_stricmp(string1, string2)) {
 		if(!*case_mismatch_out && strcmp(string1, string2)) *case_mismatch_out = qtrue;
 		return qtrue; }
@@ -204,11 +203,10 @@ static int is_file_selected(const fsc_file_t *file, const lookup_query_t *query,
 	// Returns 1 if selected, 0 otherwise
 	int i;
 	if(!string_match(query->qp_name, (const char *)STACKPTR(file->qp_name_ptr), case_mismatch_out)) return 0;
-	if(!string_match(query->qp_dir, (const char *)STACKPTRN(file->qp_dir_ptr), case_mismatch_out)) return 0;
+	if(!string_match(query->qp_dir, (const char *)STACKPTR(file->qp_dir_ptr), case_mismatch_out)) return 0;
 
-	if(!query->extension_count) return 1;
 	for(i=0; i<query->extension_count; ++i) {
-		if(string_match(query->qp_exts[i], (const char *)STACKPTRN(file->qp_ext_ptr), case_mismatch_out)) {
+		if(string_match(query->qp_exts[i], (const char *)STACKPTR(file->qp_ext_ptr), case_mismatch_out)) {
 			*extension_index_out = i + 1;
 			return 1; } }
 	return 0; }
@@ -585,8 +583,7 @@ static void debug_lookup_flags_to_stream(int flags, fsc_stream_t *stream) {
 static void debug_print_lookup_query(const lookup_query_t *query) {
 	char buffer[256];
 	fsc_stream_t stream = {buffer, 0, sizeof(buffer), 0};
-	Com_Printf("  path: %s%s%s\n", query->qp_dir ? query->qp_dir : "", query->qp_dir ? "/" : "",
-			query->qp_name);
+	Com_Printf("  path: %s%s\n", query->qp_dir, query->qp_name);
 	stream.position = 0;
 	fs_comma_separated_list(query->qp_exts, query->extension_count, &stream);
 	Com_Printf("  extensions: %s\n", stream.data);
@@ -634,8 +631,7 @@ static void debug_lookup(const lookup_query_t *queries, int query_count, qboolea
 			ADD_STRINGL("\nhash: ");
 			sha256_to_stream(hash, &stream);
 
-			if(debug_selection.resources[i].file->qp_ext_ptr &&
-					!Q_stricmp((const char *)STACKPTR(debug_selection.resources[i].file->qp_ext_ptr), "qvm")) {
+			if(!Q_stricmp((const char *)STACKPTR(debug_selection.resources[i].file->qp_ext_ptr), ".qvm")) {
 				ADD_STRINGL(va("\ntrusted: %s", fs_check_trusted_vm_hash(hash) ? "yes" :
 						"no; blocked in download folder if fs_restrict_dlfolder set")); } }
 
@@ -734,8 +730,7 @@ static void lookup_print_debug_flags(int flags) {
 
 const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean debug) {
 	lookup_query_t query;
-	char qpath_buffer[FSC_MAX_QPATH];
-	const char *ext = 0;
+	fsc_qpath_buffer_t qpath_split;
 	query_result_t lookup_result;
 	FSC_ASSERT(name);
 
@@ -746,9 +741,11 @@ const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean
 	// as per FS_FOpenFileReadDir in original filesystem
 	if(*name == '/' || *name == '\\') ++name;
 
-	fsc_process_qpath(name, qpath_buffer, &query.qp_dir, &query.qp_name, &ext);
-	query.qp_exts = &ext;
-	query.extension_count = ext ? 1 : 0;
+	fsc_split_qpath(name, &qpath_split, 0);
+	query.qp_dir = qpath_split.dir;
+	query.qp_name = qpath_split.name;
+	query.qp_exts = &qpath_split.ext;
+	query.extension_count = 1;
 
 	if(debug) {
 		debug_lookup(&query, 1, qfalse);
@@ -768,18 +765,20 @@ static void shader_or_image_lookup(const char *name, qboolean image_only, int lo
 			query_result_t *output, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	lookup_query_t query;
-	char qpath_buffer[FSC_MAX_QPATH];
-	const char *exts[] = {"dds", "png", "tga", "jpg", "jpeg", "pcx", "bmp"};
+	fsc_qpath_buffer_t qpath_split;
+	const char *exts[] = {".dds", ".png", ".tga", ".jpg", ".jpeg", ".pcx", ".bmp"};
 
 	Com_Memset(&query, 0, sizeof(query));
 	query.lookup_flags = lookup_flags;
-	if(!image_only) query.shader_name = (char *)name;	// const cast!
+	if(!image_only) query.shader_name = name;
 
 	// For compatibility purposes, support dropping one leading slash from qpath
 	// as per FS_FOpenFileReadDir in original filesystem
 	if(*name == '/' || *name == '\\') ++name;
 
-	fsc_process_qpath(name, qpath_buffer, &query.qp_dir, &query.qp_name, 0);
+	fsc_split_qpath(name, &qpath_split, 1);
+	query.qp_dir = qpath_split.dir;
+	query.qp_name = qpath_split.name;
 	query.qp_exts = (lookup_flags & LOOKUPFLAG_ENABLE_DDS) ? exts : exts + 1;
 	query.extension_count = (lookup_flags & LOOKUPFLAG_ENABLE_DDS) ? ARRAY_LEN(exts) : ARRAY_LEN(exts) - 1;
 
@@ -822,14 +821,14 @@ const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean d
 const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean debug) {
 	// Input name should be extension-free (call COM_StripExtension first)
 	lookup_query_t query;
-	char qpath_buffer[FSC_MAX_QPATH];
+	fsc_qpath_buffer_t qpath_split;
 	const char *exts[] = {
-		"wav",
+		".wav",
 #ifdef USE_CODEC_VORBIS
-		"ogg",
+		".ogg",
 #endif
 #ifdef USE_CODEC_OPUS
-		"opus",
+		".opus",
 #endif
 	};
 	query_result_t lookup_result;
@@ -840,7 +839,9 @@ const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean d
 	if(*name == '/' || *name == '\\') ++name;
 
 	Com_Memset(&query, 0, sizeof(query));
-	fsc_process_qpath(name, qpath_buffer, &query.qp_dir, &query.qp_name, 0);
+	fsc_split_qpath(name, &qpath_split, 1);
+	query.qp_dir = qpath_split.dir;
+	query.qp_name = qpath_split.name;
 	query.qp_exts = exts;
 	query.extension_count = ARRAY_LEN(exts);
 
@@ -861,23 +862,27 @@ const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean d
 const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) {
 	// Returns a qvm or game dll file, or null if not found
 	// May throw ERR_DROP due to fs_restrict_dlfolder checks
-	const char *qvm_exts[] = {"qvm"};
-	const char *dll_exts[] = {DLL_EXT+1};
+	const char *qvm_exts[] = {".qvm"};
+	const char *dll_exts[] = {DLL_EXT};
 	lookup_query_t queries[2];
 	int query_count = qvm_only ? 1 : 2;
-	char qpath_buffers[2][FSC_MAX_QPATH];
+	fsc_qpath_buffer_t qpath_splits[2];
 	query_result_t lookup_result;
 	FSC_ASSERT(name);
 
 	Com_Memset(queries, 0, sizeof(queries));
 	queries[0].lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;
-	fsc_process_qpath(va("vm/%s", name), qpath_buffers[0], &queries[0].qp_dir, &queries[0].qp_name, 0);
+	fsc_split_qpath(va("vm/%s", name), &qpath_splits[0], 1);
+	queries[0].qp_dir = qpath_splits[0].dir;
+	queries[0].qp_name = qpath_splits[0].name;
 	queries[0].qp_exts = qvm_exts;
 	queries[0].extension_count = ARRAY_LEN(qvm_exts);
 
 	if(!qvm_only) {
 		queries[1].lookup_flags = LOOKUPFLAG_IGNORE_CURRENT_MAP;
-		fsc_process_qpath(va("%s" ARCH_STRING, name), qpath_buffers[1], &queries[1].qp_dir, &queries[1].qp_name, 0);
+		fsc_split_qpath(va("%s" ARCH_STRING, name), &qpath_splits[1], 1);
+		queries[1].qp_dir = qpath_splits[1].dir;
+		queries[1].qp_name = qpath_splits[1].name;
 		queries[1].qp_exts = dll_exts;
 		queries[1].extension_count = ARRAY_LEN(dll_exts);
 		queries[1].dll_query = qtrue; }
@@ -896,8 +901,8 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 		fs_debug_indent_stop(); }
 
 	// Not elegant but should be adequate
-	if(is_dll_out) *is_dll_out = lookup_result.file && lookup_result.file->qp_ext_ptr &&
-			!Q_stricmp((const char *)STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT+1) ? qtrue : qfalse;
+	if(is_dll_out) *is_dll_out = lookup_result.file &&
+			!Q_stricmp((const char *)STACKPTR(lookup_result.file->qp_ext_ptr), DLL_EXT) ? qtrue : qfalse;
 	return lookup_result.file; }
 
 #endif	// NEW_FILESYSTEM

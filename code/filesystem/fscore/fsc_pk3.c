@@ -185,22 +185,21 @@ static void register_file_from_pk3(fsc_filesystem_t *fs, char *filename, int fil
 	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTR(sourcefile_ptr);
 	fsc_stackptr_t file_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_file_frompk3_t));
 	fsc_file_frompk3_t *file = (fsc_file_frompk3_t *)STACKPTR(file_ptr);
-
 	char buffer[FSC_MAX_QPATH];
-	const char *qp_dir, *qp_name, *qp_ext;
+	fsc_qpath_buffer_t qpath_split;
 
 	// Copy filename into null-terminated buffer for process_qpath
 	// Also convert to lowercase to match behavior of old filesystem
 	if(filename_length >= FSC_MAX_QPATH) filename_length = FSC_MAX_QPATH - 1;
 	fsc_strncpy_lower(buffer, filename, filename_length+1);
 
-	// Call process_qpath
-	fsc_process_qpath(buffer, buffer, &qp_dir, &qp_name, &qp_ext);
+	// Process qpath
+	fsc_split_qpath(buffer, &qpath_split, 0);
 
 	// Write qpaths to file structure
-	file->f.qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
-	file->f.qp_name_ptr = fsc_string_repository_getstring(qp_name, 1, &fs->string_repository, &fs->general_stack);
-	file->f.qp_ext_ptr = qp_ext ? fsc_string_repository_getstring(qp_ext, 1, &fs->string_repository, &fs->general_stack) : 0;
+	file->f.qp_dir_ptr = fsc_string_repository_getstring(qpath_split.dir, 1, &fs->string_repository, &fs->general_stack);
+	file->f.qp_name_ptr = fsc_string_repository_getstring(qpath_split.name, 1, &fs->string_repository, &fs->general_stack);
+	file->f.qp_ext_ptr = fsc_string_repository_getstring(qpath_split.ext, 1, &fs->string_repository, &fs->general_stack);
 
 	// Load the rest of the fields
 	file->f.sourcetype = FSC_SOURCETYPE_PK3;

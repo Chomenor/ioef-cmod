@@ -52,7 +52,7 @@ static void *S_CodecGetSound(const char *filename, snd_info_t *info)
 
 	// Get extension
 	extension = fs_file_extension(file);
-	if(!extension) Com_Error(ERR_DROP, "S_CodecGetSound got file with invalid extension from fs_sound_lookup");
+	if(extension[0] == '.') extension = &extension[1];	// Skip leading dot
 
 	for(codec=codecs; codec; codec=codec->next) {
 			if(!Q_stricmp(extension, codec->ext)) {

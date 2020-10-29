@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "fscore.h"
 
 #define STACKPTR_SRC(pointer) ( FSC_STACK_RETRIEVE(&xw->source_fs->general_stack, pointer, 0) )		// non-null
-#define STACKPTRN_SRC(pointer) ( FSC_STACK_RETRIEVE(&xw->source_fs->general_stack, pointer, 1) )	// null allowed
 
 /* ******************************************************************************** */
 // Support Structures
@@ -150,7 +149,7 @@ fsc_stackptr_t convert_file(fsc_stackptr_t source_file_ptr, export_work_t *xw) {
 	// Insert file into filemap, hash table, and iteration system
 	file_map_insert(source_file_ptr, export_file_ptr, xw);
 	fsc_hashtable_insert(export_file_ptr, fsc_string_hash((const char *)STACKPTR_SRC(source_file->qp_name_ptr),
-			(const char *)STACKPTRN_SRC(source_file->qp_dir_ptr)), &xw->export_files);
+			(const char *)STACKPTR_SRC(source_file->qp_dir_ptr)), &xw->export_files);
 	fsc_iteration_register_file(export_file_ptr, &xw->export_directories, &xw->export_string_repository, &xw->export_stack);
 
 	return export_file_ptr; }

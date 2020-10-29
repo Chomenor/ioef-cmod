@@ -2305,7 +2305,7 @@ void R_LoadImageNewFS( const char *name, byte **pic, int *width, int *height, GL
 
 	// Get extension
 	extension = ri.fs_file_extension(file);
-	if(!extension) extension = "";
+	if(extension[0] == '.') extension = &extension[1];	// Skip leading dot
 
 	if(!Q_stricmp(extension, "dds")) {
 		R_LoadDDS(va("%s.%s", localName, extension), pic, width, height, picFormat, numMips);

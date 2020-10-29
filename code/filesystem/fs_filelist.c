@@ -349,19 +349,21 @@ static char **temp_file_set_to_file_list(fs_hashtable_t *file_set, int *numfiles
 /* ******************************************************************************** */
 
 static fsc_directory_t *get_start_directory(const char *path) {
-	// Path can be null to start at base directory
+	// Path can be empty to start at base directory
+	char buffer[FSC_MAX_QPATH];
 	fsc_hashtable_iterator_t hti;
 	fsc_stackptr_t directory_ptr;
 	fsc_directory_t *directory = 0;
 
+	// Add trailing slash to match fsc directory format
+	if(path && *path) Com_sprintf(buffer, sizeof(buffer), "%s/", path);
+	else buffer[0] = 0;
+
 	// Look for directory entry
-	fsc_hashtable_open(&fs.directories, path ? fsc_string_hash(path, 0) : 0, &hti);
+	fsc_hashtable_open(&fs.directories, fsc_string_hash(buffer, 0), &hti);
 	while((directory_ptr = fsc_hashtable_next(&hti))) {
 		directory = (fsc_directory_t *)STACKPTR(directory_ptr);
-		if(path) {
-			if(!Q_stricmp((const char *)STACKPTR(directory->qp_dir_ptr), path)) break;}
-		else {
-			if(directory->qp_dir_ptr == 0) break; } }
+		if(!Q_stricmp((const char *)STACKPTR(directory->qp_dir_ptr), buffer)) break; }
 
 	if(!directory_ptr) return 0;
 	return directory; }
@@ -428,7 +430,7 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 			flw.direct_file_depth = flw.direct_directory_depth = 256; }
 		else if(!Q_stricmp(flw.extension, "/")) {
 			// This extension is handled specially by the original filesystem (via Sys_ListFiles)
-			// Do a directory-only query, but skip the extension check because directories in this
+			// Do a directory-only query, and skip the extension check because directories in this
 			//    mode can be generated without the trailing slash
 			flw.general_directory_depth = 1 + special_depth;
 			flw.direct_directory_depth = 1;
@@ -466,8 +468,8 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 					flw.direct_file_depth, flw.direct_directory_depth); }
 
 		// Determine prefix length
-		if(!flw.filter && start_directory->qp_dir_ptr) {
-			flw.crop_length = strlen((const char *)STACKPTR(start_directory->qp_dir_ptr)) + 1; }
+		if(!flw.filter) {
+			flw.crop_length = strlen((const char *)STACKPTR(start_directory->qp_dir_ptr)); }
 
 		// Populate file set
 		temp_file_set_populate(start_directory, &temp_file_set, &flw); }

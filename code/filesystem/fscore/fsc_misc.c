@@ -65,11 +65,13 @@ int fsc_read_stream_data(fsc_stream_t *stream, void *output, unsigned int length
 	stream->position += length;
 	return 0; }
 
-int fsc_write_stream_data(fsc_stream_t *stream, void *data, unsigned int length) {
+int fsc_write_stream_data(fsc_stream_t *stream, const void *data, unsigned int length) {
 	// Returns 1 on error, 0 on success.
 	FSC_ASSERT(stream);
 	FSC_ASSERT(data);
-	if(stream->position + length > stream->size || stream->position + length < stream->position) return 1;
+	if(stream->position + length > stream->size || stream->position + length < stream->position) {
+		stream->overflowed = 1;
+		return 1; }
 	fsc_memcpy(stream->data + stream->position, data, length);
 	stream->position += length;
 	return 0; }
@@ -352,72 +354,55 @@ fsc_stackptr_t fsc_string_repository_getstring(const char *input, int allocate,
 // Qpath Handling
 /* ******************************************************************************** */
 
-const char *fsc_get_qpath_conversion_table(void) {
-	// Used to sanitize qpaths
-	static char qpath_conversion_table[256];
-	static int qpath_conversion_table_initialized = 0;
+void fsc_split_qpath(const char *input, fsc_qpath_buffer_t *output, int ignore_extension) {
+	// Splits input path into qpath directory+name+extension format
+	// Assumes input is size FSC_MAX_QPATH; larger inputs are truncated
+	// '\' separators are replaced with '/' for consistency
+	// If ignore_extension set, output extension will be empty, and any extension-like text
+	//    will be included in name instead
 	int i;
-
-	if(qpath_conversion_table_initialized) return qpath_conversion_table;
-
-	// Default to underscore
-	for(i=0; i<256; ++i) qpath_conversion_table[i] = '_';
-
-	// Valid characters
-	qpath_conversion_table[0] = 0;
-	qpath_conversion_table['/'] = '/';
-	qpath_conversion_table['\\'] = '/';
-	qpath_conversion_table['.'] = '.';
-	qpath_conversion_table['-'] = '-';
-	for(i='0'; i<='9'; ++i) qpath_conversion_table[i] = i;
-	for(i='a'; i<='z'; ++i) qpath_conversion_table[i] = i;
-	for(i='A'; i<='Z'; ++i) qpath_conversion_table[i] = i;
-
-	qpath_conversion_table_initialized = 1;
-	return qpath_conversion_table; }
-
-int fsc_process_qpath(const char *input, char *buffer, const char **qp_dir, const char **qp_name, const char **qp_ext) {
-	// Breaks input path into directory, name, and extension sections.
-	// Buffer is used to store the separated path data and should be length FSC_MAX_QPATH.
-	// Output qp_dir and qp_ext may be null if no directory or extension is available.
-	// Input qp_ext may be null to disable extension processing.
-	// Returns number of chars written to buffer (NOT including final null terminator)
-	// Buffer can be same as input for in-place processing
-	int i;
-	int period_pos = 0;
-	int slash_pos = 0;
+	int slash_pos = -1;
+	int period_pos = -1;
+	int input_len;
+	int name_index;
+	int ext_index;
+	fsc_stream_t stream = {output->buffer, 0, sizeof(output->buffer), 0};
 	FSC_ASSERT(input);
-	FSC_ASSERT(buffer);
-	FSC_ASSERT(qp_dir);
-	FSC_ASSERT(qp_name);
+	FSC_ASSERT(output);
 
-	// Write buffer; get period_pos and slash_pos
+	// Get slash_pos and period_pos
 	for(i=0; i<FSC_MAX_QPATH-1; ++i) {
-		buffer[i] = input[i];
-		if(!buffer[i]) break;
-		if(buffer[i] == '\\') buffer[i] = '/';
-		if(buffer[i] == '/') {
+		if(!input[i]) break;
+		if(input[i] == '\\' || input[i] == '/') {
 			slash_pos = i;
-			period_pos = 0; }
-		if(buffer[i] == '.' && qp_ext) period_pos = i; }
-	buffer[i] = 0;
+			period_pos = -1; }
+		if(!ignore_extension && input[i] == '.') {
+			period_pos = i; } }
 
-	// Break up output based on period and slash positions
-	if(slash_pos) {
-		*qp_dir = buffer;
-		*qp_name = buffer + slash_pos + 1;
-		buffer[slash_pos] = 0; }
-	else {
-		*qp_dir = 0;
-		*qp_name = buffer; }
+	input_len = i;
+	name_index = slash_pos + 1;
+	ext_index = period_pos >= 0 ? period_pos : input_len;
 
-	if(period_pos) {
-		*qp_ext = buffer + period_pos + 1;
-		buffer[period_pos] = 0; }
-	else {
-		if(qp_ext) *qp_ext = 0; }
+	// Write directory
+	output->dir = &output->buffer[stream.position];
+	fsc_write_stream_data(&stream, input, name_index);
+	fsc_write_stream_data(&stream, "", 1);
 
-	return i; }
+	// Write name
+	output->name = &output->buffer[stream.position];
+	fsc_write_stream_data(&stream, input + name_index, ext_index - name_index);
+	fsc_write_stream_data(&stream, "", 1);
+
+	// Write extension
+	output->ext = &output->buffer[stream.position];
+	fsc_write_stream_data(&stream, input + ext_index, input_len - ext_index);
+	fsc_write_stream_data(&stream, "", 1);
+
+	FSC_ASSERT(!stream.overflowed);
+
+	// Convert slashes
+	for(i=0; i<(int)stream.position; ++i) {
+		if(stream.data[i] == '\\') stream.data[i] = '/'; } }
 
 unsigned int fsc_get_leading_directory(const char *input, char *buffer, unsigned int buffer_length, const char **remainder) {
 	// Writes leading directory (text before first slash) to buffer, truncating on overflow

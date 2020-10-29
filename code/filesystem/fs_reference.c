@@ -75,19 +75,18 @@ void fs_register_reference(const fsc_file_t *file) {
 	if(file->sourcetype != FSC_SOURCETYPE_PK3) return;
 
 	// Don't register references for certain extensions
-	if(file->qp_ext_ptr) {
-		int i;
-		static const char *special_extensions[] = {"shader", "txt", "cfg", "config", "bot", "arena", "menu"};
-		if(file->qp_ext_ptr) {
-			const char *extension = (const char *)STACKPTR(file->qp_ext_ptr);
-			for(i=0; i<ARRAY_LEN(special_extensions); ++i) {
-				if(!Q_stricmp(extension, special_extensions[i])) return; } } }
+	{	int i;
+		static const char *special_extensions[] = {".shader", ".txt", ".cfg", ".config", ".bot", ".arena", ".menu"};
+		const char *extension = (const char *)STACKPTR(file->qp_ext_ptr);
+
+		for(i=0; i<ARRAY_LEN(special_extensions); ++i) {
+			if(!Q_stricmp(extension, special_extensions[i])) return; } }
 
 	// Don't register reference in certain special cases
 	if(!Q_stricmp((const char *)STACKPTR(file->qp_name_ptr), "qagame") &&
-			file->qp_ext_ptr && !Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), "qvm") &&
-			file->qp_dir_ptr && !Q_stricmp((const char *)STACKPTR(file->qp_dir_ptr), "vm")) return;
-	if(file->qp_dir_ptr && !Q_stricmp((const char *)STACKPTR(file->qp_dir_ptr), "levelshots")) return;
+			!Q_stricmp((const char *)STACKPTR(file->qp_ext_ptr), ".qvm") &&
+			!Q_stricmp((const char *)STACKPTR(file->qp_dir_ptr), "vm/")) return;
+	if(!Q_stricmp((const char *)STACKPTR(file->qp_dir_ptr), "levelshots/")) return;
 
 	// Initialize reference_tracker if it isn't already
 	if(!reference_tracker.bucket_count) {
@@ -641,7 +640,7 @@ static void refset_process_specifier_by_name(reference_set_work_t *rsw, const ch
 	FSC_ASSERT(!specifier.hash);
 
 	// Search for pk3s matching name
-	it = fsc_file_iterator_open(&fs, 0, specifier.name);
+	it = fsc_file_iterator_open(&fs, "", specifier.name);
 	while(fsc_file_iterator_advance(&it)) {
 		const fsc_file_direct_t *file = (const fsc_file_direct_t *)it.file;
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;

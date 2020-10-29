@@ -24,79 +24,79 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "fscore.h"
 
 #define STACKPTR_LCL(pointer) ( FSC_STACK_RETRIEVE(stack, pointer, 0) )		// non-null, local stack parameter
-#define STACKPTRN_LCL(pointer) ( FSC_STACK_RETRIEVE(stack, pointer, 1) )	// null allowed, local stack parameter
 
 /* ******************************************************************************** */
 // Directory iteration
 /* ******************************************************************************** */
 
-// This section is used to provide faster file iteration when starting at a certain
-// directory, rather than iterating over the entire filesystem.
+// This system is used to provide faster file iteration when starting at a certain
+//   directory, rather than iterating over the entire filesystem.
 
-static int get_parent_qp_dir(const char *qp_dir, char *target) {
+// This is primarily used to prevent lag when opening the player model menu when there
+//   are very large numbers of models / pk3s installed, because the UI can make
+//   hundreds of file list queries in succession while populating this menu.
+
+static void fsc_get_parent_qp_dir(const char *qp_dir, char *target) {
 	// Converts qp_dir string to parent dir
-	// In other words, strip everything including and after the last slash
-	// Target should be size FSC_MAX_QPATH
-	// Returns 0 if no parent directory, 1 otherwise
+	// e.g. "abc/def/" converts to "abc/", "abc/" converts to ""
+	// source qp_dir must be non-empty and contain trailing slash
+	// target should be size FSC_MAX_QPATH
 	const char *current = qp_dir;
-	const char *last_slash = 0;
+	const char *end_slash = 0;
 	unsigned int length;
+	FSC_ASSERT(qp_dir);
+	FSC_ASSERT(*qp_dir);
 
-	while(*current) {
-		if(*current == '/') last_slash = current;
+	while(1) {
+		if(current[0] == '/') {
+			if(current[1]) end_slash = current;
+			else break; }
+
+		// Path should only end with a slash (via above check)
+		FSC_ASSERT(current[0]);
 		++current; }
 
-	// If no slash is found, parent directory is root directory. Leave output null.
-	if(!last_slash) return 0;
-
-	// Copy in everything up to the slash
-	length = last_slash - qp_dir;
-	if(length > FSC_MAX_QPATH - 1) length = FSC_MAX_QPATH - 1;
+	// Copy path up to and including the ending slash
+	length = end_slash ? end_slash - qp_dir + 1 : 0;
+	FSC_ASSERT(length < FSC_MAX_QPATH);
 	fsc_memcpy(target, qp_dir, length);
-	target[length] = 0;
-	return 1; }
+	target[length] = 0; }
 
-static fsc_stackptr_t get_directory(const char *qp_dir, fsc_hashtable_t *directories,
+static fsc_stackptr_t fsc_iteration_get_directory(const char *qp_dir, fsc_hashtable_t *directories,
 		fsc_hashtable_t *string_repository, fsc_stack_t *stack) {
-	// Null qp_dir represents the root directory
-	unsigned int qp_dir_hash = qp_dir ? fsc_string_hash(qp_dir, 0) : 0;
+	// Empty qp_dir represents the root directory
+	unsigned int qp_dir_hash = fsc_string_hash(qp_dir, 0);
 
 	fsc_hashtable_iterator_t hti;
 	fsc_stackptr_t directory_ptr;
 	fsc_directory_t *directory;
 
-	char parent_qp_dir[FSC_MAX_QPATH];
-	int parent_path_found;
-	fsc_stackptr_t parent_dir_ptr;
-	fsc_directory_t *parent_dir;
-
 	// Check if directory is already in the hash table
 	fsc_hashtable_open(directories, qp_dir_hash, &hti);
 	while((directory_ptr = fsc_hashtable_next(&hti))) {
 		directory = (fsc_directory_t *)STACKPTR_LCL(directory_ptr);
-		if(!directory->qp_dir_ptr) {
-			if(!qp_dir) return directory_ptr;
-			continue; }
-		if(!qp_dir) continue;
 		if(!fsc_stricmp((const char *)STACKPTR_LCL(directory->qp_dir_ptr), qp_dir)) return directory_ptr; }
 
 	// It isn't, so create a new directory
 	directory_ptr = fsc_stack_allocate(stack, sizeof(fsc_directory_t));
 	directory = (fsc_directory_t *)STACKPTR_LCL(directory_ptr);
-	directory->qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, string_repository, stack) : 0;
+	directory->qp_dir_ptr = fsc_string_repository_getstring(qp_dir, 1, string_repository, stack);
 	fsc_hashtable_insert(directory_ptr, qp_dir_hash, directories);
 
-	// If we are at the root directory, don't proceed any further
-	if(!qp_dir) return directory_ptr;
+	// Link new directory to parent directory (unless already at root directory)
+	if(*qp_dir) {
+		char parent_qp_dir[FSC_MAX_QPATH];
+		fsc_stackptr_t parent_dir_ptr;
+		fsc_directory_t *parent_dir;
 
-	// Get the parent directory
-	parent_path_found = get_parent_qp_dir(qp_dir, parent_qp_dir);
-	parent_dir_ptr = get_directory(parent_path_found ? parent_qp_dir : 0, directories, string_repository, stack);
-	parent_dir = (fsc_directory_t *)STACKPTR_LCL(parent_dir_ptr);
+		// Get the parent directory
+		fsc_get_parent_qp_dir(qp_dir, parent_qp_dir);
+		parent_dir_ptr = fsc_iteration_get_directory(parent_qp_dir, directories, string_repository, stack);
+		parent_dir = (fsc_directory_t *)STACKPTR_LCL(parent_dir_ptr);
 
-	// Add current directory to parent's sub_directory linked list
-	directory->peer_directory = parent_dir->sub_directory;
-	parent_dir->sub_directory = directory_ptr;
+		// Add current directory to parent's sub_directory linked list
+		directory->peer_directory = parent_dir->sub_directory;
+		parent_dir->sub_directory = directory_ptr; }
 
 	return directory_ptr; }
 
@@ -105,7 +105,7 @@ void fsc_iteration_register_file(fsc_stackptr_t file_ptr, fsc_hashtable_t *direc
 	fsc_file_t *file = (fsc_file_t *)STACKPTR_LCL(file_ptr);
 
 	// Get directory
-	fsc_stackptr_t directory_ptr = get_directory((const char *)STACKPTRN_LCL(file->qp_dir_ptr),
+	fsc_stackptr_t directory_ptr = fsc_iteration_get_directory((const char *)STACKPTR_LCL(file->qp_dir_ptr),
 			directories, string_repository, stack);
 	fsc_directory_t *directory = (fsc_directory_t *)STACKPTR_LCL(directory_ptr);
 
@@ -125,6 +125,7 @@ fsc_file_iterator_t fsc_file_iterator_open(fsc_filesystem_t *fs, const char *dir
 	// 'dir' and 'name' pointers should remain valid throughout iteration
 	fsc_file_iterator_t it;
 	FSC_ASSERT(fs);
+	FSC_ASSERT(dir);
 	FSC_ASSERT(name);
 	fsc_memset(&it, 0, sizeof(it));
 
@@ -158,9 +159,7 @@ int fsc_file_iterator_advance(fsc_file_iterator_t *it) {
 			if(!fsc_is_file_enabled(it->file, it->fs)) continue;
 			if(it->next_bucket == -1) {
 				if(fsc_stricmp(FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file->qp_name_ptr, 0), it->name)) continue;
-				if(it->file->qp_dir_ptr && (!it->dir || fsc_stricmp(
-						FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file->qp_dir_ptr, 0), it->dir))) continue;
-				if(!it->file->qp_dir_ptr && it->dir) continue; }
+				if(fsc_stricmp(FSC_STACK_RETRIEVE(&it->fs->general_stack, it->file->qp_dir_ptr, 0), it->dir)) continue; }
 			return 1; }
 
 		if(it->next_bucket >= 0 && it->next_bucket < it->fs->files.bucket_count) {

@@ -145,13 +145,9 @@ void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_
 			fsc_file_to_stream((const fsc_file_t *)fsc_get_base_file(file, fs), stream, fs, 0, 0);
 			FSC_ADD_STRING("->"); } }
 
-	if(file->qp_dir_ptr) {
-		FSC_ADD_STRING((const char *)STACKPTR(file->qp_dir_ptr));
-		FSC_ADD_STRING("/"); }
+	FSC_ADD_STRING((const char *)STACKPTR(file->qp_dir_ptr));
 	FSC_ADD_STRING((const char *)STACKPTR(file->qp_name_ptr));
-	if(file->qp_ext_ptr) {
-		FSC_ADD_STRING(".");
-		FSC_ADD_STRING((const char *)STACKPTR(file->qp_ext_ptr)); } }
+	FSC_ADD_STRING((const char *)STACKPTR(file->qp_ext_ptr)); }
 
 /* ******************************************************************************** */
 // File Indexing
@@ -170,16 +166,16 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 	// Called for both files on disk and in pk3s
 	fsc_file_t *file = (fsc_file_t *)STACKPTR(file_ptr);
 	fsc_file_direct_t *base_file = (fsc_file_direct_t *)fsc_get_base_file(file, fs);
-	const char *qp_dir = (const char *)STACKPTRN(file->qp_dir_ptr);
+	const char *qp_dir = (const char *)STACKPTR(file->qp_dir_ptr);
 	const char *qp_name = (const char *)STACKPTR(file->qp_name_ptr);
-	const char *qp_ext = (const char *)STACKPTRN(file->qp_ext_ptr);
+	const char *qp_ext = (const char *)STACKPTR(file->qp_ext_ptr);
 
 	// Register file for main lookup and directory iteration
 	fsc_hashtable_insert(file_ptr, fsc_string_hash(qp_name, qp_dir), &fs->files);
 	fsc_iteration_register_file(file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack);
 
 	// Index shaders and update shader counter on base file
-	if(qp_ext && qp_dir && !fsc_stricmp(qp_dir, "scripts") && !fsc_stricmp(qp_ext, "shader")) {
+	if(!fsc_stricmp(qp_dir, "scripts/") && !fsc_stricmp(qp_ext, ".shader")) {
 		int count = index_shader_file(fs, file_ptr, eh);
 		if(base_file) {
 			base_file->shader_file_count += 1;
@@ -187,7 +183,7 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 			base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
 
 	// Index crosshairs
-	if(qp_dir && !fsc_stricmp(qp_dir, "gfx/2d")) {
+	if(!fsc_stricmp(qp_dir, "gfx/2d/")) {
 		char buffer[10];
 		fsc_strncpy(buffer, qp_name, sizeof(buffer));
 		if(!fsc_stricmp(buffer, "crosshair")) {
@@ -195,8 +191,8 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 			if(base_file) base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
 
 	// Cache small arena and bot file contents
-	if(file->filesize < 16384 && qp_dir && !fsc_stricmp(qp_dir, "scripts") && qp_ext &&
-			(!fsc_stricmp(qp_ext, "arena") || !fsc_stricmp(qp_ext, "bot"))) {
+	if(file->filesize < 16384 && !fsc_stricmp(qp_dir, "scripts/") &&
+			(!fsc_stricmp(qp_ext, ".arena") || !fsc_stricmp(qp_ext, ".bot"))) {
 		char *source_data = fsc_extract_file_allocated(fs, file, eh);
 		if(source_data) {
 			fsc_stackptr_t target_ptr = fsc_stack_allocate(&fs->general_stack, file->filesize);
@@ -215,7 +211,7 @@ void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, 
 		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp, unsigned int filesize,
 		fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	fsc_stackptr_t file_ptr;
-	fsc_file_direct_t *file;
+	fsc_file_direct_t *file = 0;
 	fsc_hashtable_iterator_t hti;
 	unsigned int fs_hash = fsc_string_hash(qp_name, qp_dir);
 	int unindexed_file = 0;		// File was not present in the index at all
@@ -231,8 +227,8 @@ void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, 
 		file = (fsc_file_direct_t *)STACKPTR(file_ptr);
 		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(!fsc_nstring_compare((char *)STACKPTR(file->f.qp_name_ptr), qp_name)) continue;
-		if(!fsc_nstring_compare((char *)STACKPTRN(file->f.qp_dir_ptr), qp_dir)) continue;
-		if(!fsc_nstring_compare((char *)STACKPTRN(file->f.qp_ext_ptr), qp_ext)) continue;
+		if(!fsc_nstring_compare((char *)STACKPTR(file->f.qp_dir_ptr), qp_dir)) continue;
+		if(!fsc_nstring_compare((char *)STACKPTR(file->f.qp_ext_ptr), qp_ext)) continue;
 		if(!fsc_nstring_compare((char *)STACKPTRN(file->qp_mod_ptr), mod_dir)) continue;
 		if(!fsc_nstring_compare((char *)STACKPTRN(file->pk3dir_ptr), pk3dir_name)) continue;
 		if(file->os_path_ptr && fsc_compare_os_path(STACKPTR(file->os_path_ptr), os_path)) continue;
@@ -266,9 +262,9 @@ void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, 
 
 		// Set up fields (other fields are zeroed by default due to stack allocation)
 		file->f.sourcetype = FSC_SOURCETYPE_DIRECT;
-		file->f.qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
+		file->f.qp_dir_ptr = fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack);
 		file->f.qp_name_ptr = fsc_string_repository_getstring(qp_name, 1, &fs->string_repository, &fs->general_stack);
-		file->f.qp_ext_ptr = qp_ext ? fsc_string_repository_getstring(qp_ext, 1, &fs->string_repository, &fs->general_stack) : 0;
+		file->f.qp_ext_ptr = fsc_string_repository_getstring(qp_ext, 1, &fs->string_repository, &fs->general_stack);
 		file->qp_mod_ptr = mod_dir ? fsc_string_repository_getstring(mod_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
 		file->pk3dir_ptr = pk3dir_name ? fsc_string_repository_getstring(pk3dir_name, 1, &fs->string_repository, &fs->general_stack) : 0;
 		file->f.filesize = filesize;
@@ -280,7 +276,7 @@ void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, 
 	// Update source dir and download folder flag
 	file->source_dir_id = source_dir_id;
 	file->f.flags &= ~FSC_FILEFLAG_DLPK3;
-	if(qp_ext && !fsc_stricmp(qp_ext, "pk3") && qp_dir && !fsc_stricmp(qp_dir, "downloads")) {
+	if(!fsc_stricmp(qp_ext, ".pk3") && !fsc_stricmp(qp_dir, "downloads/")) {
 		file->f.flags |= FSC_FILEFLAG_DLPK3; }
 
 	// Save os path. This happens on loading a new file, and also when first activating an entry that was loaded from cache.
@@ -292,7 +288,7 @@ void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, 
 	// Register file and load contents
 	if(unindexed_file) {
 		fsc_register_file(file_ptr, fs, eh);
-		if(qp_ext && !fsc_stricmp(qp_ext, "pk3") && (!qp_dir || !fsc_stricmp(qp_dir, "downloads"))) {
+		if(!fsc_stricmp(qp_ext, ".pk3") && (!*qp_dir || !fsc_stricmp(qp_dir, "downloads/"))) {
 			fsc_load_pk3(STACKPTR(file->os_path_ptr), fs, file_ptr, eh, 0, 0);
 			file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
 
@@ -327,13 +323,12 @@ static int fsc_app_extension(const char *name) {
 
 void fsc_load_file_full_path(int source_dir_id, const void *os_path, const char *full_qpath, unsigned int os_timestamp,
 		unsigned int filesize, fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
-	char qp_buffer[FSC_MAX_QPATH];
 	char qp_mod[FSC_MAX_MODDIR];
 	const char *qpath_start = 0;
 	int file_in_pk3dir = 0;
 	char pk3dir_buffer[FSC_MAX_QPATH];
 	const char *pk3dir_remainder = 0;
-	const char *qp_dir, *qp_name, *qp_ext;
+	fsc_qpath_buffer_t qpath_split;
 
 	// Process mod directory prefix
 	if(!fsc_get_leading_directory(full_qpath, qp_mod, sizeof(qp_mod), &qpath_start)) return;
@@ -350,11 +345,11 @@ void fsc_load_file_full_path(int source_dir_id, const void *os_path, const char 
 				qpath_start = pk3dir_remainder; } } }
 
 	// Process qpath
-	if(!fsc_process_qpath(qpath_start, qp_buffer, &qp_dir, &qp_name, &qp_ext)) return;
+	fsc_split_qpath(qpath_start, &qpath_split, 0);
 
 	// Load file
-	fsc_load_file(source_dir_id, os_path, qp_mod, file_in_pk3dir ? pk3dir_buffer : 0, qp_dir, qp_name, qp_ext,
-			os_timestamp, filesize, fs, eh); }
+	fsc_load_file(source_dir_id, os_path, qp_mod, file_in_pk3dir ? pk3dir_buffer : 0, qpath_split.dir,
+			qpath_split.name, qpath_split.ext, os_timestamp, filesize, fs, eh); }
 
 typedef struct {
 	int source_dir_id;

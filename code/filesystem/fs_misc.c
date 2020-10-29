@@ -235,9 +235,9 @@ unsigned int fs_servercfg_priority(const char *mod_dir) {
 /* ******************************************************************************** */
 
 const char *fs_file_extension(const fsc_file_t *file) {
-	// Returns null for no extension
+	// Returns empty string for no extension, otherwise extension includes leading period
 	FSC_ASSERT(file);
-	return (const char *)STACKPTRN(file->qp_ext_ptr); }
+	return (const char *)STACKPTR(file->qp_ext_ptr); }
 
 qboolean fs_files_from_same_pk3(const fsc_file_t *file1, const fsc_file_t *file2) {
 	// Returns qtrue if both files are located in the same pk3, qfalse otherwise
@@ -729,13 +729,13 @@ static const unsigned int missionpack_hashes[] = {2430342401u, 511014160u,
 
 static qboolean check_default_cfg_pk3(const char *mod, const char *filename, unsigned int hash) {
 	// Returns qtrue if there is a pk3 containing default.cfg with either the given name or hash
-	fsc_file_iterator_t it = fsc_file_iterator_open(&fs, 0, "default");
+	fsc_file_iterator_t it = fsc_file_iterator_open(&fs, "", "default");
 
 	while(fsc_file_iterator_advance(&it)) {
 		const fsc_file_direct_t *source_pk3;
 		if(fs_file_disabled(it.file, FD_CHECK_READ_INACTIVE_MODS)) continue;
 		if(it.file->sourcetype != FSC_SOURCETYPE_PK3) continue;
-		if(!it.file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(it.file->qp_ext_ptr), "cfg")) continue;
+		if(Q_stricmp((const char *)STACKPTR(it.file->qp_ext_ptr), ".cfg")) continue;
 
 		source_pk3 = fsc_get_base_file(it.file, &fs);
 		if(source_pk3->pk3_hash == hash) return qtrue;
@@ -752,14 +752,14 @@ typedef struct {
 static core_pak_state_t get_pak_state(const char *mod, const char *filename, unsigned int hash) {
 	// Locates name and hash matches for a given pak
 	const fsc_file_direct_t *name_match = 0;
-	fsc_file_iterator_t it_files = fsc_file_iterator_open(&fs, 0, filename);
+	fsc_file_iterator_t it_files = fsc_file_iterator_open(&fs, "", filename);
 	fsc_pk3_iterator_t it_pk3s = fsc_pk3_iterator_open(&fs, hash);
 
 	while(fsc_file_iterator_advance(&it_files)) {
 		const fsc_file_direct_t *pk3 = (fsc_file_direct_t *)it_files.file;
 		if(it_files.file->sourcetype != FSC_SOURCETYPE_DIRECT) continue;
 		if(fs_file_disabled(it_files.file, FD_CHECK_READ_INACTIVE_MODS)) continue;
-		if(!it_files.file->qp_ext_ptr || Q_stricmp((const char *)STACKPTR(it_files.file->qp_ext_ptr), "pk3")) continue;
+		if(Q_stricmp((const char *)STACKPTR(it_files.file->qp_ext_ptr), ".pk3")) continue;
 		if(mod && Q_stricmp(fsc_get_mod_dir(it_files.file, &fs), mod)) continue;
 		if(pk3->pk3_hash == hash) {
 			core_pak_state_t result = {pk3, pk3};
