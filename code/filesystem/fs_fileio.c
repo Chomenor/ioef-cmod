@@ -1465,7 +1465,7 @@ fileHandle_t FS_SV_FOpenFileWrite(const char *filename) {
 	FSC_ASSERT(filename);
 	return fs_fopenfile_write_handle_open(0, filename, qfalse, qfalse, 0); }
 
-#ifdef CMOD_LOGGING
+#ifdef CMOD_LOGGING_SYSTEM
 fileHandle_t FS_SV_FOpenFileAppend(const char *filename) {
 	FSC_ASSERT(filename);
 	return fs_fopenfile_write_handle_open(0, filename, qtrue, qfalse, 0); }

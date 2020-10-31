@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#ifdef CMOD_LOGGING
+#ifdef CMOD_LOGGING_SYSTEM
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 

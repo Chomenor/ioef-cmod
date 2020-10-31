@@ -93,8 +93,11 @@ void sv_calculate_max_baselines(client_t *client, msg_t msg) {
 
 	if(valid_baselines != total_baselines) {
 		client->baseline_cutoff = highest_valid_baseline + 1;
+#ifdef CMOD_LOGGING_MESSAGES
 		cmLog(LOG_SERVER, LOGFLAG_COM_PRINTF, "Skipping baselines for client %i to avoid gamestate overflow - "
-				"writing %i of %i baselines", (int)(client-svs.clients), valid_baselines, total_baselines); }
+				"writing %i of %i baselines", (int)(client-svs.clients), valid_baselines, total_baselines);
+#endif
+	}
 	else {
 		client->baseline_cutoff = -1; } }
 #endif

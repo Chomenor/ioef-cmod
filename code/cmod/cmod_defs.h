@@ -15,14 +15,16 @@
 #define CMOD_COMMAND_INTERPRETER
 
 // [FEATURE] New cvar system with various improvements
-// Requires NEW_FILESYSTEM and CMOD_COMMAND_INTERPRETER.
+#if defined(NEW_FILESYSTEM) && defined(CMOD_COMMAND_INTERPRETER)	// required
 #define CMOD_CVAR_HANDLING
+#endif
 
 // [FEATURE] New settings system with various improvements
 // Changes settings location to cmod.cfg instead of original hmconfig.cfg
 // and keeps same settings for different mods
-// Requires NEW_FILESYSTEM, CMOD_COMMAND_INTERPRETER, and CMOD_CVAR_HANDLING.
+#if defined(NEW_FILESYSTEM) && defined(CMOD_COMMAND_INTERPRETER) && defined(CMOD_CVAR_HANDLING)		// required
 #define CMOD_SETTINGS
+#endif
 
 /* ******************************************************************************** */
 // Graphics
@@ -38,8 +40,9 @@
 #define CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
 
 // [FEATURE] Support framebuffer-based gamma, which allows r_gamma to work without changing system gamma settings
-// Requires CMOD_MAP_BRIGHTNESS_SETTINGS
+#if defined(CMOD_MAP_BRIGHTNESS_SETTINGS)	// required
 #define CMOD_FRAMEBUFFER
+#endif
 
 // [FEATURE] Support separate mode setting in windowed/fullscreen mode (r_mode and r_fullscreenMode)
 // Also support directly specifying custom resolutions in r_mode and r_fullscreenMode
@@ -169,8 +172,7 @@
 
 // [FEATURE] New crosshair system which is meant to allow selecting any installed crosshair,
 // rather than just a small fixed group. Currently rather hacky.
-// Requires NEW_FILESYSTEM and CMOD_CVAR_HANDLING
-#ifndef DEDICATED
+#if !defined(DEDICATED) && defined(NEW_FILESYSTEM) && defined(CMOD_CVAR_HANDLING)	// required
 #define CMOD_CROSSHAIR
 #endif
 
@@ -218,7 +220,10 @@
 // [COMMON] New logging system
 // Currently used for server-side logging, but capable of supporting client-side
 // logging as well for debugging purposes
-#define CMOD_LOGGING
+#if defined(NEW_FILESYSTEM)		// required
+#define CMOD_LOGGING_SYSTEM
+#define CMOD_LOGGING_MESSAGES
+#endif
 
 // [COMMON] Add protections against VMs writing config files for security purposes
 #define CMOD_RESTRICT_VM_CFG_WRITE

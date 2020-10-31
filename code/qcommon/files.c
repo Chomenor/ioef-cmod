@@ -3427,6 +3427,7 @@ static void FS_Startup( const char *gameName )
 		}
 	}
 
+#ifndef CMOD_DISABLE_AUTH_STUFF
 #ifndef STANDALONE
 	if (!com_standalone->integer) {
 		Com_ReadCDKey(BASEGAME);
@@ -3434,6 +3435,7 @@ static void FS_Startup( const char *gameName )
 			Com_AppendCDKey(fs_gamedirvar->string);
 		}
 	}
+#endif
 #endif
 
 	// add our commands

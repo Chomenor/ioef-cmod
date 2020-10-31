@@ -847,7 +847,10 @@ static void SV_SendClientGameState( client_t *client ) {
 #ifdef CMOD_GAMESTATE_OVERFLOW_FIX
 	if(msg.overflowed) {
 		// Log warning if gamestate overflowed anyway despite baseline reduction effort
-		cmLog(LOG_SERVER, LOGFLAG_COM_PRINTF, "WARNING: Gamestate overflow for client %i", (int)(client-svs.clients)); }
+#ifdef CMOD_LOGGING_MESSAGES
+		cmLog(LOG_SERVER, LOGFLAG_COM_PRINTF, "WARNING: Gamestate overflow for client %i", (int)(client-svs.clients));
+#endif
+	}
 #endif
 
 	// deliver this to the client

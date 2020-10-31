@@ -37,7 +37,7 @@ unsigned int cmod_read_token(const char **current, char *buffer, unsigned int bu
 unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int buffer_size);
 #endif
 
-#ifdef CMOD_LOGGING
+#ifdef CMOD_LOGGING_SYSTEM
 // id, name, date mode
 #define CMLogList \
 	CMLogEntry(LOG_SERVER, "server", 1) \

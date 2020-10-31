@@ -325,7 +325,7 @@ DEF_PUBLIC( fileHandle_t FS_FOpenConfigFileWrite(const char *filename) )
 // Misc handle operations
 DEF_PUBLIC( long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) )
 DEF_PUBLIC( fileHandle_t FS_SV_FOpenFileWrite(const char *filename) )
-#ifdef CMOD_LOGGING
+#ifdef CMOD_LOGGING_SYSTEM
 DEF_PUBLIC( fileHandle_t FS_SV_FOpenFileAppend(const char *filename) )
 #endif
 DEF_PUBLIC( void FS_FCloseFile(fileHandle_t f) )

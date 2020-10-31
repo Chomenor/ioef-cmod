@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../../server/server.h"
 
-#ifdef CMOD_LOGGING
+#ifdef CMOD_LOGGING_SYSTEM
 #define VOTE_LOG(...) cmLog(LOG_VOTING, 0, __VA_ARGS__)
 #define VOTE_LOG_FLUSH(...) cmLog(LOG_VOTING, LOGFLAG_FLUSH, __VA_ARGS__)
 #else

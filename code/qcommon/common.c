@@ -2870,7 +2870,7 @@ void Com_Init( char *commandLine ) {
 	Com_InitSmallZoneMemory();
 	Cvar_Init ();
 
-#ifdef CMOD_LOGGING
+#ifdef CMOD_LOGGING_SYSTEM
 	cmod_logging_initialize();
 #endif
 
@@ -3531,7 +3531,7 @@ void Com_Frame( void ) {
 	Com_ReadFromPipe( );
 
 	com_frameNumber++;
-#ifdef CMOD_LOGGING
+#ifdef CMOD_LOGGING_SYSTEM
 	cmod_logging_frame();
 #endif
 }
