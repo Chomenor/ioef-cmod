@@ -31,7 +31,7 @@ int cvar_modifiedFlags;		// Publicly shared
 // Definitions
 /* ******************************************************************************** */
 
-#define CVAR_CREATED_FLAGS (CVAR_USER_CREATED|CVAR_VM_CREATED|CVAR_IMPORT_CREATED)
+#define CVAR_CREATED_FLAGS (CVAR_USER_CREATED|CVAR_VM_CREATED|CVAR_IMPORT_CREATED|CVAR_SERVER_CREATED)
 
 typedef struct localCvar_s {
 	// Components shared with the rest of the game, and defined in q_shared.h
@@ -375,6 +375,22 @@ static void cvar_system_set(const char *name, const char *value) {
 
 	cvar_finalize(cvar, qtrue); }
 
+static qboolean check_command_permissions(localCvar_t *cvar, qboolean init, qboolean verbose) {
+	// Returns qtrue if modifiable by commands, qfalse otherwise
+	if(cvar->s.flags & CVAR_SERVER_CREATED) {
+		if(verbose) Com_Printf("%s is set by remote server.\n", cvar->s.name);
+		return qfalse; }
+	if(cvar->s.flags & CVAR_ROM) {
+		if(verbose) Com_Printf("%s is read only.\n", cvar->s.name);
+		return qfalse; }
+	if(cvar->s.flags & CVAR_INIT && !init) {
+		if(verbose) Com_Printf("%s can only be set as a command line parameter.\n", cvar->s.name);
+		return qfalse; }
+	if((cvar->s.flags & CVAR_CHEAT) && !sv_cheats->integer) {
+		if(verbose) Com_Printf("%s is cheat protected.\n", cvar->s.name);
+		return qfalse; }
+	return qtrue; }
+
 void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t mode, qboolean init, qboolean verbose) {
 	localCvar_t *cvar = get_cvar(name, qtrue);
 	if(!cvar) return;
@@ -382,15 +398,7 @@ void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t
 	//Com_Printf("cvar_command_set %s to %s\n", name, value);
 
 	// Check for blocking conditions
-	if(cvar->s.flags & CVAR_ROM) {
-		if(verbose) Com_Printf("%s is read only.\n", name);
-		return; }
-	if(cvar->s.flags & CVAR_INIT && !init) {
-		if(verbose) Com_Printf("%s can only be set as a command line parameter.\n", name);
-		return; }
-	if((cvar->s.flags & CVAR_CHEAT) && !sv_cheats->integer) {
-		if(verbose) Com_Printf("%s is cheat protected.\n", name);
-		return; }
+	if(!check_command_permissions(cvar, init, verbose)) return;
 
 	// Check for settings import/safe autoexec.cfg mode
 	if(mode & CMD_SETTINGS_IMPORT) {
@@ -425,9 +433,7 @@ void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t
 
 static void cvar_command_reset(localCvar_t *cvar, qboolean clear_flags) {
 	// User-invoked cvar reset
-	if(cvar->s.flags & (CVAR_ROM|CVAR_INIT)) return;
-	if((cvar->s.flags & CVAR_CHEAT) && !sv_cheats->integer) return;
-
+	if(!check_command_permissions(cvar, qfalse, qtrue)) return;
 	cvar_clearstring(&cvar->main_value);
 	if(clear_flags) cvar->main_flags = 0;
 	cvar_clearstring(&cvar->protected_value);
@@ -462,7 +468,7 @@ static localCvar_t *cvar_vm_register(const char *name, const char *value, int fl
 	cvar_finalize(cvar, cvar->protected_flags & CVAR_LATCH);
 	return cvar; }
 
-static localCvar_t *cvar_vm_set(const char *name, const char *value, int flags) {
+static localCvar_t *cvar_protected_set(const char *name, const char *value, int flags, int created_flag) {
 	localCvar_t *cvar = get_cvar(name, qtrue);
 	int permissions;
 	if(!cvar) return 0;
@@ -473,7 +479,7 @@ static localCvar_t *cvar_vm_set(const char *name, const char *value, int flags) 
 	if(!(cvar->main_flags & (CVAR_PROTECTED|CVAR_ROM)) || (cvar->protected_flags & (CVAR_ROM|CVAR_CHEAT))) {
 		cvar_copystring(value, &cvar->protected_value);
 		cvar->protected_flags &= ~CVAR_CREATED_FLAGS;
-		cvar->protected_flags |= CVAR_VM_CREATED; }
+		cvar->protected_flags |= created_flag; }
 
 	// Set flags
 	cvar->protected_flags |= flags & (CVAR_USERINFO | CVAR_SERVERINFO | CVAR_SYSTEMINFO |
@@ -509,14 +515,20 @@ void Cvar_SetDescription(cvar_t *var, const char *var_description) {
 	cvar_copystring(var_description, &cvar->description); }
 
 void cvar_end_session(void) {
-	// Reset all non-archivable protected values
+	// Reset non-archivable protected values when disconnecting from remote server
 	localCvar_t *cvar;
 	for(cvar=cvar_first; cvar; cvar=cvar->next) {
-		if((cvar->protected_flags || cvar->protected_value || cvar->protected_default) &&
-				get_protected_permissions(cvar) < 2) {
-			cvar->protected_flags = 0;
-			cvar_clearstring(&cvar->protected_value);
-			cvar_clearstring(&cvar->protected_default);
+		if(cvar->protected_flags || cvar->protected_value || cvar->protected_default) {
+			if((cvar->protected_flags & CVAR_SERVER_CREATED) || get_protected_permissions(cvar) < 2) {
+				// Clear value and all flags
+				cvar->protected_flags = 0;
+				cvar_clearstring(&cvar->protected_value);
+				cvar_clearstring(&cvar->protected_default); }
+
+			else {
+				// Have archive permission; just clear most of the flags
+				cvar->protected_flags &= CVAR_ARCHIVE; }
+
 			cvar_finalize(cvar, qfalse); } } }
 
 /* ******************************************************************************** */
@@ -535,6 +547,9 @@ cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force ) {
 void Cvar_StartupSet(const char *var_name, const char *value) {
 	// Used for loading startup variables from the command line
 	cvar_command_set(var_name, value, 0, CMD_NORMAL, qtrue, qtrue); }
+
+void Cvar_SystemInfoSet( const char *var_name, const char *value ) {
+	cvar_protected_set(var_name, value, CVAR_ROM, CVAR_SERVER_CREATED); }
 
 void Cvar_Set( const char *var_name, const char *value) {
 	// Called by system code
@@ -557,7 +572,7 @@ void Cvar_SetLatched( const char *var_name, const char *value) {
 
 void Cvar_SetSafe( const char *var_name, const char *value ) {
 	// Called by VMs
-	cvar_vm_set(var_name, value, 0); }
+	cvar_protected_set(var_name, value, 0, CVAR_VM_CREATED); }
 
 void Cvar_SetValueSafe( const char *var_name, float value ) {
 	// Called by VMs

@@ -403,7 +403,9 @@ void CL_SystemInfoChanged( void ) {
 	// scan through all the variables in the systeminfo and locally set cvars to match
 	s = systemInfo;
 	while ( s ) {
+#ifndef CMOD_CVAR_HANDLING
 		int cvar_flags;
+#endif
 		
 		Info_NextPair( &s, key, value );
 		if ( !key[0] ) {
@@ -431,6 +433,15 @@ void CL_SystemInfoChanged( void ) {
 		}
 #endif
 
+#ifdef CMOD_CVAR_HANDLING
+		// Not sure what this check is for, but copying it to be safe
+		if(Q_stricmp(key, "g_synchronousClients") && Q_stricmp(key, "pmove_fixed") &&
+				Q_stricmp(key, "pmove_msec")) {
+			// No need to transfer cvars when running a local server
+			// This ensures modifiable server cvars remain modifiable
+			if(!com_sv_running->integer) {
+				Cvar_SystemInfoSet(key, value); } }
+#else
 		if((cvar_flags = Cvar_Flags(key)) == CVAR_NONEXISTENT)
 			Cvar_Get(key, value, CVAR_SERVER_CREATED | CVAR_ROM);
 		else
@@ -450,6 +461,7 @@ void CL_SystemInfoChanged( void ) {
 
 			Cvar_SetSafe(key, value);
 		}
+#endif
 	}
 	// if game folder should not be set and it is set at the client side
 	if ( !gameSet && *Cvar_VariableString("fs_game") ) {

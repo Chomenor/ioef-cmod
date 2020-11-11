@@ -565,6 +565,7 @@ void cvar_end_session(void);
 qboolean cvar_command(cmd_mode_t mode);
 void cvar_vstr(cmd_mode_t mode);
 void Cvar_StartupSet(const char *var_name, const char *value);
+void Cvar_SystemInfoSet( const char *var_name, const char *value );
 #endif
 
 cvar_t *Cvar_Get( const char *var_name, const char *value, int flags );
