@@ -1073,7 +1073,6 @@ special_cvar_t specials[] = {
 #ifdef USE_RENDERER_DLOPEN
 	{"cl_renderer", "opengl1", CVARTYPE_NONE, 0},
 #endif
-	{"sv_pure", "0", CVARTYPE_NONE, CVAR_SERVERINFO|CVAR_PROTECTED_MODIFIABLE},
 	{"com_hunkmegs", "256", CVARTYPE_NONE, 0},
 	{"com_soundMegs", "32", CVARTYPE_NONE, 0},
 	{"s_sdlSpeed", "44100", CVARTYPE_NONE, 0},
@@ -1096,10 +1095,15 @@ special_cvar_t specials[] = {
 	{"cl_yawspeed", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cl_pitchspeed", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cl_run", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
+
+	// Server settings
 	{"nextmap", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
+	{"sv_pure", "0", CVARTYPE_NONE, CVAR_SERVERINFO|CVAR_PROTECTED_MODIFIABLE},
 	{"sv_minRate", "25000", CVARTYPE_NONE, 0},
 	{"sv_fps", "30", CVARTYPE_NONE, 0},
 	{"sv_voip", "0", CVARTYPE_NONE, 0},
+	{"sv_maxClients", "32", CVARTYPE_NONE, CVAR_IGNORE_VM_DEFAULT},
+	{"g_teamForceBalance", "0", CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE|CVAR_IGNORE_VM_DEFAULT},
 
 	// Preferences
 	{"name", "RedShirt", CVARTYPE_PREFERENCES, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE|CVAR_IMPORT_ALLOWED},
@@ -1317,7 +1321,6 @@ special_cvar_t specials[] = {
 	{"g_team_group_blue", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"g_team_group_red", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"g_teamAutoJoin", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
-	{"g_teamForceBalance", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"g_warmup", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"g_weaponrespawn", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"gamedate", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
