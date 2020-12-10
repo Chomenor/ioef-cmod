@@ -14,11 +14,11 @@ To use the client, download the latest release zip, unzip it into your Elite For
 
 Settings are managed differently in cMod than other versions of EF. Here is an overview of how the cMod settings system works.
 
-- The settings are stored in a file called "cmod.cfg" directly in the EF install directory. This is separate from the settings files used by other versions of EF, such as hmconfig.cfg. The cmod.cfg file is designed to be human-editable, so feel free to open it and make changes.
+- The settings are stored in a file called "cmod.cfg" directly in the EF working directory. This is separate from the settings files used by other versions of EF, such as hmconfig.cfg. The cmod.cfg file is designed to be human-editable, so feel free to open it and make changes.
 
 - When you first run cMod (specifically, if the "cmod.cfg" file does not exist), cMod will attempt to import your binds and a limited subset of settings from an existing hmconfig.file and transfer them to cmod.cfg. If you want to reset cMod to a clean configuration, manually empty (but not delete) the cmod.cfg file.
 
-- By default, cMod only loads a limited subset of settings from the autoexec.cfg file. This is to protect against autoexec.cfg files that are prepackaged in EF distributions and may be incompatible with cMod. If you created an autoexec.cfg file yourself and believe it is compatible with cMod, set cmod_restrict_autoexec to 0 (in the console, not in the autoexec.cfg itself).
+- By default, cMod only loads a limited subset of settings from the autoexec.cfg file. This is to protect against autoexec.cfg files that are prepackaged in EF distributions and may be incompatible with cMod. If you created an autoexec.cfg file yourself and believe it is compatible with cMod, set cmod_restrict_autoexec to 0 (in the console or cmod.cfg, not in the autoexec.cfg itself).
 
 ## Directory Handling
 
@@ -26,11 +26,36 @@ By default, cMod will use the install location as the read/write directory, like
 
 If cMod is run from a location where it does not have write permissions, such as under Program Files on Windows, it will revert to the standard ioEF behavior and use the homepath as the write location.
 
-## Graphics Detail Settings
+## Mod Handling
 
-By default, cMod uses higher graphics settings than the original version of EF. These settings work best on newer computers and those with at least low end gaming-grade video cards. Check your video card/GPU model at [videocardbenchmark.net](http://videocardbenchmark.net). I recommend a score of 600 minimum, and 1200+ ideally, to run EF at full detail and 1080p resolution. If your hardware scores below these numbers you might consider upgrading your PC/video card.
+For stability reasons, cMod prioritizes the official game pk3s (pak0-pak3) over other pk3s in baseEF regardless of filename. This means certain kinds of mod pk3s may not work out of baseEF. To use such mods in cMod, create a folder called "basemod" alongside baseEF and place the mod pk3s in that folder instead of baseEF.
 
-If you are having trouble with framerates in cMod you can try lowering the graphics quality settings. Two of the most significant settings that might increase framerates (at the expense of graphics quality) are r_picmip 1 and r_ext_texture_filter_anisotropic 0. You can also try reducing the resolution using the options in the following section.
+Typical maps and models still work normally out of baseEF, and mods in other directories loaded via the mod menu or fs_game also work normally.
+
+## Brightness Settings
+
+The following settings are supported in cMod to adjust the brightness of the game.
+
+- r_gamma: Adjusts overall game brightness. This is the default brightness setting changed by the in-game brightness slider.  
+**Default:** 1.4 **Original EF Default:** 1.0 **Recommended range:** 1.0 - 2.0
+
+- r_overBrightFactor: Adjusts lighting contrast (maximum lighting intensity).  
+**Default:** 1.5 **Original EF Default:** 2.0 **Recommended range:** 1.0 - 2.0
+
+- r_mapLightingGamma: Adjusts average lighting intensity.  
+**Default:** 1.0 **Original EF Default:** 1.0 **Recommended range:** 1.0 - 2.0
+
+There are other settings that can modify brightness, but these are the ones that had best results in my testing. If you have additional questions about brightness customization feel free to send me an email.
+
+## Custom Fastsky Color
+
+cMod supports customizing the color of the sky in fastsky mode (when r_fastsky is set to 1). The color is controlled by the r_fastskyColor cvar and specified in RGB hex format. You can experiment with different combinations or use an online RGB picker tool that generates a standard 6-digit hex value to choose the color. Some sample values are as follows:
+
+- `ccb366` - yellow (original Elite Force default)
+- `777755` - darker shade of yellow
+- `777777` - light gray
+- `000000` - black (original ioEF default)
+- `ffffff` - white
 
 ## Resolution Handling
 
@@ -46,32 +71,6 @@ The most common values which you can use for these settings are as follows:
 - -1: Uses the resolution specified by r_customWidth and r_customHeight.
 - 3: Uses a 640x480 resolution (the original EF default).
 
-## Brightness Settings
-
-The following settings can be changed in order to adjust the brightness of the game.
-
-- r_gamma: Performs a gamma adjustment on the final renderer output. This is the default brightness setting changed by the in-game brightness slider. Values over 1 increase the game brightness on a curve, increasing the midrange levels without changing the minimum and maximum levels. Current default value is 1.4.
-
-- r_mapLightingGamma: Performs a gamma-style adjustment on map lighting intensity. Values over 1 increase the map lighting levels on a curve, increasing the midrange levels without changing the minimum and maximum levels. Current default value is 1 (no change). Reasonable values for this setting range from 1.0 to around 2.0.
-
-- r_mapLightingFactor: Performs a linear scaling on map lighting intensity. If any rgb component is scaled passed the maximum, values are scaled back so the highest component equals the maximum. Current default is 2 (EF standard). Values from around 2.5 to 5 can reasonably be used to increase brightness. Note while this setting has good results brightening some maps, it is relatively inconsistent between maps, so use with caution.
-
-- r_mapLightingClampMin: Sets the minimum lighting intensity (per rgb component), on a scale from 0 to 1. This can be used to force a minimum lighting level in maps. The default setting is 0. A value around 0.2 can be used to make the darkest parts of maps brighter without affecting the rest of the map.
-
-- r_mapLightingClampMax: Sets the maximum lighting intensity (per rgb component), on a scale from 0 to 1. The default setting is 1. A value around 0.8 can be used to reduce lighting in areas that are overly bright and washing out the colors to white without affecting the rest of the map.
-
-There are a number of other graphics settings that can affect brightness, but these are the ones that generally had the best results in my testing. If you don't like the way the graphics look in cMod, or you prefer the way an older EF client looks, feel free to send me an email so I can look into whether there is a way to improve your configuration. In general it is possible to replicate the graphics of any older client in cMod, although the exact settings you need to change to do that will vary depending on your system and configuration.
-
-## Custom Fastsky Color
-
-cMod supports customizing the color of the sky in fastsky mode (when r_fastsky is set to 1). The color is controlled by the r_fastskyColor cvar and specified in RGB hex format. You can experiment with different combinations or use an online RGB picker tool that generates a standard 6-digit hex value to choose the color. Some sample values are as follows:
-
-- `ccb366` - yellow (original Elite Force default)
-- `777755` - darker shade of yellow
-- `777777` - light gray
-- `000000` - black (original ioEF default)
-- `ffffff` - white
-
 ## Font Scaling
 
 In the original game, the console and chat font are displayed at a fixed size, unlike other graphical components that scale with the resolution of the display. This can lead to the font appearing too small on high resolution displays. cMod adds a new setting called "cmod_font_scaling" intended to help compensate for this effect.
@@ -80,23 +79,19 @@ In the original game, the console and chat font are displayed at a fixed size, u
 - A setting between 0 and 1 scales to some fraction of the font size represented by 1. However it will not scale below the original unscaled font size.
 - A setting of 0 produces the original unscaled font size.
 
-## Anti Burn-in Support
-
-The setting "cmod_anti_burnin" can be used to fade the in-game HUD graphics, to reduce possible burn-in effects on OLED-type displays. Valid values range from 0 (disabled) to 1 (maximum).
-
 ## Download Folder Support
 
 The "fs_download_mode" setting can be used to customize pk3 download handling on the client. It supports the following values:
 
 - 0 (default): Pk3 files are downloaded to the normal location.
-- 1: Pk3 files are saved to the "downloads" folder within the target mod directory. For example, "baseq3/somefile.pk3" will be rewritten to "baseq3/downloads/somefile.pk3". Pk3s in the downloads folder are deprioritized compared to pk3s directly in the mod directory.
+- 1: Pk3 files are saved to the "downloads" folder within the target mod directory. For example, "baseEF/somefile.pk3" will be rewritten to "baseEF/downloads/somefile.pk3". Pk3s in the downloads folder are deprioritized compared to pk3s directly in the mod directory.
 - 2: Same as 1, but also disables loading certain less secure content (cfg files and qvm files that don't match a list of trusted mod hashes) from the downloads folder.
 
-A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 conflicts. A setting of 2 can help increase security when downloading from untrusted servers, at the expense of possible mod compatibility issues.
+A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 conflicts. A setting of 2 can help increase security when downloading from untrusted servers, but may cause mod compatibility issues.
 
-## Mouse Input Mode
+## Anti Burn-in Support
 
-By default, cMod tries to use raw input mode for mouse input, which bypasses OS acceleration settings and is generally more accurate for FPS games. If you prefer to make the mouse input work the same as older versions of EF, try setting in_mouse_warping to 1 and restart cMod.
+The setting "cmod_anti_burnin" can be used to fade the in-game HUD graphics, to reduce possible burn-in effects on OLED-type displays. Valid values range from 0 (disabled) to 1 (maximum).
 
 ## Crosshair Handling
 
@@ -104,13 +99,9 @@ cMod uses a new crosshair indexing system, which allows all the installed crossh
 
 If you encounter crosshair-related issues, you can try disabling this feature by setting cmod_crosshair_enable to 0.
 
-## Console Key Notes
-
-There are currently some issues with the console-opening key on non-English keyboard layouts. If you experience problems, try using the alternative combination to open the console, Shift + ESC. If you still have problems send me an email so I can investigate it.
-
 # Server
 
-The separate dedicated server application is recommended for hosting servers. You can use the binaries included in the zip releases or compile your own builds.
+The separate dedicated server application is recommended for hosting servers. You can use the binaries included in the zip releases or compile them yourself. Make sure you are using the latest cMod version!
 
 ## Settings Handling
 
@@ -134,7 +125,7 @@ As with the client, the cMod dedicated server has special prioritization of the 
 
 If you have a mod that is entirely server-side, such as Gladiator, EFAdmin, and many other mods, or a custom mod that you compiled yourself, then follow these steps for loading the mod.
 
-- Create a directory called "servercfg" alongside baseEF in your server install directory. This directory is handled specially by cMod so that its contents override baseEF.
+- Create a directory called "servercfg" alongside baseEF in your server install directory. This directory is handled specially by cMod so that its contents override baseEF, similar to "basemod" on the client.
 - If your mod consists of one or more pk3 files, simply place them in the servercfg folder.
 - If your mod consists of a qagame.qvm file, place it in the following location: "servercfg/vm/qagame.qvm"
 - Don't set any fs_game setting on the command line.
@@ -171,6 +162,30 @@ To connect to the server in spectator mode, set "password" on the client to "spe
 # Compiling
 
 You should be able to compile this project using the ioquake3 steps [here](http://wiki.ioquake3.org/Building_ioquake3), substituting the cMod files/git address for the ioquake3 ones. If this doesn't work send me an email.
+
+# FAQ / Common Problems
+
+**Q:** Problems opening console.  
+**A:** There are known issues with the normal console key on some keyboard layouts. Try using the alternative combination, Shift + ESC to open the console.
+
+**Q:** Problems opening ingame chat.  
+**A:** There is a known bug in cMod versions prior to 1.08. Make sure you are using the latest version of cMod.
+
+**Q:** Settings "r_overBrightBits" and "r_mapOverBrightBits" not working.  
+**A:** cMod uses r_overBrightFactor and r_mapLightingFactor instead, with the following mapping:
+
+r_overBrightFactor = 2 ^ r_overBrightBits  
+r_mapLightingFactor = 2 ^ r_mapOverBrightBits
+
+For example, a setting of r_mapOverBrightBits 3 in another client translates to r_mapLightingFactor 8 in cMod.
+
+**Q:** Problems with jerkiness / low framerates.  
+**A:** By default, cMod uses higher graphics settings than the original version of EF. These settings work best on newer computers and those with at least low end gaming-grade video cards. Check your video card/GPU model at [videocardbenchmark.net](http://videocardbenchmark.net). I recommend a score of 600 minimum, and 1200+ ideally, to run EF at full detail and 1080p resolution. If your hardware scores below these numbers you might consider upgrading your PC/video card.
+
+If you are having trouble with framerates in cMod you can try lowering the graphics quality settings. Two of the most significant settings that might increase framerates (at the expense of graphics quality) are r_picmip 1 and r_ext_texture_filter_anisotropic 0.
+
+**Q:** Mouse movement is different from original EF.  
+**A:** By default, cMod tries to use raw input mode for mouse input, which bypasses OS acceleration settings and is generally more accurate for FPS games. If you prefer the mouse input to be the same as older versions of EF, try setting in_mouse_warping to 1 and restart cMod.
 
 # Credits
 
