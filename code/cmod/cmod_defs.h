@@ -127,6 +127,11 @@
 // [BUGFIX] Various bot-related fixes and improvements
 #define CMOD_BOT_TWEAKS
 
+// [BUGFIX] Experimental - allow bots to select random goal areas when no items are available
+// Should help increase bot roaming activity especially on sniper modes
+// Has some potential for for CPU load spikes, but seems to be generally okay on most maps in testing
+#define CMOD_BOT_RANDOM_GOALS
+
 // [BUGFIX] Fixes for several issues that can interfere with the server being listed on
 // master servers and/or server browser tools
 #define CMOD_GETSTATUS_FIXES

@@ -2008,7 +2008,11 @@ int AAS_NextModelReachability(int num, int modelnum)
 //===========================================================================
 int AAS_RandomGoalArea(int areanum, int travelflags, int *goalareanum, vec3_t goalorigin)
 {
+#ifdef CMOD_BOT_RANDOM_GOALS
+	int n, t;
+#else
 	int i, n, t;
+#endif
 	vec3_t start, end;
 	aas_trace_t trace;
 
@@ -2016,7 +2020,9 @@ int AAS_RandomGoalArea(int areanum, int travelflags, int *goalareanum, vec3_t go
 	if (!AAS_AreaReachability(areanum)) return qfalse;
 	//
 	n = aasworld.numareas * random();
+#ifndef CMOD_BOT_RANDOM_GOALS
 	for (i = 0; i < aasworld.numareas; i++)
+#endif
 	{
 		if (n <= 0) n = 1;
 		if (n >= aasworld.numareas) n = 1;
@@ -2041,7 +2047,9 @@ int AAS_RandomGoalArea(int areanum, int travelflags, int *goalareanum, vec3_t go
 				trace = AAS_TraceClientBBox(start, end, PRESENCE_CROUCH, -1);
 				if (!trace.startsolid && trace.fraction < 1 && AAS_PointAreaNum(trace.endpos) == n)
 				{
+#ifndef CMOD_BOT_RANDOM_GOALS
 					if (AAS_AreaGroundFaceArea(n) > 300)
+#endif
 					{
 						*goalareanum = n;
 						VectorCopy(trace.endpos, goalorigin);
