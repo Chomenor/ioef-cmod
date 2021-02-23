@@ -343,6 +343,18 @@ typedef struct fsc_filesystem_s {
 	fsc_stats_t new_stats;
 } fsc_filesystem_t;
 
+typedef struct {
+	// These counters are decremented as data is pulled from a pk3. If they drop below 0,
+	// further data from that category will be dropped.
+	unsigned int content_cache_memory;
+	unsigned int content_index_memory;
+	unsigned int data_read;
+
+	// For error reporting
+	int warned;
+	fsc_file_direct_t *pk3file;
+} fsc_sanity_limit_t;
+
 // ***** Functions *****
 
 const fsc_file_direct_t *fsc_get_base_file(const fsc_file_t *file, const fsc_filesystem_t *fs);
@@ -354,7 +366,8 @@ const char *fsc_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs);
 void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
 		int include_mod, int include_pk3_origin);
 
-void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
+int fsc_sanity_limit(unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh);
+void fsc_register_file(fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
 void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, const char *pk3dir_name,
 		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp, unsigned int filesize,
 		fsc_filesystem_t *fs, fsc_errorhandler_t *eh);
@@ -395,7 +408,7 @@ typedef struct fsc_shader_s {
 	unsigned int end_position;
 } fsc_shader_t;
 
-int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh);
+int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh);
 int is_shader_enabled(fsc_filesystem_t *fs, const fsc_shader_t *shader);
 
 /* ******************************************************************************** */
@@ -410,7 +423,7 @@ typedef struct {
 	fsc_stackptr_t source_file_ptr;
 } fsc_crosshair_t;
 
-int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh);
+int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh);
 int is_crosshair_enabled(fsc_filesystem_t *fs, const fsc_crosshair_t *crosshair);
 
 /* ******************************************************************************** */

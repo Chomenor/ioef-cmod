@@ -167,7 +167,7 @@ void fsc_strncpy(char *dst, const char *src, unsigned int size) {
 void fsc_strncpy_lower(char *dst, const char *src, unsigned int size) {
 	FSC_ASSERT(dst && src);
 	if(size) {
-		while(--size) *(dst++) = tolower(*(src++));
+		while(--size && *src) *(dst++) = tolower(*(src++));
 		*dst = 0; } }
 
 int fsc_strcmp(const char *str1, const char *str2) {

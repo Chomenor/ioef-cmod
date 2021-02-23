@@ -161,7 +161,22 @@ static void fsc_merge_stats(const fsc_stats_t *source, fsc_stats_t *target) {
 	target->total_file_count += source->total_file_count;
 	target->cacheable_file_count += source->cacheable_file_count; }
 
-void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+int fsc_sanity_limit(unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh) {
+	// Returns 1 if limit hit, otherwise decrements limit and returns 0
+	FSC_ASSERT(sanity_limit);
+	FSC_ASSERT(limit_value);
+
+	if(*limit_value < size) {
+		if(!sanity_limit->warned) {
+			fsc_report_error(eh, FSC_ERROR_PK3FILE, "pk3 content dropped due to sanity limits", (void *)sanity_limit->pk3file);
+			sanity_limit->warned = 1; }
+
+		return 1; }
+
+	*limit_value -= size;
+	return 0; }
+
+void fsc_register_file(fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
 	// Registers file in index and loads secondary content such as shaders
 	// Called for both files on disk and in pk3s
 	fsc_file_t *file = (fsc_file_t *)STACKPTR(file_ptr);
@@ -176,7 +191,7 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 
 	// Index shaders and update shader counter on base file
 	if(!fsc_stricmp(qp_dir, "scripts/") && !fsc_stricmp(qp_ext, ".shader")) {
-		int count = index_shader_file(fs, file_ptr, eh);
+		int count = index_shader_file(fs, file_ptr, sanity_limit, eh);
 		if(base_file) {
 			base_file->shader_file_count += 1;
 			base_file->shader_count += count;
@@ -187,12 +202,13 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorh
 		char buffer[10];
 		fsc_strncpy(buffer, qp_name, sizeof(buffer));
 		if(!fsc_stricmp(buffer, "crosshair")) {
-			index_crosshair(fs, file_ptr, eh);
+			index_crosshair(fs, file_ptr, sanity_limit, eh);
 			if(base_file) base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
 
 	// Cache small arena and bot file contents
 	if(file->filesize < 16384 && !fsc_stricmp(qp_dir, "scripts/") &&
-			(!fsc_stricmp(qp_ext, ".arena") || !fsc_stricmp(qp_ext, ".bot"))) {
+			(!fsc_stricmp(qp_ext, ".arena") || !fsc_stricmp(qp_ext, ".bot")) &&
+			(!sanity_limit || !fsc_sanity_limit(file->filesize, &sanity_limit->content_cache_memory, sanity_limit, eh))) {
 		char *source_data = fsc_extract_file_allocated(fs, file, eh);
 		if(source_data) {
 			fsc_stackptr_t target_ptr = fsc_stack_allocate(&fs->general_stack, file->filesize);
@@ -287,7 +303,7 @@ void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, 
 
 	// Register file and load contents
 	if(unindexed_file) {
-		fsc_register_file(file_ptr, fs, eh);
+		fsc_register_file(file_ptr, 0, fs, eh);
 		if(!fsc_stricmp(qp_ext, ".pk3") && (!*qp_dir || !fsc_stricmp(qp_dir, "downloads/"))) {
 			fsc_load_pk3(STACKPTR(file->os_path_ptr), fs, file_ptr, eh, 0, 0);
 			file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }

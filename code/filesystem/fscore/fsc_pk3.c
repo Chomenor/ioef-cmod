@@ -179,9 +179,9 @@ void register_pk3_hash_lookup_entry(fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t
 	hash_map_entry->pk3 = pk3_file_ptr;
 	fsc_hashtable_insert(hash_map_entry_ptr, pk3_file->pk3_hash, pk3_hash_lookup); }
 
-static void register_file_from_pk3(fsc_filesystem_t *fs, char *filename, int filename_length,
-			fsc_stackptr_t sourcefile_ptr, unsigned int header_position, unsigned int compressed_size,
-			unsigned int uncompressed_size, short compression_method, fsc_errorhandler_t *eh) {
+static void register_file_from_pk3(fsc_filesystem_t *fs, char *filename, int filename_length, fsc_stackptr_t sourcefile_ptr,
+			unsigned int header_position, unsigned int compressed_size, unsigned int uncompressed_size,
+			short compression_method, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh) {
 	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTR(sourcefile_ptr);
 	fsc_stackptr_t file_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_file_frompk3_t));
 	fsc_file_frompk3_t *file = (fsc_file_frompk3_t *)STACKPTR(file_ptr);
@@ -210,7 +210,7 @@ static void register_file_from_pk3(fsc_filesystem_t *fs, char *filename, int fil
 	file->f.filesize = uncompressed_size;
 
 	// Register file and load contents
-	fsc_register_file(file_ptr, fs, eh);
+	fsc_register_file(file_ptr, sanity_limit, fs, eh);
 	++sourcefile->pk3_subfile_count; }
 
 void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr, fsc_errorhandler_t *eh,
@@ -232,7 +232,16 @@ void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile
 	int crcs_for_hash_buffer[1024];
 	int crcs_for_hash_count = 0;
 
-	if(!receive_hash_data) FSC_ASSERT(sourcefile_ptr);
+	fsc_sanity_limit_t sanity_limit = {0};
+
+	if(!receive_hash_data) {
+		FSC_ASSERT(sourcefile_ptr);
+
+		// Set sanity limits to prevent pk3s with excessively large contents from causing freezes/overflows
+		sanity_limit.content_index_memory = (sourcefile->f.filesize < 1048576 ? sourcefile->f.filesize : 1048576) * 5 + 16384;
+		sanity_limit.content_cache_memory = (sourcefile->f.filesize < 1048576 ? sourcefile->f.filesize : 1048576);
+		sanity_limit.data_read = (sourcefile->f.filesize < 1048576 ? sourcefile->f.filesize : 1048576) * 40 + 1048576;
+		sanity_limit.pk3file = sourcefile; }
 
 	// Load central directory
 	if(get_pk3_central_directory_path(os_path, &cd, sourcefile, eh)) return;
@@ -288,7 +297,7 @@ void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile
 		if(!(void *)receive_hash_data && !(!uncompressed_size && *(cd.data+entry_position+46+filename_length-1) == '/')) {
 			// Not in hash mode and not a directory entry - load the file
 			register_file_from_pk3(fs, cd.data+entry_position+46, filename_length, sourcefile_ptr,
-					header_position, compressed_size, CD_ENTRY_INT(24), CD_ENTRY_SHORT(10), eh); }
+					header_position, compressed_size, CD_ENTRY_INT(24), CD_ENTRY_SHORT(10), &sanity_limit, eh); }
 
 		++entry_counter;
 		entry_position += entry_length;

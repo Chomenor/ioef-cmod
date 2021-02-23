@@ -31,27 +31,30 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Crosshair Indexing
 /* ******************************************************************************** */
 
-int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh) {
+int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh) {
 	// Returns 1 on success, 0 otherwise.
 	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
 	unsigned int hash;
 
-	char *data = fsc_extract_file_allocated(fs, source_file, 0);
-	if(!data) {
-		fsc_report_error(eh, FSC_ERROR_CROSSHAIRFILE, "failed to extract/open crosshair file", source_file);
-		return 0; }
+	if(!sanity_limit || !fsc_sanity_limit(source_file->filesize, &sanity_limit->data_read, sanity_limit, eh)) {
+		char *data = fsc_extract_file_allocated(fs, source_file, 0);
+		if(!data) {
+			fsc_report_error(eh, FSC_ERROR_CROSSHAIRFILE, "failed to extract/open crosshair file", source_file);
+			return 0; }
 
-	hash = fsc_block_checksum(data, source_file->filesize);
-	fsc_free(data);
+		hash = fsc_block_checksum(data, source_file->filesize);
+		fsc_free(data);
 
- {	fsc_stackptr_t new_crosshair_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_crosshair_t));
-	fsc_crosshair_t *new_crosshair = (fsc_crosshair_t *)STACKPTR(new_crosshair_ptr);
+		if(!sanity_limit || !fsc_sanity_limit(sizeof(fsc_crosshair_t), &sanity_limit->content_index_memory, sanity_limit, eh)) {
+			fsc_stackptr_t new_crosshair_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_crosshair_t));
+			fsc_crosshair_t *new_crosshair = (fsc_crosshair_t *)STACKPTR(new_crosshair_ptr);
 
-	new_crosshair->hash = hash;
-	new_crosshair->source_file_ptr = source_file_ptr;
-	fsc_hashtable_insert(new_crosshair_ptr, hash, &fs->crosshairs); }
+			new_crosshair->hash = hash;
+			new_crosshair->source_file_ptr = source_file_ptr;
+			fsc_hashtable_insert(new_crosshair_ptr, hash, &fs->crosshairs);
+			return 1; } }
 
-	return 1; }
+	return 0; }
 
 /* ******************************************************************************** */
 // Other
