@@ -744,7 +744,7 @@ const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean
 	fsc_split_qpath(name, &qpath_split, 0);
 	query.qp_dir = qpath_split.dir;
 	query.qp_name = qpath_split.name;
-	query.qp_exts = &qpath_split.ext;
+	query.qp_exts = (const char **)&qpath_split.ext;
 	query.extension_count = 1;
 
 	if(debug) {

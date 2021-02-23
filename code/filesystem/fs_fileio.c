@@ -918,6 +918,7 @@ fileHandle_t fs_direct_read_handle_open(const fsc_file_t *file, const char *path
 	if(!file) fsc_free(os_path);
 	if(!fsc_handle) {
 		if(fs_debug_fileio->integer) FS_DPrintf("  result: failed to open file\n");
+		if(size_out) *size_out = 0;
 		return 0; }
 
 	// Set up handle entry
@@ -1533,7 +1534,7 @@ long FS_SV_FOpenFileRead(const char *filename, fileHandle_t *fp) {
 
 	for(i=0; i<FS_MAX_SOURCEDIRS; ++i) {
 		if(fs_generate_path_sourcedir(i, filename, 0, FS_ALLOW_DIRECTORIES, 0, path, sizeof(path))) {
-			*fp = fs_cache_read_handle_open(0, path, (unsigned int *)&size);
+			*fp = fs_direct_read_handle_open(0, path, (unsigned int *)&size);
 			if(*fp) break; } }
 	if(!*fp) size = -1;
 
