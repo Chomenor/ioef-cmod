@@ -476,6 +476,7 @@ static const char *trigger_type_to_string(cmd_trigger_type_t type) {
 		case TRIGGER_REPEAT: return "repeat";
 		case TRIGGER_MAP_CHANGE: return "map_change";
 		case TRIGGER_MAP_RESTART: return "map_restart";
+		case TRIGGER_INTERMISSION_START: return "intermission_start";
 		case TRIGGER_CLIENT_CONNECT: return "client_connect";
 		case TRIGGER_CLIENT_DISCONNECT: return "client_disconnect";
 		case TRIGGER_CLIENT_ENTERWORLD: return "client_enterworld"; } }
@@ -485,6 +486,7 @@ static cmd_trigger_type_t string_to_trigger_type(const char *string) {
 	if(!Q_stricmp(string, "repeat")) return TRIGGER_REPEAT;
 	if(!Q_stricmp(string, "map_change")) return TRIGGER_MAP_CHANGE;
 	if(!Q_stricmp(string, "map_restart")) return TRIGGER_MAP_RESTART;
+	if(!Q_stricmp(string, "intermission_start")) return TRIGGER_INTERMISSION_START;
 	if(!Q_stricmp(string, "client_connect")) return TRIGGER_CLIENT_CONNECT;
 	if(!Q_stricmp(string, "client_disconnect")) return TRIGGER_CLIENT_DISCONNECT;
 	if(!Q_stricmp(string, "client_enterworld")) return TRIGGER_CLIENT_ENTERWORLD;

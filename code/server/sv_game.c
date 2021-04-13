@@ -414,6 +414,12 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return SV_inPVSIgnorePortals( VMA(1), VMA(2) );
 
 	case G_SET_CONFIGSTRING:
+#ifdef CMOD_SERVER_CMD_TRIGGERS
+		// When intermission process starts, CS_INTERMISSION is set to 1 from G_LogExit
+		if(args[1] == 14 && !Q_stricmp(VMA(2), "1")) {
+			trigger_exec_type(TRIGGER_INTERMISSION_START);
+		}
+#endif
 		SV_SetConfigstring( args[1], VMA(2) );
 		return 0;
 	case G_GET_CONFIGSTRING:
