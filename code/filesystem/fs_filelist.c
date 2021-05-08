@@ -24,9 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fslocal.h"
 
-// Limit max files returned by searches to avoid Z_Malloc overflows
-#define	MAX_FOUND_FILES	32768
-
 typedef struct {
 	const char *extension;
 	const char *filter;
@@ -176,14 +173,33 @@ static char *allocate_string(const char *string) {
 	copy[length] = 0;
 	return copy; }
 
+static unsigned int max_files_for_category(const fsc_file_t *file) {
+	// Apply different cutoffs depending on source category, to provide some rough protection
+	// against pk3s containing very large numbers of files causing higher priority files to be dropped
+	fs_modtype_t mod_type = fs_get_mod_type(fsc_get_mod_dir(file, &fs));
+	const fsc_file_direct_t *base_file = fsc_get_base_file(file, &fs);
+	unsigned int cutoff = 25000;
+
+	if(base_file && core_pk3_position(base_file->pk3_hash)) cutoff = 35000;
+	if(mod_type >= MODTYPE_CURRENT_MOD) cutoff = 30000;
+	if(mod_type < MODTYPE_BASE) cutoff = 20000;
+	if(base_file && base_file->f.flags & FSC_FILEFLAG_DLPK3) cutoff = 15000;
+
+	if(file->sourcetype != FSC_SOURCETYPE_PK3) cutoff += 2500;
+	return cutoff; }
+
 static void temp_file_set_insert(fs_hashtable_t *ht, const fsc_file_t *file, const char *path,
 			qboolean directory, file_list_sort_key_t **sort_key_ptr, filelist_work_t *flw) {
 	// Loads a path/file combination into the file set, displacing lower precedence entries if needed
+	static qboolean cutoff_warned = qfalse;
 	unsigned int hash = fsc_string_hash(path, 0);
 	fs_hashtable_iterator_t it = fs_hashtable_iterate(ht, hash, qfalse);
 	temp_file_set_entry_t *entry;
 
-	if(ht->element_count >= MAX_FOUND_FILES) return;
+	if(ht->element_count >= max_files_for_category(file)) {
+		if(!cutoff_warned) Com_Printf("^3WARNING: File list operation skipping files due to overflow.\n");
+		cutoff_warned = qtrue;
+		return; }
 
 	// Generate sort key if one was not already created for this file
 	if(!*sort_key_ptr) *sort_key_ptr = generate_sort_key(file, &flw->temp_stack, flw);
@@ -408,7 +424,7 @@ static char **list_files(const char *path, int *numfiles_out, filelist_query_t *
 	flw.filter = query->filter;
 	flw.flags = query->flags;
 	fsc_stack_initialize(&flw.temp_stack);
-	fs_hashtable_initialize(&temp_file_set, MAX_FOUND_FILES);
+	fs_hashtable_initialize(&temp_file_set, 32768);
 
 	// Determine start directory
 	if(path) {

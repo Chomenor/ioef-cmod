@@ -100,9 +100,10 @@ static int index_shader_file_data(fsc_filesystem_t *fs, fsc_stackptr_t source_fi
 int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh) {
 	// Returns number of shaders indexed from file.
 	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
+	unsigned int read_limit_size = source_file->filesize + 256 > source_file->filesize ? source_file->filesize + 256 : source_file->filesize;
 	int shader_count = 0;
 
-	if(!sanity_limit || !fsc_sanity_limit(source_file->filesize, &sanity_limit->data_read, sanity_limit, eh)) {
+	if(!sanity_limit || !fsc_sanity_limit(read_limit_size, &sanity_limit->data_read, sanity_limit, eh)) {
 		char *data = fsc_extract_file_allocated(fs, source_file, 0);
 		if(!data) {
 			fsc_report_error(eh, FSC_ERROR_SHADERFILE, "failed to read shader file", source_file);

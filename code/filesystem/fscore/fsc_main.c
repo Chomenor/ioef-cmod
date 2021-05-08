@@ -185,6 +185,11 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	const char *qp_name = (const char *)STACKPTR(file->qp_name_ptr);
 	const char *qp_ext = (const char *)STACKPTR(file->qp_ext_ptr);
 
+	// Check for index overflow
+	if(sanity_limit && fsc_sanity_limit(fsc_strlen(qp_dir) + fsc_strlen(qp_name) + fsc_strlen(qp_ext) + 64,
+			&sanity_limit->content_index_memory, sanity_limit, eh))
+		return;
+
 	// Register file for main lookup and directory iteration
 	fsc_hashtable_insert(file_ptr, fsc_string_hash(qp_name, qp_dir), &fs->files);
 	fsc_iteration_register_file(file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack);
@@ -208,7 +213,7 @@ void fsc_register_file(fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	// Cache small arena and bot file contents
 	if(file->filesize < 16384 && !fsc_stricmp(qp_dir, "scripts/") &&
 			(!fsc_stricmp(qp_ext, ".arena") || !fsc_stricmp(qp_ext, ".bot")) &&
-			(!sanity_limit || !fsc_sanity_limit(file->filesize, &sanity_limit->content_cache_memory, sanity_limit, eh))) {
+			(!sanity_limit || !fsc_sanity_limit(file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit, eh))) {
 		char *source_data = fsc_extract_file_allocated(fs, file, eh);
 		if(source_data) {
 			fsc_stackptr_t target_ptr = fsc_stack_allocate(&fs->general_stack, file->filesize);

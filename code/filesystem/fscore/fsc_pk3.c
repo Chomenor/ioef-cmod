@@ -238,9 +238,12 @@ void fsc_load_pk3(void *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile
 		FSC_ASSERT(sourcefile_ptr);
 
 		// Set sanity limits to prevent pk3s with excessively large contents from causing freezes/overflows
-		sanity_limit.content_index_memory = (sourcefile->f.filesize < 1048576 ? sourcefile->f.filesize : 1048576) * 5 + 16384;
-		sanity_limit.content_cache_memory = (sourcefile->f.filesize < 1048576 ? sourcefile->f.filesize : 1048576);
-		sanity_limit.data_read = (sourcefile->f.filesize < 1048576 ? sourcefile->f.filesize : 1048576) * 40 + 1048576;
+		sanity_limit.content_index_memory = (sourcefile->f.filesize < 200000 ? sourcefile->f.filesize : 200000) * 5
+				+ (sourcefile->f.filesize < 1000000000 ? sourcefile->f.filesize : 1000000000) / 10 + 16384;
+		sanity_limit.content_cache_memory = (sourcefile->f.filesize < 200000 ? sourcefile->f.filesize : 200000)
+				+ (sourcefile->f.filesize < 1000000000 ? sourcefile->f.filesize : 1000000000) / 50;
+		sanity_limit.data_read = (sourcefile->f.filesize < 200000 ? sourcefile->f.filesize : 200000) * 50 + 200000
+				+ (sourcefile->f.filesize < 1000000000 ? sourcefile->f.filesize : 1000000000);
 		sanity_limit.pk3file = sourcefile; }
 
 	// Load central directory
