@@ -205,6 +205,19 @@ void SV_GetUserinfo( int index, char *buffer, int bufferSize ) {
 		Com_Error (ERR_DROP, "SV_GetUserinfo: bad index %i", index);
 	}
 	Q_strncpyz( buffer, svs.clients[ index ].userinfo, bufferSize );
+#ifdef CMOD_BOT_PASSWORD_FIX
+	{
+		static cvar_t *passwordCvar;
+		if ( !passwordCvar ) {
+			passwordCvar = Cvar_Get( "g_password", "", 0 );
+		}
+		if ( passwordCvar && passwordCvar->string && passwordCvar->string[0] && Q_stricmp(passwordCvar->string, "none") &&
+				( svs.clients[index].netchan.remoteAddress.type == NA_BOT ||
+				svs.clients[index].netchan.remoteAddress.type == NA_LOOPBACK ) ) {
+			Info_SetValueForKey( buffer, "password", passwordCvar->string );
+		}
+	}
+#endif
 }
 
 

@@ -132,6 +132,9 @@
 // Has some potential for for CPU load spikes, but seems to be generally okay on most maps in testing
 #define CMOD_BOT_RANDOM_GOALS
 
+// [BUGFIX] Workaround to allow bots to join password-protected server
+#define CMOD_BOT_PASSWORD_FIX
+
 // [BUGFIX] Fixes for several issues that can interfere with the server being listed on
 // master servers and/or server browser tools
 #define CMOD_GETSTATUS_FIXES
