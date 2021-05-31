@@ -598,6 +598,11 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 				return;
 			}
 			inplay++;
+#ifdef CMOD_NO_DUPLICATE_SOUNDS
+			if ( s_noDuplicate->integer ) {
+				goto gotChannel;
+			}
+#endif
 		}
 	}
 
@@ -608,6 +613,9 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	sfx->lastTimeUsed = time;
 
 	ch = S_ChannelMalloc();	// entityNum, entchannel);
+#ifdef CMOD_NO_DUPLICATE_SOUNDS
+	gotChannel:
+#endif
 	if (!ch) {
 		ch = s_channels;
 
