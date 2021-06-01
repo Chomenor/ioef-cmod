@@ -599,7 +599,7 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 			}
 			inplay++;
 #ifdef CMOD_NO_DUPLICATE_SOUNDS
-			if ( s_noDuplicate->integer ) {
+			if ( ( s_noDuplicate->integer && entchannel == CHAN_WEAPON ) || s_noDuplicate->integer >= 2 ) {
 				goto gotChannel;
 			}
 #endif
