@@ -473,7 +473,7 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release TA|Win32'">true</BrowseInformation>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MaxSpeed</Optimization>
     </ClCompile>
-    <ClCompile Include="..\..\code\cmod\cmod_auto_brightness.c" />
+    <ClCompile Include="..\..\code\cmod\cmod_map_adjust.c" />
     <ClCompile Include="..\..\code\cmod\cmod_cmd.c" />
     <ClCompile Include="..\..\code\cmod\cmod_crosshair.c" />
     <ClCompile Include="..\..\code\cmod\cmod_crosshair_builtins.c" />

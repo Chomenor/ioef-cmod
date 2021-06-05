@@ -1124,7 +1124,7 @@ extern	cvar_t	*r_mapLightingClampMax;
 extern	cvar_t	*r_textureGamma;
 #endif
 
-#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+#ifdef CMOD_MAP_AUTO_ADJUST
 extern	cvar_t	*r_autoMapLightingFactor;
 extern	cvar_t	*r_autoMapLightingGammaMod;
 extern	cvar_t	*r_autoMapLightingClampMin;

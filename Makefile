@@ -1789,12 +1789,12 @@ Q3OBJ = \
   $(B)/client/fs_trusted_vms.o
 
 Q3OBJ += \
-  $(B)/client/cmod_auto_brightness.o \
   $(B)/client/cmod_cmd.o \
   $(B)/client/cmod_crosshair.o \
   $(B)/client/cmod_crosshair_builtins.o \
   $(B)/client/cmod_cvar.o \
   $(B)/client/cmod_logging.o \
+  $(B)/client/cmod_map_adjust.o \
   $(B)/client/cmod_misc.o \
   $(B)/client/snd_codec_mp3.o \
   $(B)/client/mad_bit.o \

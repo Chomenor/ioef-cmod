@@ -117,7 +117,7 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	double map_lighting_gamma = r_mapLightingGamma->value;
 	float map_lighting_clamp_min = r_mapLightingClampMin->value;
 	float map_lighting_clamp_max = r_mapLightingClampMax->value;
-#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+#ifdef CMOD_MAP_AUTO_ADJUST
 	if(*r_autoMapLightingFactor->string) map_lighting_factor *= r_autoMapLightingFactor->value;
 	if(*r_autoMapLightingGammaMod->string) map_lighting_gamma += r_autoMapLightingGammaMod->value;
 	if(r_autoMapLightingClampMin->value > map_lighting_clamp_min) map_lighting_clamp_min = r_autoMapLightingClampMin->value;

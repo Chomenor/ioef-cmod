@@ -61,8 +61,8 @@ void cmod_logging_frame(void);
 void QDECL cmLog(cmod_log_id_t log_id, int flags, const char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
 #endif
 
-#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
-void cmod_auto_brightness_configure(const char *mapname);
+#ifdef CMOD_MAP_AUTO_ADJUST
+void cmod_map_adjust_configure(const char *mapname);
 #endif
 
 #ifdef CMOD_CROSSHAIR

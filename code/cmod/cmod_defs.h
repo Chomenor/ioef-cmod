@@ -36,8 +36,8 @@
 // [FEATURE] Support r_textureGamma setting
 #define CMOD_TEXTURE_GAMMA
 
-// [FEATURE] Automatically adjust brightness settings for consistency on certain types of maps
-#define CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+// [FEATURE] Automatically adjust graphics settings for consistency on certain types of maps
+#define CMOD_MAP_AUTO_ADJUST
 
 // [FEATURE] Support framebuffer-based gamma, which allows r_gamma to work without changing system gamma settings
 #if defined(CMOD_MAP_BRIGHTNESS_SETTINGS)	// required

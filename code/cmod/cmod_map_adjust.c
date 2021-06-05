@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+#ifdef CMOD_MAP_AUTO_ADJUST
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
@@ -176,8 +176,8 @@ static void process_bsp_data(char *data, int length) {
 	//		length, hash, entity_offset, entity_length);
 }
 
-void cmod_auto_brightness_configure(const char *mapname) {
-	cvar_t *cmod_auto_brightness_enabled = Cvar_Get("cmod_auto_brightness_enabled", "1", CVAR_ARCHIVE|CVAR_LATCH);
+void cmod_map_adjust_configure(const char *mapname) {
+	cvar_t *cmod_map_adjust_enabled = Cvar_Get("cmod_map_adjust_enabled", "1", CVAR_ARCHIVE|CVAR_LATCH);
 	Cvar_Get("r_autoMapLightingFactor", "", CVAR_ROM);
 	Cvar_Set("r_autoMapLightingFactor", "");
 	Cvar_Get("r_autoMapLightingGammaMod", "", CVAR_ROM);
@@ -185,7 +185,7 @@ void cmod_auto_brightness_configure(const char *mapname) {
 	Cvar_Get("r_autoMapLightingClampMin", "", CVAR_ROM);
 	Cvar_Set("r_autoMapLightingClampMin", "");
 
-	if(cmod_auto_brightness_enabled->integer && mapname && *mapname) {
+	if(cmod_map_adjust_enabled->integer && mapname && *mapname) {
 		char *data = 0;
 		int length = FS_ReadFile(va("maps/%s.bsp", mapname), (void **)&data);
 		if(data) {

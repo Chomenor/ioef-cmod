@@ -3373,11 +3373,11 @@ CL_InitRenderer
 ============
 */
 void CL_InitRenderer( void ) {
-#ifdef CMOD_MAP_BRIGHTNESS_AUTO_ADJUST
+#ifdef CMOD_MAP_AUTO_ADJUST
 	// based on cl_cgame.c->CL_InitCGame
 	const char *info = cl.gameState.stringData + cl.gameState.stringOffsets[ CS_SERVERINFO ];
 	const char *mapname = Info_ValueForKey( info, "mapname" );
-	cmod_auto_brightness_configure(mapname);
+	cmod_map_adjust_configure(mapname);
 #endif
 	// this sets up the renderer and calls R_Init
 	re.BeginRegistration( &cls.glconfig );
