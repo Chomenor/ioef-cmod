@@ -916,6 +916,19 @@ void RB_CalcEnvironmentTexCoords( float *st )
 		reflected[1] = normal[1]*2*d - viewer[1];
 		reflected[2] = normal[2]*2*d - viewer[2];
 
+#ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
+		{
+			int mode = r_envMapMode->integer;
+
+			// mode 0: use EF-style environment map
+			if ( mode == 0 ) {
+				st[0] = reflected[0] * 0.5;
+				st[1] = reflected[1] * 0.5;
+				continue;
+			}
+		}
+#endif
+
 		st[0] = 0.5 + reflected[1] * 0.5;
 		st[1] = 0.5 - reflected[2] * 0.5;
 	}

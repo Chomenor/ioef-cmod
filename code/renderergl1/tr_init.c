@@ -189,6 +189,10 @@ cvar_t	*r_mapLightingClampMax;
 cvar_t	*r_textureGamma;
 #endif
 
+#ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
+cvar_t	*r_envMapMode;
+#endif
+
 #ifdef CMOD_MAP_AUTO_ADJUST
 cvar_t	*r_autoMapLightingFactor;
 cvar_t	*r_autoMapLightingGammaMod;
@@ -1234,6 +1238,10 @@ void R_Register( void )
 
 #ifdef CMOD_TEXTURE_GAMMA
 	r_textureGamma = ri.Cvar_Get("r_textureGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
+#endif
+
+#ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
+	r_envMapMode = ri.Cvar_Get("r_envMapMode", "0", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_MAP_AUTO_ADJUST

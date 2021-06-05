@@ -57,6 +57,10 @@
 // [FEATURE] Support fading HUD graphics to reduce potential burn-in on OLED displays
 #define CMOD_ANTI_BURNIN
 
+// [BUGFIX] Restore original EF environment mapped shader behavior
+// Controlled by "r_envMapMode" cvar: 0=EF style, 1=Q3 style
+#define CMOD_EF_ENVIRONMENT_MAP_MODE
+
 // [BUGFIX] Fixes potential vid restart loop issues (potentially related to r_fullscreenMode support)
 #define CMOD_IGNORE_RESIZE_MESSAGES
 
