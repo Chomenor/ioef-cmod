@@ -44,7 +44,7 @@ CVAR_DEF(cmod_anti_burnin, "0", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_NO_DUPLICATE_SOUNDS
-CVAR_DEF(s_noDuplicate, "0", CVAR_ARCHIVE);
+CVAR_DEF(s_noDuplicate, "1", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_LOGGING_SYSTEM
