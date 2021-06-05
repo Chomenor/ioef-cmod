@@ -590,6 +590,13 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	ch = s_channels;
 	inplay = 0;
 	for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {		
+#ifdef CMOD_NO_DUPLICATE_SOUNDS
+		if ( s_noDuplicate->integer && ch->thesfx && entchannel != CHAN_AUTO &&
+				ch->entchannel == entchannel && ch->entnum == entityNum ) {
+			ch->allocTime = Com_Milliseconds();
+			goto gotChannel;
+		}
+#endif
 		if (ch->entnum == entityNum && ch->thesfx == sfx) {
 			if (time - ch->allocTime < 50) {
 //				if (Cvar_VariableValue( "cg_showmiss" )) {
@@ -598,11 +605,6 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 				return;
 			}
 			inplay++;
-#ifdef CMOD_NO_DUPLICATE_SOUNDS
-			if ( ( s_noDuplicate->integer && entchannel == CHAN_WEAPON ) || s_noDuplicate->integer >= 2 ) {
-				goto gotChannel;
-			}
-#endif
 		}
 	}
 
