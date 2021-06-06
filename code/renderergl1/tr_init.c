@@ -197,6 +197,7 @@ cvar_t	*r_envMapMode;
 cvar_t	*r_autoMapLightingFactor;
 cvar_t	*r_autoMapLightingGammaMod;
 cvar_t	*r_autoMapLightingClampMin;
+cvar_t	*r_autoEnvMapMode;
 #endif
 
 #ifdef CMOD_FRAMEBUFFER
@@ -1241,13 +1242,14 @@ void R_Register( void )
 #endif
 
 #ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
-	r_envMapMode = ri.Cvar_Get("r_envMapMode", "0", CVAR_ARCHIVE);
+	r_envMapMode = ri.Cvar_Get("r_envMapMode", "-1", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_MAP_AUTO_ADJUST
 	r_autoMapLightingFactor = ri.Cvar_Get("r_autoMapLightingFactor", "", 0);
 	r_autoMapLightingGammaMod = ri.Cvar_Get("r_autoMapLightingGammaMod", "", 0);
 	r_autoMapLightingClampMin = ri.Cvar_Get("r_autoMapLightingClampMin", "", 0);
+	r_autoEnvMapMode = ri.Cvar_Get("r_autoEnvMapMode", "", 0);
 #endif
 
 #ifdef CMOD_FRAMEBUFFER

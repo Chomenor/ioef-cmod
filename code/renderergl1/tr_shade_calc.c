@@ -920,6 +920,13 @@ void RB_CalcEnvironmentTexCoords( float *st )
 		{
 			int mode = r_envMapMode->integer;
 
+#ifdef CMOD_MAP_AUTO_ADJUST
+			// mode -1: try to get map-specific value
+			if ( mode == -1 ) {
+				mode = r_autoEnvMapMode->integer;
+			}
+#endif
+
 			// mode 0: use EF-style environment map
 			if ( mode == 0 ) {
 				st[0] = reflected[0] * 0.5;

@@ -1132,6 +1132,7 @@ extern	cvar_t	*r_envMapMode;
 extern	cvar_t	*r_autoMapLightingFactor;
 extern	cvar_t	*r_autoMapLightingGammaMod;
 extern	cvar_t	*r_autoMapLightingClampMin;
+extern	cvar_t	*r_autoEnvMapMode;
 #endif
 
 #ifdef CMOD_FRAMEBUFFER

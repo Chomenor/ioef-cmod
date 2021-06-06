@@ -58,7 +58,7 @@
 #define CMOD_ANTI_BURNIN
 
 // [BUGFIX] Restore original EF environment mapped shader behavior
-// Controlled by "r_envMapMode" cvar: 0=EF style, 1=Q3 style
+// Controlled by "r_envMapMode" cvar: -1=auto, 0=EF style, 1=Q3 style
 #define CMOD_EF_ENVIRONMENT_MAP_MODE
 
 // [BUGFIX] Fixes potential vid restart loop issues (potentially related to r_fullscreenMode support)

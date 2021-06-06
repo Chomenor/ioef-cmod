@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 typedef struct {
 	float map_lighting_factor;
 	float map_lighting_gamma;
+	int envMapMode;
 	float map_lighting_min_clamp;
 } shift_set_t;
 
@@ -42,6 +43,9 @@ static void apply_shift_set(shift_set_t *shift_set) {
 	if(shift_set->map_lighting_gamma != 0.0f) {
 		Com_Printf("Setting r_autoMapLightingGammaMod %g\n", shift_set->map_lighting_gamma);
 		Cvar_Set("r_autoMapLightingGammaMod", va("%g", shift_set->map_lighting_gamma)); }
+	if(shift_set->envMapMode != 0) {
+		Com_Printf("Setting r_autoEnvMapMode %i\n", shift_set->envMapMode);
+		Cvar_Set("r_autoEnvMapMode", va("%i", shift_set->envMapMode)); }
 	if(shift_set->map_lighting_min_clamp != 0.0f) {
 		Com_Printf("Setting r_autoMapLightingClampMin %g\n", shift_set->map_lighting_min_clamp);
 		Cvar_Set("r_autoMapLightingClampMin", va("%g", shift_set->map_lighting_min_clamp)); } }
@@ -54,24 +58,27 @@ struct {
 	int hash;
 	shift_set_t shift_set;
 } special_shifts[] = {
-	{610817057, {1.0f, 0.2f, 0.0f}},		// ctf_twilight
-	{-1374186326, {2.0f, 0.1f, 0.0f}},		// ut_subway
-	{875359710, {0.5f, 0.0f, 0.0f}},		// pokernight
-	{1006385614, {0.6f, 0.0f, 0.0f}},		// 1upxmas
-	{-443776329, {0.5f, 0.0f, 0.0f}},		// crazychristmas
-	{-768581189, {0.5f, 0.0f, 0.0f}},		// ut4_terrorism4
-	{-1359736521, {0.5f, 0.0f, 0.0f}},		// ef_turnpike
-	{1038626548, {0.5f, 0.0f, 0.0f}},		// ctf_becks
-	{2006033781, {0.5f, 0.0f, 0.0f}},		// chickens
-	{-4369078, {1.0f, 0.2f, 0.0f}},			// amenhotep
-	{-301759510, {1.0f, 0.3f, 0.0f}},		// anubis
-	{1831086714, {1.0f, 0.2f, 0.0f}},		// heretic
-	{1535467701, {2.0f, 0.1f, 0.0f}},		// summer
-	{-169342235, {2.0f, 0.5f, 0.0f}},		// winter
-	{-834364908, {2.0f, 0.5f, 0.0f}},		// ethora
-	{-1862613250, {2.0f, 0.5f, 0.0f}},		// goththang
-	{-383639493, {1.0f, 0.4f, 0.0f}},		// helmsdeep
-	{-1201980974, {2.5f, 0.5f, 0.0f}},		// ctf_kln4
+	{-1864270671, {1.0f, 0.0f, 1}},		// matrix - quake-style environment map
+	{429256076, {1.0f, 0.0f, 1}},		// dangercity - quake-style environment map
+	{875359710, {0.5f, 0.0f, 1}},		// pokernight - urban terror lighting
+	{1006385614, {0.6f, 0.0f, 1}},		// 1upxmas - urban terror lighting
+	{-443776329, {0.5f, 0.0f, 1}},		// crazychristmas - urban terror lighting
+	{-768581189, {0.5f, 0.0f, 1}},		// ut4_terrorism4 - urban terror lighting
+	{-1359736521, {0.5f, 0.0f, 1}},		// ef_turnpike - urban terror lighting
+	{1038626548, {0.5f, 0.0f, 0}},		// ctf_becks - unbrighten
+	{2006033781, {0.5f, 0.0f, 0}},		// chickens - unbrighten
+	{-1374186326, {2.0f, 0.1f, 1}},		// ut_subway - brighten
+	{610817057, {1.0f, 0.2f, 0}},		// ctf_twilight - brighten
+	{-4369078, {1.0f, 0.2f, 0}},		// amenhotep - brighten
+	{-301759510, {1.0f, 0.3f, 0}},		// anubis - brighten
+	{1831086714, {1.0f, 0.2f, 0}},		// heretic - brighten
+	{1535467701, {2.0f, 0.1f, 1}},		// summer - brighten
+	{-169342235, {2.0f, 0.5f, 1}},		// winter - brighten
+	{-834364908, {2.0f, 0.5f, 1}},		// ethora - brighten
+	{-1862613250, {2.0f, 0.5f, 1}},		// goththang - brighten
+	{-383639493, {1.0f, 0.4f, 0}},		// helmsdeep - brighten
+	{-1201980974, {2.5f, 0.5f, 0}},		// ctf_kln4 - brighten
+	{-993374657, {2.0f, 0.0f, 0}},		// ctf_finalhour - brighten
 };
 
 static qboolean check_brightshift_hash(int hash) {
@@ -145,7 +152,7 @@ static qboolean check_quake3_entities(char *entities) {
 	//Com_Printf("quake entity hits: %i\n", entity_hits);
 
 	if(entity_hits >= 3) {
-		apply_shift_set(&(shift_set_t){2.0f, 0.0f, 0.0f});
+		apply_shift_set(&(shift_set_t){2.0f, 0.0f, 1});
 		return qtrue; }
 	return qfalse; }
 
@@ -182,6 +189,8 @@ void cmod_map_adjust_configure(const char *mapname) {
 	Cvar_Set("r_autoMapLightingFactor", "");
 	Cvar_Get("r_autoMapLightingGammaMod", "", CVAR_ROM);
 	Cvar_Set("r_autoMapLightingGammaMod", "");
+	Cvar_Get("r_autoEnvMapMode", "0", CVAR_ROM);
+	Cvar_Set("r_autoEnvMapMode", "0");
 	Cvar_Get("r_autoMapLightingClampMin", "", CVAR_ROM);
 	Cvar_Set("r_autoMapLightingClampMin", "");
 
