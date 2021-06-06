@@ -695,6 +695,7 @@ void Cmd_Echo_f(cmd_mode_t mode)
 /* ******************************************************************************** */
 
 static const char *base_protectable_commands[] = {
+	"cvar_restart",
 	"cmd",
 	"vid_restart",
 	"connect",
@@ -780,7 +781,7 @@ static const char *base_protectable_commands[] = {
 	"messagemode",
 	"messagemode2",
 	"messagemode3",
-	"messagemode4"
+	"messagemode4",
 };
 
 static void init_base_protectable_commands(void) {
