@@ -592,6 +592,7 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {		
 #ifdef CMOD_FILTER_OVERLAPPING_SOUNDS
 		if ( s_noOverlap->integer && ch->thesfx && entchannel != CHAN_AUTO &&
+				( s_noOverlap->integer >= 2 || entchannel == CHAN_WEAPON ) &&
 				ch->entchannel == entchannel && ch->entnum == entityNum ) {
 			ch->allocTime = Com_Milliseconds();
 			goto gotChannel;

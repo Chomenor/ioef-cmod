@@ -44,6 +44,9 @@ CVAR_DEF(cmod_anti_burnin, "0", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_FILTER_OVERLAPPING_SOUNDS
+// 0 = no filtering (original ioEF behavior)
+// 1 = filter weapon channel only (default)
+// 2 = filter all non-auto channels (original EF behavior)
 CVAR_DEF(s_noOverlap, "1", CVAR_ARCHIVE);
 #endif
 
