@@ -43,9 +43,18 @@ The following settings are supported in cMod to adjust the brightness of the gam
 **Default:** 1.5 **Original EF Default:** 2.0 **Recommended range:** 1.0 - 2.0
 
 - r_mapLightingGamma: Adjusts average lighting intensity.  
-**Default:** 1.0 **Original EF Default:** 1.0 **Recommended range:** 1.0 - 2.0
+**Default:** 1.0 **Original EF Default:** 1.0 **Recommended range:** 1.0 - 5.0
 
-There are other settings that can modify brightness, but these are the ones that had best results in my testing. If you have additional questions about brightness customization feel free to send me an email.
+- r_intensity: Adjusts texture brightness.  
+**Default:** 1.0 **Original EF Default:** 1.0 **Recommended range:** 1.0 - 1.5
+
+Here are some tips for how to use these settings:
+
+- Adjusting r_gamma is recommended to compensate for an especially bright or dark monitor. Otherwise it is usually best left near the default.
+
+- If you prefer maps to have more vivid colors and contrast, try increasing r_overBrightFactor to 2. This matches the original defaults many maps were designed for, but some players find that it can make sections of some maps too bright.
+
+- If you play competitively and want to make opponents easier to see, try increasing r_mapLightingGamma to 1.5 or above. This makes the entire map brighter (at the expense of visual contrast) so enemy models can be seen more clearly. For best results, r_overBrightFactor should be set at or near 1.5 when using this setting, as higher values can easily make the game too bright.
 
 ## Custom Fastsky Color
 
