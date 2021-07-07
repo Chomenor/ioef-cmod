@@ -43,8 +43,8 @@ CVAR_DEF(in_mouse_warping, "0", CVAR_ARCHIVE);
 CVAR_DEF(cmod_anti_burnin, "0", CVAR_ARCHIVE);
 #endif
 
-#ifdef CMOD_NO_DUPLICATE_SOUNDS
-CVAR_DEF(s_noDuplicate, "1", CVAR_ARCHIVE);
+#ifdef CMOD_FILTER_OVERLAPPING_SOUNDS
+CVAR_DEF(s_noOverlap, "1", CVAR_ARCHIVE);
 #endif
 
 #ifdef CMOD_LOGGING_SYSTEM

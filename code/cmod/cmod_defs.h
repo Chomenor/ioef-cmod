@@ -188,9 +188,9 @@
 #define CMOD_CROSSHAIR
 #endif
 
-// [FEATURE] Support "s_noDuplicate" option to emulate 1.20 behavior of only playing one copy
+// [FEATURE] Support "s_noOverlap" option to emulate 1.20 behavior of only playing one copy
 // of the same sound effect at the same time
-#define CMOD_NO_DUPLICATE_SOUNDS
+#define CMOD_FILTER_OVERLAPPING_SOUNDS
 
 // [BUGFIX] Use traditional EF float casting behavior in VM, which fixes the physics behavior
 // in various mods

@@ -590,8 +590,8 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	ch = s_channels;
 	inplay = 0;
 	for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {		
-#ifdef CMOD_NO_DUPLICATE_SOUNDS
-		if ( s_noDuplicate->integer && ch->thesfx && entchannel != CHAN_AUTO &&
+#ifdef CMOD_FILTER_OVERLAPPING_SOUNDS
+		if ( s_noOverlap->integer && ch->thesfx && entchannel != CHAN_AUTO &&
 				ch->entchannel == entchannel && ch->entnum == entityNum ) {
 			ch->allocTime = Com_Milliseconds();
 			goto gotChannel;
@@ -615,7 +615,7 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	sfx->lastTimeUsed = time;
 
 	ch = S_ChannelMalloc();	// entityNum, entchannel);
-#ifdef CMOD_NO_DUPLICATE_SOUNDS
+#ifdef CMOD_FILTER_OVERLAPPING_SOUNDS
 	gotChannel:
 #endif
 	if (!ch) {
