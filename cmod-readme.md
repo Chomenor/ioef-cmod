@@ -54,7 +54,9 @@ Here are some tips for how to use these settings:
 
 - If you prefer maps to have more vivid colors and contrast, try increasing r_overBrightFactor to 2. This matches the original defaults many maps were designed for, but some players find that it can make sections of some maps too bright.
 
-- If you play competitively and want to make opponents easier to see, try increasing r_mapLightingGamma to 1.5 or above. This makes the entire map brighter (at the expense of visual contrast) so enemy models can be seen more clearly. For best results, r_overBrightFactor should be set at or near 1.5 when using this setting, as higher values can easily make the game too bright.
+- If you play competitively and want to make opponents easier to see, try increasing r_mapLightingGamma to values in the range of 1.5 up to around 5. This makes the entire map brighter (at the expense of visual contrast) so enemy models can be seen more clearly.
+
+Note that r_overBrightFactor and r_mapLightingGamma should usually not both be increased at the same time. If you increase one, the other should be close to or below the default, or the game could become too bright.
 
 ## Custom Fastsky Color
 
