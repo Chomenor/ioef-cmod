@@ -1164,6 +1164,7 @@ special_cvar_t specials[] = {
 	{"r_mapLightingClampMin", "0", CVARTYPE_GRAPHICS, 0},
 	{"r_mapLightingClampMax", "1", CVARTYPE_GRAPHICS, 0},
 	{"r_textureGamma", "1", CVARTYPE_GRAPHICS, 0},
+	{"r_intensity", "1", CVARTYPE_GRAPHICS, CVAR_ARCHIVE},
 	{"cmod_map_adjust_enabled", "1", CVARTYPE_GRAPHICS, 0},
 	{"cmod_anti_burnin", "0", CVARTYPE_GRAPHICS, 0},
 
