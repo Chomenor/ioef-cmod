@@ -463,7 +463,8 @@ void RB_BeginDrawingView (void) {
 		clearBits |= GL_COLOR_BUFFER_BIT;	// FIXME: only if sky shaders have been used
 #ifdef CMOD_FASTSKY_COLOR
 		update_fastsky_color();
-		qglClearColor(fastsky_color[0], fastsky_color[1], fastsky_color[2], 1.0f);
+		qglClearColor(fastsky_color[0] / tr.overbrightFactor, fastsky_color[1] / tr.overbrightFactor,
+			fastsky_color[2] / tr.overbrightFactor, 1.0f);
 #else
 #ifdef ELITEFORCE
 		if(r_origfastsky->integer)
