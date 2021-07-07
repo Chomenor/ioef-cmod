@@ -702,6 +702,7 @@ static const char *base_protectable_commands[] = {
 	"disconnect",
 	"kick",
 	"rcon",
+	"localservers",
 	"globalservers",
 	"ping",
 	"+attack",
