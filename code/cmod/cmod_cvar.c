@@ -1102,7 +1102,7 @@ special_cvar_t specials[] = {
 	{"sv_minRate", "25000", CVARTYPE_NONE, 0},
 	{"sv_fps", "30", CVARTYPE_NONE, 0},
 	{"sv_voip", "0", CVARTYPE_NONE, 0},
-	{"sv_maxClients", "32", CVARTYPE_NONE, CVAR_IGNORE_VM_DEFAULT},
+	{"sv_maxclients", "32", CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE|CVAR_IGNORE_VM_DEFAULT},
 	{"g_teamForceBalance", "0", CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE|CVAR_IGNORE_VM_DEFAULT},
 
 	// Preferences
@@ -1332,7 +1332,6 @@ special_cvar_t specials[] = {
 	{"s_compression", 0, CVARTYPE_NONE, 0},	// Appears deprecated
 	{"s_khz", 0, CVARTYPE_NONE, 0},	// Appears deprecated
 	{"sv_mapname", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
-	{"sv_maxclients", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"teamoverlay", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"timelimit", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"timelimitWinningTeam", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
