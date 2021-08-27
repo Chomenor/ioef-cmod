@@ -391,7 +391,7 @@ void CL_ShutdownCGame( void ) {
 	}
 	VM_Call( cgvm, CG_SHUTDOWN );
 #ifdef NEW_FILESYSTEM
-	fs_close_owner_handles(FS_HANDLEOWNER_CGAME);
+	FS_Handle_CloseAllOwner( FS_HANDLEOWNER_CGAME );
 #endif
 	VM_Free( cgvm );
 	cgvm = NULL;
@@ -448,25 +448,33 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 #endif
 	case CG_FS_READ:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_CGAME) return 0;
+		if ( FS_Handle_GetOwner( args[3] ) != FS_HANDLEOWNER_CGAME ) {
+			return 0;
+		}
 #endif
 		FS_Read( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_FS_WRITE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_CGAME) return 0;
+		if ( FS_Handle_GetOwner( args[3] ) != FS_HANDLEOWNER_CGAME ) {
+			return 0;
+		}
 #endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_FS_FCLOSEFILE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_CGAME) return 0;
+		if ( FS_Handle_GetOwner( args[1] ) != FS_HANDLEOWNER_CGAME ) {
+			return 0;
+		}
 #endif
 		FS_FCloseFile( args[1] );
 		return 0;
 	case CG_FS_SEEK:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_CGAME) return 0;
+		if ( FS_Handle_GetOwner( args[1] ) != FS_HANDLEOWNER_CGAME ) {
+			return 0;
+		}
 #endif
 		return FS_Seek( args[1], args[2], args[3] );
 	case CG_SENDCONSOLECOMMAND:
@@ -746,7 +754,7 @@ void CL_InitCGame( void ) {
 #ifdef NEW_FILESYSTEM
 	// Give the map pk3 slightly higher precedence in the filesystem to help
 	// load the correct textures and such
-	fs_register_current_map(cl.mapname);
+	FS_RegisterCurrentMap( cl.mapname );
 #endif
 
 	// load the dll or bytecode

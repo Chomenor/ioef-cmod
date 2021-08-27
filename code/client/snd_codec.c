@@ -42,25 +42,33 @@ static void *S_CodecGetSound(const char *filename, snd_info_t *info)
 	const char *extension;
 	snd_codec_t *codec;
 
-	COM_StripExtension(filename, localName, MAX_QPATH);
+	COM_StripExtension( filename, localName, MAX_QPATH );
 
 	// Look up the file
-	file = fs_sound_lookup(localName, 0, qfalse);
-	if(!file) {
-		Com_Printf(S_COLOR_YELLOW "WARNING: Failed to %s sound %s!\n", info ? "load" : "open", filename);
-		return NULL; }
+	file = FS_SoundLookup( localName, 0, qfalse );
+	if ( !file ) {
+		Com_Printf( S_COLOR_YELLOW "WARNING: Failed to %s sound %s!\n", info ? "load" : "open", filename );
+		return NULL;
+	}
 
 	// Get extension
-	extension = fs_file_extension(file);
-	if(extension[0] == '.') extension = &extension[1];	// Skip leading dot
+	extension = FS_GetFileExtension( file );
+	if ( extension[0] == '.' ) {
+		extension = &extension[1];	// Skip leading dot
+	}
 
-	for(codec=codecs; codec; codec=codec->next) {
-			if(!Q_stricmp(extension, codec->ext)) {
-				// Load
-				if(info) return codec->load(va("%s.%s", localName, codec->ext), info);
-				else return codec->open(va("%s.%s", localName, codec->ext)); } }
+	for ( codec = codecs; codec; codec = codec->next ) {
+		if ( !Q_stricmp( extension, codec->ext ) ) {
+			// Load
+			if ( info ) {
+				return codec->load( va( "%s.%s", localName, codec->ext ), info );
+			} else {
+				return codec->open( va( "%s.%s", localName, codec->ext ) );
+			}
+		}
+	}
 
-	Com_Error(ERR_DROP, "S_CodecGetSound got file with unknown extension from fs_sound_lookup");
+	Com_Error( ERR_DROP, "S_CodecGetSound got file with unknown extension from FS_SoundLookup" );
 	return NULL;
 #else
 	snd_codec_t *codec;

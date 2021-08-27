@@ -23,31 +23,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-/* ******************************************************************************** */
-// Support functions from qcommon.c
-/* ******************************************************************************** */
+// String parsing functions adapted from qcommon.c
 
-#define qboolean int
-#define qtrue 1
-#define qfalse 0
-#define NULL 0
-
-#define FSC_EDIT
-
-#ifdef FSC_EDIT
-void fsc_SkipRestOfLine ( char **data ) {
-#else
-void SkipRestOfLine ( char **data ) {
-#endif
+/*
+=================
+FSC_SkipRestOfLine
+=================
+*/
+void FSC_SkipRestOfLine ( char **data ) {
 	char	*p;
 	int		c;
 
 	p = *data;
 	while ( (c = *p++) != 0 ) {
 		if ( c == '\n' ) {
-#ifndef FSC_EDIT
-			com_lines++;
-#endif
 			break;
 		}
 	}
@@ -55,22 +44,20 @@ void SkipRestOfLine ( char **data ) {
 	*data = p;
 }
 
-#ifdef FSC_EDIT
-static char *fsc_SkipWhitespace( char *data, qboolean *hasNewLines ) {
-#else
-static char *SkipWhitespace( char *data, qboolean *hasNewLines ) {
-#endif
+/*
+=================
+FSC_SkipWhitespace
+=================
+*/
+static char *FSC_SkipWhitespace( char *data, fsc_boolean *hasNewLines ) {
 	int c;
 
 	while( (c = *data) <= ' ') {
 		if( !c ) {
-			return NULL;
+			return FSC_NULL;
 		}
 		if( c == '\n' ) {
-#ifndef FSC_EDIT
-			com_lines++;
-#endif
-			*hasNewLines = qtrue;
+			*hasNewLines = fsc_true;
 		}
 		data++;
 	}
@@ -78,15 +65,17 @@ static char *SkipWhitespace( char *data, qboolean *hasNewLines ) {
 	return data;
 }
 
-#ifdef FSC_EDIT
-// com_token is a buffer of length MAX_TOKEN_CHARS that stores the token being returned.
-char *fsc_COM_ParseExt( char *com_token, char **data_p, int allowLineBreaks )
-#else
-char *COM_ParseExt( char **data_p, qboolean allowLineBreaks )
-#endif
+/*
+=================
+FSC_SkipWhitespace
+
+com_token is a buffer of length MAX_TOKEN_CHARS that stores the token being returned.
+=================
+*/
+char *FSC_ParseExt( char *com_token, char **data_p, fsc_boolean allowLineBreaks )
 {
 	int c = 0, len;
-	qboolean hasNewLines = qfalse;
+	fsc_boolean hasNewLines = fsc_false;
 	char *data;
 
 	data = *data_p;
@@ -96,17 +85,17 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks )
 	// make sure incoming data is valid
 	if ( !data )
 	{
-		*data_p = NULL;
+		*data_p = FSC_NULL;
 		return com_token;
 	}
 
 	while ( 1 )
 	{
 		// skip whitespace
-		data = fsc_SkipWhitespace( data, &hasNewLines );
+		data = FSC_SkipWhitespace( data, &hasNewLines );
 		if ( !data )
 		{
-			*data_p = NULL;
+			*data_p = FSC_NULL;
 			return com_token;
 		}
 		if ( hasNewLines && !allowLineBreaks )
@@ -175,10 +164,6 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks )
 		}
 		data++;
 		c = *data;
-#ifndef FSC_EDIT
-		if ( c == '\n' )
-			com_lines++;
-#endif
 	} while (c>32);
 
 	com_token[len] = 0;
@@ -187,13 +172,19 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks )
 	return com_token;
 }
 
-// Slightly modified from the original q_shared.c version
-// depth parameter is initial depth (0 if expecting first brace)
-int fsc_SkipBracedSection(char **program, int depth) {
+/*
+=================
+FSC_SkipBracedSection
+
+Slightly modified from the original q_shared.c version
+depth parameter is initial depth (0 if expecting first brace)
+=================
+*/
+int FSC_SkipBracedSection(char **program, int depth) {
 	char token[FSC_MAX_TOKEN_CHARS];
 
 	do {
-		fsc_COM_ParseExt( token, program, qtrue );
+		FSC_ParseExt( token, program, fsc_true );
 		if( token[1] == 0 ) {
 			if( token[0] == '{' ) {
 				depth++;

@@ -378,7 +378,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	Com_Printf( "Loading vm file %s...\n", filename );
 
 #ifdef NEW_FILESYSTEM
-	header.v = fs_read_data(vm->source_file, 0, 0, "VM_LoadQVM");
+	header.v = FS_ReadData(vm->source_file, 0, 0, "VM_LoadQVM");
 #else
 	FS_ReadFileDir(filename, vm->searchPath, unpure, &header.v);
 #endif
@@ -394,7 +394,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 
 	// show where the qvm was loaded from
 #ifdef NEW_FILESYSTEM
-	fs_print_file_location(vm->source_file);
+	FS_PrintFileLocation(vm->source_file);
 #else
 	FS_Which(filename, vm->searchPath);
 #endif
@@ -566,8 +566,10 @@ vm_t *VM_Restart(vm_t *vm, qboolean unpure)
 #ifdef NEW_FILESYSTEM
 	if ( vm->dllHandle ) {
 		Sys_UnloadDll( vm->dllHandle );
-		vm->dllHandle = fs_load_game_dll(vm->source_file, &vm->entryPoint, VM_DllSyscall);
-		if(!vm->dllHandle) Com_Error(ERR_DROP, "VM_Restart on dll failed");
+		vm->dllHandle = FS_LoadGameDLL( vm->source_file, &vm->entryPoint, VM_DllSyscall );
+		if ( !vm->dllHandle ) {
+			Com_Error( ERR_DROP, "VM_Restart on dll failed" );
+		}
 		return vm;
 	}
 #endif
@@ -636,17 +638,24 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 	Q_strncpyz(vm->name, module, sizeof(vm->name));
 
 #ifdef NEW_FILESYSTEM
-	vm->source_file = fs_vm_lookup(module, interpret == VMI_NATIVE ? qfalse : qtrue, qfalse, &is_dll);
-	if(!vm->source_file) return 0;
+	vm->source_file = FS_VMLookup( module, interpret == VMI_NATIVE ? qfalse : qtrue, qfalse, &is_dll );
+	if ( !vm->source_file ) {
+		return NULL;
+	}
 
-	if(is_dll) {
-		vm->dllHandle = fs_load_game_dll(vm->source_file, &vm->entryPoint, VM_DllSyscall);
-		if(!vm->dllHandle) return 0;
+	if ( is_dll ) {
+		vm->dllHandle = FS_LoadGameDLL( vm->source_file, &vm->entryPoint, VM_DllSyscall );
+		if ( !vm->dllHandle ) {
+			return NULL;
+		}
 		vm->systemCall = systemCalls;
-		return vm; }
+		return vm;
+	}
 
-	header = VM_LoadQVM(vm, qtrue, qfalse);
-	if(!header) return 0;
+	header = VM_LoadQVM( vm, qtrue, qfalse );
+	if ( !header ) {
+		return NULL;
+	}
 #else
 	do
 	{

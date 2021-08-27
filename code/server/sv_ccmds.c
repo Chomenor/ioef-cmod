@@ -166,13 +166,13 @@ static void SV_Map_f( void ) {
 	// a typo at the server console won't end the game
 	Com_sprintf (expanded, sizeof(expanded), "maps/%s.bsp", map);
 #ifdef NEW_FILESYSTEM
-	// Refresh in case a map was just manually added
-	fs_auto_refresh();
+	// Refresh in case a map was just manually added.
+	FS_AutoRefresh();
 
-	// Perform the check without respect to current connected pure list
+	// Perform the check without respect to current connected pure list.
 	// If we go forward loading the map, the pure list will be cleared in SV_SpawnServer
-	// before further access to the bsp
-	if(!fs_general_lookup(expanded, LOOKUPFLAG_IGNORE_PURE_LIST|LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse)) {
+	// before further access to the bsp.
+	if ( !FS_GeneralLookup( expanded, LOOKUPFLAG_IGNORE_PURE_LIST | LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse ) ) {
 #else
 	if ( FS_ReadFile (expanded, NULL) == -1 ) {
 #endif

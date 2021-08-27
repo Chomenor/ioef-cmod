@@ -24,63 +24,131 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fslocal.h"
 
-/* ******************************************************************************** */
-// Lookup Test Commands
-/* ******************************************************************************** */
+/*
+###############################################################################################
 
-static void cmd_find_file(void) {
-	if(Cmd_Argc() < 2) {
-		Com_Printf("Usage: find_file <path> <optional flag value>\n");
-		return; }
+Lookup Test Commands
 
-	fs_general_lookup(Cmd_Argv(1), atoi(Cmd_Argv(2)), qtrue); }
+###############################################################################################
+*/
 
-static void cmd_find_shader(void) {
-	if(Cmd_Argc() < 2) {
-		Com_Printf("Usage: find_shader <shader/image name> <optional flag value>\n");
-		return; }
+/*
+=================
+FS_FindFile_f
+=================
+*/
+static void FS_FindFile_f( void ) {
+	if ( Cmd_Argc() < 2 ) {
+		Com_Printf( "Usage: find_file <path> <optional flag value>\n" );
+		return;
+	}
 
-	fs_shader_lookup(Cmd_Argv(1), atoi(Cmd_Argv(2)), qtrue); }
+	FS_GeneralLookup( Cmd_Argv( 1 ), atoi( Cmd_Argv( 2 ) ), qtrue );
+}
 
-static void cmd_find_sound(void) {
-	if(Cmd_Argc() < 2) {
-		Com_Printf("Usage: find_sound <sound name> <optional flag value>\n");
-		return; }
+/*
+=================
+FS_FindShader_f
+=================
+*/
+static void FS_FindShader_f( void ) {
+	if ( Cmd_Argc() < 2 ) {
+		Com_Printf( "Usage: find_shader <shader/image name> <optional flag value>\n" );
+		return;
+	}
 
-	fs_sound_lookup(Cmd_Argv(1), atoi(Cmd_Argv(2)), qtrue); }
+	FS_ShaderLookup( Cmd_Argv( 1 ), atoi( Cmd_Argv( 2 ) ), qtrue );
+}
 
-static void cmd_find_vm(void) {
-	if(Cmd_Argc() != 2) {
-		Com_Printf("Usage: find_vm <vm/dll name>\n");
-		return; }
+/*
+=================
+FS_FindSound_f
+=================
+*/
+static void FS_FindSound_f( void ) {
+	if ( Cmd_Argc() < 2 ) {
+		Com_Printf( "Usage: find_sound <sound name> <optional flag value>\n" );
+		return;
+	}
 
-	fs_vm_lookup(Cmd_Argv(1), qfalse, qtrue, 0); }
+	FS_SoundLookup( Cmd_Argv( 1 ), atoi( Cmd_Argv( 2 ) ), qtrue );
+}
 
-static void cmd_compare(void) {
-	if(Cmd_Argc() != 3) {
-		Com_Printf("Usage: compare <resource #> <resource #>\n\nRun this command following a 'find_file', 'find_shader', "
-				"'find_sound', or 'find_vm' command and specify the resource numbers you wish to compare.\n");
-		return; }
+/*
+=================
+FS_FindVM_f
+=================
+*/
+static void FS_FindVM_f( void ) {
+	if ( Cmd_Argc() != 2 ) {
+		Com_Printf( "Usage: find_vm <vm/dll name>\n" );
+		return;
+	}
 
-	debug_resource_comparison(atoi(Cmd_Argv(1)), atoi(Cmd_Argv(2))); }
+	FS_VMLookup( Cmd_Argv( 1 ), qfalse, qtrue, NULL );
+}
 
-/* ******************************************************************************** */
-// Other Commands
-/* ******************************************************************************** */
+/*
+=================
+FS_Compare_f
+=================
+*/
+static void FS_Compare_f( void ) {
+	if ( Cmd_Argc() != 3 ) {
+		Com_Printf( "Usage: compare <resource #> <resource #>\n\nRun this command following a 'find_file', 'find_shader', "
+				"'find_sound', or 'find_vm' command and specify the resource numbers you wish to compare.\n" );
+		return;
+	}
 
-static void cmd_fs_refresh(void) {
-	// Usage: fs_refresh <force> <quiet>
-	if(!atoi(Cmd_Argv(1)) && fs_recently_refreshed()) {
-		Com_Printf("Ignoring fs_refresh command due to existing recent refresh.\n");
-		return; }
-	fs_refresh(atoi(Cmd_Argv(2)) ? qtrue : qfalse); }
+	FS_DebugCompareResources( atoi( Cmd_Argv( 1 ) ), atoi( Cmd_Argv( 2 ) ) );
+}
 
-static void cmd_readcache_debug(void) {
-	fs_readcache_debug(); }
+/*
+###############################################################################################
 
-static void cmd_indexcache_write(void) {
-	fs_indexcache_write(); }
+Other Commands
 
+###############################################################################################
+*/
+
+/*
+=================
+FS_Refresh_f
+
+Usage: FS_Refresh <force> <quiet>
+=================
+*/
+static void FS_Refresh_f( void ) {
+	if ( !atoi( Cmd_Argv( 1 ) ) && FS_RecentlyRefreshed() ) {
+		Com_Printf( "Ignoring fs_refresh command due to existing recent refresh.\n" );
+		return;
+	}
+	FS_Refresh( atoi( Cmd_Argv( 2 ) ) ? qtrue : qfalse );
+}
+
+/*
+=================
+FS_ReadCacheDebug_f
+=================
+*/
+static void FS_ReadCacheDebug_f( void ) {
+	FS_ReadCache_Debug();
+}
+
+/*
+=================
+FS_IndexCacheWrite_f
+=================
+*/
+static void FS_IndexCacheWrite_f( void ) {
+	FS_WriteIndexCache();
+}
+
+/*
+=================
+FS_Dir_f
+=================
+*/
 static void FS_Dir_f( void ) {
 	const char	*path;
 	const char	*extension;
@@ -112,6 +180,11 @@ static void FS_Dir_f( void ) {
 	FS_FreeFileList( dirnames );
 }
 
+/*
+=================
+FS_NewDir_f
+=================
+*/
 static void FS_NewDir_f( void ) {
 	const char	*filter;
 	char	**dirnames;
@@ -128,7 +201,7 @@ static void FS_NewDir_f( void ) {
 
 	Com_Printf( "---------------\n" );
 
-	dirnames = FS_FlagListFilteredFiles( "", "", filter, &ndirs, 0 );
+	dirnames = FS_ListFilteredFiles_Flags( "", "", filter, &ndirs, 0 );
 
 	for ( i = 0; i < ndirs; i++ ) {
 		Com_Printf( "%s\n", dirnames[i] );
@@ -137,10 +210,15 @@ static void FS_NewDir_f( void ) {
 	FS_FreeFileList( dirnames );
 }
 
+/*
+=================
+FS_Which_f
+
+The lookup functions are more powerful, but this is kept for users who are familiar with it.
+=================
+*/
 static void FS_Which_f( void ) {
-	// The lookup functions are more powerful, but this is kept for
-	// users who are familiar with it
-	const char *filename = Cmd_Argv(1);
+	const char *filename = Cmd_Argv( 1 );
 	const fsc_file_t *file;
 
 	if ( !filename[0] ) {
@@ -153,13 +231,21 @@ static void FS_Which_f( void ) {
 		filename++;
 	}
 
-	file = fs_general_lookup(filename, 0, qfalse);
-	if(file) fs_print_file_location(file);
-	else Com_Printf("File not found: \"%s\"\n", filename);
+	file = FS_GeneralLookup( filename, 0, qfalse );
+	if ( file ) {
+		FS_PrintFileLocation( file );
+	} else {
+		Com_Printf( "File not found: \"%s\"\n", filename );
+	}
 }
 
+/*
+=================
+FS_TouchFile_f
+=================
+*/
 static void FS_TouchFile_f( void ) {
-	fileHandle_t	f;
+	fileHandle_t f;
 
 	if ( Cmd_Argc() != 2 ) {
 		Com_Printf( "Usage: touchFile <file>\n" );
@@ -172,47 +258,71 @@ static void FS_TouchFile_f( void ) {
 	}
 }
 
+/*
+=================
+FS_Path_f
+
+Quick implementation without sorting
+=================
+*/
 static void FS_Path_f( void ) {
-	// Quick implementation without sorting
 	fsc_pk3_iterator_t it;
 	int sourceid;
 
-	for(sourceid=0; sourceid<FS_MAX_SOURCEDIRS; ++sourceid) {
-		if(!fs_sourcedirs[sourceid].active) continue;
-		Com_Printf("Looking in %s (%s)\n", fs_sourcedirs[sourceid].name, fs_sourcedirs[sourceid].path);
+	for ( sourceid = 0; sourceid < FS_MAX_SOURCEDIRS; ++sourceid ) {
+		if ( !fs.sourcedirs[sourceid].active ) {
+			continue;
+		}
+		Com_Printf( "Looking in %s (%s)\n", fs.sourcedirs[sourceid].name, fs.sourcedirs[sourceid].path );
 
-		it = fsc_pk3_iterator_open_all(&fs);
-		while(fsc_pk3_iterator_advance(&it)) {
-			if(it.pk3->source_dir_id == sourceid && !fs_file_disabled((fsc_file_t *)it.pk3, FD_CHECK_READ_INACTIVE_MODS)) {
+		it = FSC_Pk3IteratorOpenAll( &fs.index );
+		while ( FSC_Pk3IteratorAdvance( &it ) ) {
+			if ( it.pk3->source_dir_id == sourceid && !FS_CheckFileDisabled( (fsc_file_t *)it.pk3, FD_CHECK_READ_INACTIVE_MODS ) ) {
 				char buffer[FS_FILE_BUFFER_SIZE];
-				fs_file_to_buffer((fsc_file_t *)it.pk3, buffer, sizeof(buffer), qfalse, qtrue, qfalse, qfalse);
-				Com_Printf("%s (%i files)\n", buffer, it.pk3->pk3_subfile_count);
-				Com_Printf("    hash(%i) core_pk3_position(%i)\n", (int)it.pk3->pk3_hash, core_pk3_position(it.pk3->pk3_hash));
-				if(fs_connected_server_pure_state()) Com_Printf("    %son the pure list\n",
-						pk3_list_lookup(&connected_server_pure_list, it.pk3->pk3_hash) ? "" : "not "); } } }
+				FS_FileToBuffer( (fsc_file_t *)it.pk3, buffer, sizeof( buffer ), qfalse, qtrue, qfalse, qfalse );
+				Com_Printf( "%s (%i files)\n", buffer, it.pk3->pk3_subfile_count );
+				Com_Printf( "    hash(%i) FS_CorePk3Position(%i)\n", (int)it.pk3->pk3_hash, FS_CorePk3Position( it.pk3->pk3_hash ) );
+				if ( FS_ConnectedServerPureState() ) {
+					Com_Printf( "    %son the pure list\n",
+							FS_Pk3List_Lookup( &fs.connected_server_pure_list, it.pk3->pk3_hash ) ? "" : "not " );
+				}
+			}
+		}
+	}
 
-	Com_Printf("\n");
-	fs_print_handle_list(); }
+	Com_Printf( "\n" );
+	FS_Handle_PrintList();
+}
 
-/* ******************************************************************************** */
-// Command Register Function
-/* ******************************************************************************** */
+/*
+###############################################################################################
 
-void fs_register_commands(void) {
-	Cmd_AddCommand("find_file", cmd_find_file);
-	Cmd_AddCommand("find_shader", cmd_find_shader);
-	Cmd_AddCommand("find_sound", cmd_find_sound);
-	Cmd_AddCommand("find_vm", cmd_find_vm);
-	Cmd_AddCommand("compare", cmd_compare);
+Command Register Function
 
-	Cmd_AddCommand("fs_refresh", cmd_fs_refresh);
-	Cmd_AddCommand("readcache_debug", cmd_readcache_debug);
-	Cmd_AddCommand("indexcache_write", cmd_indexcache_write);
+###############################################################################################
+*/
 
-	Cmd_AddCommand("dir", FS_Dir_f);
-	Cmd_AddCommand("fdir", FS_NewDir_f);
-	Cmd_AddCommand("which", FS_Which_f);
-	Cmd_AddCommand("touchfile", FS_TouchFile_f);
-	Cmd_AddCommand("path", FS_Path_f); }
+/*
+=================
+FS_RegisterCommands
+=================
+*/
+void FS_RegisterCommands( void ) {
+	Cmd_AddCommand( "find_file", FS_FindFile_f );
+	Cmd_AddCommand( "find_shader", FS_FindShader_f );
+	Cmd_AddCommand( "find_sound", FS_FindSound_f );
+	Cmd_AddCommand( "find_vm", FS_FindVM_f );
+	Cmd_AddCommand( "compare", FS_Compare_f );
+
+	Cmd_AddCommand( "fs_refresh", FS_Refresh_f );
+	Cmd_AddCommand( "readcache_debug", FS_ReadCacheDebug_f );
+	Cmd_AddCommand( "indexcache_write", FS_IndexCacheWrite_f );
+
+	Cmd_AddCommand( "dir", FS_Dir_f );
+	Cmd_AddCommand( "fdir", FS_NewDir_f );
+	Cmd_AddCommand( "which", FS_Which_f );
+	Cmd_AddCommand( "touchfile", FS_TouchFile_f );
+	Cmd_AddCommand( "path", FS_Path_f );
+}
 
 #endif	// NEW_FILESYSTEM

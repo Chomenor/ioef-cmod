@@ -921,34 +921,50 @@ static void SV_BeginDownload_f( client_t *cl ) {
 }
 
 #ifdef NEW_FILESYSTEM
-static void SV_OpenDownloadError(client_t *cl, msg_t *msg, const char *errorMessage) {
-	// Sends error message to client
+/*
+==================
+SV_OpenDownloadError
+
+Sends error message to client.
+==================
+*/
+static void SV_OpenDownloadError( client_t *cl, msg_t *msg, const char *errorMessage ) {
 	MSG_WriteByte( msg, svc_download );
 	MSG_WriteShort( msg, 0 ); // client is expecting block zero
 	MSG_WriteLong( msg, -1 ); // illegal file size
-	MSG_WriteString( msg, errorMessage ); }
+	MSG_WriteString( msg, errorMessage );
+}
 
-static qboolean SV_OpenDownload(client_t *cl, msg_t *msg) {
-	// Returns qtrue on success, qfalse otherwise
+/*
+==================
+SV_OpenDownload
+
+Returns qtrue on success, qfalse otherwise.
+==================
+*/
+static qboolean SV_OpenDownload( client_t *cl, msg_t *msg ) {
 	char pak_name[MAX_QPATH];
-	COM_StripExtension(cl->downloadName, pak_name, sizeof(pak_name));
+	COM_StripExtension( cl->downloadName, pak_name, sizeof( pak_name ) );
 
-	if(!(sv_allowDownload->integer & DLF_ENABLE) || (sv_allowDownload->integer & DLF_NO_UDP) ) {
-		Com_Printf("clientDownload: %d : \"%s\" UDP download disabled by server sv_allowDownload setting\n",
-				(int) (cl - svs.clients), cl->downloadName);
-		SV_OpenDownloadError(cl, msg, va("Could not download \"%s\" because autodownloading is disabled on the server.\n"
-				"Set autodownload to No in your settings and you might be able to join the game anyway.\n", cl->downloadName));
-		return qfalse; }
+	if ( !( sv_allowDownload->integer & DLF_ENABLE ) || ( sv_allowDownload->integer & DLF_NO_UDP ) ) {
+		Com_Printf( "clientDownload: %d : \"%s\" UDP download disabled by server sv_allowDownload setting\n",
+				(int)( cl - svs.clients ), cl->downloadName );
+		SV_OpenDownloadError( cl, msg, va( "Could not download \"%s\" because autodownloading is disabled on the server.\n"
+				"Set autodownload to No in your settings and you might be able to join the game anyway.\n", cl->downloadName ) );
+		return qfalse;
+	}
 
-	cl->download = fs_open_download_pak(cl->downloadName, (unsigned int *)&cl->downloadSize);
-	if(!cl->download) {
+	cl->download = FS_OpenDownloadPak( cl->downloadName, (unsigned int *)&cl->downloadSize );
+	if ( !cl->download ) {
 		// This could happen if the map changed during a client's download sequence
-		Com_Printf("clientDownload: %d : \"%s\" failed to load download pk3\n", (int) (cl - svs.clients), cl->downloadName);
-		SV_OpenDownloadError(cl, msg, va("File \"%s\" not available on server for downloading.\n"
-				"Try reconnecting to the server.\n", cl->downloadName));
-		return qfalse; }
+		Com_Printf( "clientDownload: %d : \"%s\" failed to load download pk3\n", (int)( cl - svs.clients ), cl->downloadName );
+		SV_OpenDownloadError( cl, msg, va( "File \"%s\" not available on server for downloading.\n"
+				"Try reconnecting to the server.\n", cl->downloadName ) );
+		return qfalse;
+	}
 
-	return qtrue; }
+	return qtrue;
+}
 #endif
 
 /*
@@ -975,9 +991,10 @@ int SV_WriteDownloadToClient(client_t *cl, msg_t *msg)
 	if(!cl->download)
 	{
 #ifdef NEW_FILESYSTEM
-		if(!SV_OpenDownload(cl, msg)) {
+		if ( !SV_OpenDownload( cl, msg ) ) {
 			*cl->downloadName = 0;
-			return 1; }
+			return 1;
+		}
 #else
 		qboolean idPack = qfalse;
 		#ifndef STANDALONE
@@ -1251,14 +1268,21 @@ static void SV_Disconnect_f( client_t *cl ) {
 #ifdef NEW_FILESYSTEM
 /*
 =================
-SV_VerifyPaks_f / SV_ResetPureClient_f
+SV_VerifyPaks_f
 
-Placeholder functions to handle the deprecated cp and vdr commands
+Placeholder functions to handle the deprecated cp command.
 =================
 */
 static void SV_VerifyPaks_f( client_t *cl ) {
 }
 
+/*
+=================
+SV_ResetPureClient_f
+
+Placeholder functions to handle the deprecated vdr command.
+=================
+*/
 static void SV_ResetPureClient_f( client_t *cl ) {
 }
 #else

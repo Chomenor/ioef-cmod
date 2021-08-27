@@ -23,16 +23,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-#define STACKPTR(pointer) ( FSC_STACK_RETRIEVE(&fs->general_stack, pointer, 0) )	// non-null
+#define STACKPTR( pointer ) ( FSC_STACK_RETRIEVE( &fs->general_stack, pointer, fsc_false ) ) // non-null
 
-/* ******************************************************************************** */
-// Shader Indexing
-/* ******************************************************************************** */
+/*
+=================
+FSC_IndexShaderFileData
 
-static int index_shader_file_data(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, char *data,
-		fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh) {
-	// Returns number of shaders indexed from file.
-	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
+Returns number of shaders indexed from file.
+=================
+*/
+static int FSC_IndexShaderFileData( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, char *data,
+		fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh ) {
+	fsc_file_t *source_file = (fsc_file_t *)STACKPTR( source_file_ptr );
 	int shader_count = 0;
 	char *current_position = data;
 	int prefix_tokens;
@@ -45,80 +47,102 @@ static int index_shader_file_data(fsc_filesystem_t *fs, fsc_stackptr_t source_fi
 	fsc_stackptr_t new_shader_ptr;
 	fsc_shader_t *new_shader;
 
-	while(1) {
+	while ( 1 ) {
 		prefix_tokens = 0;
 
-		while(1) {
+		while ( 1 ) {
 			// Load next token
 			shader_start_position = current_position - data;
-			fsc_COM_ParseExt(token, &current_position, 1);
-			if(!*token) {
+			FSC_ParseExt( token, &current_position, fsc_true );
+			if ( !*token ) {
 				// We reached the end of the shader file.
-				if(prefix_tokens) {
-					fsc_report_error(eh, FSC_ERROR_SHADERFILE, "shader file has extra tokens at end", source_file); }
-				return shader_count; }
+				if ( prefix_tokens ) {
+					FSC_ReportError( eh, FSC_ERROR_SHADERFILE, "shader file has extra tokens at end", source_file );
+				}
+				return shader_count;
+			}
 
 			// Check for start of shader indicated by "{"
-			if(token[0] == '{' && !token[1]) break;
+			if ( token[0] == '{' && !token[1] ) {
+				break;
+			}
 
 			// Load potential shader name
-			fsc_strncpy_lower(shader_name, token, sizeof(shader_name));
+			FSC_StrncpyLower( shader_name, token, sizeof( shader_name ) );
 
-			++prefix_tokens; }
+			++prefix_tokens;
+		}
 
-		if(!prefix_tokens) {
-			fsc_report_error(eh, FSC_ERROR_SHADERFILE, "shader with no name", source_file);
-			continue; }
+		if ( !prefix_tokens ) {
+			FSC_ReportError( eh, FSC_ERROR_SHADERFILE, "shader with no name", source_file );
+			continue;
+		}
 
-		if(prefix_tokens > 1) {
-			fsc_report_error(eh, FSC_ERROR_SHADERFILE, "shader with extra preceding tokens", source_file); }
+		if ( prefix_tokens > 1 ) {
+			FSC_ReportError( eh, FSC_ERROR_SHADERFILE, "shader with extra preceding tokens", source_file );
+		}
 
 		// Skip to the end of the shader
-		if(fsc_SkipBracedSection(&current_position, 1)) {
-			fsc_report_error(eh, FSC_ERROR_SHADERFILE, "shader with no closing brace", source_file);
-			continue; }
+		if ( FSC_SkipBracedSection( &current_position, 1 ) ) {
+			FSC_ReportError( eh, FSC_ERROR_SHADERFILE, "shader with no closing brace", source_file );
+			continue;
+		}
 
-		if(!sanity_limit || !fsc_sanity_limit(sizeof(fsc_shader_t) + fsc_strlen(shader_name),
-				&sanity_limit->content_index_memory, sanity_limit, eh)) {
+		if ( !sanity_limit || !FSC_SanityLimit( sizeof( fsc_shader_t ) + FSC_Strlen( shader_name ),
+				&sanity_limit->content_index_memory, sanity_limit, eh ) ) {
 			// Allocate new shader
 			++shader_count;
-			new_shader_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_shader_t));
-			new_shader = (fsc_shader_t *)STACKPTR(new_shader_ptr);
+			new_shader_ptr = FSC_StackAllocate( &fs->general_stack, sizeof( fsc_shader_t ) );
+			new_shader = (fsc_shader_t *)STACKPTR( new_shader_ptr );
 
 			// Copy data to new shader
-			new_shader->shader_name_ptr = fsc_string_repository_getstring(shader_name, 1, &fs->string_repository, &fs->general_stack);
+			new_shader->shader_name_ptr = FSC_StringRepositoryGetString( shader_name, &fs->string_repository );
 			new_shader->source_file_ptr = source_file_ptr;
 			new_shader->start_position = shader_start_position;
 			new_shader->end_position = current_position - data;
 
 			// Add shader to hash table
-			hash = fsc_string_hash(shader_name, 0);
-			fsc_hashtable_insert(new_shader_ptr, hash, &fs->shaders); } }
+			hash = FSC_StringHash( shader_name, FSC_NULL );
+			FSC_HashtableInsert( new_shader_ptr, hash, &fs->shaders );
+		}
+	}
 
-	return shader_count; }
+	return shader_count;
+}
 
-int index_shader_file(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh) {
-	// Returns number of shaders indexed from file.
-	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
+/*
+=================
+FSC_IndexShaderFile
+
+Returns number of shaders indexed from file.
+=================
+*/
+int FSC_IndexShaderFile( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh ) {
+	fsc_file_t *source_file = (fsc_file_t *)STACKPTR( source_file_ptr );
 	unsigned int read_limit_size = source_file->filesize + 256 > source_file->filesize ? source_file->filesize + 256 : source_file->filesize;
 	int shader_count = 0;
 
-	if(!sanity_limit || !fsc_sanity_limit(read_limit_size, &sanity_limit->data_read, sanity_limit, eh)) {
-		char *data = fsc_extract_file_allocated(fs, source_file, 0);
-		if(!data) {
-			fsc_report_error(eh, FSC_ERROR_SHADERFILE, "failed to read shader file", source_file);
-			return 0; }
+	if ( !sanity_limit || !FSC_SanityLimit( read_limit_size, &sanity_limit->data_read, sanity_limit, eh ) ) {
+		char *data = FSC_ExtractFileAllocated( fs, source_file, FSC_NULL );
+		if ( !data ) {
+			FSC_ReportError( eh, FSC_ERROR_SHADERFILE, "failed to read shader file", source_file );
+			return 0;
+		}
 
-		shader_count = index_shader_file_data(fs, source_file_ptr, data, sanity_limit, eh);
-		fsc_free(data); }
+		shader_count = FSC_IndexShaderFileData( fs, source_file_ptr, data, sanity_limit, eh );
+		FSC_Free( data );
+	}
 
-	return shader_count; }
+	return shader_count;
+}
 
-/* ******************************************************************************** */
-// Other
-/* ******************************************************************************** */
-
-int is_shader_enabled(fsc_filesystem_t *fs, const fsc_shader_t *shader) {
-	return fsc_is_file_enabled((const fsc_file_t *)STACKPTR(shader->source_file_ptr), fs); }
+/*
+=================
+FSC_IsShaderActive
+=================
+*/
+fsc_boolean FSC_IsShaderActive( fsc_filesystem_t *fs, const fsc_shader_t *shader ) {
+	return FSC_IsFileActive( (const fsc_file_t *)STACKPTR( shader->source_file_ptr ), fs );
+}
 
 #endif	// NEW_FILESYSTEM

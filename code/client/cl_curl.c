@@ -357,7 +357,7 @@ void CL_cURL_PerformDownload(void)
 #endif
 	if(msg->msg == CURLMSG_DONE && msg->data.result == CURLE_OK) {
 #ifdef NEW_FILESYSTEM
-		fs_finalize_download();
+		FS_FinalizeDownload();
 #else
 		FS_SV_Rename(clc.downloadTempName, clc.downloadName, qfalse);
 #endif

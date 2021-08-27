@@ -104,10 +104,12 @@ Two new cvars, "fs_download_manifest" and "fs_pure_manifest", are added to allow
 - ```#mod_paks``` - Selects all paks from the current active mod.
 - ```#base_paks``` - Selects all paks from com_basegame (baseq3).
 - ```#inactivemod_paks``` - Selects all paks in inactive mod directories (not baseq3 or the current mod) that are enabled by the fs_read_inactive_mods setting on the server. Under the default fs_read_inactive_mods setting of 1 this will select only the missionpack paks pak0-pak3.
-- ```#currentmap_pak``` - Selects the pak containing the bsp of the current running map.
-- ```#cgame_pak``` - Selects the pak containing the preferred cgame.qvm file.
-- ```#ui_pak``` - Selects the pak containing the preferred ui.qvm file.
+- ```#currentmap_pak``` - Selects the highest precedence pk3 containing the bsp of the current running map.
+- ```#cgame_pak``` - Selects the highest precedence pk3 containing cgame.qvm file.
+- ```#ui_pak``` - Selects the highest precedence pk3 containing the ui.qvm file.
 - ```#referenced_paks``` - Selects paks accessed during the loading process on the server. Only selects paks from com_basegame (baseq3) and mod directories, not inactive mods or servercfg directories.
+
+Note that the precedence of servercfg directories is ignored for pure/download list purposes. Servercfg directories are not explicitly blocked from pure/download lists, but are treated the same as inactive mod directories and only referenced as a last resort if there is no other pk3 matching a selector rule.
 
 #### Default download manifest
 
@@ -263,8 +265,6 @@ Once you run one of the above commands, you can use the "compare" command to fin
 This project is fairly well developed at this point, so there are few significant known issues. If you find any new issues, feel free to email me or open an issue on GitHub.
 
 - This is currently an engine only modification, and does not remove limits in the UI on the number of maps and models that can appear in the menus. The UI code will need to be changed in mods to raise these limits. You can still load maps and models through the console or by connecting to a server even if they don't appear in the menu.
-
-- The code style (e.g. capitalization and brace placement) used in this project are different than typical ioquake3 conventions. This mostly applies to code under the filesystem directory; code integrated with existing source files follows the conventions in those files more closely.
 
 - Limited testing has been done on less common platforms and build environments or on big endian systems. Testing help and feedback for such platforms is appreciated.
 

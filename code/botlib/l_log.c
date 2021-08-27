@@ -76,9 +76,9 @@ void Log_Open(char *filename)
 		return;
 	} //end if
 #ifdef NEW_FILESYSTEM
-	if(!fs_generate_path_writedir(FS_GetCurrentGameDir(), filename, 0, 0, ospath, sizeof(ospath)))
+	if ( !FS_GeneratePathWritedir( FS_GetCurrentGameDir(), filename, 0, 0, ospath, sizeof( ospath ) ) )
 	{
-		botimport.Print(PRT_ERROR, "can't create path for log file %s\n", filename);
+		botimport.Print( PRT_ERROR, "can't create path for log file %s\n", filename );
 		return;
 	}
 #else
