@@ -956,7 +956,7 @@ FS_DebugPrintLookupQuery
 */
 static void FS_DebugPrintLookupQuery( const lookup_query_t *query ) {
 	char buffer[256];
-	fsc_stream_t stream = { buffer, 0, sizeof( buffer ), fsc_false };
+	fsc_stream_t stream = FSC_InitStream( buffer, sizeof( buffer ) );
 	Com_Printf( "  path: %s%s\n", query->qp_dir, query->qp_name );
 	stream.position = 0;
 	FS_CommaSeparatedList( query->qp_exts, query->extension_count, &stream );
@@ -1005,7 +1005,7 @@ static void FS_DebugLookup( const lookup_query_t *queries, int query_count, qboo
 	// Print element data
 	for ( i = 0; i < debug_selection.resource_count; ++i ) {
 		char buffer[2048];
-		fsc_stream_t stream = { buffer, 0, sizeof( buffer ), fsc_false };
+		fsc_stream_t stream = FSC_InitStream( buffer, sizeof( buffer ) );
 
 		ADD_STRINGL( va( "  ^3Element %i: ^7", i + 1 ) );
 		FS_ResourceToStream( &debug_selection.resources[i], &stream );
@@ -1107,7 +1107,7 @@ Input corresponds to the index (resource #) of two resources from that lookup.
 */
 void FS_DebugCompareResources( int resource1_position, int resource2_position ) {
 	char data[65000];
-	fsc_stream_t stream = { data, 0, sizeof( data ), fsc_false };
+	fsc_stream_t stream = FSC_InitStream( data, sizeof( data ) );
 
 	if ( !have_debug_selection ) {
 		Com_Printf( "This command must be preceded by a 'find_file', 'find_shader', 'find_sound', or 'find_vm' command.\n" );
@@ -1157,7 +1157,7 @@ FS_Lookup_DebugPrintFlags
 static void FS_Lookup_DebugPrintFlags( int flags ) {
 	if ( flags ) {
 		char buffer[256];
-		fsc_stream_t stream = { buffer, 0, sizeof( buffer ), fsc_false };
+		fsc_stream_t stream = FSC_InitStream( buffer, sizeof( buffer ) );
 		FS_LookupFlagsToStream( flags, &stream );
 		FS_DPrintf( "flags: %i (%s)\n", flags, buffer );
 	} else {

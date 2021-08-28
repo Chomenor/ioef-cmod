@@ -166,8 +166,8 @@ FS_RefTracker_CompareFile
 static int FS_RefTracker_CompareFile( const fsc_file_t *file1, const fsc_file_t *file2 ) {
 	char buffer1[1024];
 	char buffer2[1024];
-	fsc_stream_t stream1 = { buffer1, 0, sizeof( buffer1 ), fsc_false };
-	fsc_stream_t stream2 = { buffer2, 0, sizeof( buffer2 ), fsc_false };
+	fsc_stream_t stream1 = FSC_InitStream( buffer1, sizeof( buffer1 ) );
+	fsc_stream_t stream2 = FSC_InitStream( buffer2, sizeof( buffer2 ) );
 	FS_RefTracker_GenSortKey( file1, &stream1 );
 	FS_RefTracker_GenSortKey( file2, &stream2 );
 	return FSC_Memcmp( stream2.data, stream1.data,
@@ -230,7 +230,7 @@ This is currently just used for a certain debug command.
 */
 const char *FS_ReferencedPakNames( void ) {
 	static char buffer[1000];
-	fsc_stream_t stream = { buffer, 0, sizeof( buffer ), fsc_false };
+	fsc_stream_t stream = FSC_InitStream( buffer, sizeof( buffer ) );
 	int i;
 	int count = 0;
 	fsc_file_direct_t **reference_list = FS_ReferencedPakList( &count );
@@ -416,7 +416,7 @@ FS_BuildPureValidationString
 =================
 */
 static void FS_BuildPureValidationString( char *output, unsigned int output_size, fs_hashtable_t *reference_tracker ) {
-	fsc_stream_t stream = { output, 0, output_size, fsc_false };
+	fsc_stream_t stream = FSC_InitStream( output, output_size );
 	char buffer[50];
 	int cgame_checksum = FS_GetPureChecksumForFile( FS_GeneralLookup( "vm/cgame.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse ), fs.checksum_feed );
 	int ui_checksum = FS_GetPureChecksumForFile( FS_GeneralLookup( "vm/ui.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse ), fs.checksum_feed );
@@ -571,7 +571,7 @@ pak can be null; other parameters are required.
 */
 static void FS_RefSet_GenerateEntry( reference_set_work_t *rsw, const char *mod_dir, const char *name,
 			unsigned int hash, const fsc_file_direct_t *pak_file, reference_set_entry_t *target ) {
-	fsc_stream_t sort_stream = { target->sort_key, 0, sizeof( target->sort_key ), fsc_false };
+	fsc_stream_t sort_stream = FSC_InitStream( target->sort_key, sizeof( target->sort_key ) );
 
 	Com_Memset( target, 0, sizeof( *target ) );
 	FS_RefSet_SanitizeString( mod_dir, target->l.mod_dir, sizeof( target->l.mod_dir ) );
@@ -1424,8 +1424,8 @@ static reference_strings_t FS_RefStrings_Generate( reference_list_t *reference_l
 	else {
 		int i;
 		char buffer[512];
-		fsc_stream_t name_stream = { (char *)Z_Malloc( max_length ), 0, max_length, fsc_false };
-		fsc_stream_t hash_stream = { (char *)Z_Malloc( max_length ), 0, max_length, fsc_false };
+		fsc_stream_t name_stream = FSC_InitStream( (char *)Z_Malloc( max_length ), max_length );
+		fsc_stream_t hash_stream = FSC_InitStream( (char *)Z_Malloc( max_length ), max_length );
 
 		// Generate strings
 		for ( i = 0; i < reference_list->entry_count; ++i ) {

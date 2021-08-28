@@ -103,7 +103,7 @@ Returns qtrue on success, qfalse on error.
 static qboolean FS_GeneratePathFilename( fsc_stream_t *stream, const char *name, int flags ) {
 	char sanitized_path[MAX_SUBPATH_LENGTH];
 	int path_length;
-	fsc_stream_t path_stream = { sanitized_path, 0, sizeof( sanitized_path ), fsc_false };
+	fsc_stream_t path_stream = FSC_InitStream( sanitized_path, sizeof( sanitized_path ) );
 
 	// Perform character filtering
 	FSC_StreamAppendStringSubstituted( &path_stream, name, FS_ValidFilenameCharTable() );
@@ -219,7 +219,7 @@ Returns output length on success, 0 on error (overflow or sanitize error).
 */
 unsigned int FS_GeneratePath( const char *path1, const char *path2, const char *path3,
 		int path1_flags, int path2_flags, int path3_flags, char *target, unsigned int target_size ) {
-	fsc_stream_t stream = { target, 0, target_size, fsc_false };
+	fsc_stream_t stream = FSC_InitStream( target, target_size );
 	FSC_ASSERT( target );
 
 	if ( path1 ) {
@@ -672,7 +672,7 @@ Prints information about cache contents to console.
 void FS_ReadCache_Debug( void ) {
 	cache_entry_t *entry = base_entry;
 	char data[1000];
-	fsc_stream_t stream = { data, 0, sizeof( data ), fsc_false };
+	fsc_stream_t stream = FSC_InitStream( data, sizeof( data ) );
 	int index_counter = 0;
 
 	if ( !head_entry ) {

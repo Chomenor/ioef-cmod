@@ -354,6 +354,7 @@ fsc_boolean FSC_StreamReadData( fsc_stream_t *stream, void *output, unsigned int
 fsc_boolean FSC_StreamWriteData( fsc_stream_t *stream, const void *data, unsigned int length );
 void FSC_StreamAppendStringSubstituted( fsc_stream_t *stream, const char *string, const char *substitution_table );
 void FSC_StreamAppendString( fsc_stream_t *stream, const char *string );
+fsc_stream_t FSC_InitStream( char *buffer, unsigned int bufSize );
 
 // ***** Stack *****
 

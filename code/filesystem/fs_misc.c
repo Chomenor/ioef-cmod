@@ -499,7 +499,7 @@ FS_FileToBuffer
 */
 void FS_FileToBuffer( const fsc_file_t *file, char *buffer, unsigned int buffer_size, qboolean include_source_dir,
 		qboolean include_mod, qboolean include_pk3_origin, qboolean include_size ) {
-	fsc_stream_t stream = { buffer, 0, buffer_size, fsc_false };
+	fsc_stream_t stream = FSC_InitStream( buffer, buffer_size );
 	FSC_ASSERT( file && buffer );
 	FS_FileToStream( file, &stream, include_source_dir, include_mod, include_pk3_origin, include_size );
 }
@@ -864,8 +864,8 @@ FS_ComparePk3Source
 int FS_ComparePk3Source( const fsc_file_t *file1, const fsc_file_t *file2 ) {
 	char buffer1[1024];
 	char buffer2[1024];
-	fsc_stream_t stream1 = { buffer1, 0, sizeof( buffer1 ), fsc_false };
-	fsc_stream_t stream2 = { buffer2, 0, sizeof( buffer2 ), fsc_false };
+	fsc_stream_t stream1 = FSC_InitStream( buffer1, sizeof( buffer1 ) );
+	fsc_stream_t stream2 = FSC_InitStream( buffer2, sizeof( buffer2 ) );
 	FS_WriteSortPk3SourceFilename( file1, &stream1 );
 	FS_WriteSortPk3SourceFilename( file2, &stream2 );
 	return FSC_Memcmp( stream2.data, stream1.data,
@@ -1363,7 +1363,7 @@ void FS_CheckCorePaks( void ) {
 	core_pak_state_t missionpack_states[ARRAY_LEN( missionpack_hashes )];
 	qboolean missionpack_installed = qfalse; // Any missionpack paks detected
 	char warning_popup_buffer[1024];
-	fsc_stream_t warning_popup_stream = { warning_popup_buffer, 0, sizeof( warning_popup_buffer ), fsc_false };
+	fsc_stream_t warning_popup_stream = FSC_InitStream( warning_popup_buffer, sizeof( warning_popup_buffer ) );
 
 	// Generate pak states
 	for ( i = 0; i < ARRAY_LEN( core_hashes ); ++i ) {

@@ -70,7 +70,7 @@ FS_FileList_GenerateSortKey
 */
 static file_list_sort_key_t *FS_FileList_GenerateSortKey( const fsc_file_t *file, fsc_stack_t *stack, const filelist_work_t *flw ) {
 	char buffer[1024];
-	fsc_stream_t stream = { buffer, 0, sizeof( buffer ), fsc_false };
+	fsc_stream_t stream = FSC_InitStream( buffer, sizeof( buffer ) );
 	file_list_sort_key_t *key;
 
 	FS_WriteCoreSortKey( file, &stream, ( flw->flags & LISTFLAG_IGNORE_PURE_LIST ) ? qfalse : qtrue );
@@ -398,9 +398,9 @@ Recursively searches for files matching listing criteria and adds them to file s
 */
 static void FS_FileList_TempFileSetPopulate( const fsc_directory_t *base, fs_hashtable_t *output, filelist_work_t *flw ) {
 	char path_buffer[FS_FILE_BUFFER_SIZE];
-	fsc_stream_t path_stream = { path_buffer, 0, sizeof( path_buffer ), fsc_false };
+	fsc_stream_t path_stream = FSC_InitStream( path_buffer, sizeof( path_buffer ) );
 	char string_buffer[FS_FILE_BUFFER_SIZE];
-	fsc_stream_t string_stream = { string_buffer, 0, sizeof( string_buffer ), fsc_false };
+	fsc_stream_t string_stream = FSC_InitStream( string_buffer, sizeof( string_buffer ) );
 	fsc_file_t *file;
 	fsc_directory_t *directory;
 
@@ -484,8 +484,8 @@ if the underlying files were sorted as equivalent.
 static int FS_FileList_CompareString( const temp_file_set_entry_t *element1, const temp_file_set_entry_t *element2 ) {
 	char buffer1[FS_FILE_BUFFER_SIZE];
 	char buffer2[FS_FILE_BUFFER_SIZE];
-	fsc_stream_t stream1 = { buffer1, 0, sizeof( buffer1 ), fsc_false };
-	fsc_stream_t stream2 = { buffer2, 0, sizeof( buffer2 ), fsc_false };
+	fsc_stream_t stream1 = FSC_InitStream( buffer1, sizeof( buffer1 ) );
+	fsc_stream_t stream2 = FSC_InitStream( buffer2, sizeof( buffer2 ) );
 
 	// Use shorter-path-first mode for sorting directories, as it is generally better and more consistent
 	//    with original filesystem behavior
@@ -611,7 +611,7 @@ FS_FileList_PrintDebugFlags
 static void FS_FileList_PrintDebugFlags( int flags ) {
 	if ( flags ) {
 		char buffer[256];
-		fsc_stream_t stream = { buffer, 0, sizeof( buffer ), fsc_false };
+		fsc_stream_t stream = FSC_InitStream( buffer, sizeof( buffer ) );
 		const char *flag_strings[3] = { NULL };
 
 		flag_strings[0] = ( flags & LISTFLAG_IGNORE_TAPAK0 ) ? "ignore_tapak0" : NULL;

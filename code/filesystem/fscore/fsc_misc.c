@@ -78,7 +78,7 @@ Writes string to stream using character substitution table. If stream runs out o
 Output will always be null terminated.
 =================
 */
-void FSC_StreamAppendStringSubstituted(fsc_stream_t *stream, const char *string, const char *substitution_table) {
+void FSC_StreamAppendStringSubstituted( fsc_stream_t *stream, const char *string, const char *substitution_table ) {
 	FSC_ASSERT( stream );
 	FSC_ASSERT( stream->size > 0 );
 	if ( !string ) {
@@ -113,6 +113,20 @@ Output will always be null terminated.
 */
 void FSC_StreamAppendString( fsc_stream_t *stream, const char *string ) {
 	FSC_StreamAppendStringSubstituted( stream, string, FSC_NULL );
+}
+
+/*
+=================
+FSC_InitStream
+
+Initialize an empty stream. Buffer size must be greater than 0.
+=================
+*/
+fsc_stream_t FSC_InitStream( char *buffer, unsigned int bufSize ) {
+	fsc_stream_t stream = { buffer, 0, bufSize, fsc_false };
+	FSC_ASSERT( bufSize > 0 );
+	*buffer = '\0';
+	return stream;
 }
 
 /*
@@ -536,9 +550,11 @@ void FSC_SplitQpath( const char *input, fsc_qpath_buffer_t *output, fsc_boolean 
 	int input_len;
 	int name_index;
 	int ext_index;
-	fsc_stream_t stream = { output->buffer, 0, sizeof( output->buffer ), fsc_false };
+	fsc_stream_t stream;
+
 	FSC_ASSERT( input );
 	FSC_ASSERT( output );
+	stream = FSC_InitStream( output->buffer, sizeof( output->buffer ) );
 
 	// Get slash_pos and period_pos
 	for ( i = 0; i < FSC_MAX_QPATH - 1; ++i ) {
@@ -680,7 +696,7 @@ Calls fatal error handler with calling function and expression logging parameter
 */
 void FSC_FatalErrorTagged( const char *msg, const char *caller, const char *expression ) {
 	char buffer[1024];
-	fsc_stream_t stream = { buffer, 0, sizeof( buffer ), fsc_false };
+	fsc_stream_t stream = FSC_InitStream( buffer, sizeof( buffer ) );
 	FSC_StreamAppendString( &stream, msg );
 	FSC_StreamAppendString( &stream, " - function(" );
 	FSC_StreamAppendString( &stream, caller );
