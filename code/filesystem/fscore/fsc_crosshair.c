@@ -36,22 +36,22 @@ FSC_IndexCrosshair
 Registers crosshair into crosshair index. Returns fsc_true on success, fsc_false otherwise.
 =================
 */
-fsc_boolean FSC_IndexCrosshair( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh ) {
+fsc_boolean FSC_IndexCrosshair( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit ) {
 	fsc_file_t *source_file = (fsc_file_t *)STACKPTR( source_file_ptr );
 	unsigned int read_limit_size = source_file->filesize + 256 > source_file->filesize ? source_file->filesize + 256 : source_file->filesize;
 	unsigned int hash;
 
-	if ( !sanity_limit || !FSC_SanityLimit( read_limit_size, &sanity_limit->data_read, sanity_limit, eh ) ) {
-		char *data = FSC_ExtractFileAllocated( fs, source_file, FSC_NULL );
+	if ( !sanity_limit || !FSC_SanityLimit( read_limit_size, &sanity_limit->data_read, sanity_limit ) ) {
+		char *data = FSC_ExtractFileAllocated( fs, source_file );
 		if ( !data ) {
-			FSC_ReportError( eh, FSC_ERROR_CROSSHAIRFILE, "failed to extract/open crosshair file", source_file );
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_CROSSHAIRFILE, "failed to extract/open crosshair file", source_file );
 			return fsc_false;
 		}
 
 		hash = FSC_BlockChecksum( data, source_file->filesize );
 		FSC_Free( data );
 
-		if ( !sanity_limit || !FSC_SanityLimit( sizeof( fsc_crosshair_t ), &sanity_limit->content_index_memory, sanity_limit, eh ) ) {
+		if ( !sanity_limit || !FSC_SanityLimit( sizeof( fsc_crosshair_t ), &sanity_limit->content_index_memory, sanity_limit ) ) {
 			fsc_stackptr_t new_crosshair_ptr = FSC_StackAllocate( &fs->general_stack, sizeof( fsc_crosshair_t ) );
 			fsc_crosshair_t *new_crosshair = (fsc_crosshair_t *)STACKPTR( new_crosshair_ptr );
 

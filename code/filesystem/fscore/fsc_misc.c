@@ -645,46 +645,35 @@ Error Handling
 ###############################################################################################
 */
 
-static void ( *fsc_registered_fatal_error_handler )( const char *msg ) = 0;
+static fsc_error_handler_t fsc_error_handler = FSC_NULL;
 
 /*
 =================
 FSC_ReportError
 
-Calls handler to log an error event.
+Calls handler to process an error or warning event.
 =================
 */
-void FSC_ReportError( fsc_errorhandler_t *errorhandler, int id, const char *msg, void *current_element ) {
-	if ( !errorhandler ) {
-		return;
+void FSC_ReportError( fsc_error_level_t level, fsc_error_category_t category, const char *msg, void *element ) {
+	if ( fsc_error_handler ) {
+		fsc_error_handler( level, category, msg, element );
 	}
-	errorhandler->handler( id, msg, current_element, errorhandler->context );
+
+	if ( level == FSC_ERRORLEVEL_FATAL ) {
+		// If the main error handler didn't trigger a jump, abort the appliation now.
+		FSC_ErrorAbort( msg );
+	}
 }
 
 /*
 =================
-FSC_RegisterFatalErrorHandler
+FSC_RegisterErrorHandler
 
-Registers a function to call in the event a fatal error is encountered.
+Registers a function to call in the event an error or warning is encountered.
 =================
 */
-void FSC_RegisterFatalErrorHandler( void ( *handler )( const char *msg ) ) {
-	fsc_registered_fatal_error_handler = handler;
-}
-
-/*
-=================
-FSC_FatalError
-
-Called in the event of an unrecoverable error. Invokes custom error handler if registered,
-otherwise attempts to exit the program.
-=================
-*/
-void FSC_FatalError( const char *msg ) {
-	if ( fsc_registered_fatal_error_handler ) {
-		fsc_registered_fatal_error_handler( msg );
-	}
-	FSC_ErrorAbort( msg );
+void FSC_RegisterErrorHandler( fsc_error_handler_t handler ) {
+	fsc_error_handler = handler;
 }
 
 /*
@@ -703,7 +692,7 @@ void FSC_FatalErrorTagged( const char *msg, const char *caller, const char *expr
 	FSC_StreamAppendString( &stream, ") expression(" );
 	FSC_StreamAppendString( &stream, expression );
 	FSC_StreamAppendString( &stream, ")" );
-	FSC_FatalError( buffer );
+	FSC_ReportError( FSC_ERRORLEVEL_FATAL, FSC_ERROR_GENERAL, buffer, FSC_NULL );
 }
 
 /*

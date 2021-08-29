@@ -824,7 +824,7 @@ char *FS_ReadData( const fsc_file_t *file, const char *path, unsigned int *size_
 			goto error;
 		}
 	} else {
-		if ( FSC_ExtractFile( file, data, &fs.index, NULL ) ) {
+		if ( FSC_ExtractFile( file, data, &fs.index ) ) {
 			goto error;
 		}
 	}
@@ -1550,7 +1550,7 @@ static fileHandle_t FS_Pk3ReadHandle_Open( const fsc_file_t *file ) {
 		FS_DPrintf( "  file: %s\n", debug_path );
 	}
 
-	fsc_handle = FSC_Pk3HandleOpen( (fsc_file_frompk3_t *)file, 16384, &fs.index, NULL );
+	fsc_handle = FSC_Pk3HandleOpen( (fsc_file_frompk3_t *)file, 16384, &fs.index );
 	if ( !fsc_handle ) {
 		if ( fs.cvar.fs_debug_fileio->integer ) {
 			FS_DPrintf( "  result: failed to open file\n" );
@@ -1633,7 +1633,7 @@ static int FS_Pk3ReadHandle_Seek( fs_handle_t *handle, int offset, fsOrigin_t or
 	// If seeking backwards, reset the handle
 	if ( offset_origin < state->position ) {
 		FSC_Pk3HandleClose( state->fsc_handle );
-		state->fsc_handle = FSC_Pk3HandleOpen( state->file, 16384, &fs.index, NULL );
+		state->fsc_handle = FSC_Pk3HandleOpen( state->file, 16384, &fs.index );
 		if ( !state->fsc_handle ) {
 			Com_Error( ERR_FATAL, "FS_Pk3ReadHandle_Seek failed to reopen handle" );
 		}

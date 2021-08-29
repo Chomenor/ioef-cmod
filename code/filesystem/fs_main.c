@@ -483,23 +483,25 @@ Filesystem Refresh
 ###############################################################################################
 */
 
+static qboolean fs_useRefreshErrorHandler = qfalse;
+
 /*
 =================
 FS_RefreshErrorHandler
 =================
 */
-static void FS_RefreshErrorHandler( int id, const char *msg, void *current_element, void *context ) {
+static void FS_RefreshErrorHandler( fsc_error_level_t level, fsc_error_category_t category, const char *msg, void *element ) {
 	if ( fs.cvar.fs_debug_refresh->integer ) {
 		const char *type = "general";
-		if ( id == FSC_ERROR_PK3FILE )
+		if ( category == FSC_ERROR_PK3FILE )
 			type = "pk3";
-		if ( id == FSC_ERROR_SHADERFILE )
+		if ( category == FSC_ERROR_SHADERFILE )
 			type = "shader";
 		Com_Printf( "********** refresh %s error **********\n", type );
 
-		if ( current_element ) {
+		if ( element && ( category == FSC_ERROR_PK3FILE || category == FSC_ERROR_SHADERFILE ) ) {
 			char buffer[FS_FILE_BUFFER_SIZE];
-			FS_FileToBuffer( (fsc_file_t *)current_element, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
+			FS_FileToBuffer( (fsc_file_t *)element, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
 			Com_Printf( "file: %s\n", buffer );
 		}
 		Com_Printf( "message: %s\n", msg );
@@ -512,11 +514,12 @@ FS_IndexDirectory
 =================
 */
 static void FS_IndexDirectory( const char *directory, int dir_id, qboolean quiet ) {
-	fsc_errorhandler_t errorhandler = { FS_RefreshErrorHandler, NULL };
 	fsc_stats_t old_active_stats = fs.index.active_stats;
 	fsc_stats_t old_total_stats = fs.index.total_stats;
 
-	FSC_LoadDirectory( &fs.index, directory, dir_id, &errorhandler );
+	fs_useRefreshErrorHandler = qtrue;
+	FSC_LoadDirectory( &fs.index, directory, dir_id );
+	fs_useRefreshErrorHandler = qfalse;
 
 	#define NON_PK3_FILES( stats ) ( stats.total_file_count - stats.pk3_subfile_count - stats.valid_pk3_count )
 
@@ -640,7 +643,7 @@ void FS_WriteIndexCache( void ) {
 	char path[FS_MAX_PATH];
 	FS_GetIndexCachePath( path, sizeof( path ) );
 	if ( *path ) {
-		FSC_CacheExportFile( &fs.index, path, NULL );
+		FSC_CacheExportFile( &fs.index, path );
 	}
 }
 
@@ -679,7 +682,7 @@ static void FS_InitIndex( void ) {
 		FS_GetIndexCachePath( path, sizeof( path ) );
 
 		Com_Printf( "Loading fscache.dat...\n" );
-		if ( *path && !FSC_CacheImportFile( path, &fs.index, NULL ) ) {
+		if ( *path && !FSC_CacheImportFile( path, &fs.index ) ) {
 			cache_loaded = qtrue;
 		} else {
 			Com_Printf( "Failed to load fscache.dat.\n" );
@@ -703,11 +706,17 @@ static void FS_InitIndex( void ) {
 
 /*
 =================
-FS_FatalErrorHandler
+FS_CoreErrorHandler
 =================
 */
-static void FS_FatalErrorHandler( const char *msg ) {
-	Com_Error( ERR_FATAL, "filesystem error: %s", msg );
+static void FS_CoreErrorHandler( fsc_error_level_t level, fsc_error_category_t category, const char *msg, void *element ) {
+	if ( level == FSC_ERRORLEVEL_FATAL ) {
+		Com_Error( ERR_FATAL, "filesystem error: %s", msg );
+	}
+
+	if ( fs_useRefreshErrorHandler ) {
+		FS_RefreshErrorHandler( level, category, msg, element );
+	}
 }
 
 /*
@@ -721,7 +730,7 @@ void FS_Startup( void ) {
 	FSC_ASSERT( !fs.initialized );
 	Com_Printf( "\n----- FS_Startup -----\n" );
 
-	FSC_RegisterFatalErrorHandler( FS_FatalErrorHandler );
+	FSC_RegisterErrorHandler( FS_CoreErrorHandler );
 
 #ifdef __APPLE__
 	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath fs_apppath", CVAR_INIT | CVAR_PROTECTED );

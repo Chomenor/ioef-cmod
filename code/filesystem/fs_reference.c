@@ -284,7 +284,7 @@ FS_GetPureChecksumEntry
 */
 static pure_checksum_entry_t *FS_GetPureChecksumEntry( const fsc_file_direct_t *pk3 ) {
 	pure_checksum_entry_t *entry = NULL;
-	FSC_LoadPk3( STACKPTR( pk3->os_path_ptr ), &fs.index, FSC_SPNULL, NULL, FS_GetPureChecksumEntryCallback, &entry );
+	FSC_LoadPk3( STACKPTR( pk3->os_path_ptr ), &fs.index, FSC_SPNULL, FS_GetPureChecksumEntryCallback, &entry );
 	if ( entry ) {
 		entry->pk3 = pk3;
 	}

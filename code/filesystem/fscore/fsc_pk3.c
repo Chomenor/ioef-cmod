@@ -247,15 +247,14 @@ Loads pk3 central directory to output structure with source pk3 specified by pat
 Returns true on error, false on success.
 =================
 */
-static fsc_boolean FSC_ReadPk3CentralDirectory( fsc_ospath_t *os_path, central_directory_t *output,
-		fsc_file_direct_t *source_file, fsc_errorhandler_t *eh ) {
+static fsc_boolean FSC_ReadPk3CentralDirectory( fsc_ospath_t *os_path, central_directory_t *output, fsc_file_direct_t *source_file ) {
 	fsc_filehandle_t *fp = FSC_NULL;
 	unsigned int length;
 
 	// Open file
 	fp = FSC_FOpenRaw( os_path, "rb" );
 	if ( !fp ) {
-		FSC_ReportError( eh, FSC_ERROR_PK3FILE, "error opening pk3", source_file );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "error opening pk3", source_file );
 		return fsc_true;
 	}
 
@@ -264,19 +263,19 @@ static fsc_boolean FSC_ReadPk3CentralDirectory( fsc_ospath_t *os_path, central_d
 	length = FSC_FTell( fp );
 	if ( !length ) {
 		FSC_FClose( fp );
-		FSC_ReportError( eh, FSC_ERROR_PK3FILE, "zero size pk3", source_file );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "zero size pk3", source_file );
 		return fsc_true;
 	}
 	if ( length > FSC_MAX_PK3_SIZE ) {
 		FSC_FClose( fp );
-		FSC_ReportError( eh, FSC_ERROR_PK3FILE, "excessively large pk3", source_file );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "excessively large pk3", source_file );
 		return fsc_true;
 	}
 
 	// Get central directory
 	if ( FSC_ReadPk3CentralDirectoryFP( fp, length, output ) ) {
 		FSC_FClose( fp );
-		FSC_ReportError( eh, FSC_ERROR_PK3FILE, "error retrieving pk3 central directory", source_file );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "error retrieving pk3 central directory", source_file );
 		return fsc_true;
 	}
 	FSC_FClose( fp );
@@ -308,7 +307,7 @@ Registers a file contained in a pk3 into the filesystem.
 */
 static void FSC_RegisterPk3Subfile( fsc_filesystem_t *fs, char *filename, int filename_length, fsc_stackptr_t sourcefile_ptr,
 			unsigned int header_position, unsigned int compressed_size, unsigned int uncompressed_size,
-			short compression_method, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh ) {
+			short compression_method, fsc_sanity_limit_t *sanity_limit ) {
 	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTR( sourcefile_ptr );
 	fsc_stackptr_t file_ptr = FSC_StackAllocate( &fs->general_stack, sizeof( fsc_file_frompk3_t ) );
 	fsc_file_frompk3_t *file = (fsc_file_frompk3_t *)STACKPTR( file_ptr );
@@ -338,7 +337,7 @@ static void FSC_RegisterPk3Subfile( fsc_filesystem_t *fs, char *filename, int fi
 	file->f.filesize = uncompressed_size;
 
 	// Register file and load contents
-	FSC_RegisterFile( file_ptr, sanity_limit, fs, eh );
+	FSC_RegisterFile( file_ptr, sanity_limit, fs );
 	++sourcefile->pk3_subfile_count;
 }
 
@@ -351,7 +350,7 @@ Registers a pk3 file and all subcontents into the filesystem index.
 Can also be called with receive_hash_data set to extract pk3 hash checksums without indexing anything.
 =================
 */
-void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr, fsc_errorhandler_t *eh,
+void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr,
 		void ( *receive_hash_data )( void *context, char *data, int size ), void *receive_hash_data_context ) {
 	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTRN( sourcefile_ptr );
 	central_directory_t cd;
@@ -384,7 +383,7 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 	}
 
 	// Load central directory
-	if ( FSC_ReadPk3CentralDirectory( os_path, &cd, sourcefile, eh ) ) {
+	if ( FSC_ReadPk3CentralDirectory( os_path, &cd, sourcefile ) ) {
 		return;
 	}
 
@@ -399,14 +398,14 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 	for ( entry_counter = 0; entry_counter < cd.entry_count; ++entry_counter ) {
 		// Make sure there is enough space to read the entry (minimum 47 bytes if filename is 1 byte)
 		if ( entry_position + 47 > cd.cd_length ) {
-			FSC_ReportError( eh, FSC_ERROR_PK3FILE, "invalid file cd entry position", sourcefile );
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "invalid file cd entry position", sourcefile );
 			goto freemem;
 		}
 
 		// Verify magic number
 		if ( cd.data[entry_position] != 0x50 || cd.data[entry_position + 1] != 0x4b || cd.data[entry_position + 2] != 0x01 ||
 				cd.data[entry_position + 3] != 0x02 ) {
-			FSC_ReportError( eh, FSC_ERROR_PK3FILE, "file cd entry does not have correct signature", sourcefile );
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "file cd entry does not have correct signature", sourcefile );
 			goto freemem;
 		}
 
@@ -421,8 +420,7 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 			int comment_length = (int)CD_ENTRY_SHORT( 32 );
 			entry_length = 46 + filename_length + extrafield_length + comment_length;
 			if ( entry_position + entry_length > cd.cd_length ) {
-				FSC_ReportError( eh, FSC_ERROR_PK3FILE,
-								  "invalid file cd entry position 2", sourcefile );
+				FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "invalid file cd entry position 2", sourcefile );
 				goto freemem;
 			}
 		}
@@ -436,11 +434,11 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 
 		// Sanity checks
 		if ( header_position + compressed_size < header_position ) {
-			FSC_ReportError( eh, FSC_ERROR_PK3FILE, "invalid file local entry position 1", sourcefile );
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "invalid file local entry position 1", sourcefile );
 			goto freemem;
 		}
 		if ( header_position + compressed_size > FSC_MAX_PK3_SIZE ) {
-			FSC_ReportError( eh, FSC_ERROR_PK3FILE, "invalid file local entry position 2", sourcefile );
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "invalid file local entry position 2", sourcefile );
 			goto freemem;
 		}
 
@@ -451,7 +449,7 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 		if ( !(void *)receive_hash_data && !( !uncompressed_size && *( cd.data + entry_position + 46 + filename_length - 1 ) == '/' ) ) {
 			// Not in hash mode and not a directory entry - load the file
 			FSC_RegisterPk3Subfile( fs, cd.data + entry_position + 46, filename_length, sourcefile_ptr,
-				header_position, compressed_size, CD_ENTRY_INT( 24 ), CD_ENTRY_SHORT( 10 ), &sanity_limit, eh );
+				header_position, compressed_size, CD_ENTRY_INT( 24 ), CD_ENTRY_SHORT( 10 ), &sanity_limit );
 		}
 
 		entry_position += entry_length;
@@ -500,8 +498,7 @@ FSC_Pk3HandleLoad
 Initializes a provided pk3 handle. Returns true on error, false otherwise.
 =================
 */
-static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t *file, int input_buffer_size,
-		const fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs ) {
 	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR( file->source_pk3 );
 	char localheader[30];
 	unsigned int data_position;
@@ -509,18 +506,18 @@ static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t 
 	// Open the file
 	handle->input_handle = FSC_FOpenRaw( STACKPTR( source_pk3->os_path_ptr ), "rb" );
 	if ( !handle->input_handle ) {
-		FSC_ReportError( eh, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to open pk3 file", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to open pk3 file", FSC_NULL );
 		return fsc_true;
 	}
 
 	// Read the local header to get data position
 	FSC_Pk3SeekSet( handle->input_handle, file->header_position );
 	if ( FSC_FRead( localheader, 30, handle->input_handle ) != 30 ) {
-		FSC_ReportError( eh, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to read local header", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to read local header", FSC_NULL );
 		return fsc_true;
 	}
 	if ( localheader[0] != 0x50 || localheader[1] != 0x4b || localheader[2] != 0x03 || localheader[3] != 0x04 ) {
-		FSC_ReportError( eh, FSC_ERROR_EXTRACT, "pk3_handle_open - incorrect signature in local header", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - incorrect signature in local header", FSC_NULL );
 		return fsc_true;
 	}
 
@@ -534,7 +531,7 @@ static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t 
 	handle->input_remaining = file->compressed_size;
 	if ( file->compression_method == 8 ) {
 		if ( inflateInit2( &handle->zlib_stream, -MAX_WBITS ) != Z_OK ) {
-			FSC_ReportError( eh, FSC_ERROR_EXTRACT, "pk3_handle_open - zlib inflateInit failed", FSC_NULL );
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - zlib inflateInit failed", FSC_NULL );
 			return fsc_true;
 		}
 
@@ -542,7 +539,7 @@ static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t 
 		handle->input_buffer_size = input_buffer_size;
 		handle->input_buffer = (char *)FSC_Malloc( input_buffer_size );
 	} else if ( file->compression_method != 0 ) {
-		FSC_ReportError( eh, FSC_ERROR_EXTRACT, "pk3_handle_open - unknown compression method", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - unknown compression method", FSC_NULL );
 		return fsc_true;
 	}
 
@@ -556,10 +553,10 @@ FSC_Pk3HandleOpen
 Returns handle on success, null on error.
 =================
 */
-fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs ) {
 	fsc_pk3handle_t *handle = (fsc_pk3handle_t *)FSC_Calloc( sizeof( *handle ) );
 
-	if ( FSC_Pk3HandleLoad( handle, file, input_buffer_size, fs, eh ) ) {
+	if ( FSC_Pk3HandleLoad( handle, file, input_buffer_size, fs ) ) {
 		if ( handle->input_handle ) {
 			FSC_FClose( handle->input_handle );
 		}
@@ -661,10 +658,10 @@ static const char *FSC_Pk3_GetModDir( const fsc_file_t *file, const fsc_filesyst
 FSC_Pk3_ExtractData
 =================
 */
-static fsc_boolean FSC_Pk3_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+static fsc_boolean FSC_Pk3_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	fsc_boolean result = fsc_false;
 	const fsc_file_frompk3_t *File = (fsc_file_frompk3_t *)file;
-	fsc_pk3handle_t *handle = FSC_Pk3HandleOpen( File, File->compressed_size, fs, eh );
+	fsc_pk3handle_t *handle = FSC_Pk3HandleOpen( File, File->compressed_size, fs );
 	if ( !handle ) {
 		return fsc_true;
 	}

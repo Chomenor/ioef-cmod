@@ -158,7 +158,7 @@ static fsc_stackptr_t FSC_CacheConvertFile( fsc_stackptr_t source_file_ptr, expo
 	} else if ( source_file->sourcetype == FSC_SOURCETYPE_PK3 ) {
 		file_size = sizeof( fsc_file_frompk3_t );
 	} else {
-		FSC_FatalError( "FSC_CacheConvertFile called on unsupported sourcetype" );
+		FSC_ReportError( FSC_ERRORLEVEL_FATAL, FSC_ERROR_GENERAL, "FSC_CacheConvertFile called on unsupported sourcetype", source_file );
 	}
 
 	// Generate copy of file in export_stack
@@ -478,13 +478,13 @@ Generates cache-ready copy of filesystem and writes it to file.
 Returns true on error, false on success.
 =================
 */
-fsc_boolean FSC_CacheExportFileRawPath( fsc_filesystem_t *source_fs, fsc_ospath_t *os_path, fsc_errorhandler_t *eh ) {
+fsc_boolean FSC_CacheExportFileRawPath( fsc_filesystem_t *source_fs, fsc_ospath_t *os_path ) {
 	fscache_header_t header;
 	fsc_stream_t stream;
 	fsc_filehandle_t *fp;
 
 	if ( FSC_CacheExportStream( source_fs, &stream ) ) {
-		FSC_ReportError( eh, FSC_ERROR_GENERAL, "error generating cache file data", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "error generating cache file data", FSC_NULL );
 		return fsc_true;
 	}
 
@@ -492,7 +492,7 @@ fsc_boolean FSC_CacheExportFileRawPath( fsc_filesystem_t *source_fs, fsc_ospath_
 	fp = FSC_FOpenRaw( os_path, "wb" );
 	if ( !fp ) {
 		FSC_Free( stream.data );
-		FSC_ReportError( eh, FSC_ERROR_GENERAL, "failed to open output file", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "failed to open output file", FSC_NULL );
 		return fsc_true;
 	}
 	header.version = FSC_CACHE_VERSION;
@@ -515,9 +515,9 @@ FSC_CacheExportFile
 Standard string path wrapper for FSC_CacheExportFileRawPath.
 =================
 */
-fsc_boolean FSC_CacheExportFile( fsc_filesystem_t *source_fs, const char *path, fsc_errorhandler_t *eh ) {
+fsc_boolean FSC_CacheExportFile( fsc_filesystem_t *source_fs, const char *path ) {
 	fsc_ospath_t *os_path = FSC_StringToOSPath( path );
-	fsc_boolean result = FSC_CacheExportFileRawPath( source_fs, os_path, eh );
+	fsc_boolean result = FSC_CacheExportFileRawPath( source_fs, os_path );
 	FSC_Free( os_path );
 	return result;
 }
@@ -529,7 +529,7 @@ FSC_CacheImportFileRawPath
 Imports filesystem from file. Returns true on error, false on success.
 =================
 */
-fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t *target_fs, fsc_errorhandler_t *eh ) {
+fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t *target_fs ) {
 	fsc_filehandle_t *fp;
 	fscache_header_t header;
 	fsc_stream_t stream;
@@ -537,16 +537,16 @@ fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t 
 	// Open the input file and read header
 	fp = FSC_FOpenRaw( os_path, "rb" );
 	if ( !fp ) {
-		FSC_ReportError( eh, FSC_ERROR_GENERAL, "failed to open input file", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "failed to open input file", FSC_NULL );
 		return fsc_true;
 	}
 	if ( FSC_FRead( &header, sizeof( header ), fp ) != sizeof( header ) ) {
-		FSC_ReportError( eh, FSC_ERROR_GENERAL, "failed to read cache file header", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "failed to read cache file header", FSC_NULL );
 		FSC_FClose( fp );
 		return fsc_true;
 	}
 	if ( header.version != FSC_CACHE_VERSION ) {
-		FSC_ReportError( eh, FSC_ERROR_GENERAL, "cache file has wrong version", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "cache file has wrong version", FSC_NULL );
 		FSC_FClose( fp );
 		return fsc_true;
 	}
@@ -554,7 +554,7 @@ fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t 
 	// Read data and close file
 	stream.data = (char *)FSC_Malloc( header.size );
 	if ( FSC_FRead( stream.data, header.size, fp ) != header.size ) {
-		FSC_ReportError( eh, FSC_ERROR_GENERAL, "error reading cache file data", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "error reading cache file data", FSC_NULL );
 		return fsc_true;
 	}
 	FSC_FClose( fp );
@@ -563,7 +563,7 @@ fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t 
 	stream.position = 0;
 	stream.size = header.size;
 	if ( FSC_CacheImportStream( &stream, target_fs ) ) {
-		FSC_ReportError( eh, FSC_ERROR_GENERAL, "error loading cache data", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "error loading cache data", FSC_NULL );
 		return fsc_true;
 	}
 
@@ -579,9 +579,9 @@ FSC_CacheImportFile
 Standard string path wrapper for FSC_CacheImportFileRawPath.
 =================
 */
-fsc_boolean FSC_CacheImportFile( const char *path, fsc_filesystem_t *target_fs, fsc_errorhandler_t *eh ) {
+fsc_boolean FSC_CacheImportFile( const char *path, fsc_filesystem_t *target_fs ) {
 	fsc_ospath_t *os_path = FSC_StringToOSPath( path );
-	fsc_boolean result = FSC_CacheImportFileRawPath( os_path, target_fs, eh );
+	fsc_boolean result = FSC_CacheImportFileRawPath( os_path, target_fs );
 	FSC_Free( os_path );
 	return result;
 }

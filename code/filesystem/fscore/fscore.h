@@ -100,18 +100,23 @@ typedef struct {
 	char *ext;
 } fsc_qpath_buffer_t;
 
-#define FSC_ERROR_GENERAL 0
-#define FSC_ERROR_EXTRACT 1
-#define FSC_ERROR_PK3FILE 2		// current_element: fsc_file_t (fsc_file_direct_t)
-#define FSC_ERROR_SHADERFILE 3	// current_element: fsc_file_t
-#define FSC_ERROR_CROSSHAIRFILE 4	// current_element: fsc_file_t
+typedef enum {
+	FSC_ERRORLEVEL_INFO,
+	FSC_ERRORLEVEL_WARNING,
+	FSC_ERRORLEVEL_FATAL,		// error handler should abort the application
+} fsc_error_level_t;
+
+typedef enum {
+	FSC_ERROR_GENERAL,
+	FSC_ERROR_EXTRACT,
+	FSC_ERROR_PK3FILE,			// current_element: fsc_file_t (fsc_file_direct_t)
+	FSC_ERROR_SHADERFILE,		// current_element: fsc_file_t (fsc_file_direct_t)
+	FSC_ERROR_CROSSHAIRFILE,	// current_element: fsc_file_t
+} fsc_error_category_t;
+
+typedef void ( *fsc_error_handler_t )( fsc_error_level_t level, fsc_error_category_t category, const char *msg, void *element );
 
 #define FSC_ASSERT( expression ) { if ( !( expression ) ) FSC_FatalErrorTagged( "assertion failed", __func__, #expression ); }
-
-typedef struct {
-	void ( *handler )( int id, const char *msg, void *current_element, void *context );
-	void *context;
-} fsc_errorhandler_t;
 
 typedef struct {
 	fsc_ospath_t *os_path;
@@ -198,7 +203,7 @@ typedef struct {
 
 	// Buffer should be length file->filesize
 	// Returns false on success, true on failure.
-	fsc_boolean ( *extract_data )( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh );
+	fsc_boolean ( *extract_data )( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs );
 } fsc_sourcetype_t;
 
 typedef struct {
@@ -323,26 +328,26 @@ typedef struct {
 /* ******************************************************************************** */
 
 const fsc_file_direct_t *FSC_GetBaseFile( const fsc_file_t *file, const fsc_filesystem_t *fs );
-fsc_boolean FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh );
-char *FSC_ExtractFileAllocated( fsc_filesystem_t *index, fsc_file_t *file, fsc_errorhandler_t *eh );
+fsc_boolean FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs );
+char *FSC_ExtractFileAllocated( fsc_filesystem_t *index, fsc_file_t *file );
 fsc_boolean FSC_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs );
 const char *FSC_GetModDir( const fsc_file_t *file, const fsc_filesystem_t *fs );
 void FSC_FileToStream( const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
 		fsc_boolean include_mod, fsc_boolean include_pk3_origin );
 
-fsc_boolean FSC_SanityLimit( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh );
-void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs, fsc_errorhandler_t *eh );
+fsc_boolean FSC_SanityLimit( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit );
+void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs );
 void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *mod_dir, const char *pk3dir_name,
 		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp, unsigned int filesize,
-		fsc_filesystem_t *fs, fsc_errorhandler_t *eh );
+		fsc_filesystem_t *fs );
 void FSC_LoadFileFromPath( int source_dir_id, const fsc_ospath_t *os_path, const char *full_qpath, unsigned int os_timestamp,
-		unsigned int filesize, fsc_filesystem_t *fs, fsc_errorhandler_t *eh );
+		unsigned int filesize, fsc_filesystem_t *fs );
 
 void FSC_FilesystemInitialize( fsc_filesystem_t *fs );
 void FSC_FilesystemFree( fsc_filesystem_t *fs );
 void FSC_FilesystemReset( fsc_filesystem_t *fs );
-void FSC_LoadDirectoryRawPath( fsc_filesystem_t *fs, fsc_ospath_t *os_path, int source_dir_id, fsc_errorhandler_t *eh );
-void FSC_LoadDirectory( fsc_filesystem_t *fs, const char *path, int source_dir_id, fsc_errorhandler_t *eh );
+void FSC_LoadDirectoryRawPath( fsc_filesystem_t *fs, fsc_ospath_t *os_path, int source_dir_id );
+void FSC_LoadDirectory( fsc_filesystem_t *fs, const char *path, int source_dir_id );
 
 /* ******************************************************************************** */
 // Misc (fsc_misc.c)
@@ -385,9 +390,8 @@ unsigned int FSC_SplitLeadingDirectory( const char *input, char *buffer, unsigne
 
 // ***** Error Handling *****
 
-void FSC_ReportError( fsc_errorhandler_t *errorhandler, int id, const char *msg, void *current_element );
-void FSC_RegisterFatalErrorHandler( void ( *handler )( const char *msg ) );
-void FSC_FatalError( const char *msg );
+void FSC_ReportError( fsc_error_level_t level, fsc_error_category_t category, const char *msg, void *element );
+void FSC_RegisterErrorHandler( fsc_error_handler_t handler );
 void FSC_FatalErrorTagged( const char *msg, const char *caller, const char *expression );
 
 // ***** Misc *****
@@ -456,12 +460,12 @@ void FSC_Free( void *allocation );
 
 // receive_hash_data is used for standalone hash calculation operations,
 // and should be nulled during normal filesystem loading
-void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr, fsc_errorhandler_t *eh,
+void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr,
 		void ( *receive_hash_data )( void *context, char *data, int size ), void *receive_hash_data_context );
 void FSC_RegisterPk3HashLookup( fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t *pk3_hash_lookup, fsc_stack_t *stack );
 
 typedef struct fsc_pk3handle_s fsc_pk3handle_t;
-fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh );
+fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs );
 void FSC_Pk3HandleClose( fsc_pk3handle_t *handle );
 unsigned int FSC_Pk3HandleRead( fsc_pk3handle_t *handle, char *buffer, unsigned int length );
 extern fsc_sourcetype_t pk3_sourcetype;
@@ -470,14 +474,14 @@ extern fsc_sourcetype_t pk3_sourcetype;
 // Shader Lookup (fsc_shader.c)
 /* ******************************************************************************** */
 
-int FSC_IndexShaderFile( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh );
+int FSC_IndexShaderFile( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit );
 fsc_boolean FSC_IsShaderActive( fsc_filesystem_t *fs, const fsc_shader_t *shader );
 
 /* ******************************************************************************** */
 // Crosshair Lookup (fsc_crosshair.c)
 /* ******************************************************************************** */
 
-fsc_boolean FSC_IndexCrosshair( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh );
+fsc_boolean FSC_IndexCrosshair( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit );
 fsc_boolean FSC_IsCrosshairActive( fsc_filesystem_t *fs, const fsc_crosshair_t *crosshair );
 
 /* ******************************************************************************** */
@@ -502,7 +506,7 @@ fsc_boolean FSC_ShaderIteratorAdvance( fsc_shader_iterator_t *it );
 // Index Cache (fsc_cache.c)
 /* ******************************************************************************** */
 
-fsc_boolean FSC_CacheExportFileRawPath( fsc_filesystem_t *source_fs, fsc_ospath_t *os_path, fsc_errorhandler_t *eh );
-fsc_boolean FSC_CacheExportFile( fsc_filesystem_t *source_fs, const char *path, fsc_errorhandler_t *eh );
-fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t *target_fs, fsc_errorhandler_t *eh );
-fsc_boolean FSC_CacheImportFile( const char *path, fsc_filesystem_t *target_fs, fsc_errorhandler_t *eh );
+fsc_boolean FSC_CacheExportFileRawPath( fsc_filesystem_t *source_fs, fsc_ospath_t *os_path );
+fsc_boolean FSC_CacheExportFile( fsc_filesystem_t *source_fs, const char *path );
+fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t *target_fs );
+fsc_boolean FSC_CacheImportFile( const char *path, fsc_filesystem_t *target_fs );

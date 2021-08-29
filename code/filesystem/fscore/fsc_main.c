@@ -57,20 +57,20 @@ static const char *FSC_DS_GetModDir( const fsc_file_t *file, const fsc_filesyste
 FSC_DS_ExtractData
 =================
 */
-static fsc_boolean FSC_DS_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+static fsc_boolean FSC_DS_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	fsc_filehandle_t *fp;
 	unsigned int result;
 
 	// Open the file
 	fp = FSC_FOpenRaw( STACKPTR( ( (fsc_file_direct_t *)file )->os_path_ptr ), "rb" );
 	if ( !fp ) {
-		FSC_ReportError( eh, FSC_ERROR_EXTRACT, "failed to open file", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "failed to open file", FSC_NULL );
 		return fsc_true;
 	}
 
 	result = FSC_FRead( buffer, file->filesize, fp );
 	if ( result != file->filesize ) {
-		FSC_ReportError( eh, FSC_ERROR_EXTRACT, "failed to read all data from file", FSC_NULL );
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "failed to read all data from file", FSC_NULL );
 		FSC_FClose( fp );
 		return fsc_true;
 	}
@@ -148,7 +148,7 @@ Extracts complete file contents into target buffer. Provided buffer should be si
 Returns false on success, true on error.
 =================
 */
-fsc_boolean FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+fsc_boolean FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	const fsc_sourcetype_t *sourcetype;
 	if ( file->contents_cache ) {
 		FSC_Memcpy( buffer, STACKPTR( file->contents_cache ), file->filesize );
@@ -156,7 +156,7 @@ fsc_boolean FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_fil
 	}
 	sourcetype = FSC_GetSourcetype( file, fs );
 	FSC_ASSERT( sourcetype && sourcetype->extract_data );
-	return sourcetype->extract_data( file, buffer, fs, eh );
+	return sourcetype->extract_data( file, buffer, fs );
 }
 
 /*
@@ -167,12 +167,12 @@ Extracts complete file contents into new allocated buffer. Returns null on error
 On success, caller is responsible for calling FSC_Free on the returned pointer.
 =================
 */
-char *FSC_ExtractFileAllocated( fsc_filesystem_t *fs, fsc_file_t *file, fsc_errorhandler_t *eh ) {
+char *FSC_ExtractFileAllocated( fsc_filesystem_t *fs, fsc_file_t *file ) {
 	char *data;
 	if ( file->filesize + 1 < file->filesize )
 		return FSC_NULL;
 	data = (char *)FSC_Malloc( file->filesize + 1 );
-	if ( FSC_ExtractFile( file, data, fs, eh ) ) {
+	if ( FSC_ExtractFile( file, data, fs ) ) {
 		FSC_Free( data );
 		return FSC_NULL;
 	}
@@ -277,13 +277,13 @@ Applies some limits to prevent potential vulnerabilities due to overloaded pk3 f
 Returns true if limit hit, otherwise decrements limit counter and returns false.
 =================
 */
-fsc_boolean FSC_SanityLimit( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit, fsc_errorhandler_t *eh ) {
+fsc_boolean FSC_SanityLimit( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit ) {
 	FSC_ASSERT( sanity_limit );
 	FSC_ASSERT( limit_value );
 
 	if ( *limit_value < size ) {
 		if ( !sanity_limit->warned ) {
-			FSC_ReportError( eh, FSC_ERROR_PK3FILE, "pk3 content dropped due to sanity limits", (void *)sanity_limit->pk3file );
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "pk3 content dropped due to sanity limits", (void *)sanity_limit->pk3file );
 			sanity_limit->warned = fsc_true;
 		}
 
@@ -302,7 +302,7 @@ Registers file in index and loads secondary content such as shaders.
 Called for both files on disk and in pk3s.
 =================
 */
-void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs ) {
 	fsc_file_t *file = (fsc_file_t *)STACKPTR( file_ptr );
 	fsc_file_direct_t *base_file = (fsc_file_direct_t *)FSC_GetBaseFile( file, fs );
 	const char *qp_dir = (const char *)STACKPTR( file->qp_dir_ptr );
@@ -311,7 +311,7 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 
 	// Check for index overflow
 	if ( sanity_limit && FSC_SanityLimit( FSC_Strlen( qp_dir ) + FSC_Strlen( qp_name ) + FSC_Strlen( qp_ext ) + 64,
-			&sanity_limit->content_index_memory, sanity_limit, eh ) ) {
+			&sanity_limit->content_index_memory, sanity_limit ) ) {
 		return;
 	}
 
@@ -321,7 +321,7 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 
 	// Index shaders and update shader counter on base file
 	if ( !FSC_Stricmp( qp_dir, "scripts/" ) && !FSC_Stricmp( qp_ext, ".shader" ) ) {
-		int count = FSC_IndexShaderFile( fs, file_ptr, sanity_limit, eh );
+		int count = FSC_IndexShaderFile( fs, file_ptr, sanity_limit );
 		if ( base_file ) {
 			base_file->shader_file_count += 1;
 			base_file->shader_count += count;
@@ -334,7 +334,7 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 		char buffer[10];
 		FSC_Strncpy( buffer, qp_name, sizeof( buffer ) );
 		if ( !FSC_Stricmp( buffer, "crosshair" ) ) {
-			FSC_IndexCrosshair( fs, file_ptr, sanity_limit, eh );
+			FSC_IndexCrosshair( fs, file_ptr, sanity_limit );
 			if ( base_file )
 				base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT;
 		}
@@ -343,8 +343,8 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	// Cache small arena and bot file contents
 	if ( file->filesize < 16384 && !FSC_Stricmp( qp_dir, "scripts/" ) &&
 		 ( !FSC_Stricmp( qp_ext, ".arena" ) || !FSC_Stricmp( qp_ext, ".bot" ) ) &&
-		 ( !sanity_limit || !FSC_SanityLimit( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit, eh ) ) ) {
-		char *source_data = FSC_ExtractFileAllocated( fs, file, eh );
+		 ( !sanity_limit || !FSC_SanityLimit( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
+		char *source_data = FSC_ExtractFileAllocated( fs, file );
 		if ( source_data ) {
 			fsc_stackptr_t target_ptr = FSC_StackAllocate( &fs->general_stack, file->filesize );
 			char *target_data = (char *)STACKPTR( target_ptr );
@@ -379,7 +379,7 @@ Registers a file on disk into the filesystem index.
 */
 void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *mod_dir, const char *pk3dir_name,
 		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp,
-		unsigned int filesize, fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+		unsigned int filesize, fsc_filesystem_t *fs ) {
 	fsc_stackptr_t file_ptr;
 	fsc_file_direct_t *file = FSC_NULL;
 	fsc_hashtable_iterator_t hti;
@@ -475,9 +475,9 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 
 	// Register file and load contents
 	if ( unindexed_file ) {
-		FSC_RegisterFile( file_ptr, FSC_NULL, fs, eh );
+		FSC_RegisterFile( file_ptr, FSC_NULL, fs );
 		if ( !FSC_Stricmp( qp_ext, ".pk3" ) && ( !*qp_dir || !FSC_Stricmp( qp_dir, "downloads/" ) ) ) {
-			FSC_LoadPk3( (fsc_ospath_t *)STACKPTR( file->os_path_ptr ), fs, file_ptr, eh, FSC_NULL, FSC_NULL );
+			FSC_LoadPk3( (fsc_ospath_t *)STACKPTR( file->os_path_ptr ), fs, file_ptr, FSC_NULL, FSC_NULL );
 			file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT;
 		}
 	}
@@ -540,7 +540,7 @@ compared to the base FSC_LoadFile function.
 =================
 */
 void FSC_LoadFileFromPath( int source_dir_id, const fsc_ospath_t *os_path, const char *game_path,
-		unsigned int os_timestamp, unsigned int filesize, fsc_filesystem_t *fs, fsc_errorhandler_t *eh ) {
+		unsigned int os_timestamp, unsigned int filesize, fsc_filesystem_t *fs ) {
 	char qp_mod[FSC_MAX_MODDIR];
 	const char *qpath_start = FSC_NULL;
 	fsc_boolean file_in_pk3dir = fsc_false;
@@ -577,13 +577,12 @@ void FSC_LoadFileFromPath( int source_dir_id, const fsc_ospath_t *os_path, const
 
 	// Load file
 	FSC_LoadFile( source_dir_id, os_path, qp_mod, file_in_pk3dir ? pk3dir_buffer : FSC_NULL, qpath_split.dir,
-				  qpath_split.name, qpath_split.ext, os_timestamp, filesize, fs, eh );
+				  qpath_split.name, qpath_split.ext, os_timestamp, filesize, fs );
 }
 
 typedef struct {
 	int source_dir_id;
 	fsc_filesystem_t *fs;
-	fsc_errorhandler_t *eh;
 } iterate_context_t;
 
 /*
@@ -594,7 +593,7 @@ FSC_LoadFileFromIteration
 static void FSC_LoadFileFromIteration( iterate_data_t *file_data, void *iterate_context ) {
 	iterate_context_t *iterate_context_typed = (iterate_context_t *)iterate_context;
 	FSC_LoadFileFromPath( iterate_context_typed->source_dir_id, file_data->os_path, file_data->qpath_with_mod_dir,
-			file_data->os_timestamp, file_data->filesize, iterate_context_typed->fs, iterate_context_typed->eh );
+			file_data->os_timestamp, file_data->filesize, iterate_context_typed->fs );
 }
 
 /*
@@ -654,11 +653,10 @@ FSC_LoadDirectoryRawPath
 Scans the given game directory for files and registers them into the file index.
 =================
 */
-void FSC_LoadDirectoryRawPath( fsc_filesystem_t *fs, fsc_ospath_t *os_path, int source_dir_id, fsc_errorhandler_t *eh ) {
+void FSC_LoadDirectoryRawPath( fsc_filesystem_t *fs, fsc_ospath_t *os_path, int source_dir_id ) {
 	iterate_context_t context;
 	context.source_dir_id = source_dir_id;
 	context.fs = fs;
-	context.eh = eh;
 	FSC_IterateDirectory( os_path, FSC_LoadFileFromIteration, &context );
 }
 
@@ -669,9 +667,9 @@ FSC_LoadDirectory
 Standard string path wrapper for FSC_LoadDirectoryRawPath.
 =================
 */
-void FSC_LoadDirectory( fsc_filesystem_t *fs, const char *path, int source_dir_id, fsc_errorhandler_t *eh ) {
+void FSC_LoadDirectory( fsc_filesystem_t *fs, const char *path, int source_dir_id ) {
 	fsc_ospath_t *os_path = FSC_StringToOSPath( path );
-	FSC_LoadDirectoryRawPath( fs, os_path, source_dir_id, eh );
+	FSC_LoadDirectoryRawPath( fs, os_path, source_dir_id );
 	FSC_Free( os_path );
 }
 

@@ -471,7 +471,7 @@ FS_GetTempDownloadPk3Hash
 static unsigned int FS_GetTempDownloadPk3Hash( const char *tempfile_path ) {
 	void *os_path = FSC_StringToOSPath( tempfile_path );
 	unsigned int result = 0;
-	FSC_LoadPk3( os_path, &fs.index, FSC_SPNULL, NULL, FS_TempDownloadHashCallback, &result );
+	FSC_LoadPk3( os_path, &fs.index, FSC_SPNULL, FS_TempDownloadHashCallback, &result );
 	FSC_Free( os_path );
 	return result;
 }
