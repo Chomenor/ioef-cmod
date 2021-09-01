@@ -24,7 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Definitions
 /* ******************************************************************************** */
 
-#define FSC_CACHE_VERSION 12
+// If the version in the cache file does not match this string, the cache will be rebuilt.
+// This version should always be incremented when anything affecting the cache file format changes.
+#define FSC_CACHE_VERSION "ioq3-fs-v12"
 
 #define FSC_MAX_QPATH 256	// Buffer size including null terminator
 #define FSC_MAX_MODDIR 32	// Buffer size including null terminator
