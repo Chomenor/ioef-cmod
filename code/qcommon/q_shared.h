@@ -49,6 +49,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define HOMEPATH_NAME_UNIX		".stvef"
   #define HOMEPATH_NAME_WIN		"STVEF"
   #define HOMEPATH_NAME_MACOSX	HOMEPATH_NAME_WIN
+  #define GOGPATH_ID				"1581756945"
   #define GAMENAME_FOR_MASTER		"EliteForce"
   #define LEGACY_PROTOCOL
 #else
