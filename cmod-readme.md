@@ -10,7 +10,7 @@ Feel free to contact me if you have any questions, feedback or bug reports.
 
 To use the client, download the latest release zip, unzip it into your Elite Force install directory, and run the ioEF-cMod* application. In most cases your existing EF client will continue to work without conflicts, but if you want to be extra safe, make a backup of your EF directory before installing cMod.
 
-GoG users: If you installed Elite Force through Good Old Games, the game files will be automatically located since cMod version 1.11, so you do not need to copy cMod to the actual EF directory. Simply install Elite Force through Good Old Games, create an empty directory anywhere on your system, extract the cMod zip into it, and run the application from there. Any new files and settings created through cMod will be stored in the new directory, so there is no possibility of interfering with the existing GoG install.
+GoG users: If you installed Elite Force through Good Old Games, the game files will be automatically located since cMod version 1.11, so you do not need to copy cMod to the actual EF directory. Simply create an empty directory anywhere on your system, extract the cMod zip into it, and run the application from there. Any new files and settings created through cMod will be stored in the new directory, so there is no possibility of interfering with the existing GoG install.
 
 ## Settings Handling
 
