@@ -45,6 +45,8 @@ typedef struct fsc_shader_s fsc_shader_t;
 // Standard buffer size to use when generating system paths
 #define FS_MAX_PATH 512
 
+#define FS_INVALID_HANDLE 0
+
 // Lookup flags
 #define LOOKUPFLAG_ENABLE_DDS 1					// Enable dds format for image lookups. Must match value in tr_public.h!
 #define LOOKUPFLAG_IGNORE_PURE_LIST 2			// Ignore pure list entirely (allow all files AND ignore ordering)

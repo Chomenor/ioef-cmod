@@ -2131,7 +2131,7 @@ Returns size according to original FS_FOpenFileReadDir conventions.
 static int FS_FOpenFile_ReadHandleOpen( const char *filename, fileHandle_t *handle_out, int lookup_flags, qboolean allow_direct_handle ) {
 	const fsc_file_t *fscfile;
 	int size = -1;
-	fileHandle_t handle = 0;
+	fileHandle_t handle = FS_INVALID_HANDLE;
 
 	// Get the file
 	fscfile = FS_GeneralLookup( filename, lookup_flags, qfalse );
@@ -2240,7 +2240,7 @@ Can be called with a null filehandle pointer in read mode for a size/existance c
 */
 static int FS_FOpenFileByModeGeneral( const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner ) {
 	int size = 0;
-	fileHandle_t handle = 0;
+	fileHandle_t handle = FS_INVALID_HANDLE;
 
 	if ( !qpath ) {
 		Com_Error( ERR_DROP, "FS_FOpenFileByMode: null path" );
@@ -2371,7 +2371,7 @@ FS_FOpenFileWrite
 =================
 */
 fileHandle_t FS_FOpenFileWrite( const char *filename ) {
-	fileHandle_t handle = 0;
+	fileHandle_t handle = FS_INVALID_HANDLE;
 	FSC_ASSERT( filename );
 	FS_FOpenFileByModeLogged( filename, &handle, FS_WRITE, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileWrite" );
 	return handle;
@@ -2383,7 +2383,7 @@ FS_FOpenFileAppend
 =================
 */
 fileHandle_t FS_FOpenFileAppend( const char *filename ) {
-	fileHandle_t handle = 0;
+	fileHandle_t handle = FS_INVALID_HANDLE;
 	FSC_ASSERT( filename );
 	FS_FOpenFileByModeLogged( filename, &handle, FS_APPEND, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileAppend" );
 	return handle;
@@ -2427,7 +2427,7 @@ long FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp ) {
 	int size = -1;
 	FSC_ASSERT( filename );
 	FSC_ASSERT( fp );
-	*fp = 0;
+	*fp = FS_INVALID_HANDLE;
 
 	if ( fs.cvar.fs_debug_fileio->integer ) {
 		FS_DPrintf( "********** SV file read **********\n" );
