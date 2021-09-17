@@ -281,6 +281,9 @@
 // [COMMON] Restructure server serverinfo and systeminfo handling to use common access functions
 #define CMOD_COMMON_SERVER_INFOSTRING_HOOKS
 
+// [COMMON] Support extra VM interface functions for compatible VMs
+#define CMOD_VM_EXTENSIONS
+
 /* ******************************************************************************** */
 // Setup
 /* ******************************************************************************** */

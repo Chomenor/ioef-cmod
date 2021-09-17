@@ -2874,6 +2874,10 @@ void Com_Init( char *commandLine ) {
 	cmod_logging_initialize();
 #endif
 
+#ifdef CMOD_VM_EXTENSIONS
+	VMExt_Init();
+#endif
+
 	// prepare enough of the subsystems to handle
 	// cvar and command buffer management
 	Com_ParseCommandLine( commandLine );

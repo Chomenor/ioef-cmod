@@ -739,6 +739,12 @@ The ui module is making a system call
 ====================
 */
 intptr_t CL_UISystemCalls( intptr_t *args ) {
+#ifdef CMOD_VM_EXTENSIONS
+	intptr_t retval = 0;
+	if ( VMExt_HandleVMSyscall( args, VM_UI, uivm, VM_ArgPtr, &retval ) ) {
+		return retval;
+	}
+#endif
 	switch( args[0] ) {
 	case UI_ERROR:
 		Com_Error( ERR_DROP, "%s", (const char*)VMA(1) );

@@ -294,6 +294,12 @@ The module is making a system call
 ====================
 */
 intptr_t SV_GameSystemCalls( intptr_t *args ) {
+#ifdef CMOD_VM_EXTENSIONS
+	intptr_t retval = 0;
+	if ( VMExt_HandleVMSyscall( args, VM_GAME, gvm, VM_ArgPtr, &retval ) ) {
+		return retval;
+	}
+#endif
 	switch( args[0] ) {
 	case G_PRINT:
 		Com_Printf( "%s", (const char*)VMA(1) );

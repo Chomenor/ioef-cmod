@@ -1816,6 +1816,7 @@ Q3OBJ += \
   $(B)/client/cmod_map_adjust.o \
   $(B)/client/cmod_misc.o \
   $(B)/client/snd_codec_mp3.o \
+  $(B)/client/vm_extensions.o \
   $(B)/client/mad_bit.o \
   $(B)/client/mad_decoder.o \
   $(B)/client/mad_fixed.o \
@@ -2401,6 +2402,7 @@ Q3DOBJ += \
   $(B)/ded/cmod_cvar.o \
   $(B)/ded/cmod_logging.o \
   $(B)/ded/cmod_misc.o \
+  $(B)/ded/vm_extensions.o \
   $(B)/ded/sv_cmd_tools.o \
   $(B)/ded/sv_misc.o \
   $(B)/ded/sv_maptable.o \

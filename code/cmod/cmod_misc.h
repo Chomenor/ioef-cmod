@@ -23,6 +23,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // For misc cmod stuff, included at the end of qcommon.h
 
+#ifdef CMOD_VM_EXTENSIONS
+typedef enum {
+	VM_GAME,
+	VM_CGAME,
+	VM_UI,
+} vmType_t;
+
+qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
+		void *( *VM_ArgPtr )( intptr_t intValue ), intptr_t *retval );
+void VMExt_Init( void );
+#endif
+
 #ifdef CMOD_COMMON_STRING_FUNCTIONS
 typedef struct {
 	char *data;
