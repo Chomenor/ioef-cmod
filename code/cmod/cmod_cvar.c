@@ -453,6 +453,7 @@ static localCvar_t *cvar_vm_register(const char *name, const char *value, int fl
 		cvar_copystring(value, &cvar->protected_default); }
 
 	// Set flags
+	if(cvar->system_flags & CVAR_IGNORE_VM_CHEAT_PROTECT) flags &= ~CVAR_CHEAT;
 	cvar->protected_flags |= flags & (CVAR_USERINFO | CVAR_SERVERINFO | CVAR_SYSTEMINFO |
 			CVAR_LATCH | CVAR_ROM | CVAR_CHEAT | CVAR_NORESTART);
 	if(permissions == 2) cvar->protected_flags |= flags & CVAR_ARCHIVE;
@@ -1243,9 +1244,9 @@ special_cvar_t specials[] = {
 	{"cg_errordecay", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cg_footsteps", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cg_gibs", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
-	{"cg_gunX", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
-	{"cg_gunY", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
-	{"cg_gunZ", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
+	{"cg_gunX", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE|CVAR_IGNORE_VM_CHEAT_PROTECT},
+	{"cg_gunY", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE|CVAR_IGNORE_VM_CHEAT_PROTECT},
+	{"cg_gunZ", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE|CVAR_IGNORE_VM_CHEAT_PROTECT},
 	{"cg_ignore", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cg_noplayeranims", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cg_nopredict", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
