@@ -260,10 +260,8 @@ void fs_initialize_sourcedirs(void) {
 	Cvar_Get("fs_steampath", Sys_SteamPath(), CVAR_INIT|CVAR_PROTECTED);
 #endif
 	Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED);
-#ifndef ELITEFORCE
 #ifdef __APPLE__
 	Cvar_Get("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED);
-#endif
 #endif
 
 	// Generate temp_dirs based on fs_dirs entries
@@ -476,7 +474,11 @@ void fs_startup(void) {
 	fsc_register_fatal_error_handler(fs_fatal_error_handler);
 
 #ifdef ELITEFORCE
+#ifdef __APPLE__
+	fs_dirs = Cvar_Get("fs_dirs", "*fs_basepath *fs_homepath fs_gogpath fs_apppath", CVAR_INIT|CVAR_PROTECTED);
+#else
 	fs_dirs = Cvar_Get("fs_dirs", "*fs_basepath *fs_homepath fs_gogpath", CVAR_INIT|CVAR_PROTECTED);
+#endif
 #else
 #ifdef __APPLE__
 	fs_dirs = Cvar_Get("fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath fs_apppath", CVAR_INIT|CVAR_PROTECTED);
