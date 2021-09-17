@@ -37,6 +37,24 @@ Returns qtrue on match and writes result to buffer, qfalse otherwise.
 ==================
 */
 static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigned int size, vmType_t vm_type ) {
+#ifdef CMOD_CROSSHAIR
+	if ( !Q_stricmp( command, "crosshair_get_current_shader" ) ) {
+		// Returns 0 to display no crosshair, >0 for shdader handle value, or -1 if engine crosshair mode is inactive.
+		Com_sprintf( buffer, size, "%i", CMCrosshair_GetCurrentShader() );
+		return qtrue;
+	}
+	if ( !Q_stricmp( command, "crosshair_advance_current" ) ) {
+		// Returns 1 if successful, 0 if engine crosshair mode is inactive.
+		Com_sprintf( buffer, size, "%i", CMCrosshair_VMAdvanceCurrentCrosshair() );
+		return qtrue;
+	}
+	if ( !Q_stricmp( command, "crosshair_register_support" ) ) {
+		CMCrosshair_RegisterVMSupport( vm_type );
+		Q_strncpyz( buffer, "1", size );
+		return qtrue;
+	}
+#endif
+
 	return qfalse;
 }
 

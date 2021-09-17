@@ -22,10 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #ifdef CMOD_CROSSHAIR
-// This file is used to extend the number of crosshairs selectable in the game
-// Currently uses some crazy hacks to override the UI display, to work across different mods
-// Future implementations could add new VM calls to allow VMs compiled with crosshair support
-//    to access the crosshair features in a more conventional way
+// This file is used to extend the number of crosshairs selectable in the game,
+// when combined with QVM support
 
 #include "../filesystem/fslocal.h"
 #include "../client/client.h"
@@ -49,6 +47,13 @@ typedef struct {
 
 crosshair_t crosshairs[256];
 int crosshair_count;
+
+// Current game status
+static qboolean uiSupportRegistered;
+static qboolean cgameSupportRegistered;
+static qboolean cgameLoaded;
+
+#define ENGINE_CROSSHAIR_ACTIVE ( cmod_crosshair_enable->integer && uiSupportRegistered && ( !cgameLoaded || cgameSupportRegistered ) )
 
 /* ******************************************************************************** */
 // Crosshair Index
@@ -115,76 +120,149 @@ static unsigned int special_crosshairs[] = {
 	0x21a3c310,		// pakhairs16 j
 };
 
-static int get_special_priority_by_hash(unsigned int hash) {
+/*
+==================
+CMCrosshair_GetSpecialPriorityByHash
+==================
+*/
+static int CMCrosshair_GetSpecialPriorityByHash( unsigned int hash ) {
 	int i;
-	for(i=0; i<ARRAY_LEN(special_crosshairs); ++i) {
-		if(special_crosshairs[i] == hash) return ARRAY_LEN(special_crosshairs) - i; }
-	return 0; }
+	for ( i = 0; i < ARRAY_LEN( special_crosshairs ); ++i ) {
+		if ( special_crosshairs[i] == hash ) {
+			return ARRAY_LEN( special_crosshairs ) - i;
+		}
+	}
+	return 0;
+}
 
-static int get_crosshair_index_by_hash(unsigned int hash) {
-	// Returns -1 if not found
+/*
+==================
+CMCrosshair_GetCrosshairIndexByHash
+
+Returns -1 if not found.
+==================
+*/
+static int CMCrosshair_GetCrosshairIndexByHash( unsigned int hash ) {
 	int i;
-	for(i=0; i<crosshair_count; ++i) {
-		if(crosshairs[i].hash == hash) return i; }
-	return -1; }
+	for ( i = 0; i < crosshair_count; ++i ) {
+		if ( crosshairs[i].hash == hash ) {
+			return i;
+		}
+	}
+	return -1;
+}
 
-static void crosshair_gen_sort_key(const fsc_file_t *file, fsc_stream_t *output) {
-	fs_generate_core_sort_key(file, output, qtrue);
-	fs_write_sort_filename(file, output);
-	fs_write_sort_value(fs_get_source_dir_id(file), output); }
+/*
+==================
+CMCrosshair_GenSortKey
+==================
+*/
+static void CMCrosshair_GenSortKey( const fsc_file_t *file, fsc_stream_t *output ) {
+	fs_generate_core_sort_key( file, output, qtrue );
+	fs_write_sort_filename( file, output );
+	fs_write_sort_value( fs_get_source_dir_id( file ), output );
+}
 
-static int compare_crosshair_file(const fsc_file_t *file1, const fsc_file_t *file2) {
+/*
+==================
+CMCrosshair_CompareCrosshairFile
+==================
+*/
+static int CMCrosshair_CompareCrosshairFile( const fsc_file_t *file1, const fsc_file_t *file2 ) {
 	char buffer1[1024];
 	char buffer2[1024];
-	fsc_stream_t stream1 = {buffer1, 0, sizeof(buffer1), qfalse};
-	fsc_stream_t stream2 = {buffer2, 0, sizeof(buffer2), qfalse};
-	if(file1->sourcetype == SOURCETYPE_CROSSHAIR && file2->sourcetype != SOURCETYPE_CROSSHAIR) return -1;
-	if(file2->sourcetype == SOURCETYPE_CROSSHAIR && file1->sourcetype != SOURCETYPE_CROSSHAIR) return 1;
-	crosshair_gen_sort_key(file1, &stream1);
-	crosshair_gen_sort_key(file2, &stream2);
-	return fsc_memcmp(stream2.data, stream1.data,
-			stream1.position < stream2.position ? stream1.position : stream2.position); }
+	fsc_stream_t stream1 = { buffer1, 0, sizeof( buffer1 ), qfalse };
+	fsc_stream_t stream2 = { buffer2, 0, sizeof( buffer2 ), qfalse };
+	if ( file1->sourcetype == SOURCETYPE_CROSSHAIR && file2->sourcetype != SOURCETYPE_CROSSHAIR ) {
+		return -1;
+	}
+	if ( file2->sourcetype == SOURCETYPE_CROSSHAIR && file1->sourcetype != SOURCETYPE_CROSSHAIR ) {
+		return 1;
+	}
+	CMCrosshair_GenSortKey( file1, &stream1 );
+	CMCrosshair_GenSortKey( file2, &stream2 );
+	return fsc_memcmp( stream2.data, stream1.data,
+			stream1.position < stream2.position ? stream1.position : stream2.position );
+}
 
-static int compare_crosshairs(const void *c1, const void *c2) {
-	if(((crosshair_t *)c1)->special_priority > ((crosshair_t *)c2)->special_priority) return -1;
-	if(((crosshair_t *)c2)->special_priority > ((crosshair_t *)c1)->special_priority) return 1;
-	return compare_crosshair_file(((crosshair_t *)c1)->file, ((crosshair_t *)c2)->file); }
+/*
+==================
+CMCrosshair_CompareCrosshairs
+==================
+*/
+static int CMCrosshair_CompareCrosshairs( const void *c1, const void *c2 ) {
+	if ( ( (crosshair_t *)c1 )->special_priority > ( (crosshair_t *)c2 )->special_priority ) {
+		return -1;
+	}
+	if ( ( (crosshair_t *)c2 )->special_priority > ( (crosshair_t *)c1 )->special_priority ) {
+		return 1;
+	}
+	return CMCrosshair_CompareCrosshairFile( ( (crosshair_t *)c1 )->file, ( (crosshair_t *)c2 )->file );
+}
 
-static qboolean fs_is_crosshair_enabled(const fsc_file_t *file) {
-	if(file->sourcetype == SOURCETYPE_CROSSHAIR) return crosshair_builtin_file_enabled(file);
-	if(!fsc_is_file_enabled(file, &fs)) return qfalse;
+/*
+==================
+CMCrosshair_IsCrosshairFileEnabled
+==================
+*/
+static qboolean CMCrosshair_IsCrosshairFileEnabled( const fsc_file_t *file ) {
+	if ( file->sourcetype == SOURCETYPE_CROSSHAIR ) {
+		return crosshair_builtin_file_enabled( file );
+	}
+	if ( !fsc_is_file_enabled( file, &fs ) ) {
+		return qfalse;
+	}
 
-	if(fs_connected_server_pure_state() == 1) {
+	if ( fs_connected_server_pure_state() == 1 ) {
 		// Connected to pure server
-		if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			unsigned int pk3_hash = fsc_get_base_file(file, &fs)->pk3_hash;
-			if(pk3_list_lookup(&connected_server_pure_list, pk3_hash)) return qtrue; }
-		return qfalse; }
+		if ( file->sourcetype == FSC_SOURCETYPE_PK3 ) {
+			unsigned int pk3_hash = fsc_get_base_file( file, &fs )->pk3_hash;
+			if ( pk3_list_lookup( &connected_server_pure_list, pk3_hash ) ) {
+				return qtrue;
+			}
+		}
+		return qfalse;
+	}
 
-	return qtrue; }
+	return qtrue;
+}
 
-static void build_crosshair_index(void) {
+/*
+==================
+CMCrosshair_BuildCrosshairIndex
+==================
+*/
+static void CMCrosshair_BuildCrosshairIndex( void ) {
 	fsc_hashtable_iterator_t hti;
 	fsc_crosshair_t *entry;
 
 	crosshair_count = 0;
 
-	fsc_hashtable_open(&fs.crosshairs, 0, &hti);
-	while((entry = STACKPTRN(fsc_hashtable_next(&hti)))) {
-		fsc_file_t *file = STACKPTR(entry->source_file_ptr);
+	fsc_hashtable_open( &fs.crosshairs, 0, &hti );
+	while ( ( entry = STACKPTRN( fsc_hashtable_next( &hti ) ) ) ) {
+		fsc_file_t *file = STACKPTR( entry->source_file_ptr );
 		int index;
-		if(!fs_is_crosshair_enabled(file)) continue;
-		index = get_crosshair_index_by_hash(entry->hash);
-		if(index == -1) {
+		if ( !CMCrosshair_IsCrosshairFileEnabled( file ) ) {
+			continue;
+		}
+		index = CMCrosshair_GetCrosshairIndexByHash( entry->hash );
+		if ( index == -1 ) {
 			// Create new entry
-			if(crosshair_count >= ARRAY_LEN(crosshairs)) return;
-			crosshairs[crosshair_count++] = (crosshair_t){file, entry->hash,
-					get_special_priority_by_hash(entry->hash), 0}; }
-		else {
+			if ( crosshair_count >= ARRAY_LEN( crosshairs ) ) {
+				return;
+			}
+			crosshairs[crosshair_count++] = ( crosshair_t ){
+					file, entry->hash, CMCrosshair_GetSpecialPriorityByHash( entry->hash ), 0 };
+		} else {
 			// Use higher precedence file
-			if(compare_crosshair_file(file, crosshairs[index].file) < 0) crosshairs[index].file = file; } }
+			if ( CMCrosshair_CompareCrosshairFile( file, crosshairs[index].file ) < 0 ) {
+				crosshairs[index].file = file;
+			}
+		}
+	}
 
-	qsort(crosshairs, crosshair_count, sizeof(*crosshairs), compare_crosshairs); }
+	qsort( crosshairs, crosshair_count, sizeof( *crosshairs ), CMCrosshair_CompareCrosshairs );
+}
 
 /* ******************************************************************************** */
 // Crosshair Shader Registration
@@ -192,253 +270,257 @@ static void build_crosshair_index(void) {
 
 static crosshair_t *registering_crosshair;
 
-fsc_file_t *crosshair_process_lookup(const char *name) {
-	// Returns crosshair file to override normal lookup handling, null otherwise
-	if(*name == '#') {
+/*
+==================
+CMCrosshair_FileLookupHook
+
+Returns crosshair file to override normal lookup handling, null otherwise.
+==================
+*/
+fsc_file_t *CMCrosshair_FileLookupHook( const char *name ) {
+	if ( registering_crosshair && *name == '#' ) {
 		int i;
 		char buffer[] = "#cmod_crosshair_";
-		for(i=0; i<sizeof(buffer)-1; ++i) if(buffer[i] != name[i]) return 0;
-		return registering_crosshair->file; }
-	return 0; }
+		for ( i = 0; i < sizeof( buffer ) - 1; ++i ) {
+			if ( buffer[i] != name[i] ) {
+				return NULL;
+			}
+		}
+		return registering_crosshair->file;
+	}
+	return NULL;
+}
 
-static qhandle_t get_crosshair_shader(crosshair_t *crosshair) {
-	if(!crosshair->handle) {
-		if(fs_is_crosshair_enabled(crosshair->file)) {
+/*
+==================
+CMCrosshair_GetCrosshairShader
+==================
+*/
+static qhandle_t CMCrosshair_GetCrosshairShader( crosshair_t *crosshair ) {
+	if ( !crosshair->handle ) {
+		if ( CMCrosshair_IsCrosshairFileEnabled( crosshair->file ) ) {
 			char name[32];
 			registering_crosshair = crosshair;
-			Com_sprintf(name, sizeof(name), "#cmod_crosshair_%08x", crosshair->hash);
-			crosshair->handle = re.RegisterShaderNoMip(name); }
-		if(!crosshair->handle) crosshair->handle = -1; }
-	return crosshair->handle == -1 ? 0 : crosshair->handle; }
+			Com_sprintf( name, sizeof( name ), "#cmod_crosshair_%08x", crosshair->hash );
+			crosshair->handle = re.RegisterShaderNoMip( name );
+		}
+		if ( !crosshair->handle ) {
+			crosshair->handle = -1;
+		}
+	}
+	return crosshair->handle == -1 ? 0 : crosshair->handle;
+}
 
 /* ******************************************************************************** */
 // Current Crosshair Handling
 /* ******************************************************************************** */
 
-static int get_current_crosshair_index(void) {
-	// Returns -1 for no crosshair, index otherwise
+/*
+==================
+CMCrosshair_GetCurrentCrosshairIndex
+
+Returns -1 for no crosshair, index otherwise.
+==================
+*/
+static int CMCrosshair_GetCurrentCrosshairIndex( void ) {
 	static int cached_crosshair_index;
 	unsigned int hash;
 
-	if(!crosshair_count) return -1;
-	if(cmod_crosshair_selection->string[0] == '0' && cmod_crosshair_selection->string[1] == 0) return -1;
+	if ( !crosshair_count ) {
+		return -1;
+	}
+	if ( cmod_crosshair_selection->string[0] == '0' && cmod_crosshair_selection->string[1] == 0 ) {
+		return -1;
+	}
 
-	hash = strtoul(cmod_crosshair_selection->string, NULL, 16);
-	if(cached_crosshair_index >= crosshair_count || crosshairs[cached_crosshair_index].hash != hash) {
-		cached_crosshair_index = get_crosshair_index_by_hash(hash);
-		if(cached_crosshair_index < 0) cached_crosshair_index = 0; }
+	hash = strtoul( cmod_crosshair_selection->string, NULL, 16 );
+	if ( cached_crosshair_index >= crosshair_count || crosshairs[cached_crosshair_index].hash != hash ) {
+		cached_crosshair_index = CMCrosshair_GetCrosshairIndexByHash( hash );
+		if ( cached_crosshair_index < 0 ) {
+			cached_crosshair_index = 0;
+		}
+	}
 
-	return cached_crosshair_index; }
+	return cached_crosshair_index;
+}
 
-static void advance_current_crosshair(void) {
-	int index = get_current_crosshair_index() + 1;
-	if(index >= crosshair_count) {
-		Cvar_Set("cmod_crosshair_selection", "0"); }
-	else {
-		Cvar_Set("cmod_crosshair_selection", va("%08x", crosshairs[index].hash)); } }
+/*
+==================
+CMCrosshair_GetCurrentCrosshair
 
-static crosshair_t *get_current_crosshair(void) {
-	// Returns null for no crosshair, crosshair otherwise
-	int index = get_current_crosshair_index();
-	if(index < 0) return 0;
-	return &crosshairs[index]; }
+Returns null for no crosshair, or crosshair object otherwise.
+==================
+*/
+static crosshair_t *CMCrosshair_GetCurrentCrosshair( void ) {
+	int index = CMCrosshair_GetCurrentCrosshairIndex();
+	if ( index < 0 ) {
+		return NULL;
+	}
+	return &crosshairs[index];
+}
+
+/*
+==================
+CMCrosshair_AdvanceCurrentCrosshair
+==================
+*/
+static void CMCrosshair_AdvanceCurrentCrosshair( void ) {
+	int index = CMCrosshair_GetCurrentCrosshairIndex() + 1;
+	if ( index >= crosshair_count ) {
+		Cvar_Set( "cmod_crosshair_selection", "0" );
+	} else {
+		Cvar_Set( "cmod_crosshair_selection", va( "%08x", crosshairs[index].hash ) );
+	}
+}
+
+/*
+==================
+CMCrosshair_VMAdvanceCurrentCrosshair
+
+Returns 1 if successful, 0 if engine crosshair mode inactive.
+==================
+*/
+int CMCrosshair_VMAdvanceCurrentCrosshair( void ) {
+	if ( ENGINE_CROSSHAIR_ACTIVE ) {
+		CMCrosshair_AdvanceCurrentCrosshair();
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+==================
+CMCrosshair_GetCurrentShader
+
+Returns -1 for no engine crosshair support, 0 if engine crosshair mode inactive, or crosshair shader otherwise.
+==================
+*/
+qhandle_t CMCrosshair_GetCurrentShader( void ) {
+	if ( ENGINE_CROSSHAIR_ACTIVE ) {
+		crosshair_t *currentCrosshair = CMCrosshair_GetCurrentCrosshair();
+		if ( currentCrosshair ) {
+			return CMCrosshair_GetCrosshairShader( currentCrosshair );
+		} else {
+			return 0;
+		}
+	}
+
+	return -1;
+}
 
 /* ******************************************************************************** */
-// VM Override Handling
+// Init / Test Functions
 /* ******************************************************************************** */
 
-qhandle_t vm_crosshairs[12];
-int vm_crosshairs_registered;
+/*
+==================
+CMCrosshair_DebugIndexCmd
 
-qhandle_t font_shader;
-float ch_scale_x;
-float ch_scale_y;
-int settings_menu_phase;
-
-// Don't enable the crosshair override until the standard set of 12 crosshairs has been registered
-// by at least one VM. This helps protect a bit against incompatible VMs with modified crosshair handling.
-
-#define VM_OVERRIDE_ACTIVE (cmod_crosshair_enable && cmod_crosshair_enable->integer && font_shader > 0 \
-		&& vm_crosshairs_registered == 4095)
-
-static void crosshair_general_init(void);
-
-void crosshair_ui_init(int vid_width, int vid_height) {
-	static qboolean general_init_complete = qfalse;
-	if(!general_init_complete) {
-		crosshair_general_init();
-		general_init_complete = qtrue; }
-
-	build_crosshair_index();
-	vm_crosshairs_registered = 0;
-	font_shader = re.RegisterShaderNoMip("gfx/2d/chars_medium");
-
-	ch_scale_x = vid_width * (1.0/640.0);
-	ch_scale_y = vid_height * (1.0/480.0); }
-
-void crosshair_vm_registering_shader(const char *name, qhandle_t result) {
-	// Intercept the crosshair registration from either CG_RegisterGraphics or UI_GameOptionsMenu_Cache
+Print all index elements.
+==================
+*/
+static void CMCrosshair_DebugIndexCmd( void ) {
 	int i;
-	char buffer[] = "gfx/2d/crosshair";
-	int index;
-	for(i=0; i<sizeof(buffer)-1; ++i) if(buffer[i] != name[i]) return;
-	index = name[sizeof(buffer)-1] - 'a';
-	if(index < 0 || index >= 12 || name[sizeof(buffer)]) {
-		vm_crosshairs_registered = -1;
-		return; }
-
-	vm_crosshairs[index] = result;
-	vm_crosshairs_registered |= (1 << index); }
-
-void crosshair_vm_call(void) {
-	// Just hook all VM calls so we don't have to worry about which ones are draw operations
-	settings_menu_phase = 0; }
-
-static qboolean coord_match(float c1, float c2) {
-	float delta = c1 - c2;
-	if(delta > -0.1 && delta < 0.1) return qtrue;
-	return qfalse; }
-
-#define CHECK_COORDS(xt, yt, wt, ht) (coord_match(xs, xt) && coord_match(ys, yt) \
-	&& coord_match(ws, wt) && coord_match(hs, ht))
-
-#define DSP(x, y, w, h, s1, t1, s2, t2, hShader) re.DrawStretchPic((float)(x) * ch_scale_x, \
-	(float)(y) * ch_scale_y, (float)(w) * ch_scale_x, (float)(h) * ch_scale_y, s1, t1, s2, t2, hShader)
-
-qboolean crosshair_stretchpic(float x, float y, float w, float h, float s1, float t1,
-		float s2, float t2, qhandle_t hShader) {
-	// Returns qtrue to suppress normal handling of command, qfalse otherwise
-	if(VM_OVERRIDE_ACTIVE) {
-		int i;
-		float xs = x / ch_scale_x;
-		float ys = y / ch_scale_y;
-		float ws = w / ch_scale_x;
-		float hs = h / ch_scale_y;
-		qboolean vm_crosshair_match = qfalse;
-		if(hShader > 0) for(i=0; i<ARRAY_LEN(vm_crosshairs); ++i) {
-			if(vm_crosshairs[i] == hShader) vm_crosshair_match = qtrue; }
-
-		/*
-		if(Cvar_VariableIntegerValue("stretchpic_print")) {
-			Com_Printf("stretchpic: x(%f) y(%f) w(%f)"
-				" h(%f) s1(%f) t1(%f) s2(%f) t2(%f) hShader(%i)\n", x, y, w, h, s1, t1, s2, t2, hShader);
-			Com_Printf("DSP(%g, %g, %g, %g, %g, %g, %g, %g, font_shader);\n", x, y, w, h, s1, t1, s2, t2); }
-			*/
-
-		if(settings_menu_phase == 0) {
-			if(CHECK_COORDS(387, 245, 8, 87)) ++settings_menu_phase; }
-		else if(settings_menu_phase == 1) {
-			if(CHECK_COORDS(513, 245, 8, 87)) ++settings_menu_phase; }
-		else if(settings_menu_phase == 2) {
-			if(CHECK_COORDS(395, 335, 116, 3)) ++settings_menu_phase; }
-		else if(settings_menu_phase == 3) {
-			if(CHECK_COORDS(387, 332, 16, 16)) ++settings_menu_phase; }
-		else if(settings_menu_phase == 4) {
-			if(CHECK_COORDS(510, 332, 16, 16)) ++settings_menu_phase; }
-		else if(settings_menu_phase == 5) {
-			if(CHECK_COORDS(387, 224, 16, 32)) ++settings_menu_phase; }
-		else if(settings_menu_phase == 6) {
-			if(CHECK_COORDS(507, 224, 16, 32)) ++settings_menu_phase; }
-		else if(settings_menu_phase == 7) {
-			crosshair_t *current = get_current_crosshair();
-			if(current) {
-				// Draw crosshair
-				re.SetColor((float []){1, 1, 0, 1});
-				DSP(438, 270, 32, 32, 0, 0, 1, 1, get_crosshair_shader(current)); }
-			else {
-				// Draw "none" message
-				char *language = Cvar_VariableString("g_language");
-				re.SetColor((float []){0.996, 0.796, 0.398, 1});
-				if(!Q_stricmp(language, "deutsch")) {
-					DSP(436, 275, 6, 16, 0.539063, 0, 0.5625, 0.0625, font_shader);
-					DSP(444, 275, 4, 16, 0.226563, 0, 0.242188, 0.0625, font_shader);
-					DSP(450, 275, 2, 16, 0.441406, 0, 0.449219, 0.0625, font_shader);
-					DSP(454, 275, 6, 16, 0.71875, 0, 0.742188, 0.0625, font_shader);
-					DSP(462, 275, 4, 16, 0.226563, 0, 0.242188, 0.0625, font_shader);
-					DSP(468, 275, 5, 16, 0.0078125, 0.0664063, 0.0273438, 0.128906, font_shader); }
-				else if(!Q_stricmp(language, "francais")) {
-					DSP(437, 275, 5, 16, 0.00390625, 0, 0.0234375, 0.0625, font_shader);
-					DSP(444, 275, 5, 16, 0.117188, 0.0664063, 0.136719, 0.128906, font_shader);
-					DSP(451, 275, 5, 16, 0.117188, 0, 0.136719, 0.0625, font_shader);
-					DSP(458, 275, 5, 16, 0.117188, 0.0664063, 0.136719, 0.128906, font_shader);
-					DSP(465, 275, 6, 16, 0.71875, 0, 0.742188, 0.0625, font_shader); }
-				else {
-					DSP(441, 275, 6, 16, 0.71875, 0, 0.742188, 0.0625, font_shader);
-					DSP(449, 275, 5, 16, 0.777344, 0, 0.796875, 0.0625, font_shader);
-					DSP(456, 275, 6, 16, 0.71875, 0, 0.742188, 0.0625, font_shader);
-					DSP(464, 275, 4, 16, 0.226563, 0, 0.242188, 0.0625, font_shader); } }
-			settings_menu_phase = -1;
-			return qtrue; }
-		else if(settings_menu_phase == -1) {
-			if(xs > 395 && xs < 513 && ys > 256 && ys < 335 &&
-					(vm_crosshair_match || hShader == font_shader || hShader <= 0)) return qtrue; }
-
-		if(vm_crosshair_match) {
-			crosshair_t *current = get_current_crosshair();
-			if(current) re.DrawStretchPic(x, y, w, h, s1, t1, s2, t2, get_crosshair_shader(current));
-			return qtrue; } }
-
-	return qfalse; }
-
-qboolean crosshair_cvar_update(const char *cvar_name, vmCvar_t *vm_cvar) {
-	// Returns qtrue to suppress normal handling of update, qfalse otherwise
-	if(VM_OVERRIDE_ACTIVE && !Q_stricmp(cvar_name, "cg_drawcrosshair")) {
-		vm_cvar->modificationCount = 0;
-		vm_cvar->integer = 1;
-		vm_cvar->value = 1;
-		Q_strncpyz(vm_cvar->string, "1", sizeof(vm_cvar->string));
-		return qtrue; }
-	return qfalse; }
-
-qboolean crosshair_cvar_setvalue(const char *cvar_name, float value) {
-	// Returns qtrue to suppress normal handling of set, qfalse otherwise
-	if(VM_OVERRIDE_ACTIVE && !Q_stricmp(cvar_name, "cg_drawcrosshair")) {
-		advance_current_crosshair();
-		return qtrue; }
-	return qfalse; }
-
-/* ******************************************************************************** */
-// General Init / Test Functions
-/* ******************************************************************************** */
-
-static void crosshair_debug_index_cmd(void) {
-	// Print all index elements
-	int i;
-	for(i=0; i<crosshair_count; ++i) {
+	for ( i = 0; i < crosshair_count; ++i ) {
 		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer(crosshairs[i].file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-		Com_Printf("********** crosshair index entry **********\nhash: %08x\nfile: %s\nindex: %i\nspecial_priority: %i\n",
-			crosshairs[i].hash, buffer, i, crosshairs[i].special_priority); } }
+		fs_file_to_buffer( crosshairs[i].file, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
+		Com_Printf( "********** crosshair index entry **********\nhash: %08x\nfile: %s\nindex: %i\nspecial_priority: %i\n",
+				crosshairs[i].hash, buffer, i, crosshairs[i].special_priority );
+	}
+}
 
-static void crosshair_debug_files_cmd(void) {
-	// Print all file elements
+/*
+==================
+CMCrosshair_DebugFilesCmd
+
+Print all file elements.
+==================
+*/
+static void CMCrosshair_DebugFilesCmd( void ) {
 	fsc_hashtable_iterator_t hti;
 	fsc_crosshair_t *entry;
 
-	fsc_hashtable_open(&fs.crosshairs, 0, &hti);
-	while((entry = STACKPTRN(fsc_hashtable_next(&hti)))) {
+	fsc_hashtable_open( &fs.crosshairs, 0, &hti );
+	while ( ( entry = STACKPTRN( fsc_hashtable_next( &hti ) ) ) ) {
 		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer(STACKPTR(entry->source_file_ptr), buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-		Com_Printf("********** crosshair file **********\nhash: %08x\nfile: %s\n", entry->hash, buffer); } }
+		fs_file_to_buffer( STACKPTR( entry->source_file_ptr ), buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
+		Com_Printf( "********** crosshair file **********\nhash: %08x\nfile: %s\n", entry->hash, buffer );
+	}
+}
 
-static void crosshair_status_cmd(void) {
-	Com_Printf("cmod_crosshair_enable: %i\nfont_shader: %i\nvm_crosshairs_registered: %i\n",
-			cmod_crosshair_enable->integer, font_shader, vm_crosshairs_registered);
-	crosshair_t *current = get_current_crosshair();
-	if(current) {
+/*
+==================
+CMCrosshair_StatusCmd
+==================
+*/
+static void CMCrosshair_StatusCmd( void ) {
+	Com_Printf( "cmod_crosshair_enable: %i\n", cmod_crosshair_enable->integer );
+	crosshair_t *current = CMCrosshair_GetCurrentCrosshair();
+	if ( current ) {
 		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer(current->file, buffer, sizeof(buffer), qtrue, qtrue, qtrue, qfalse);
-		Com_Printf("current crosshair: %08x - %s\n", current->hash, buffer); }
-	else {
-		Com_Printf("current crosshair: none\n"); } }
+		fs_file_to_buffer( current->file, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
+		Com_Printf( "current crosshair: %08x - %s\n", current->hash, buffer );
+	} else {
+		Com_Printf( "current crosshair: none\n" );
+	}
+}
 
-static void crosshair_general_init(void) {
+/*
+==================
+CMCrosshair_GeneralInit
+==================
+*/
+static void CMCrosshair_GeneralInit( void ) {
 	crosshair_builtin_register();
-	cmod_crosshair_enable = Cvar_Get("cmod_crosshair_enable", "0", CVAR_ARCHIVE);
-	cmod_crosshair_selection = Cvar_Get("cmod_crosshair_selection", "", CVAR_ARCHIVE);
-	Cmd_AddCommand("cmod_crosshair_status", crosshair_status_cmd);
-	Cmd_AddCommand("cmod_crosshair_advance", advance_current_crosshair);
-	Cmd_AddCommand("cmod_crosshair_debug_index", crosshair_debug_index_cmd);
-	Cmd_AddCommand("cmod_crosshair_debug_files", crosshair_debug_files_cmd); }
+	cmod_crosshair_enable = Cvar_Get( "cmod_crosshair_enable", "0", CVAR_ARCHIVE );
+	cmod_crosshair_selection = Cvar_Get( "cmod_crosshair_selection", "", CVAR_ARCHIVE );
+	Cmd_AddCommand( "cmod_crosshair_status", CMCrosshair_StatusCmd );
+	Cmd_AddCommand( "cmod_crosshair_advance", CMCrosshair_AdvanceCurrentCrosshair );
+	Cmd_AddCommand( "cmod_crosshair_debug_index", CMCrosshair_DebugIndexCmd );
+	Cmd_AddCommand( "cmod_crosshair_debug_files", CMCrosshair_DebugFilesCmd );
+}
+
+/*
+==================
+CMCrosshair_UIInit
+==================
+*/
+void CMCrosshair_UIInit( void ) {
+	static qboolean general_init_complete = qfalse;
+	if ( !general_init_complete ) {
+		CMCrosshair_GeneralInit();
+		general_init_complete = qtrue;
+	}
+
+	uiSupportRegistered = qfalse;
+	cgameSupportRegistered = qfalse;
+	cgameLoaded = qfalse;
+
+	CMCrosshair_BuildCrosshairIndex();
+}
+
+/*
+==================
+CMCrosshair_CGameInit
+==================
+*/
+void CMCrosshair_CGameInit( void ) {
+	cgameLoaded = qtrue;
+}
+
+/*
+==================
+CMCrosshair_RegisterSupport
+==================
+*/
+void CMCrosshair_RegisterVMSupport( vmType_t vm_type ) {
+	if ( vm_type == VM_UI ) {
+		uiSupportRegistered = qtrue;
+	}
+	if ( vm_type == VM_CGAME ) {
+		cgameSupportRegistered = qtrue;
+	}
+}
 
 #endif

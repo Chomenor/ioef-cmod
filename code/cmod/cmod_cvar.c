@@ -730,10 +730,6 @@ void Cvar_Update(vmCvar_t *vmCvar) {
 		Com_Error(ERR_DROP, "Cvar_Update on invalid handle"); }
 	cvar = vm_handles[index.index];
 
-#ifdef CMOD_CROSSHAIR
-	if(crosshair_cvar_update(cvar->s.name, vmCvar)) return;
-#endif
-
 	if(cvar->s.modificationCount == vmCvar->modificationCount) return;
 
 	vmCvar->modificationCount = cvar->s.modificationCount;

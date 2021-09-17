@@ -182,9 +182,9 @@
 // method as older EF versions
 #define CMOD_MOUSE_WARPING_OPTION
 
-// [FEATURE] New crosshair system which is meant to allow selecting any installed crosshair,
-// rather than just a small fixed group. Currently rather hacky.
-#if !defined(DEDICATED) && defined(NEW_FILESYSTEM) && defined(CMOD_CVAR_HANDLING)	// required
+// [FEATURE] New crosshair system to allow selecting any installed crosshair, rather
+// than just a small fixed group, when combined with QVM support.
+#if !defined(DEDICATED) && defined(NEW_FILESYSTEM)	// required
 #define CMOD_CROSSHAIR
 #endif
 

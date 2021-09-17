@@ -849,10 +849,6 @@ intptr_t QDECL VM_Call( vm_t *vm, int callnum, ... )
 	intptr_t r;
 	int i;
 
-#ifdef CMOD_CROSSHAIR
-	crosshair_vm_call();
-#endif
-
 	if(!vm || !vm->name[0])
 		Com_Error(ERR_FATAL, "VM_Call with NULL vm");
 

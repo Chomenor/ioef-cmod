@@ -751,7 +751,7 @@ const fsc_file_t *fs_general_lookup(const char *name, int lookup_flags, qboolean
 	FSC_ASSERT(name);
 
 #ifdef CMOD_CROSSHAIR
-	{	fsc_file_t *crosshair = crosshair_process_lookup(name);
+	{	fsc_file_t *crosshair = CMCrosshair_FileLookupHook(name);
 		if(crosshair) return crosshair; }
 #endif
 
@@ -809,7 +809,7 @@ const fsc_shader_t *fs_shader_lookup(const char *name, int lookup_flags, qboolea
 	FSC_ASSERT(name);
 
 #ifdef CMOD_CROSSHAIR
-	if(crosshair_process_lookup(name)) return 0;
+	if(CMCrosshair_FileLookupHook(name)) return 0;
 #endif
 	shader_or_image_lookup(name, qfalse, lookup_flags, &lookup_result, debug);
 	if(debug) return 0;
@@ -828,7 +828,7 @@ const fsc_file_t *fs_image_lookup(const char *name, int lookup_flags, qboolean d
 	FSC_ASSERT(name);
 
 #ifdef CMOD_CROSSHAIR
-	{	fsc_file_t *crosshair = crosshair_process_lookup(name);
+	{	fsc_file_t *crosshair = CMCrosshair_FileLookupHook(name);
 		if(crosshair) return crosshair; }
 #endif
 	shader_or_image_lookup(name, qtrue, lookup_flags, &lookup_result, debug);

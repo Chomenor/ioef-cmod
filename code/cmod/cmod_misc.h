@@ -79,18 +79,14 @@ void cmod_map_adjust_configure(const char *mapname);
 
 #ifdef CMOD_CROSSHAIR
 // Client hooks
-void crosshair_ui_init(int vid_width, int vid_height);
-void crosshair_vm_call(void);
-qboolean crosshair_stretchpic(float x, float y, float w, float h, float s1, float t1,
-		float s2, float t2, qhandle_t hShader);
-qboolean crosshair_cvar_setvalue(const char *cvar_name, float value);
-void crosshair_vm_registering_shader(const char *name, qhandle_t result);
-
-// Cvar hooks
-qboolean crosshair_cvar_update(const char *cvar_name, vmCvar_t *vm_cvar);
+int CMCrosshair_VMAdvanceCurrentCrosshair( void );
+qhandle_t CMCrosshair_GetCurrentShader( void );
+void CMCrosshair_UIInit(void);
+void CMCrosshair_CGameInit( void );
+void CMCrosshair_RegisterVMSupport( vmType_t vm_type );
 
 // Filesystem hooks
-fsc_file_t *crosshair_process_lookup(const char *name);
+fsc_file_t *CMCrosshair_FileLookupHook(const char *name);
 #endif
 
 #ifdef CMOD_VM_STRNCPY_FIX

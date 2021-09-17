@@ -777,9 +777,6 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_CVAR_SETVALUE:
-#ifdef CMOD_CROSSHAIR
-		if(crosshair_cvar_setvalue(VMA(1), VMF(2))) return 0;
-#endif
 		Cvar_SetValueSafe( VMA(1), VMF(2) );
 		return 0;
 
@@ -864,11 +861,6 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return re.RegisterSkin( VMA(1) );
 
 	case UI_R_REGISTERSHADERNOMIP:
-#ifdef CMOD_CROSSHAIR
-		{	qhandle_t result = re.RegisterShaderNoMip( VMA(1) );
-			crosshair_vm_registering_shader(VMA(1), result);
-			return result; }
-#endif
 		return re.RegisterShaderNoMip( VMA(1) );
 
 	case UI_R_CLEARSCENE:
@@ -896,9 +888,6 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_R_DRAWSTRETCHPIC:
-#ifdef CMOD_CROSSHAIR
-		if(crosshair_stretchpic(VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9])) return 0;
-#endif
 		re.DrawStretchPic( VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9] );
 		return 0;
 
@@ -1205,7 +1194,7 @@ void CL_InitUI( void ) {
 	vmInterpret_t		interpret;
 
 #ifdef CMOD_CROSSHAIR
-	crosshair_ui_init(cls.glconfig.vidWidth, cls.glconfig.vidHeight);
+	CMCrosshair_UIInit();
 #endif
 
 	// load the dll or bytecode

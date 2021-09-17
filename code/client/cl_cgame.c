@@ -591,11 +591,6 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 	case CG_R_REGISTERSHADER:
 		return re.RegisterShader( VMA(1) );
 	case CG_R_REGISTERSHADERNOMIP:
-#ifdef CMOD_CROSSHAIR
-		{	qhandle_t result = re.RegisterShaderNoMip( VMA(1) );
-			crosshair_vm_registering_shader(VMA(1), result);
-			return result; }
-#endif
 		return re.RegisterShaderNoMip( VMA(1) );
 #ifndef ELITEFORCE
 	case CG_R_REGISTERFONT:
@@ -648,9 +643,6 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 #endif
 		return 0;
 	case CG_R_DRAWSTRETCHPIC:
-#ifdef CMOD_CROSSHAIR
-		if(crosshair_stretchpic(VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9])) return 0;
-#endif
 		re.DrawStretchPic( VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9] );
 		return 0;
 	case CG_R_MODELBOUNDS:
@@ -808,6 +800,10 @@ void CL_InitCGame( void ) {
 	const char			*mapname;
 	int					t1, t2;
 	vmInterpret_t		interpret;
+
+#ifdef CMOD_CROSSHAIR
+	CMCrosshair_CGameInit();
+#endif
 
 	t1 = Sys_Milliseconds();
 
