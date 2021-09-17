@@ -1064,7 +1064,7 @@ void GLimp_Init( qboolean fixedFunction )
 	}
 
 #ifdef CMOD_RESOLUTION_HANDLING
-	mode_string = r_fullscreen->integer ? r_fullscreenMode->string : r_mode->string;
+	mode_string = ( r_fullscreen->integer || r_noborder->integer ) ? r_fullscreenMode->string : r_mode->string;
 #endif
 
 	ri.Sys_GLimpInit( );
