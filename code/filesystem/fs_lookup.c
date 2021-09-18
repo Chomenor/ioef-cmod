@@ -42,6 +42,9 @@ typedef struct {
 
 	// Special
 	qboolean dll_query;
+#ifdef CMOD_QVM_LOADING
+	qboolean cmod_qvm_query;
+#endif
 } lookup_query_t;
 
 #define RESFLAG_IN_DOWNLOAD_PK3 1
@@ -62,6 +65,9 @@ typedef struct {
 	int extension_position;
 	fs_modtype_t mod_type;
 	int flags;
+#ifdef CMOD_QVM_LOADING
+	int cmod_pak_priority;
+#endif
 
 	// Can be set to an error explanation to disable the resource during selection but still
 	// have it show up in the precedence debug listings.
@@ -110,6 +116,13 @@ static void configure_lookup_resource(const lookup_query_t *query, lookup_resour
 			resource->core_pak_priority = core_pk3_position(base_file->pk3_hash);
 			if(!(query->lookup_flags & LOOKUPFLAG_IGNORE_CURRENT_MAP) && base_file == current_map_pk3)
 				resource->flags |= RESFLAG_IN_CURRENT_MAP_PAK; } }
+
+#ifdef CMOD_QVM_LOADING
+	// Special priority for cmod qvm lookups
+	if(query->cmod_qvm_query && resource->file->sourcetype == FSC_SOURCETYPE_PK3) {
+		resource->cmod_pak_priority = cmod_pak_position(base_file->pk3_hash);
+	}
+#endif
 
 	// Check mod dir for case mismatched current or basegame directory
 	if((!Q_stricmp(resource_mod_dir, FS_GetCurrentGameDir()) && strcmp(resource_mod_dir, FS_GetCurrentGameDir()))
@@ -279,6 +292,16 @@ PC_COMPARE(resource_disabled) {
 
 PC_DEBUG(resource_disabled) {
 	ADD_STRING(va("Resource %i was selected because resource %i is disabled: %s", high_num, low_num, low->disabled)); }
+
+#ifdef CMOD_QVM_LOADING
+PC_COMPARE(cmod_paks) {
+	if(r1->cmod_pak_priority > r2->cmod_pak_priority) return -1;
+	if(r2->cmod_pak_priority > r1->cmod_pak_priority) return 1;
+	return 0; }
+
+PC_DEBUG(cmod_paks) {
+	ADD_STRING(va("Resource %i was selected due to special cMod pak precedence criteria.", high_num)); }
+#endif
 
 PC_COMPARE(special_shaders) {
 	qboolean r1_special = (r1->shader && (r1->mod_type >= MODTYPE_OVERRIDE_DIRECTORY ||
@@ -470,6 +493,9 @@ typedef struct {
 #define ADD_CHECK(check) { #check, pc_cmp_ ## check, pc_dbg_ ## check }
 static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK(resource_disabled),
+#ifdef CMOD_QVM_LOADING
+	ADD_CHECK(cmod_paks),
+#endif
 	ADD_CHECK(special_shaders),
 	ADD_CHECK(server_pure_position),
 #ifdef FS_SERVERCFG_ENABLED
@@ -908,6 +934,10 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 		queries[1].extension_count = ARRAY_LEN(dll_exts);
 		queries[1].dll_query = qtrue; }
 
+#ifdef CMOD_QVM_LOADING
+	rerun_lookup:
+#endif
+
 	if(debug) {
 		debug_lookup(queries, query_count, qtrue);
 		return 0; }
@@ -920,6 +950,21 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 		FS_DPrintf("qvm only: %s\n", qvm_only ? "yes" : "no");
 		lookup_print_debug_file(lookup_result.file);
 		fs_debug_indent_stop(); }
+
+#ifdef CMOD_QVM_LOADING
+	if ( !queries[0].cmod_qvm_query && lookup_result.file && lookup_result.file->sourcetype == FSC_SOURCETYPE_PK3 ) {
+		const fsc_file_direct_t *base_file = fsc_get_base_file(lookup_result.file, &fs);
+		if ( base_file->pk3_hash == 3960871590u || base_file->pk3_hash == 3312845577u ) {
+			// pak2.pk3 or pak92.pk3
+			if(fs_debug_lookup->integer) {
+				FS_DPrintf("Stock qvm detected, repeating query with cMod paks prioritized.\n");
+			}
+			queries[0].cmod_qvm_query = qtrue;
+			queries[0].lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST;
+			goto rerun_lookup;
+		}
+	}
+#endif
 
 	// Not elegant but should be adequate
 	if(is_dll_out) *is_dll_out = lookup_result.file && lookup_result.file->qp_ext_ptr &&

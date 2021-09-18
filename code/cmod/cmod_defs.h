@@ -175,6 +175,9 @@
 // Misc
 /* ******************************************************************************** */
 
+// [FEATURE] Load cMod QVM module releases in place of stock game QVMS
+#define CMOD_QVM_LOADING
+
 // [FEATURE] Reduce unnecessary console log messages in various parts of the game
 #define CMOD_REDUCE_WARNINGS
 

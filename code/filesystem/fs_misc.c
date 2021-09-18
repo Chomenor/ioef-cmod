@@ -183,6 +183,14 @@ int core_pk3_position(unsigned int hash) {
 	#endif
 	return 0; }
 
+#ifdef CMOD_QVM_LOADING
+int cmod_pak_position(unsigned int hash) {
+	#ifdef CMOD_PAKS
+	PROCESS_PAKS(CMOD_PAKS)
+	#endif
+	return 0; }
+#endif
+
 fs_modtype_t fs_get_mod_type(const char *mod_dir) {
 	if(mod_dir) {
 		char sanitized_mod_dir[FSC_MAX_MODDIR];

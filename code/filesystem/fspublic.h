@@ -36,6 +36,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // These paks get special precedence. Can be non-defined to disable.
 #define FS_CORE_PAKS {3376297517, 596947475, 3960871590, 1592359207}
 #define FS_NODOWNLOAD_PAKS 4
+
+#ifdef CMOD_QVM_LOADING
+#define CMOD_PAKS {401438010}		// pakcmod-current-2021-09-18.pk3
+#endif
 #else
 #ifndef STANDALONE
 // These paks get special precedence. Can be non-defined to disable.
@@ -417,6 +421,9 @@ typedef enum {
 } fs_modtype_t;
 #endif
 DEF_LOCAL( int core_pk3_position(unsigned int hash) )
+#ifdef CMOD_QVM_LOADING
+DEF_LOCAL( int cmod_pak_position(unsigned int hash) )
+#endif
 #ifdef FS_SERVERCFG_ENABLED
 DEF_LOCAL( unsigned int fs_servercfg_priority(const char *mod_dir) )
 #endif
