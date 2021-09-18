@@ -1269,7 +1269,7 @@ CL_ShutdownAll
 void CL_ShutdownAll(qboolean shutdownRef)
 {
 #ifdef CMOD_CVAR_HANDLING
-	if ( !com_sv_running->integer ) {
+	if ( !com_sv_running->integer && cls.cgameStarted ) {
 		cvar_end_session();
 	}
 #endif
