@@ -1268,6 +1268,11 @@ CL_ShutdownAll
 */
 void CL_ShutdownAll(qboolean shutdownRef)
 {
+#ifdef CMOD_CVAR_HANDLING
+	if ( !com_sv_running->integer ) {
+		cvar_end_session();
+	}
+#endif
 	if(CL_VideoRecording())
 		CL_CloseAVI();
 
@@ -1449,11 +1454,6 @@ void CL_Disconnect( qboolean showMainMenu ) {
 	if ( !com_cl_running || !com_cl_running->integer ) {
 		return;
 	}
-
-#ifdef CMOD_CVAR_HANDLING
-	// Does this handle curl disconnects well?
-	if(clc.state > CA_DISCONNECTED) cvar_end_session();
-#endif
 
 	// shutting down the client so enter full screen ui mode
 	Cvar_Set("r_uiFullScreen", "1");
