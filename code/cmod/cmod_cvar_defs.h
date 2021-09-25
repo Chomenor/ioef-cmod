@@ -101,3 +101,11 @@ CVAR_DEF(cmod_in_trigger, "0", 0)
 #ifdef CMOD_SV_PINGFIX
 CVAR_DEF(sv_pingFix, "2", 0)
 #endif
+
+#ifdef CMOD_ENGINE_ASPECT_CORRECT
+CVAR_DEF(cl_engineAspectCorrect, "1", CVAR_ARCHIVE)	// 1 = enable for known compatible mods, 2 = enable always (FOR TESTING ONLY!)
+CVAR_DEF(cg_fov, "85*", CVAR_ARCHIVE)
+CVAR_DEF(cg_aspectCorrect, "1", CVAR_ARCHIVE)
+CVAR_DEF(cg_aspectCorrectGunPos, "-1", 0)
+CVAR_DEF(ui_aspectCorrect, "-1", 0)
+#endif

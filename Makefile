@@ -1808,6 +1808,7 @@ Q3OBJ = \
   $(B)/client/fs_trusted_vms.o
 
 Q3OBJ += \
+  $(B)/client/aspect_correct.o \
   $(B)/client/cmod_cmd.o \
   $(B)/client/cmod_crosshair.o \
   $(B)/client/cmod_crosshair_builtins.o \

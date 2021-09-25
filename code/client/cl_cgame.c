@@ -419,9 +419,19 @@ The cgame module is making a system call
 */
 intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 #ifdef CMOD_VM_EXTENSIONS
-	intptr_t retval = 0;
-	if ( VMExt_HandleVMSyscall( args, VM_CGAME, cgvm, VM_ArgPtr, &retval ) ) {
-		return retval;
+	{
+		intptr_t retval = 0;
+		if ( VMExt_HandleVMSyscall( args, VM_CGAME, cgvm, VM_ArgPtr, &retval ) ) {
+			return retval;
+		}
+	}
+#endif
+#ifdef CMOD_ENGINE_ASPECT_CORRECT
+	{
+		intptr_t retval = 0;
+		if ( AspectCorrect_OnCgameSyscall( args, &retval ) ) {
+			return retval;
+		}
 	}
 #endif
 	switch( args[0] ) {

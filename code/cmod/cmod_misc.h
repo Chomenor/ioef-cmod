@@ -101,3 +101,9 @@ float cmod_anti_burnin_shift(float val);
 void cmod_copydebug_cmd(void);
 void cmod_debug_get_console(cmod_stream_t *stream);
 #endif
+
+#ifdef CMOD_ENGINE_ASPECT_CORRECT
+void AspectCorrect_OnVmCreate( const char *module, const fsc_file_t *sourceFile );
+qboolean AspectCorrect_OnCgameSyscall( intptr_t *args, intptr_t *retval );
+qboolean AspectCorrect_OnUISyscall( intptr_t *args, intptr_t *retval );
+#endif

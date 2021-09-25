@@ -637,6 +637,9 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 
 #ifdef NEW_FILESYSTEM
 	vm->source_file = fs_vm_lookup(module, interpret == VMI_NATIVE ? qfalse : qtrue, qfalse, &is_dll);
+#ifdef CMOD_ENGINE_ASPECT_CORRECT
+	AspectCorrect_OnVmCreate( module, vm->source_file );
+#endif
 	if(!vm->source_file) return 0;
 
 	if(is_dll) {
