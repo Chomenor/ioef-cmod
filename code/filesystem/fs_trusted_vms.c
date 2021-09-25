@@ -63,6 +63,11 @@ static const unsigned int trusted_vms[][8] = {
 	SHA(c60cd629,b05a4be7,05d0e939,21c928f9,7185d91a,2fa667d6,7cb80480,5bcb080e),	// XMasMod/xmas_pak0.pk3 cgame
 	SHA(75df17a5,b6716bfd,5554ad69,39b30467,7ee0f0a1,25f46dc4,ec2eb7aa,49f91b16),	// XMasMod/xmas_pak0.pk3 ui
 	SHA(4a39b6e1,b1359079,d2b3edce,8eab0610,8f87e10a,a04f4d79,5ade977a,64f88511),	// XMasMod/xmas_pak0.pk3 qagame
+
+	// Nano EF (https://www.gamefront.com/games/elite-force/file/nano-ef)
+	SHA(e58bf88a,bd53556c,8ff0e477,ca7d6534,e96d2320,925f11e7,aca0707b,9b060512),	// nanoef/znanoef.pk3 cgame
+	SHA(7d6eb729,a7e81066,2654d352,d07d1a77,a5446a8c,4c811d68,913e43c8,3953b007),	// nanoef/znanoef.pk3 ui
+	SHA(cb01c696,ff09f3b8,2c0658ed,5ae30b9c,1a7aa01e,7cba131a,3e6ae683,830ad787),	// nanoef/znanoef.pk3 qagame
 #else
 	// Original Quake 3 VMs
 	SHA(4ea18569,bf56a282,d26dc89e,b9efcc5e,edbe0b69,c10182fc,38446174,c1e55b49),	// baseq3/pak8.pk3 cgame
