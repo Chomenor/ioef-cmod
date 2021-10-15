@@ -25,8 +25,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+int CL_ServerStatusExt( char *serverAddress, char *serverStatusString, int maxLen, char *extString, int extLen );
+#endif
+
 #define VMEXT_TRAP_OFFSET 2400
 #define VMEXT_TRAP_GETVALUE 700
+
+typedef enum {
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+	VMEXT_LAN_SERVERSTATUS_EXT,
+#endif
+
+	VMEXT_FUNCTION_COUNT
+} vmext_function_id_t;
 
 /*
 ==================
@@ -70,6 +82,23 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 
 /*
 ==================
+VMExt_CheckGetFunction
+
+Handles GetValue calls returning extended functions.
+Returns trap id on success, -1 otherwise.
+==================
+*/
+static int VMExt_CheckGetFunction( const char *command ) {
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+	if ( !Q_stricmp( command, "trap_lan_serverstatus_ext" ) )
+		return VMEXT_LAN_SERVERSTATUS_EXT;
+#endif
+
+	return -1;
+}
+
+/*
+==================
 VMExt_HandleVMSyscall
 
 Handles VM system calls for GetValue or other extended functions.
@@ -78,6 +107,7 @@ Returns qtrue to abort standard syscall handling, qfalse otherwise.
 */
 qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
 		void *( *VM_ArgPtr )( intptr_t intValue ), intptr_t *retval ) {
+	int function_id;
 	*retval = 0;
 
 	// Handle GetValue call
@@ -88,9 +118,29 @@ qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
 
 		if ( VMExt_CheckGetString( command, buffer, size, vm_type ) ) {
 			*retval = 1;
+		} else {
+			function_id = VMExt_CheckGetFunction( command );
+			if ( function_id >= 0 ) {
+				Com_sprintf( buffer, size, "%i", VMEXT_TRAP_OFFSET + function_id );
+				*retval = 1;
+			}
 		}
 
 		return qtrue;
+	}
+
+	// Handle extension function calls
+	function_id = args[0] - VMEXT_TRAP_OFFSET;
+	if ( function_id >= 0 && function_id < VMEXT_FUNCTION_COUNT ) {
+
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+		if ( function_id == VMEXT_LAN_SERVERSTATUS_EXT ) {
+			*retval = CL_ServerStatusExt( VMA(1), VMA(2), args[3], VMA(4), args[5] );
+			return qtrue;
+		}
+#endif
+
+		Com_Error( ERR_DROP, "Unsupported VM extension function call: %i", function_id );
 	}
 
 	return qfalse;

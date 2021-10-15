@@ -1092,6 +1092,7 @@ special_cvar_t specials[] = {
 	{"cl_yawspeed", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cl_pitchspeed", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
 	{"cl_run", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
+	{"cl_serverStatusResendTime", "500", CVARTYPE_NONE, 0},
 
 	// Server settings
 	{"nextmap", 0, CVARTYPE_NONE, CVAR_PROTECTED_MODIFIABLE},
@@ -1181,6 +1182,7 @@ special_cvar_t specials[] = {
 	{"ui_browserShowEmpty", "1", CVARTYPE_MENU, CVAR_PROTECTED_ARCHIVABLE},
 	{"ui_browserShowFull", "1", CVARTYPE_MENU, CVAR_PROTECTED_ARCHIVABLE},
 	{"ui_browserSortKey", "4", CVARTYPE_MENU, CVAR_PROTECTED_ARCHIVABLE},
+	{"ui_browserPlayerType", "1", CVARTYPE_MENU, CVAR_PROTECTED_ARCHIVABLE},
 	{"server1", "", CVARTYPE_MENU, CVAR_PROTECTED_ARCHIVABLE},
 	{"server10", "", CVARTYPE_MENU, CVAR_PROTECTED_ARCHIVABLE},
 	{"server11", "", CVARTYPE_MENU, CVAR_PROTECTED_ARCHIVABLE},

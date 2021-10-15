@@ -4287,10 +4287,20 @@ serverStatus_t *CL_GetServerStatus( netadr_t from ) {
 CL_ServerStatus
 ===================
 */
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+int CL_ServerStatusExt( char *serverAddress, char *serverStatusString, int maxLen, char *extString, int extLen ) {
+#else
 int CL_ServerStatus( char *serverAddress, char *serverStatusString, int maxLen ) {
+#endif
 	int i;
 	netadr_t	to;
 	serverStatus_t *serverStatus;
+
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+	if ( extString && extLen > 0 ) {
+		extString[0] = '\0';
+	}
+#endif
 
 	// if no server address then reset all server status requests
 	if ( !serverAddress ) {
@@ -4316,6 +4326,15 @@ int CL_ServerStatus( char *serverAddress, char *serverStatusString, int maxLen )
 		// if we received a response for this server status request
 		if (!serverStatus->pending) {
 			Q_strncpyz(serverStatusString, serverStatus->string, maxLen);
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+			if ( extString && extLen > 0 ) {
+				// write ping to extended info output
+				char buffer[MAX_INFO_STRING];
+				buffer[0] = '\0';
+				Info_SetValueForKey( buffer, "ping", va( "%i", serverStatus->time - serverStatus->startTime ) );
+				Q_strncpyz( extString, buffer, extLen );
+			}
+#endif
 			serverStatus->retrieved = qtrue;
 			serverStatus->startTime = 0;
 			return qtrue;
@@ -4344,6 +4363,12 @@ int CL_ServerStatus( char *serverAddress, char *serverStatusString, int maxLen )
 	}
 	return qfalse;
 }
+
+#ifdef CMOD_SERVER_BROWSER_SUPPORT
+int CL_ServerStatus( char *serverAddress, char *serverStatusString, int maxLen ) {
+	return CL_ServerStatusExt( serverAddress, serverStatusString, maxLen, NULL, 0 );
+}
+#endif
 
 /*
 ===================

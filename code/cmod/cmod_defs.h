@@ -204,6 +204,11 @@
 // Used to enable features in the cMod VMs that are too specialized to enable by default for all engines
 #define CMOD_VM_CONFIG_VALUES
 
+// [FEATURE] Support VM calls to extend server querying features for the UI server browser
+#if !defined(DEDICATED)
+#define CMOD_SERVER_BROWSER_SUPPORT
+#endif
+
 // [BUGFIX] Use traditional EF float casting behavior in VM, which fixes the physics behavior
 // in various mods
 #define CMOD_VMFLOATCAST
