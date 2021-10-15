@@ -200,6 +200,10 @@
 // of the same sound effect at the same time
 #define CMOD_FILTER_OVERLAPPING_SOUNDS
 
+// [FEATURE] Make certain engine information and setting preferences available to VMs
+// Used to enable features in the cMod VMs that are too specialized to enable by default for all engines
+#define CMOD_VM_CONFIG_VALUES
+
 // [BUGFIX] Use traditional EF float casting behavior in VM, which fixes the physics behavior
 // in various mods
 #define CMOD_VMFLOATCAST
