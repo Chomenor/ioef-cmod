@@ -910,6 +910,20 @@ const fsc_file_t *fs_sound_lookup(const char *name, int lookup_flags, qboolean d
 		fs_debug_indent_stop(); }
 	return lookup_result.file; }
 
+#ifdef CMOD_QVM_LOADING
+// The following pk3s contain QVMs which are functionally interchangeable with the standard game
+// qvms, and can be safely replaced with the most up to date cMod qvms if available.
+static const int stock_qvms[] = {
+	-334095706,		// pak2.pk3
+	-982121719,		// pak92.pk3
+	1445632735,		// pakext2b.pk3
+	2099203013,		// pakcmod-stable-2021-07-16.pk3
+	732565402,		// pakcmod-dev-2021-07-16.pk3
+	401438010,		// pakcmod-current-2021-09-18.pk3
+	-749739206,		// pakcmod-current-2021-09-25.pk3
+};
+#endif
+
 const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean debug, qboolean *is_dll_out) {
 	// Returns a qvm or game dll file, or null if not found
 	// May throw ERR_DROP due to fs_restrict_dlfolder checks
@@ -953,15 +967,17 @@ const fsc_file_t *fs_vm_lookup(const char *name, qboolean qvm_only, qboolean deb
 
 #ifdef CMOD_QVM_LOADING
 	if ( !queries[0].cmod_qvm_query && lookup_result.file && lookup_result.file->sourcetype == FSC_SOURCETYPE_PK3 ) {
+		int i;
 		const fsc_file_direct_t *base_file = fsc_get_base_file(lookup_result.file, &fs);
-		if ( base_file->pk3_hash == 3960871590u || base_file->pk3_hash == 3312845577u ) {
-			// pak2.pk3 or pak92.pk3
-			if(fs_debug_lookup->integer) {
-				FS_DPrintf("Stock qvm detected, repeating query with cMod paks prioritized.\n");
+		for ( i = 0; i < ARRAY_LEN( stock_qvms ); ++i ) {
+			if ( (int)base_file->pk3_hash == stock_qvms[i] ) {
+				if ( fs_debug_lookup->integer ) {
+					FS_DPrintf( "Stock qvm detected, repeating query with cMod paks prioritized.\n" );
+				}
+				queries[0].cmod_qvm_query = qtrue;
+				queries[0].lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST;
+				goto rerun_lookup;
 			}
-			queries[0].cmod_qvm_query = qtrue;
-			queries[0].lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST;
-			goto rerun_lookup;
 		}
 	}
 #endif
