@@ -68,7 +68,7 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 #endif
 #ifdef CMOD_VM_CONFIG_VALUES
 	if ( !Q_stricmp( command, "ui_version_string" ) ) {
-		Q_strncpyz( buffer, "cMod HM v1.14" , size );
+		Q_strncpyz( buffer, "cMod HM v1.15", size );
 		return qtrue;
 	}
 	if ( !Q_stricmp( command, "ui_no_cd_key" ) ) {
