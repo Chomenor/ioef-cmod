@@ -151,8 +151,10 @@ cvar_t	*r_customwidth;
 cvar_t	*r_customheight;
 cvar_t	*r_customPixelAspect;
 
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 cvar_t	*r_overBrightBits;
 cvar_t	*r_mapOverBrightBits;
+#endif
 
 cvar_t	*r_debugSurface;
 cvar_t	*r_simpleMipMaps;

@@ -91,15 +91,15 @@ static void HSVtoRGB( float h, float s, float v, float rgb[3] )
 	}
 }
 
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 /*
 ===============
-R_ColorShiftLightingBytes
+R_IntensityLimitScaled
 
+Scale back color components so no component exceeds limit
 ===============
 */
-#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
-static void intensity_limit_scaled(double *colors, double limit) {
-	// Scale back color components so no component exceeds limit
+static void R_IntensityLimitScaled(double *colors, double limit) {
 	int i;
 	double highest = 0.0;
 
@@ -109,6 +109,13 @@ static void intensity_limit_scaled(double *colors, double limit) {
 	if(highest > limit) for(i=0; i<3; ++i) {
 		colors[i] *= (limit / highest); } }
 #endif
+
+/*
+===============
+R_ColorShiftLightingBytes
+
+===============
+*/
 static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	int i;
@@ -128,7 +135,7 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 
 	for(i=0; i<3; ++i) {
 		colors[i] = in[i] * map_lighting_factor_overbright_scaled; }
-	intensity_limit_scaled(colors, 255.0);
+	R_IntensityLimitScaled(colors, 255.0);
 
 	if(map_lighting_gamma != 1.0) {
 		double component_factor = r_mapLightingGammaComponent->value;
@@ -140,7 +147,7 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 			double component_value = 255.0 * pow(colors[i]/255.0, 1.0/map_lighting_gamma);
 			double blended_value = colors[i] * blended_intensity_modifier;
 			colors[i] = component_value * component_factor + blended_value * (1.0 - component_factor); } }
-	intensity_limit_scaled(colors, 255.0);
+	R_IntensityLimitScaled(colors, 255.0);
 
 	int min_clamp = (int)(map_lighting_clamp_min * 255.0);
 	int max_clamp = (int)(map_lighting_clamp_max * 255.0);

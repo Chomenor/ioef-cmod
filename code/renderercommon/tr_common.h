@@ -118,6 +118,9 @@ extern	cvar_t	*r_saveFontData;
 qboolean	R_GetModeInfo( int *width, int *height, float *windowAspect, int mode );
 
 float R_NoiseGet4f( float x, float y, float z, double t );
+#ifdef ELITEFORCE
+int R_RandomOn( float t );
+#endif
 void  R_NoiseInit( void );
 
 image_t     *R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags );

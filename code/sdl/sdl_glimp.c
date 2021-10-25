@@ -1116,11 +1116,13 @@ success:
 	glConfig.driverType = GLDRV_ICD;
 	glConfig.hardwareType = GLHW_GENERIC;
 
-#ifndef CMOD_FRAMEBUFFER
+#ifdef CMOD_FRAMEBUFFER
+	// Only need to set this for gl2 renderer, because gl1 has its own handling
+	if ( !fixedFunction )
+#endif
 	// Only using SDL_SetWindowBrightness to determine if hardware gamma is supported
 	glConfig.deviceSupportsGamma = !r_ignorehwgamma->integer &&
 		SDL_SetWindowBrightness( SDL_window, 1.0f ) >= 0;
-#endif
 
 	// get our config strings
 	Q_strncpyz( glConfig.vendor_string, (char *) qglGetString (GL_VENDOR), sizeof( glConfig.vendor_string ) );

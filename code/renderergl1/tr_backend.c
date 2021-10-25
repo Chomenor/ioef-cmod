@@ -1114,14 +1114,14 @@ const void	*RB_SwapBuffers( const void *data ) {
 		ri.Hunk_FreeTempMemory( stencilReadback );
 	}
 
-#ifdef CMOD_FRAMEBUFFER
-	framebuffer_render();
-#endif
-
 
 	if ( !glState.finishCalled ) {
 		qglFinish();
 	}
+
+#ifdef CMOD_FRAMEBUFFER
+	framebuffer_render();
+#endif
 
 	GLimp_LogComment( "***************** RB_SwapBuffers *****************\n\n\n" );
 
@@ -1146,7 +1146,11 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		data = PADP(data, sizeof(void *));
 
 #ifdef CMOD_FRAMEBUFFER
-		framebuffer_bind();
+		if ( *(const int *)data == RC_SCREENSHOT || *(const int *)data == RC_VIDEOFRAME ) {
+			framebuffer_unbind();
+		} else {
+			framebuffer_bind();
+		}
 #endif
 
 		switch ( *(const int *)data ) {

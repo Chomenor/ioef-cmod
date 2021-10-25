@@ -1141,10 +1141,6 @@ extern	cvar_t	*r_framebuffer;
 
 //====================================================================
 
-#ifdef ELITEFORCE
-int R_RandomOn( float t );
-#endif
-
 void R_SwapBuffers( int );
 
 void R_RenderView( viewParms_t *parms );
@@ -1681,6 +1677,7 @@ void framebuffer_shutdown(void);
 void framebuffer_init(void);
 void framebuffer_render(void);
 void framebuffer_bind(void);
+void framebuffer_unbind(void);
 void framebuffer_test(void);
 #endif
 

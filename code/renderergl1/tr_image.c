@@ -37,6 +37,13 @@ static	image_t*		hashTable[FILE_HASH_SIZE];
 void R_GammaCorrect( byte *buffer, int bufSize ) {
 	int i;
 
+#ifdef CMOD_FRAMEBUFFER
+	if ( tr.framebuffer_active ) {
+		// Screenshot/video images should already be gamma corrected by framebuffer.
+		return;
+	}
+#endif
+
 	for ( i = 0; i < bufSize; i++ ) {
 		buffer[i] = s_gammatable[buffer[i]];
 	}
@@ -349,18 +356,18 @@ void R_LightScaleTexture (unsigned *in, int inwidth, int inheight, qboolean only
 {
 #ifdef CMOD_TEXTURE_GAMMA
 	if(r_textureGamma->value != 1.0f) {
-			int		i, c;
-			byte	*p;
+		int		i, c;
+		byte	*p;
 
-			p = (byte *)in;
+		p = (byte *)in;
 
-			c = inwidth*inheight;
-			for (i=0 ; i<c ; i++, p+=4)
-			{
-				p[0] = 255.0 * pow(p[0]/255.0f, 1.0f/r_textureGamma->value);
-				p[1] = 255.0 * pow(p[1]/255.0f, 1.0f/r_textureGamma->value);
-				p[2] = 255.0 * pow(p[2]/255.0f, 1.0f/r_textureGamma->value);
-			}
+		c = inwidth*inheight;
+		for (i=0 ; i<c ; i++, p+=4)
+		{
+			p[0] = 255.0 * pow(p[0]/255.0f, 1.0f/r_textureGamma->value);
+			p[1] = 255.0 * pow(p[1]/255.0f, 1.0f/r_textureGamma->value);
+			p[2] = 255.0 * pow(p[2]/255.0f, 1.0f/r_textureGamma->value);
+		}
 	}
 #endif
 	if ( only_gamma )
@@ -1330,7 +1337,10 @@ void R_SetColorMappings( void ) {
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	tr.overbrightFactor = r_overBrightFactor->value;
 
-	if(!tr.framebuffer_active && (!glConfig.deviceSupportsGamma || !glConfig.isFullscreen)) {
+#ifdef CMOD_FRAMEBUFFER
+	if(!tr.framebuffer_active)
+#endif
+	if(!glConfig.deviceSupportsGamma || !glConfig.isFullscreen) {
 		tr.overbrightFactor = 1; }
 
 	tr.identityLight = 1.0f / tr.overbrightFactor;

@@ -448,8 +448,10 @@ void framebuffer_render(void) {
 		glsl_render(); } }
 
 void framebuffer_bind(void) {
-	if(tr.framebuffer_active) GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, fbo_state.draw_framebuffer);
-	else GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, 0); }
+	if(tr.framebuffer_active) GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, fbo_state.draw_framebuffer); }
+
+void framebuffer_unbind(void) {
+	if(tr.framebuffer_active) GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, 0); }
 
 void framebuffer_test(void) {
 	if(tr.framebuffer_active) framebuffer_shutdown();
