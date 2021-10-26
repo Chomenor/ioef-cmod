@@ -184,7 +184,13 @@ extern float EvalWaveFormClamped( const waveForm_t *wf );
 static void ComputeTexMods( shaderStage_t *pStage, int bundleNum, float *outMatrix, float *outOffTurb)
 {
 	int tm;
+#ifdef CMOD_TCGEN_FIX
+	// workaround for possible clang compiler bug
+	float matrix[6];
+	volatile float currentmatrix[6];
+#else
 	float matrix[6], currentmatrix[6];
+#endif
 	textureBundle_t *bundle = &pStage->bundle[bundleNum];
 
 	matrix[0] = 1.0f; matrix[2] = 0.0f; matrix[4] = 0.0f;

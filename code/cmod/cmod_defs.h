@@ -88,6 +88,10 @@
 // [BUGFIX] Fix potential crash issue on certain maps
 #define CMOD_FOGSIDE_FIX
 
+// [BUGFIX] Workaround potential mac compiler bug affecting tcGen shaders
+// Original issue involved broken console shader on release builds using clang v13.0 x86_64
+#define CMOD_TCGEN_FIX
+
 /* ******************************************************************************** */
 // Server
 /* ******************************************************************************** */
