@@ -148,7 +148,7 @@ CGAME="cgame"
 GAME="qagame"
 UI="ui"
 
-RENDERER_OPENGL="renderer_opengl"
+RENDERER_OPENGL="cmod_renderer_opengl"
 
 DEDICATED_NAME="cmod_dedicated"
 

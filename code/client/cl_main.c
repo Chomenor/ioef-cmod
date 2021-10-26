@@ -3471,11 +3471,17 @@ void CL_InitRef( void ) {
 #ifdef USE_RENDERER_DLOPEN
 #ifdef ELITEFORCE
 	cl_renderer = Cvar_Get("cl_renderer", "opengl1", CVAR_ARCHIVE | CVAR_LATCH);
-#else
-	cl_renderer = Cvar_Get("cl_renderer", "opengl2", CVAR_ARCHIVE | CVAR_LATCH);
+
+#ifndef RENDERER_PREFIX
+#define RENDERER_PREFIX "renderer_"
 #endif
 
+	Com_sprintf(dllName, sizeof(dllName), RENDERER_PREFIX "%s_" ARCH_STRING DLL_EXT, cl_renderer->string);
+#else
+	cl_renderer = Cvar_Get("cl_renderer", "opengl2", CVAR_ARCHIVE | CVAR_LATCH);
+
 	Com_sprintf(dllName, sizeof(dllName), "renderer_%s_" ARCH_STRING DLL_EXT, cl_renderer->string);
+#endif
 
 	if(!(rendererLib = Sys_LoadDll(dllName, qfalse)) && strcmp(cl_renderer->string, cl_renderer->resetString))
 	{
@@ -3483,7 +3489,7 @@ void CL_InitRef( void ) {
 		Cvar_ForceReset("cl_renderer");
 
 #ifdef ELITEFORCE
-		Com_sprintf(dllName, sizeof(dllName), "renderer_opengl1_" ARCH_STRING DLL_EXT);
+		Com_sprintf(dllName, sizeof(dllName), RENDERER_PREFIX "opengl1_" ARCH_STRING DLL_EXT);
 #else
 		Com_sprintf(dllName, sizeof(dllName), "renderer_opengl2_" ARCH_STRING DLL_EXT);
 #endif
