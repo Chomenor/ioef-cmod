@@ -1135,6 +1135,7 @@ special_cvar_t specials[] = {
 	{"cl_maxPackets", "125", CVARTYPE_NETWORK, CVAR_PROTECTED_MODIFIABLE},
 
 	// Graphics settings
+	{"cl_renderer", "opengl1", CVARTYPE_GRAPHICS, CVAR_ARCHIVE},
 	{"com_maxfps", "125", CVARTYPE_GRAPHICS, CVAR_PROTECTED_MODIFIABLE},
 	{"r_fullscreen", "1", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
 	{"r_mode", "720x480", CVARTYPE_GRAPHICS, CVAR_PROTECTED_ARCHIVABLE},
@@ -1167,6 +1168,7 @@ special_cvar_t specials[] = {
 	{"cg_aspectCorrectCenterHud", "0", CVARTYPE_GRAPHICS, CVAR_ARCHIVE|CVAR_PROTECTED_ARCHIVABLE},
 	{"cmod_map_adjust_enabled", "1", CVARTYPE_GRAPHICS, 0},
 	{"cmod_anti_burnin", "0", CVARTYPE_GRAPHICS, 0},
+	{"r_autoExposure", "0", CVARTYPE_GRAPHICS, CVAR_ARCHIVE},
 
 	// Sound settings
 	// Don't default to OpenAL since it currently doesn't work nicely with some EF maps

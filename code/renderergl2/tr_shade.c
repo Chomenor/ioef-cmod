@@ -406,7 +406,11 @@ static void ComputeShaderColors( shaderStage_t *pStage, vec4_t baseColor, vec4_t
 
 	qboolean is2DDraw = backEnd.currentEntity == &backEnd.entity2D;
 
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+	float overbright = (isBlend || is2DDraw) ? 1.0f : tr.overbrightFactor;
+#else
 	float overbright = (isBlend || is2DDraw) ? 1.0f : (float)(1 << tr.overbrightBits);
+#endif
 
 	fog_t *fog;
 
@@ -979,6 +983,11 @@ static unsigned int RB_CalcShaderVertexAttribs( shaderCommands_t *input )
 static void RB_IterateStagesGeneric( shaderCommands_t *input )
 {
 	int stage;
+#ifdef ELITEFORCE
+	qboolean overridealpha = qfalse;
+	int oldAlphaGen = AGEN_IDENTITY;
+	int oldStateBits = 0;
+#endif
 	
 	vec4_t fogDistanceVector, fogDepthVector = {0, 0, 0, 0};
 	float eyeT = 0;
@@ -1003,6 +1012,27 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 		{
 			break;
 		}
+
+#ifdef ELITEFORCE
+		// Override the shader alpha channel if requested.
+		if(backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA)
+		{
+			overridealpha = qtrue;
+			oldAlphaGen = pStage->alphaGen;
+			oldStateBits = pStage->stateBits;
+			pStage->alphaGen = AGEN_ENTITY;
+
+			if(backEnd.currentEntity->e.shaderRGBA[3] < 0xFF && !(pStage->stateBits & GLS_ATEST_BITS))
+			{
+				// set bits for blendfunc blend
+				pStage->stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+			}
+		}
+		else
+		{
+			overridealpha = qfalse;
+		}
+#endif
 
 		if (backEnd.depthFill)
 		{
@@ -1377,6 +1407,14 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 		// draw
 		//
 		R_DrawElements(input->numIndexes, input->firstIndex);
+
+#ifdef ELITEFORCE
+		if ( overridealpha )
+		{
+			pStage->alphaGen = oldAlphaGen;
+			pStage->stateBits = oldStateBits;
+		}
+#endif
 
 		// allow skipping out to show just lightmaps during development
 		if ( r_lightmap->integer && ( pStage->bundle[0].isLightmap || pStage->bundle[1].isLightmap ) )

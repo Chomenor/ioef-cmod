@@ -286,7 +286,9 @@ void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, flo
 
 void RE_BeginScene(const refdef_t *fd)
 {
+#ifndef ELITEFORCE
 	Com_Memcpy( tr.refdef.text, fd->text, sizeof( tr.refdef.text ) );
+#endif
 
 	tr.refdef.x = fd->x;
 	tr.refdef.y = fd->y;
@@ -334,7 +336,11 @@ void RE_BeginScene(const refdef_t *fd)
 	}
 	else
 	{
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+		float scale = r_mapLightingFactor->value / 255.0f;
+#else
 		float scale = (1 << r_mapOverBrightBits->integer) / 255.0f;
+#endif
 
 		if (r_forceSun->integer)
 			VectorScale(tr.sunLight, scale * r_forceSunLightScale->value, tr.refdef.sunCol);

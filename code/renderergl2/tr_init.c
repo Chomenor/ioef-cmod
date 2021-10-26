@@ -72,6 +72,13 @@ cvar_t	*r_measureOverdraw;
 
 cvar_t	*r_inGameVideo;
 cvar_t	*r_fastsky;
+#ifdef CMOD_FASTSKY_COLOR
+cvar_t	*r_fastskyColor;
+#else
+#ifdef ELITEFORCE
+cvar_t	*r_origfastsky;
+#endif
+#endif
 cvar_t	*r_drawSun;
 cvar_t	*r_dynamiclight;
 cvar_t	*r_dlightBacks;
@@ -210,8 +217,10 @@ cvar_t	*r_customwidth;
 cvar_t	*r_customheight;
 cvar_t	*r_customPixelAspect;
 
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 cvar_t	*r_overBrightBits;
 cvar_t	*r_mapOverBrightBits;
+#endif
 
 cvar_t	*r_debugSurface;
 cvar_t	*r_simpleMipMaps;
@@ -234,6 +243,30 @@ cvar_t	*r_maxpolys;
 int		max_polys;
 cvar_t	*r_maxpolyverts;
 int		max_polyverts;
+
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+cvar_t	*r_overBrightFactor;
+cvar_t	*r_mapLightingFactor;
+cvar_t	*r_mapLightingGamma;
+cvar_t	*r_mapLightingGammaComponent;
+cvar_t	*r_mapLightingClampMin;
+cvar_t	*r_mapLightingClampMax;
+#endif
+
+#ifdef CMOD_TEXTURE_GAMMA
+cvar_t	*r_textureGamma;
+#endif
+
+#ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
+cvar_t	*r_envMapMode;
+#endif
+
+#ifdef CMOD_MAP_AUTO_ADJUST
+cvar_t	*r_autoMapLightingFactor;
+cvar_t	*r_autoMapLightingGammaMod;
+cvar_t	*r_autoMapLightingClampMin;
+cvar_t	*r_autoEnvMapMode;
+#endif
 
 /*
 ** InitOpenGL
@@ -264,6 +297,10 @@ static void InitOpenGL( void )
 		GLimp_InitExtraExtensions();
 
 		glConfig.textureEnvAddAvailable = qtrue;
+
+#ifdef ELITEFORCE
+		glConfig.textureFilterAnisotropicAvailable = textureFilterAnisotropic;
+#endif
 
 		// OpenGL driver constants
 		qglGetIntegerv( GL_MAX_TEXTURE_SIZE, &temp );
@@ -1075,6 +1112,16 @@ void GfxInfo_f( void )
 	{
 		ri.Printf( PRINT_ALL, "N/A\n" );
 	}
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+	if ( glConfig.deviceSupportsGamma )
+	{
+		ri.Printf( PRINT_ALL, "GAMMA: hardware w/ %g overbright factor\n", tr.overbrightFactor );
+	}
+	else
+	{
+		ri.Printf( PRINT_ALL, "GAMMA: software w/ %g overbright factor\n", tr.overbrightFactor );
+	}
+#else
 	if ( glConfig.deviceSupportsGamma )
 	{
 		ri.Printf( PRINT_ALL, "GAMMA: hardware w/ %d overbright bits\n", tr.overbrightBits );
@@ -1083,6 +1130,7 @@ void GfxInfo_f( void )
 	{
 		ri.Printf( PRINT_ALL, "GAMMA: software w/ %d overbright bits\n", tr.overbrightBits );
 	}
+#endif
 
 	ri.Printf( PRINT_ALL, "texturemode: %s\n", r_textureMode->string );
 	ri.Printf( PRINT_ALL, "picmip: %d\n", r_picmip->integer );
@@ -1174,7 +1222,11 @@ void R_Register( void )
 	// latched and archived variables
 	//
 	r_allowExtensions = ri.Cvar_Get( "r_allowExtensions", "1", CVAR_ARCHIVE | CVAR_LATCH );
+#ifdef ELITEFORCE
+	r_ext_compressed_textures = ri.Cvar_Get( "r_ext_compress_textures", "0", CVAR_ARCHIVE | CVAR_LATCH );
+#else
 	r_ext_compressed_textures = ri.Cvar_Get( "r_ext_compressed_textures", "0", CVAR_ARCHIVE | CVAR_LATCH );
+#endif
 	r_ext_multitexture = ri.Cvar_Get( "r_ext_multitexture", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_ext_compiled_vertex_array = ri.Cvar_Get( "r_ext_compiled_vertex_array", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_texture_env_add = ri.Cvar_Get( "r_ext_texture_env_add", "1", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1201,7 +1253,9 @@ void R_Register( void )
 	r_depthbits = ri.Cvar_Get( "r_depthbits", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	r_ext_multisample = ri.Cvar_Get( "r_ext_multisample", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	ri.Cvar_CheckRange( r_ext_multisample, 0, 4, qtrue );
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 	r_overBrightBits = ri.Cvar_Get ("r_overBrightBits", "1", CVAR_ARCHIVE | CVAR_LATCH );
+#endif
 	r_ignorehwgamma = ri.Cvar_Get( "r_ignorehwgamma", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mode = ri.Cvar_Get( "r_mode", "-2", CVAR_ARCHIVE | CVAR_LATCH );
 	r_fullscreen = ri.Cvar_Get( "r_fullscreen", "1", CVAR_ARCHIVE );
@@ -1283,7 +1337,13 @@ void R_Register( void )
 	r_displayRefresh = ri.Cvar_Get( "r_displayRefresh", "0", CVAR_LATCH );
 	ri.Cvar_CheckRange( r_displayRefresh, 0, 200, qtrue );
 	r_fullbright = ri.Cvar_Get ("r_fullbright", "0", CVAR_LATCH|CVAR_CHEAT );
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
+#ifdef ELITEFORCE
+	r_mapOverBrightBits = ri.Cvar_Get ("r_mapOverBrightBits", "1", CVAR_LATCH );
+#else
 	r_mapOverBrightBits = ri.Cvar_Get ("r_mapOverBrightBits", "2", CVAR_LATCH );
+#endif
+#endif
 	r_intensity = ri.Cvar_Get ("r_intensity", "1", CVAR_LATCH );
 	r_singleShader = ri.Cvar_Get ("r_singleShader", "0", CVAR_CHEAT | CVAR_LATCH );
 
@@ -1299,6 +1359,13 @@ void R_Register( void )
 	r_stereoSeparation = ri.Cvar_Get( "r_stereoSeparation", "64", CVAR_ARCHIVE );
 	r_ignoreGLErrors = ri.Cvar_Get( "r_ignoreGLErrors", "1", CVAR_ARCHIVE );
 	r_fastsky = ri.Cvar_Get( "r_fastsky", "0", CVAR_ARCHIVE );
+#ifdef CMOD_FASTSKY_COLOR
+	r_fastskyColor = ri.Cvar_Get( "r_fastskyColor", "ccb366", CVAR_ARCHIVE );
+#else
+#ifdef ELITEFORCE
+	r_origfastsky = ri.Cvar_Get( "r_origfastsky", "0", CVAR_ARCHIVE );
+#endif
+#endif
 	r_inGameVideo = ri.Cvar_Get( "r_inGameVideo", "1", CVAR_ARCHIVE );
 	r_drawSun = ri.Cvar_Get( "r_drawSun", "0", CVAR_ARCHIVE );
 	r_dynamiclight = ri.Cvar_Get( "r_dynamiclight", "1", CVAR_ARCHIVE );
@@ -1372,6 +1439,30 @@ void R_Register( void )
 	r_maxpolys = ri.Cvar_Get( "r_maxpolys", va("%d", MAX_POLYS), 0);
 	r_maxpolyverts = ri.Cvar_Get( "r_maxpolyverts", va("%d", MAX_POLYVERTS), 0);
 
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+	r_overBrightFactor = ri.Cvar_Get("r_overBrightFactor", "1.5", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingFactor = ri.Cvar_Get("r_mapLightingFactor", "2", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingGamma = ri.Cvar_Get("r_mapLightingGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingGammaComponent = ri.Cvar_Get("r_mapLightingGammaComponent", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingClampMin = ri.Cvar_Get("r_mapLightingClampMin", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingClampMax = ri.Cvar_Get("r_mapLightingClampMax", "1", CVAR_ARCHIVE | CVAR_LATCH);
+#endif
+
+#ifdef CMOD_TEXTURE_GAMMA
+	r_textureGamma = ri.Cvar_Get("r_textureGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
+#endif
+
+#ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
+	r_envMapMode = ri.Cvar_Get("r_envMapMode", "-1", CVAR_ARCHIVE);
+#endif
+
+#ifdef CMOD_MAP_AUTO_ADJUST
+	r_autoMapLightingFactor = ri.Cvar_Get("r_autoMapLightingFactor", "", 0);
+	r_autoMapLightingGammaMod = ri.Cvar_Get("r_autoMapLightingGammaMod", "", 0);
+	r_autoMapLightingClampMin = ri.Cvar_Get("r_autoMapLightingClampMin", "", 0);
+	r_autoEnvMapMode = ri.Cvar_Get("r_autoEnvMapMode", "", 0);
+#endif
+
 	// make sure all the commands added here are also
 	// removed in R_Shutdown
 	ri.Cmd_AddCommand( "imagelist", R_ImageList_f );
@@ -1426,8 +1517,15 @@ void R_Init( void ) {
 	tr.new_filesystem = ri.Cvar_VariableIntegerValue("new_filesystem") ? qtrue : qfalse;
 #endif
 
+#ifdef ELITEFORCE
+	if(sizeof(glconfig_t) != 5192)
+	{
+		ri.Error( ERR_FATAL, "Mod ABI incompatible: sizeof(glconfig_t) == %u != 5192", (unsigned int) sizeof(glconfig_t));
+	}
+#else
 	if(sizeof(glconfig_t) != 11332)
 		ri.Error( ERR_FATAL, "Mod ABI incompatible: sizeof(glconfig_t) == %u != 11332", (unsigned int) sizeof(glconfig_t));
+#endif
 
 //	Swap_Init();
 
@@ -1435,6 +1533,10 @@ void R_Init( void ) {
 		ri.Printf( PRINT_WARNING, "tess.xyz not 16 byte aligned\n" );
 	}
 	//Com_Memset( tess.constantColor255, 255, sizeof( tess.constantColor255 ) );
+
+#ifdef ELITEFORCE
+	R_NoiseInit();
+#endif
 
 	//
 	// init function tables
@@ -1445,6 +1547,9 @@ void R_Init( void ) {
 		tr.squareTable[i]	= ( i < FUNCTABLE_SIZE/2 ) ? 1.0f : -1.0f;
 		tr.sawToothTable[i] = (float)i / FUNCTABLE_SIZE;
 		tr.inverseSawToothTable[i] = 1.0f - tr.sawToothTable[i];
+#ifdef ELITEFORCE
+		tr.noiseTable[i] = R_NoiseGet4f(0, 0, 0, i);
+#endif
 
 		if ( i < FUNCTABLE_SIZE / 2 )
 		{
@@ -1465,7 +1570,9 @@ void R_Init( void ) {
 
 	R_InitFogTable();
 
+#ifndef ELITEFORCE
 	R_NoiseInit();
+#endif
 
 	R_Register();
 
@@ -1614,6 +1721,9 @@ refexport_t *GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.RegisterSkin = RE_RegisterSkin;
 	re.RegisterShader = RE_RegisterShader;
 	re.RegisterShaderNoMip = RE_RegisterShaderNoMip;
+#ifdef ELITEFORCE
+	re.RegisterShader3D = RE_RegisterShader3D;
+#endif
 	re.LoadWorld = RE_LoadWorldMap;
 	re.SetWorldVisData = RE_SetWorldVisData;
 	re.EndRegistration = RE_EndRegistration;

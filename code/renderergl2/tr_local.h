@@ -189,6 +189,9 @@ typedef enum {
 	GF_INVERSE_SAWTOOTH, 
 
 	GF_NOISE
+#ifdef ELITEFORCE
+	,GF_RANDOM
+#endif
 
 } genFunc_t;
 
@@ -1610,7 +1613,11 @@ typedef struct {
 
 	float					identityLight;		// 1.0 / ( 1 << overbrightBits )
 	int						identityLightByte;	// identityLight * 255
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+	float					overbrightFactor;
+#else
 	int						overbrightBits;		// r_overbrightBits->integer, but set to 0 if no hw gamma
+#endif
 
 	orientationr_t			or;					// for current entity
 
@@ -1664,6 +1671,9 @@ typedef struct {
 	float					triangleTable[FUNCTABLE_SIZE];
 	float					sawToothTable[FUNCTABLE_SIZE];
 	float					inverseSawToothTable[FUNCTABLE_SIZE];
+#ifdef ELITEFORCE
+	float					noiseTable[FUNCTABLE_SIZE];
+#endif
 	float					fogTable[FOG_TABLE_SIZE];
 } trGlobals_t;
 
@@ -1699,6 +1709,13 @@ extern cvar_t	*r_lodscale;
 
 extern cvar_t	*r_inGameVideo;				// controls whether in game video should be draw
 extern cvar_t	*r_fastsky;				// controls whether sky should be cleared or drawn
+#ifdef CMOD_FASTSKY_COLOR
+extern cvar_t	*r_fastskyColor;		// allows specifying fastsky color in rgb hex format
+#else
+#ifdef ELITEFORCE
+extern cvar_t	*r_origfastsky;				// controls whether fastsky color is like in original EF.
+#endif
+#endif
 extern cvar_t	*r_drawSun;				// controls drawing of sun quad
 extern cvar_t	*r_dynamiclight;		// dynamic lights enabled/disabled
 extern cvar_t	*r_dlightBacks;			// dlight non-facing surfaces for continuity
@@ -1822,8 +1839,10 @@ extern	cvar_t	*r_greyscale;
 
 extern	cvar_t	*r_ignoreGLErrors;
 
+#ifndef CMOD_MAP_BRIGHTNESS_SETTINGS
 extern	cvar_t	*r_overBrightBits;
 extern	cvar_t	*r_mapOverBrightBits;
+#endif
 
 extern	cvar_t	*r_debugSurface;
 extern	cvar_t	*r_simpleMipMaps;
@@ -1834,6 +1853,30 @@ extern	cvar_t	*r_debugSort;
 extern	cvar_t	*r_printShaders;
 
 extern cvar_t	*r_marksOnTriangleMeshes;
+
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+extern	cvar_t	*r_overBrightFactor;
+extern	cvar_t	*r_mapLightingFactor;
+extern	cvar_t	*r_mapLightingGamma;
+extern	cvar_t	*r_mapLightingGammaComponent;
+extern	cvar_t	*r_mapLightingClampMin;
+extern	cvar_t	*r_mapLightingClampMax;
+#endif
+
+#ifdef CMOD_TEXTURE_GAMMA
+extern	cvar_t	*r_textureGamma;
+#endif
+
+#ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
+extern	cvar_t	*r_envMapMode;
+#endif
+
+#ifdef CMOD_MAP_AUTO_ADJUST
+extern	cvar_t	*r_autoMapLightingFactor;
+extern	cvar_t	*r_autoMapLightingGammaMod;
+extern	cvar_t	*r_autoMapLightingClampMin;
+extern	cvar_t	*r_autoEnvMapMode;
+#endif
 
 //====================================================================
 

@@ -1254,6 +1254,22 @@ lighting range
 */
 void R_LightScaleTexture (byte *in, int inwidth, int inheight, qboolean only_gamma )
 {
+#ifdef CMOD_TEXTURE_GAMMA
+	if(r_textureGamma->value != 1.0f) {
+		int		i, c;
+		byte	*p;
+
+		p = (byte *)in;
+
+		c = inwidth*inheight;
+		for (i=0 ; i<c ; i++, p+=4)
+		{
+			p[0] = 255.0 * pow(p[0]/255.0f, 1.0f/r_textureGamma->value);
+			p[1] = 255.0 * pow(p[1]/255.0f, 1.0f/r_textureGamma->value);
+			p[2] = 255.0 * pow(p[2]/255.0f, 1.0f/r_textureGamma->value);
+		}
+	}
+#endif
 	if ( only_gamma )
 	{
 		if ( !glConfig.deviceSupportsGamma )
@@ -2882,6 +2898,10 @@ void R_SetColorMappings( void ) {
 	int		inf;
 
 	// setup the overbright lighting
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+	tr.overbrightFactor = r_overBrightFactor->value;
+	tr.identityLight = 1.0f / tr.overbrightFactor;
+#else
 	tr.overbrightBits = r_overBrightBits->integer;
 
 	// allow 2 overbright bits
@@ -2897,6 +2917,7 @@ void R_SetColorMappings( void ) {
 	}
 
 	tr.identityLight = 1.0f / ( 1 << tr.overbrightBits );
+#endif
 	tr.identityLightByte = 255 * tr.identityLight;
 
 

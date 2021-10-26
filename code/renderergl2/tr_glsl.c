@@ -270,6 +270,28 @@ static void GLSL_GetShaderHeader( GLenum shaderType, const GLchar *extra, char *
 		Q_strcat(dest, size, "#define shadow2D(a,b) shadow2D(a,b).r \n");
 	}
 
+#ifdef ELITEFORCE
+	Q_strcat(dest, size, "#define ELITEFORCE\n");
+#endif
+
+#ifdef CMOD_EF_ENVIRONMENT_MAP_MODE
+		{
+			int mode = r_envMapMode->integer;
+
+#ifdef CMOD_MAP_AUTO_ADJUST
+			// mode -1: try to get map-specific value
+			if ( mode == -1 ) {
+				mode = r_autoEnvMapMode->integer;
+			}
+#endif
+
+			// mode 0: use EF-style environment map
+			if ( mode == 0 ) {
+				Q_strcat(dest, size, "#define EF_ENVIRONMENT_MAP\n");
+			}
+		}
+#endif
+
 	// HACK: add some macros to avoid extra uniforms and save speed and code maintenance
 	//Q_strcat(dest, size,
 	//		 va("#ifndef r_SpecularExponent\n#define r_SpecularExponent %f\n#endif\n", r_specularExponent->value));
