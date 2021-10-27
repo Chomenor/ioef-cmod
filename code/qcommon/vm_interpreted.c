@@ -161,6 +161,24 @@ void VM_StackTrace( vm_t *vm, int programCounter, int programStack ) {
 
 }
 
+#ifdef CMOD_VMFLOATCAST
+static int VM_tonextint( float x ) {
+	// From game code patch by Thilo Schulz
+	int casted;
+	float rest;
+
+	casted = (int)x;
+	rest = x - (float)casted;
+
+	if ( rest >= 0.5f )
+		return casted + 1;
+	else if ( rest <= -0.5f )
+		return casted - 1;
+	else
+		return casted;
+}
+#endif
+
 
 /*
 ====================
@@ -877,7 +895,11 @@ nextInstruction2:
 			((float *) opStack)[opStackOfs] = (float) opStack[opStackOfs];
 			goto nextInstruction;
 		case OP_CVFI:
+#ifdef CMOD_VMFLOATCAST
+			opStack[opStackOfs] = VM_tonextint(((float *) opStack)[opStackOfs]);
+#else
 			opStack[opStackOfs] = Q_ftol(((float *) opStack)[opStackOfs]);
+#endif
 			goto nextInstruction;
 		case OP_SEX8:
 			opStack[opStackOfs] = (signed char) opStack[opStackOfs];
