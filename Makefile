@@ -1077,6 +1077,37 @@ ifeq ($(USE_CURL),1)
   endif
 endif
 
+# Elite Force: Defines for MAD MP3 library
+ifeq ($(ARCH),x86)
+  CLIENT_CFLAGS += -DFPM_INTEL
+else
+ifeq ($(ARCH),x86_64)
+  CLIENT_CFLAGS += -DFPM_64BIT
+else
+ifeq ($(ARCH),ppc)
+  CLIENT_CFLAGS += -DFPM_PPC
+else
+ifeq ($(ARCH),arm)
+  CLIENT_CFLAGS += -DFPM_ARM
+else
+ifeq ($(ARCH),arm64)
+  CLIENT_CFLAGS += -DFPM_64BIT
+else
+ifeq ($(ARCH),mips)
+  CLIENT_CFLAGS += -DFPM_MIPS
+else
+ifeq ($(ARCH),sparc)
+  CLIENT_CFLAGS += -DFPM_SPARC
+else
+  CLIENT_CFLAGS += -DFPM_DEFAULT
+endif
+endif
+endif
+endif
+endif
+endif
+endif
+
 ifeq ($(USE_VOIP),1)
   CLIENT_CFLAGS += -DUSE_VOIP
   SERVER_CFLAGS += -DUSE_VOIP
