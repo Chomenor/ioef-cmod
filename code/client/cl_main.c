@@ -3420,6 +3420,12 @@ void CL_StartHunkUsers( qboolean rendererOnly ) {
 		return;
 	}
 
+#ifdef CMOD_SOUND_RESET
+	CL_Snd_Shutdown();
+	cls.soundStarted = qfalse;
+	cls.soundRegistered = qfalse;
+#endif
+
 	if ( !cls.soundStarted ) {
 		cls.soundStarted = qtrue;
 		S_Init();

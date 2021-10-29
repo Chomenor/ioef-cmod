@@ -249,6 +249,9 @@
 // [BUGFIX] Extend some ioq3 overflow checks to EF-specific sections of msg.c
 #define CMOD_MSG_OVERFLOW_CHECKS
 
+// [BUGFIX] Reset sound system on map changes to avoid getting cached sounds from a previous map or mod
+#define CMOD_SOUND_RESET
+
 // [BUGFIX] Increase concurrent sound limit to reduce rapidfire weapon stuttering
 #define CMOD_CONCURRENT_SOUNDS
 
