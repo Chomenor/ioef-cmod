@@ -609,6 +609,10 @@ usercmd_t CL_CreateCmd( void ) {
 	// store out the final values
 	CL_FinishMove( &cmd );
 
+#ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
+	ClientAltSwap_ModifyCommand( &cmd );
+#endif
+
 	// draw debug graphs of turning for mouse testing
 	if ( cl_debugMove->integer ) {
 		if ( cl_debugMove->integer == 1 ) {

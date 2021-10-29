@@ -107,3 +107,9 @@ void AspectCorrect_OnVmCreate( const char *module, const fsc_file_t *sourceFile 
 qboolean AspectCorrect_OnCgameSyscall( intptr_t *args, intptr_t *retval );
 qboolean AspectCorrect_OnUISyscall( intptr_t *args, intptr_t *retval );
 #endif
+
+#ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
+void ClientAltSwap_CGameInit( void );
+void ClientAltSwap_ModifyCommand( usercmd_t *cmd );
+void ClientAltSwap_SetState( qboolean swap );
+#endif

@@ -815,6 +815,10 @@ void CL_InitCGame( void ) {
 	CMCrosshair_CGameInit();
 #endif
 
+#ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
+	ClientAltSwap_CGameInit();
+#endif
+
 	t1 = Sys_Milliseconds();
 
 	// put away the console

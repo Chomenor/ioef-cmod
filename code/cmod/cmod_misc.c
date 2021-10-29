@@ -215,3 +215,30 @@ void cmod_copydebug_cmd(void) {
 #endif
 }
 #endif
+
+#ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
+#define EF_BUTTON_ATTACK 1
+#define EF_BUTTON_ALT_ATTACK 32
+
+static qboolean clientAltSwapActive;
+
+void ClientAltSwap_CGameInit( void ) {
+	// Don't leave settings from a previous mod
+	clientAltSwapActive = qfalse;
+}
+
+void ClientAltSwap_ModifyCommand( usercmd_t *cmd ) {
+	if ( clientAltSwapActive ) {
+		if ( cmd->buttons & EF_BUTTON_ALT_ATTACK ) {
+			cmd->buttons &= ~EF_BUTTON_ALT_ATTACK;
+			cmd->buttons |= EF_BUTTON_ATTACK;
+		} else if ( cmd->buttons & EF_BUTTON_ATTACK ) {
+			cmd->buttons |= ( EF_BUTTON_ATTACK | EF_BUTTON_ALT_ATTACK );
+		}
+	}
+}
+
+void ClientAltSwap_SetState( qboolean swap ) {
+	clientAltSwapActive = swap;
+}
+#endif

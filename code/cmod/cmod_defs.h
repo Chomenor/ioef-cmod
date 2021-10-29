@@ -213,6 +213,11 @@
 #define CMOD_SERVER_BROWSER_SUPPORT
 #endif
 
+// [FEATURE] Support VM calls to enable cgame alt fire button swapping features without server support
+#if !defined(DEDICATED)
+#define CMOD_CLIENT_ALT_SWAP_SUPPORT
+#endif
+
 // [BUGFIX] Use traditional EF float casting behavior in VM, which fixes the physics behavior
 // in various mods
 #define CMOD_VMFLOATCAST

@@ -36,6 +36,9 @@ typedef enum {
 #ifdef CMOD_SERVER_BROWSER_SUPPORT
 	VMEXT_LAN_SERVERSTATUS_EXT,
 #endif
+#ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
+	VMEXT_ALTSWAP_SET_STATE,
+#endif
 
 	VMEXT_FUNCTION_COUNT
 } vmext_function_id_t;
@@ -93,6 +96,10 @@ static int VMExt_CheckGetFunction( const char *command ) {
 	if ( !Q_stricmp( command, "trap_lan_serverstatus_ext" ) )
 		return VMEXT_LAN_SERVERSTATUS_EXT;
 #endif
+#ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
+	if ( !Q_stricmp( command, "trap_altswap_set_state" ) )
+		return VMEXT_ALTSWAP_SET_STATE;
+#endif
 
 	return -1;
 }
@@ -136,6 +143,13 @@ qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
 #ifdef CMOD_SERVER_BROWSER_SUPPORT
 		if ( function_id == VMEXT_LAN_SERVERSTATUS_EXT ) {
 			*retval = CL_ServerStatusExt( VMA(1), VMA(2), args[3], VMA(4), args[5] );
+			return qtrue;
+		}
+#endif
+#ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
+		if ( function_id == VMEXT_ALTSWAP_SET_STATE ) {
+			ClientAltSwap_SetState( args[1] );
+			*retval = qtrue;
 			return qtrue;
 		}
 #endif
