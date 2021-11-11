@@ -58,6 +58,9 @@ typedef struct sfx_s {
 	int 			soundLength;
 	int			soundChannels;
 	char 			soundName[MAX_QPATH];
+#ifdef CMOD_FAST_SOUND_RESET
+	const fsc_file_t *soundFile;
+#endif
 	int				lastTimeUsed;
 	struct sfx_s	*next;
 } sfx_t;

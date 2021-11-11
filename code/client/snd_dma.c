@@ -149,6 +149,78 @@ void S_Base_MasterGain( float val )
 
 
 
+#ifdef CMOD_FAST_SOUND_RESET
+#define VOXDIR "sound/voice"
+
+/*
+================
+S_PredictSoundFileForPath
+================
+*/
+const fsc_file_t *S_PredictSoundFileForPath( const char *path ) {
+	char localName[MAX_QPATH];
+	COM_StripExtension( path, localName, MAX_QPATH );
+
+	if ( !Q_strncmp( localName, VOXDIR, ARRAY_LEN( VOXDIR ) - 1 ) &&
+		 !Q_stricmp( Cvar_VariableString( "s_language" ), "DEUTSCH" ) ) {
+		const fsc_file_t *deutschFile;
+		char deutschName[MAX_QPATH];
+		Q_strncpyz( deutschName, localName, sizeof( deutschName ) );
+		deutschName[8] = 'x';
+		deutschName[9] = '_';
+		deutschName[10] = 'd';
+
+		deutschFile = fs_sound_lookup( deutschName, 0, qfalse );
+		if ( deutschFile ) {
+			return deutschFile;
+		}
+	}
+
+	return fs_sound_lookup( localName, 0, qfalse );
+}
+
+/*
+================
+S_ResetStaleSounds
+
+Reset sounds if their path points to a different source file in the filesystem
+than the one they are currently loaded with.
+================
+*/
+void S_ResetStaleSounds( void ) {
+	if ( s_soundStarted ) {
+		int i;
+		int resetCount = 0;
+
+		for ( i = 0; i < MAX_SFX; ++i ) {
+			sfx_t *sfx = &s_knownSfx[i];
+			if ( *sfx->soundName && sfx->inMemory && sfx->soundData ) {
+				const fsc_file_t *currentFile = S_PredictSoundFileForPath( sfx->soundName );
+
+				if ( currentFile != sfx->soundFile ) {
+					sndBuffer *buffer, *nbuffer;
+
+					++resetCount;
+					Com_DPrintf( "Resetting sound %s\n", sfx->soundName );
+
+					buffer = sfx->soundData;
+					while ( buffer != NULL ) {
+						nbuffer = buffer->next;
+						SND_free( buffer );
+						buffer = nbuffer;
+					}
+					sfx->inMemory = qfalse;
+					sfx->soundData = NULL;
+					sfx->soundFile = currentFile;
+				}
+			}
+		}
+
+		Com_Printf( "Clearing stale sounds (%i sounds reset)\n", resetCount );
+	}
+}
+#endif
+
 /*
 =================
 S_Base_SoundList
@@ -424,6 +496,9 @@ void S_memoryLoad(sfx_t	*sfx) {
 		sfx->defaultSound = qtrue;
 	}
 	sfx->inMemory = qtrue;
+#ifdef CMOD_FAST_SOUND_RESET
+	sfx->soundFile = S_PredictSoundFileForPath( sfx->soundName );
+#endif
 }
 
 //=============================================================================

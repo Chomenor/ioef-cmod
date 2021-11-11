@@ -113,3 +113,7 @@ void ClientAltSwap_CGameInit( void );
 void ClientAltSwap_ModifyCommand( usercmd_t *cmd );
 void ClientAltSwap_SetState( qboolean swap );
 #endif
+
+#ifdef CMOD_FAST_SOUND_RESET
+void S_ResetStaleSounds( void );
+#endif

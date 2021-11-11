@@ -252,6 +252,11 @@
 // [BUGFIX] Reset sound system on map changes to avoid getting cached sounds from a previous map or mod
 #define CMOD_SOUND_RESET
 
+// [TWEAK] Optimized version of sound reset above to avoid load time impact
+#if defined(CMOD_SOUND_RESET) && defined(NEW_FILESYSTEM)
+#define CMOD_FAST_SOUND_RESET
+#endif
+
 // [BUGFIX] Increase concurrent sound limit to reduce rapidfire weapon stuttering
 #define CMOD_CONCURRENT_SOUNDS
 

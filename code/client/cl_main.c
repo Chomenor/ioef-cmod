@@ -3421,9 +3421,18 @@ void CL_StartHunkUsers( qboolean rendererOnly ) {
 	}
 
 #ifdef CMOD_SOUND_RESET
+#ifdef CMOD_FAST_SOUND_RESET
+	if ( !Q_stricmp( Cvar_VariableString( "s_backend" ), "base" ) ) {
+		S_ResetStaleSounds();
+		goto sound_reset_complete;
+	}
+#endif
 	CL_Snd_Shutdown();
 	cls.soundStarted = qfalse;
 	cls.soundRegistered = qfalse;
+#ifdef CMOD_FAST_SOUND_RESET
+	sound_reset_complete:
+#endif
 #endif
 
 	if ( !cls.soundStarted ) {
