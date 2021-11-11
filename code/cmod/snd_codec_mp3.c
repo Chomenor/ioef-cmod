@@ -168,8 +168,12 @@ int S_MP3_Scanfile(snd_stream_t *stream)
 
 			if(madheader.layer != MAD_LAYER_III)
 			{
+#ifdef CMOD_MP3_LAYER_CHECK_FIX
+				continue;
+#else
 				// we don't support non-mp3s
 				return -1;
+#endif
 			}
 
 			if(!stream->info.samples)

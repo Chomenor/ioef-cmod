@@ -260,6 +260,10 @@
 // [BUGFIX] Increase concurrent sound limit to reduce rapidfire weapon stuttering
 #define CMOD_CONCURRENT_SOUNDS
 
+// [BUGFIX] Remove apparently unnecessary abort condition in MP3 decoder, which breaks the
+// music in certain maps such as 'amenhotep' and 'hm_stronghold'
+#define CMOD_MP3_LAYER_CHECK_FIX
+
 // [BUGFIX] Try to fix some issues with UI popup after errors
 #define CMOD_ERROR_POPUP_FIXES
 
