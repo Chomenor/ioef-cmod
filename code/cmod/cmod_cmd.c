@@ -698,6 +698,7 @@ static const char *base_protectable_commands[] = {
 	"cvar_restart",
 	"cmd",
 	"vid_restart",
+	"snd_restart",
 	"connect",
 	"disconnect",
 	"kick",
