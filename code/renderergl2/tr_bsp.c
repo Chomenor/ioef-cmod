@@ -141,6 +141,18 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		colors[i] = in[i] * map_lighting_factor_overbright_scaled; }
 	R_IntensityLimitScaled(colors, 255.0);
 
+	// set some minimum levels with r_mapLightingGamma enabled, to avoid weird shadows in very dark areas
+	if ( map_lighting_gamma > 1.0 ) {
+		double min = map_lighting_gamma - 1.0;
+		if ( min > 3.0 )
+			min = 3.0;
+		for ( i = 0; i < 3; ++i ) {
+			if ( colors[i] < min ) {
+				colors[i] = min;
+			}
+		}
+	}
+
 	if(map_lighting_gamma != 1.0) {
 		double component_factor = r_mapLightingGammaComponent->value;
 		double blended_intensity_base = sqrt((colors[0]*colors[0] + colors[1]*colors[1] + colors[2]*colors[2])/3);
