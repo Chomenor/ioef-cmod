@@ -89,9 +89,9 @@ The most common values which you can use for these settings are as follows:
 The following settings are supported to help with widescreen and aspect ratio related issues.
 
 - cg_aspectCorrect: Setting to 1 causes graphical components to be displayed at the original width, instead of stretching on widescreen displays. __(default: 1)__
-- cg_fov: A simple integer value such as "90" sets the horizontal FOV, same as in the orginal game. It is also possible to set a scaled value such as "85*", indicated by a trailing asterisk, which automatically scales with the width of the display. __(default: 85*)__
+- cg_fov: A simple integer value such as "90" sets the horizontal FOV, same as in the original game. It is also possible to set a scaled value such as "85*", indicated by a trailing asterisk, which automatically scales with the width of the display. __(default: 85*)__
 - cg_aspectCorrectCenterHud: 0 = place HUD at edge of screen, 1 = place HUD at center 4:3 region of screen. Fractional values such as 0.5 are also supported. Note this setting won't work when certain mods are loaded. __(default: 0)__
-- cg_aspectCorrectGunPos: 0 = original behavor, 1 = fixes the gun view position so it doesn't drop on wider screens. A value of -1 uses whatever is set in cg_aspectCorrect. __(default: -1)__
+- cg_aspectCorrectGunPos: 0 = original behavior, 1 = fixes the gun view position so it doesn't drop on wider screens. A value of -1 uses whatever value is set in cg_aspectCorrect. __(default: -1)__
 
 ## Font Scaling
 
@@ -214,3 +214,4 @@ If you are having trouble with framerates in cMod you can try lowering the graph
 - Thilo Schulz - ioEF
 - id Software and ioquake3 project - base engine
 - Raven Software - Elite Force
+- Zack Middleton / Lilium Voyager project - opengl2 renderer support
