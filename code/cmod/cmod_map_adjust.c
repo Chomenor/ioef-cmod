@@ -79,6 +79,8 @@ struct {
 	{-383639493, {1.0f, 0.4f, 0}},		// helmsdeep - brighten
 	{-1201980974, {2.5f, 0.5f, 0}},		// ctf_kln4 - brighten
 	{-993374657, {2.0f, 0.0f, 0}},		// ctf_finalhour - brighten
+	{-1935206618, {2.0f, 0.0f, 0}},		// ctf_rg2_e - brighten
+	{-485373179, {2.0f, 0.0f, 0}},		// ctf_rg2_h - brighten
 };
 
 static qboolean check_brightshift_hash(int hash) {
