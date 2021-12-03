@@ -112,18 +112,14 @@ static void R_IntensityLimitScaled(double *colors, double limit) {
 
 	if(highest > limit) for(i=0; i<3; ++i) {
 		colors[i] *= (limit / highest); } }
-#endif
 
 /*
 ===============
-R_ColorShiftLightingBytes
-
+R_ColorShiftLighting
 ===============
 */
-static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
-#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+static void R_ColorShiftLighting( double colors[3] ) {
 	int i;
-	double colors[3];
 	double map_lighting_factor = r_mapLightingFactor->value;
 	double map_lighting_gamma = r_mapLightingGamma->value;
 	float map_lighting_clamp_min = r_mapLightingClampMin->value;
@@ -138,7 +134,7 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	double map_lighting_factor_overbright_scaled = map_lighting_factor / tr.overbrightFactor;
 
 	for(i=0; i<3; ++i) {
-		colors[i] = in[i] * map_lighting_factor_overbright_scaled; }
+		colors[i] *= map_lighting_factor_overbright_scaled; }
 	R_IntensityLimitScaled(colors, 255.0);
 
 	// set some minimum levels with r_mapLightingGamma enabled, to avoid weird shadows in very dark areas
@@ -165,18 +161,36 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 			colors[i] = component_value * component_factor + blended_value * (1.0 - component_factor); } }
 	R_IntensityLimitScaled(colors, 255.0);
 
-	int min_clamp = (int)(map_lighting_clamp_min * 255.0);
-	int max_clamp = (int)(map_lighting_clamp_max * 255.0);
-	if(min_clamp < 0) min_clamp = 0;
-	if(min_clamp > 255) min_clamp = 255;
+	double min_clamp = map_lighting_clamp_min * 255.0;
+	double max_clamp = map_lighting_clamp_max * 255.0;
+	if(min_clamp < 0.0) min_clamp = 0.0;
+	if(min_clamp > 255.0) min_clamp = 255.0;
 	if(max_clamp < min_clamp) max_clamp = min_clamp;
-	if(max_clamp > 255) max_clamp = 255;
+	if(max_clamp > 255.0) max_clamp = 255.0;
 
 	for(i=0; i<3; ++i) {
-		int color = colors[i];
-		if(color < min_clamp) color = min_clamp;
-		if(color > max_clamp) color = max_clamp;
-		out[i] = color; }
+		if(colors[i] < min_clamp) colors[i] = min_clamp;
+		if(colors[i] > max_clamp) colors[i] = max_clamp; }
+}
+#endif
+
+/*
+===============
+R_ColorShiftLightingBytes
+
+===============
+*/
+static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
+#ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
+	int i;
+	double colors[3];
+
+	for(i=0; i<3; ++i) {
+		colors[i] = in[i]; }
+	R_ColorShiftLighting( colors );
+
+	for(i=0; i<3; ++i) {
+		out[i] = colors[i]; }
 #else
 	int		shift, r, g, b;
 
@@ -215,12 +229,19 @@ R_ColorShiftLightingFloats
 */
 static void R_ColorShiftLightingFloats(float in[4], float out[4])
 {
-	float	r, g, b;
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
-	float   scale = (r_mapLightingFactor->value / tr.overbrightFactor) / 255.0f;
+	int i;
+	double colors[3];
+
+	for(i=0; i<3; ++i) {
+		colors[i] = in[i]; }
+	R_ColorShiftLighting( colors );
+
+	for(i=0; i<3; ++i) {
+		out[i] = colors[i] / 255.0; }
 #else
+	float	r, g, b;
 	float   scale = (1 << (r_mapOverBrightBits->integer - tr.overbrightBits)) / 255.0f;
-#endif
 
 	r = in[0] * scale;
 	g = in[1] * scale;
@@ -240,6 +261,7 @@ static void R_ColorShiftLightingFloats(float in[4], float out[4])
 	out[0] = r;
 	out[1] = g;
 	out[2] = b;
+#endif
 	out[3] = in[3];
 }
 
