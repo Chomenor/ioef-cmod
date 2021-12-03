@@ -1238,7 +1238,7 @@ void R_Register( void )
 	r_overBrightFactor = ri.Cvar_Get("r_overBrightFactor", "1.5", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingFactor = ri.Cvar_Get("r_mapLightingFactor", "2", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingGamma = ri.Cvar_Get("r_mapLightingGamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
-	r_mapLightingGammaComponent = ri.Cvar_Get("r_mapLightingGammaComponent", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_mapLightingGammaComponent = ri.Cvar_Get("r_mapLightingGammaComponent", "0.75", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingClampMin = ri.Cvar_Get("r_mapLightingClampMin", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingClampMax = ri.Cvar_Get("r_mapLightingClampMax", "1", CVAR_ARCHIVE | CVAR_LATCH);
 #endif
