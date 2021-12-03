@@ -922,6 +922,7 @@ static const int stock_qvms[] = {
 	401438010,		// pakcmod-current-2021-09-18.pk3
 	-749739206,		// pakcmod-current-2021-09-25.pk3
 	-1518584883,	// pakcmod-current-2021-10-15.pk3
+	34943118,		// pakcmod-current-2021-11-11.pk3
 };
 #endif
 
