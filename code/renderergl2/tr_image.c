@@ -2024,6 +2024,10 @@ static void RawImage_UploadTexture(GLuint texture, byte *data, int x, int y, int
 }
 
 
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+void R_ColorShiftLightingBytes( byte in[4], byte out[4], qboolean external );
+#endif
+
 /*
 ===============
 Upload32
@@ -2070,6 +2074,18 @@ static void Upload32(byte *data, int x, int y, int width, int height, GLenum pic
 					scan[i*4 + 2] = LERP(scan[i*4 + 2], luma, r_greyscale->value);
 				}
 			}
+
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+			if ( flags & IMGFLAG_EXTERNAL_LIGHTMAP ) {
+				byte *p = data;
+
+				c = width*height;
+				for (i=0 ; i<c ; i++, p+=4)
+				{
+					R_ColorShiftLightingBytes( p, p, qtrue );
+				}
+			}
+#endif
 
 			// This corresponds to what the OpenGL1 renderer does.
 			if (!(flags & IMGFLAG_NOLIGHTSCALE) && (scaled || mipmap))
@@ -2465,6 +2481,11 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 		if ( !strcmp( name, image->imgName ) ) {
 			// the white image can be used with any set of parms, but other mismatches are errors
 			if ( strcmp( name, "*white" ) ) {
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+				if ( ( image->flags & IMGFLAG_EXTERNAL_LIGHTMAP ) != ( flags & IMGFLAG_EXTERNAL_LIGHTMAP ) ) {
+					continue;
+				}
+#endif
 				if ( image->flags != flags ) {
 					ri.Printf( PRINT_DEVELOPER, "WARNING: reused image %s with mixed flags (%i vs %i)\n", name, image->flags, flags );
 				}

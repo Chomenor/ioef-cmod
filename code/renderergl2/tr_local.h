@@ -1864,6 +1864,10 @@ extern	cvar_t	*r_mapLightingClampMin;
 extern	cvar_t	*r_mapLightingClampMax;
 #endif
 
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+extern	cvar_t	*r_colorShiftExternalLightmaps;
+#endif
+
 #ifdef CMOD_TEXTURE_GAMMA
 extern	cvar_t	*r_textureGamma;
 #endif

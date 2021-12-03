@@ -597,6 +597,11 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 	char *token;
 	int depthMaskBits = GLS_DEPTHMASK_TRUE, blendSrcBits = 0, blendDstBits = 0, atestBits = 0, depthFuncBits = 0;
 	qboolean depthMaskExplicit = qfalse;
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+	qboolean deferredTexture = qfalse;
+	char deferredTexturePath[256];
+	int deferredTextureFlags;
+#endif
 
 	stage->active = qtrue;
 
@@ -651,6 +656,13 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 				if (!shader.noPicMip)
 					flags |= IMGFLAG_PICMIP;
 
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+				if ( r_colorShiftExternalLightmaps->integer ) {
+					deferredTexture = qtrue;
+					Q_strncpyz( deferredTexturePath, token, sizeof( deferredTexturePath ) );
+					deferredTextureFlags = flags;
+				} else {
+#endif
 				stage->bundle[0].image[0] = R_FindImageFile( token, type, flags );
 
 				if ( !stage->bundle[0].image[0] )
@@ -658,6 +670,9 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 					ri.Printf( PRINT_WARNING, "WARNING: R_FindImageFile could not find '%s' in shader '%s'\n", token, shader.name );
 					return qfalse;
 				}
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+				}
+#endif
 			}
 		}
 		//
@@ -1058,6 +1073,15 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 			return qfalse;
 		}
 	}
+
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+	if ( deferredTexture && !stage->bundle[0].image[0] ) {
+		if ( stage->bundle[0].tcGen == TCGEN_LIGHTMAP ) {
+			deferredTextureFlags |= IMGFLAG_EXTERNAL_LIGHTMAP;
+		}
+		stage->bundle[0].image[0] = R_FindImageFile( deferredTexturePath, IMGTYPE_COLORALPHA, deferredTextureFlags );
+	}
+#endif
 
 	//
 	// if cgen isn't explicitly specified, use either identity or identitylighting

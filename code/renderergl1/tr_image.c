@@ -567,6 +567,10 @@ byte	mipBlendColors[16][4] = {
 };
 
 
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+void R_ColorShiftLightingBytes( byte in[4], byte out[4], qboolean external );
+#endif
+
 /*
 ===============
 Upload32
@@ -578,6 +582,9 @@ static void Upload32( unsigned *data,
 						  qboolean mipmap, 
 						  qboolean picmip, 
 							qboolean lightMap,
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+							qboolean externalLightMap,
+#endif
 						  qboolean allowCompression,
 						  int *format, 
 						  int *pUploadWidth, int *pUploadHeight )
@@ -792,6 +799,19 @@ static void Upload32( unsigned *data,
 		Com_Memcpy( scaledBuffer, data, width * height * 4 );
 	}
 
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+	if ( externalLightMap ) {
+		byte	*p;
+		p = (byte *)scaledBuffer;
+
+		c = scaled_width*scaled_height;
+		for (i=0 ; i<c ; i++, p+=4)
+		{
+			R_ColorShiftLightingBytes( p, p, qtrue );
+		}
+	}
+#endif
+
 	R_LightScaleTexture (scaledBuffer, scaled_width, scaled_height, !mipmap );
 
 	*pUploadWidth = scaled_width;
@@ -910,6 +930,9 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height,
 								image->flags & IMGFLAG_MIPMAP,
 								image->flags & IMGFLAG_PICMIP,
 								isLightmap,
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+								( image->flags & IMGFLAG_EXTERNAL_LIGHTMAP ) ? qtrue : qfalse,
+#endif
 								!(image->flags & IMGFLAG_NO_COMPRESSION),
 								&image->internalFormat,
 								&image->uploadWidth,
@@ -1101,6 +1124,11 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 		if ( !strcmp( name, image->imgName ) ) {
 			// the white image can be used with any set of parms, but other mismatches are errors
 			if ( strcmp( name, "*white" ) ) {
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+				if ( ( image->flags & IMGFLAG_EXTERNAL_LIGHTMAP ) != ( flags & IMGFLAG_EXTERNAL_LIGHTMAP ) ) {
+					continue;
+				}
+#endif
 				if ( image->flags != flags ) {
 					ri.Printf( PRINT_DEVELOPER, "WARNING: reused image %s with mixed flags (%i vs %i)\n", name, image->flags, flags );
 				}

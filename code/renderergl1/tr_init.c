@@ -187,6 +187,10 @@ cvar_t	*r_mapLightingClampMin;
 cvar_t	*r_mapLightingClampMax;
 #endif
 
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+cvar_t	*r_colorShiftExternalLightmaps;
+#endif
+
 #ifdef CMOD_TEXTURE_GAMMA
 cvar_t	*r_textureGamma;
 #endif
@@ -1237,6 +1241,10 @@ void R_Register( void )
 	r_mapLightingGammaComponent = ri.Cvar_Get("r_mapLightingGammaComponent", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingClampMin = ri.Cvar_Get("r_mapLightingClampMin", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_mapLightingClampMax = ri.Cvar_Get("r_mapLightingClampMax", "1", CVAR_ARCHIVE | CVAR_LATCH);
+#endif
+
+#ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+	r_colorShiftExternalLightmaps = ri.Cvar_Get("r_colorShiftExternalLightmaps", "1", CVAR_ARCHIVE | CVAR_LATCH);
 #endif
 
 #ifdef CMOD_TEXTURE_GAMMA

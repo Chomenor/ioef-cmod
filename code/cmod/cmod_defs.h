@@ -33,6 +33,10 @@
 // [FEATURE] Support several new brightness settings (e.g. r_overBrightFactor and r_mapLightingGamma)
 #define CMOD_MAP_BRIGHTNESS_SETTINGS
 
+// [FEATURE] Perform lighting adjustments on external lightmaps so lighting settings are applied
+// consistently regardless of which type of lightmap the map uses
+#define CMOD_EXTERNAL_LIGHTMAP_PROCESSING
+
 // [FEATURE] Support r_textureGamma setting
 #define CMOD_TEXTURE_GAMMA
 
