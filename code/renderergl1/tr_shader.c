@@ -1080,6 +1080,12 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 			deferredTextureFlags |= IMGFLAG_EXTERNAL_LIGHTMAP;
 		}
 		stage->bundle[0].image[0] = R_FindImageFile( deferredTexturePath, IMGTYPE_COLORALPHA, deferredTextureFlags );
+
+		if ( !stage->bundle[0].image[0] )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: R_FindImageFile could not find '%s' in shader '%s'\n", deferredTexturePath, shader.name );
+			return qfalse;
+		}
 	}
 #endif
 
