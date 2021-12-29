@@ -40,6 +40,10 @@
 // [FEATURE] Support r_textureGamma setting
 #define CMOD_TEXTURE_GAMMA
 
+// [FEATURE] Support applying r_intensity to only a fraction of image values
+// Specified by adding ':' character and fraction after r_intensity value, such as "1.5:0.5"
+#define CMOD_FRACTIONAL_INTENSITY
+
 // [FEATURE] Automatically adjust graphics settings for consistency on certain types of maps
 #define CMOD_MAP_AUTO_ADJUST
 

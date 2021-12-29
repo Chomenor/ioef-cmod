@@ -2917,6 +2917,20 @@ void R_SetColorMappings( void ) {
 	int		i, j;
 	float	g;
 	int		inf;
+#ifdef CMOD_FRACTIONAL_INTENSITY
+	float	intensitySegment = 1.0f;
+
+	{
+		const char *intensitySegmentStr = strchr( r_intensity->string, ':' );
+		if ( intensitySegmentStr ) {
+			intensitySegment = atof( &intensitySegmentStr[1] );
+			if ( intensitySegment < 0.0f )
+				intensitySegment = 0.0f;
+			if ( intensitySegment > 1.0f )
+				intensitySegment = 1.0f;
+		}
+	}
+#endif
 
 	// setup the overbright lighting
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
@@ -2971,7 +2985,16 @@ void R_SetColorMappings( void ) {
 	}
 
 	for (i=0 ; i<256 ; i++) {
+#ifdef CMOD_FRACTIONAL_INTENSITY
+		int top = i - 255.0f * intensitySegment;
+		int bottom;
+		if ( top < 0 )
+			top = 0;
+		bottom = i - top;
+		j = top + bottom * r_intensity->value;
+#else
 		j = i * r_intensity->value;
+#endif
 		if (j > 255) {
 			j = 255;
 		}
