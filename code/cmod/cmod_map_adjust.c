@@ -65,8 +65,29 @@ struct {
 	{-443776329, {0.5f, 0.0f, 1}},		// crazychristmas - urban terror lighting
 	{-768581189, {0.5f, 0.0f, 1}},		// ut4_terrorism4 - urban terror lighting
 	{-1359736521, {0.5f, 0.0f, 1}},		// ef_turnpike - urban terror lighting
-	{1038626548, {0.5f, 0.0f, 0}},		// ctf_becks - unbrighten
-	{2006033781, {0.5f, 0.0f, 0}},		// chickens - unbrighten
+	{1038626548, {0.5f, 0.0f, 0}},		// ctf_becks - darken
+	{2006033781, {0.5f, 0.0f, 0}},		// chickens - darken
+	{1948057473, {0.7f, 0.0f, 0}},		// longgone - darken
+	{-1571214409, {0.7f, 0.0f, 0}},		// otc - darken
+	{-101413010, {1.0f, 0.0f, 0, 1.5f}},	// bod_lunchroom - darken
+	{-1316605387, {1.0f, 0.0f, 0, 1.5f}},	// whitemeat - darken
+	{138603980, {1.0f, 0.0f, 0, 1.5f}},		// ctf_crossroads_z - darken
+	{-825917568, {1.0f, 0.0f, 0, 1.5f}},	// pinballarena2 - darken
+	{1034758439, {1.0f, 0.0f, 0, 1.4f}},	// pinballarena_ii - darken
+	{-338180026, {1.0f, 0.0f, 0, 1.5f}},	// ctf_akilo - darken
+	{1678180441, {1.0f, 0.0f, 0, 1.5f}},	// ctf_akilo_f4g - darken
+	{-389292666, {1.0f, 0.0f, 0, 1.5f}},	// ctf_akilo2 - darken
+	{-1510930769, {1.0f, 0.0f, 0, 1.5f}},	// ctf_akilo3 - darken
+	{-790481733, {1.0f, 0.0f, 0, 1.5f}},	// pro_akilo2 - darken
+	{1262130506, {1.0f, 0.0f, 0, 1.5f}},	// pro_akilo3 - darken
+	{723156790, {1.0f, 0.0f, 0, 1.0f}},		// danger_christmas - darken
+	{1599589538, {1.0f, 0.0f, 0, 1.0f}},	// snowcity - darken
+	{1736560496, {1.0f, 0.0f, 0, 1.2f}},	// ctf_gen_xmas - darken
+	{1701618430, {1.0f, 0.0f, 0, 1.5f}},	// dm_ic - darken
+	{1818880400, {1.0f, 0.0f, 0, 1.5f}},	// ctf_ic - darken
+	{2108385997, {1.0f, 0.0f, 1, 1.4f}},	// ef_abbey2 - darken
+	{-2096164947, {1.0f, 0.0f, 1, 1.4f}},	// ef_kingdom - darken
+	{1671051894, {1.0f, 0.0f, 1, 1.3f}},	// rtcw_ice - darken
 	{-1374186326, {2.0f, 0.1f, 1}},		// ut_subway - brighten
 	{610817057, {1.0f, 0.2f, 0}},		// ctf_twilight - brighten
 	{-4369078, {1.0f, 0.2f, 0}},		// amenhotep - brighten
