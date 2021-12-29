@@ -239,6 +239,7 @@ static GLuint glsl_link_program(GLint shader1, GLint shader2) {
 
 static GLuint glsl_create_gamma_program(void) {
 	// Returns program index on success, 0 on error
+	float overBrightFactor = r_overBrightFactor->value;
 	GLuint vertex_shader = 0;
 	GLuint fragment_shader = 0;
 	GLuint gamma_program = 0;
@@ -250,6 +251,10 @@ static GLuint glsl_create_gamma_program(void) {
 		"   UV = (vertexPosition_modelspace.xy+vec2(1,1))/2.0;\n"
 		"}\n";
 	char fragment_data[1000];
+#ifdef CMOD_MAP_AUTO_ADJUST
+	if ( r_autoOverBrightFactorMax->value > 0.0f && r_autoOverBrightFactorMax->value < overBrightFactor )
+		overBrightFactor = r_autoOverBrightFactorMax->value;
+#endif
 	Com_sprintf(fragment_data, sizeof(fragment_data), "#version 130\n"
 		"in vec2 UV;\n"
 		"out vec3 color;\n"
@@ -259,7 +264,7 @@ static GLuint glsl_create_gamma_program(void) {
 		"{\n"
 		"   color = texture( renderedTexture, UV  ).xyz;\n"
 		"   color.rgb = pow(color.rgb, vec3(gamma)) * %f;\n"
-		"}\n", r_overBrightFactor->value);
+		"}\n", overBrightFactor);
 
 	// Compile shaders
 	vertex_shader = glsl_create_compiled_shader(vertex_data, sizeof(vertex_data), GL_VERTEX_SHADER);

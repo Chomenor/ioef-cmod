@@ -135,7 +135,6 @@ static void R_ColorShiftLighting( double colors[3] ) {
 #endif
 	if(*r_autoMapLightingFactor->string) map_lighting_factor *= r_autoMapLightingFactor->value;
 	if(*r_autoMapLightingGammaMod->string) map_lighting_gamma += r_autoMapLightingGammaMod->value;
-	if(r_autoMapLightingClampMin->value > map_lighting_clamp_min) map_lighting_clamp_min = r_autoMapLightingClampMin->value;
 #endif
 
 	if(map_lighting_factor < 1.0) map_lighting_factor = 1.0;

@@ -2935,6 +2935,10 @@ void R_SetColorMappings( void ) {
 	// setup the overbright lighting
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	tr.overbrightFactor = r_overBrightFactor->value;
+#ifdef CMOD_MAP_AUTO_ADJUST
+	if ( r_autoOverBrightFactorMax->value > 0.0f && r_autoOverBrightFactorMax->value < tr.overbrightFactor )
+		tr.overbrightFactor = r_autoOverBrightFactorMax->value;
+#endif
 	tr.identityLight = 1.0f / tr.overbrightFactor;
 #else
 	tr.overbrightBits = r_overBrightBits->integer;

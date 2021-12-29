@@ -33,7 +33,7 @@ typedef struct {
 	float map_lighting_factor;
 	float map_lighting_gamma;
 	int envMapMode;
-	float map_lighting_min_clamp;
+	float overbright_factor_max;
 } shift_set_t;
 
 static void apply_shift_set(shift_set_t *shift_set) {
@@ -46,9 +46,9 @@ static void apply_shift_set(shift_set_t *shift_set) {
 	if(shift_set->envMapMode != 0) {
 		Com_Printf("Setting r_autoEnvMapMode %i\n", shift_set->envMapMode);
 		Cvar_Set("r_autoEnvMapMode", va("%i", shift_set->envMapMode)); }
-	if(shift_set->map_lighting_min_clamp != 0.0f) {
-		Com_Printf("Setting r_autoMapLightingClampMin %g\n", shift_set->map_lighting_min_clamp);
-		Cvar_Set("r_autoMapLightingClampMin", va("%g", shift_set->map_lighting_min_clamp)); } }
+	if(shift_set->overbright_factor_max != 0.0f) {
+		Com_Printf("Setting r_autoOverBrightFactorMax %g\n", shift_set->overbright_factor_max);
+		Cvar_Set("r_autoOverBrightFactorMax", va("%g", shift_set->overbright_factor_max)); } }
 
 /* ******************************************************************************** */
 // Hash checks
@@ -193,8 +193,8 @@ void cmod_map_adjust_configure(const char *mapname) {
 	Cvar_Set("r_autoMapLightingGammaMod", "");
 	Cvar_Get("r_autoEnvMapMode", "0", CVAR_ROM);
 	Cvar_Set("r_autoEnvMapMode", "0");
-	Cvar_Get("r_autoMapLightingClampMin", "", CVAR_ROM);
-	Cvar_Set("r_autoMapLightingClampMin", "");
+	Cvar_Get("r_autoOverBrightFactorMax", "", CVAR_ROM);
+	Cvar_Set("r_autoOverBrightFactorMax", "");
 
 	if(cmod_map_adjust_enabled->integer && mapname && *mapname) {
 		char *data = 0;

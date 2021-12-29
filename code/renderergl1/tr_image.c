@@ -1379,6 +1379,11 @@ void R_SetColorMappings( void ) {
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	tr.overbrightFactor = r_overBrightFactor->value;
 
+#ifdef CMOD_MAP_AUTO_ADJUST
+	if ( r_autoOverBrightFactorMax->value > 0.0f && r_autoOverBrightFactorMax->value < tr.overbrightFactor )
+		tr.overbrightFactor = r_autoOverBrightFactorMax->value;
+#endif
+
 #ifdef CMOD_FRAMEBUFFER
 	if(!tr.framebuffer_active)
 #endif
