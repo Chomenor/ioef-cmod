@@ -695,6 +695,7 @@ void Cmd_Echo_f(cmd_mode_t mode)
 /* ******************************************************************************** */
 
 static const char *base_protectable_commands[] = {
+	"minimize",
 	"cvar_restart",
 	"cmd",
 	"vid_restart",

@@ -81,6 +81,10 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			{ "ui_support_r_ext_mapLightingGamma", "1" },
 			{ "ui_support_r_ext_overBrightFactor", "1" },
 #endif
+			{ "ui_support_r_intensity", "1" },
+#ifdef CMOD_FRACTIONAL_INTENSITY
+			{ "ui_support_r_intensity_fractional", "1" },
+#endif
 			{ "ui_support_r_swapInterval", "1" },
 			{ "ui_support_r_ext_max_anisotropy", "1" },
 #ifdef USE_OPENAL
@@ -112,8 +116,13 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			{ "ui_support_cmd_set_raw_mouse", "1" },
 #endif
 
+			// Support minimize command.
+			{ "ui_support_minimize", "1" },
+
+#ifdef CMOD_RESOLUTION_HANDLING
 			// Indicates that the r_mode cvar only applies to windowed mode, not fullscreen.
 			{ "ui_using_windowed_r_mode", "1" },
+#endif
 
 			// Indicates that the UI can use more modern settings for the "video options" templates in the video data menu.
 			{ "ui_modern_video_templates", "1" },
