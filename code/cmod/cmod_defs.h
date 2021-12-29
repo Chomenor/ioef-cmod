@@ -268,6 +268,10 @@
 // music in certain maps such as 'amenhotep' and 'hm_stronghold'
 #define CMOD_MP3_LAYER_CHECK_FIX
 
+// [BUGFIX] Fix for possible sound buffer synchronization issues due to time overflow condition.
+// Not sure if this is actually necessary, but it shouldn't hurt.
+#define CMOD_SOUND_DMA_BUFFER_TWEAK
+
 // [BUGFIX] Try to fix some issues with UI popup after errors
 #define CMOD_ERROR_POPUP_FIXES
 

@@ -175,7 +175,11 @@ void S_TransferPaintBuffer(int endtime)
 	{	// general case
 		p = (int *) paintbuffer;
 		count = (endtime - s_paintedtime) * dma.channels;
+#ifdef CMOD_SOUND_DMA_BUFFER_TWEAK
+		out_idx = ((unsigned long long)s_paintedtime * dma.channels) % dma.samples;
+#else
 		out_idx = ((unsigned int)s_paintedtime * dma.channels) % dma.samples;
+#endif
 		step = 3 - MIN(dma.channels, 2);
 
 		if ((dma.isfloat) && (dma.samplebits == 32))
