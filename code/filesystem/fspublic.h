@@ -472,7 +472,7 @@ DEF_LOCAL( int fs_compare_pk3_source(const fsc_file_t *file1, const fsc_file_t *
 
 // Misc Functions
 DEF_PUBLIC( void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbufExec_t exec_type, qboolean quiet) )
-DEF_PUBLIC( void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)(int, ...),
+DEF_PUBLIC( void *fs_load_game_dll(const fsc_file_t *dll_file, void *entryPoint,
 			intptr_t (QDECL *systemcalls)(intptr_t, ...)) )
 DEF_PUBLIC( void FS_GetModDescription(const char *modDir, char *description, int descriptionLen) )
 DEF_PUBLIC( void FS_FilenameCompletion( const char *dir, const char *ext,

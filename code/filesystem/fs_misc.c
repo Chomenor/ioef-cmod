@@ -589,7 +589,7 @@ void fs_execute_config_file(const char *name, fs_config_type_t config_type, cbuf
 	if(exec_type == EXEC_APPEND) Cbuf_ExecuteText(EXEC_APPEND, "\n");
 	fs_free_data(data); }
 
-void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)(int, ...),
+void *fs_load_game_dll(const fsc_file_t *dll_file, void *entryPoint,
 			intptr_t (QDECL *systemcalls)(intptr_t, ...)) {
 	// Used by vm.c
 	// Returns dll handle, or null on error
@@ -616,7 +616,7 @@ void *fs_load_game_dll(const fsc_file_t *dll_file, intptr_t (QDECL **entryPoint)
 		return 0; }
 
 	// Attemt to open the dll
-	dll_handle = Sys_LoadGameDll(dll_path_string, entryPoint, systemcalls);
+	dll_handle = Sys_LoadGameDll(dll_path_string, (vmMainProc *)entryPoint, systemcalls);
 	if(!dll_handle) {
 		Com_Printf("Error: failed to load game dll\n"); }
 	fsc_free(dll_path_string);
