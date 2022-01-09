@@ -964,6 +964,7 @@ void GfxInfo_f( void )
 	if(ri.Cvar_VariableIntegerValue("developer")) {
 #endif
 	ri.Printf( PRINT_ALL, "GL_EXTENSIONS: " );
+	// glConfig.extensions_string is a limited length so get the full list directly
 	if ( qglGetStringi )
 	{
 		GLint numExtensions;
@@ -977,7 +978,7 @@ void GfxInfo_f( void )
 	}
 	else
 	{
-		R_PrintLongString( glConfig.extensions_string );
+		R_PrintLongString( (char *) qglGetString( GL_EXTENSIONS ) );
 	}
 	ri.Printf( PRINT_ALL, "\n" );
 #ifdef CMOD_REDUCE_WARNINGS
