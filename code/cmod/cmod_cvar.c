@@ -1068,6 +1068,7 @@ special_cvar_t specials[] = {
 	{"ui_cdkeychecked", "-1", CVARTYPE_NONE, 0},
 	{"cl_motd", "0", CVARTYPE_NONE, 0},
 	{"com_hunkmegs", "256", CVARTYPE_NONE, 0},
+	{"com_zoneMegs", "128", CVARTYPE_NONE, 0},
 	{"com_soundMegs", "32", CVARTYPE_NONE, 0},
 	{"s_sdlSpeed", "44100", CVARTYPE_NONE, 0},
 	{"com_altivec", "0", CVARTYPE_NONE, 0},
