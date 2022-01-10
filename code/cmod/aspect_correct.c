@@ -101,7 +101,7 @@ AspectCorrect_VMFromCompatibleMod
 ================
 */
 qboolean AspectCorrect_VMFromCompatibleMod( const char *module, const fsc_file_t *sourceFile ) {
-	if ( sourceFile->sourcetype == FSC_SOURCETYPE_PK3 ) {
+	if ( sourceFile && sourceFile->sourcetype == FSC_SOURCETYPE_PK3 ) {
 		unsigned int pk3Hash = fsc_get_base_file( sourceFile, &fs )->pk3_hash;
 		int i;
 
