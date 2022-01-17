@@ -410,7 +410,9 @@ action "${BUNDLEBINDIR}/${EXECUTABLE_NAME}"				"${IOQ3_CLIENT_ARCHS}"
 action "${BUNDLEBINDIR}/${DEDICATED_NAME}"				"${IOQ3_SERVER_ARCHS}"
 
 # renderers
-action "${BUNDLEBINDIR}/${RENDERER_OPENGL1_NAME}"		"${IOQ3_RENDERER_GL1_ARCHS}"
-action "${BUNDLEBINDIR}/${RENDERER_OPENGL2_NAME}"		"${IOQ3_RENDERER_GL2_ARCHS}"
-symlinkArch "${RENDERER_OPENGL}1" "${RENDERER_OPENGL}1" "_" "${BUNDLEBINDIR}"
-symlinkArch "${RENDERER_OPENGL}2" "${RENDERER_OPENGL}2" "_" "${BUNDLEBINDIR}"
+# (cMod) for now just copy the dylibs, as universal binaries and symlinks don't seem
+# to be necessary for renderers
+for SRC in ${IOQ3_RENDERER_GL1_ARCHS} ${IOQ3_RENDERER_GL2_ARCHS}
+do
+    cp "$SRC" "${BUNDLEBINDIR}/${SRC##*/}"
+done
