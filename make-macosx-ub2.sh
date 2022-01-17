@@ -80,15 +80,15 @@ if [ "$1" == "notarize" ]; then
 	RELEASE_LOCATION="build/release-darwin-universal2"
 
 	# release build name
-	RELEASE_BUILD="ioquake3.app"
+	RELEASE_BUILD="ioEF-cMod.app"
 
 	# Pre-notarized zip file (not what is shipped)
-	PRE_NOTARIZED_ZIP="ioquake3_prenotarized.zip"
+	PRE_NOTARIZED_ZIP="ioEF-cMod-prenotarized.zip"
 
 	# Post-notarized zip file (shipped)
-	POST_NOTARIZED_ZIP="ioquake3_notarized.zip"
+	POST_NOTARIZED_ZIP="ioEF-cMod-mac.zip"
 
-	BUNDLE_ID="org.ioquake3.ioquake3"
+	BUNDLE_ID="org.stvef.cmod"
 
 	# allows for unsigned executable memory in hardened runtime
 	# see: https://developer.apple.com/documentation/bundleresources/entitlements/com_apple_security_cs_allow-unsigned-executable-memory
