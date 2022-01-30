@@ -40,6 +40,9 @@ cvar_t *s_sdlSpeed;
 cvar_t *s_sdlChannels;
 cvar_t *s_sdlDevSamps;
 cvar_t *s_sdlMixSamps;
+#ifdef CMOD_SOUND_DISABLE_SDL_FORMAT_CHANGES
+cvar_t *s_sdlAudioChangeFlags;
+#endif
 
 /* The audio callback. All the magic happens here. */
 static int dmapos = 0;
@@ -198,6 +201,9 @@ qboolean SNDDMA_Init(void)
 		s_sdlChannels = Cvar_Get("s_sdlChannels", "2", CVAR_ARCHIVE);
 		s_sdlDevSamps = Cvar_Get("s_sdlDevSamps", "0", CVAR_ARCHIVE);
 		s_sdlMixSamps = Cvar_Get("s_sdlMixSamps", "0", CVAR_ARCHIVE);
+#ifdef CMOD_SOUND_DISABLE_SDL_FORMAT_CHANGES
+		s_sdlAudioChangeFlags = Cvar_Get("s_sdlAudioChangeFlags", "0", CVAR_ARCHIVE);
+#endif
 	}
 
 	Com_Printf( "SDL_Init( SDL_INIT_AUDIO )... " );
@@ -243,7 +249,11 @@ qboolean SNDDMA_Init(void)
 	desired.channels = (int) s_sdlChannels->value;
 	desired.callback = SNDDMA_AudioCallback;
 
+#ifdef CMOD_SOUND_DISABLE_SDL_FORMAT_CHANGES
+	sdlPlaybackDevice = SDL_OpenAudioDevice(NULL, SDL_FALSE, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE & s_sdlAudioChangeFlags->integer);
+#else
 	sdlPlaybackDevice = SDL_OpenAudioDevice(NULL, SDL_FALSE, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
+#endif
 	if (sdlPlaybackDevice == 0)
 	{
 		Com_Printf("SDL_OpenAudioDevice() failed: %s\n", SDL_GetError());

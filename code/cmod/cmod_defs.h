@@ -276,6 +276,11 @@
 // Not sure if this is actually necessary, but it shouldn't hurt.
 #define CMOD_SOUND_DMA_BUFFER_TWEAK
 
+// [BUGFIX] Disable passing "allow change" flags to SDL_OpenAudioDevice by default.
+// This fixes a crash issue seen when connecting/disconnecting USB audio devices, and
+// could have other stability or sound configuration benefits.
+#define CMOD_SOUND_DISABLE_SDL_FORMAT_CHANGES
+
 // [BUGFIX] Try to fix some issues with UI popup after errors
 #define CMOD_ERROR_POPUP_FIXES
 
