@@ -387,7 +387,7 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 
 #ifdef CMOD_SETTINGS
 void Com_WriteGlobalSettings(void) {
-	fileHandle_t f = fs_open_global_settings_file_write("cmod.cfg");
+	fileHandle_t f = FS_OpenGlobalSettingsFileWrite("cmod.cfg");
 	if(!f) return;
 
 	FS_Printf(f, "// This file is loaded when Elite Force starts and saved when it exits." SYSTEM_NEWLINE
@@ -426,7 +426,7 @@ void Com_Quit_f( void ) {
 #endif
 		Com_Shutdown ();
 #ifdef NEW_FILESYSTEM
-		fs_close_all_handles();
+		FS_Handle_CloseAll();
 #else
 		FS_Shutdown(qtrue);
 #endif
@@ -2443,18 +2443,18 @@ void Com_ExecuteCfg(void)
 #ifndef DEDICATED
 	if(!Com_SafeMode()) {
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
-		fs_execute_config_file("cmod.cfg", FS_CONFIGTYPE_GLOBAL_SETTINGS, EXEC_APPEND, qfalse);
+		FS_ExecuteConfigFile("cmod.cfg", FS_CONFIGTYPE_GLOBAL_SETTINGS, EXEC_APPEND, qfalse);
 		Cbuf_Execute();
-		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
+		FS_ExecuteConfigFile("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
 		Cbuf_Execute(); }
 	Com_Printf("\n");
 #endif
 #else
-	fs_execute_config_file("default.cfg", FS_CONFIGTYPE_DEFAULT, EXEC_APPEND, qfalse);
+	FS_ExecuteConfigFile("default.cfg", FS_CONFIGTYPE_DEFAULT, EXEC_APPEND, qfalse);
 	if(!Com_SafeMode()) {
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
-		fs_execute_config_file(Q3CONFIG_CFG, FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
-		fs_execute_config_file("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse); }
+		FS_ExecuteConfigFile(Q3CONFIG_CFG, FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse);
+		FS_ExecuteConfigFile("autoexec.cfg", FS_CONFIGTYPE_SETTINGS, EXEC_APPEND, qfalse); }
 	Cbuf_Execute();
 	Com_Printf("\n");
 #endif
@@ -2502,7 +2502,7 @@ void Com_GameRestart(int checksumFeed, qboolean disconnect)
 		}
 
 #ifdef NEW_FILESYSTEM
-		fs_update_mod_dir();
+		FS_UpdateModDir();
 #else
 		FS_Restart(checksumFeed);
 #endif
@@ -2544,7 +2544,7 @@ void Com_GameRestart_f(void)
 {
 #ifdef NEW_FILESYSTEM
 	// This will get sanitized in fs_set_mod_dir during the restart
-	Cvar_Set("fs_game", Cmd_Argv(1));
+	Cvar_Set( "fs_game", Cmd_Argv( 1 ) );
 
 #ifndef DEDICATED
 	// Make sure the specified fs_game doesn't get overriden by cl_oldGame
@@ -2910,7 +2910,7 @@ void Com_Init( char *commandLine ) {
 	com_homepath = Cvar_Get("com_homepath", "", CVAR_INIT|CVAR_PROTECTED);
 
 #ifdef NEW_FILESYSTEM
-	fs_startup();
+	FS_Startup();
 #else
 	FS_InitFilesystem ();
 #endif
@@ -2951,7 +2951,7 @@ void Com_Init( char *commandLine ) {
 	Com_StartupVariable( NULL );
 
 #ifdef NEW_FILESYSTEM
-	fs_cache_initialize();
+	FS_ReadCache_Initialize();
 #endif
 
   // get dedicated here for proper hunk megs initialization
@@ -3035,7 +3035,7 @@ void Com_Init( char *commandLine ) {
 	Sys_Init();
 
 #ifdef NEW_FILESYSTEM
-	Sys_InitPIDFile( fs_pid_file_directory() );
+	Sys_InitPIDFile( FS_PidFileDirectory() );
 #else
 	Sys_InitPIDFile( FS_GetCurrentGameDir() );
 #endif
@@ -3157,14 +3157,15 @@ void Com_WriteConfigToFile( const char *filename ) {
 	fileHandle_t	f;
 
 #ifdef NEW_FILESYSTEM
-	if(!Q_stricmp(filename, Q3CONFIG_CFG)) {
-		f = fs_open_settings_file_write(Q3CONFIG_CFG); }
-	else {
+	if ( !Q_stricmp( filename, Q3CONFIG_CFG ) ) {
+		f = FS_OpenSettingsFileWrite( Q3CONFIG_CFG );
+	} else {
 #ifdef CMOD_RESTRICT_VM_CFG_WRITE
-		f = FS_FOpenConfigFileWrite( filename ); }
+		f = FS_FOpenConfigFileWrite( filename );
 #else
-		f = FS_FOpenFileWrite( filename ); }
+		f = FS_FOpenFileWrite( filename );
 #endif
+	}
 #else
 	f = FS_FOpenFileWrite( filename );
 #endif

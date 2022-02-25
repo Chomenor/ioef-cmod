@@ -23,380 +23,659 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-#define STACKPTR(pointer) ( FSC_STACK_RETRIEVE(&fs->general_stack, pointer, 0) )	// non-null
-#define STACKPTRN(pointer) ( FSC_STACK_RETRIEVE(&fs->general_stack, pointer, 1) )	// null allowed
+#define STACKPTR( pointer ) ( FSC_STACK_RETRIEVE( &fs->general_stack, pointer, fsc_false ) ) // non-null
+#define STACKPTRN( pointer ) ( FSC_STACK_RETRIEVE( &fs->general_stack, pointer, fsc_true ) ) // null allowed
 
-/* ******************************************************************************** */
-// Direct Sourcetype Operations
-/* ******************************************************************************** */
+/*
+###############################################################################################
 
-static int fsc_direct_is_file_active(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return ((fsc_file_direct_t *)file)->refresh_count == fs->refresh_count; }
+Direct Sourcetype Operations
 
-static const char *fsc_direct_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return (const char *)STACKPTR(((fsc_file_direct_t *)file)->qp_mod_ptr); }
+###############################################################################################
+*/
 
-static int fsc_direct_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
-	void *fp;
+/*
+=================
+FSC_DS_IsFileActive
+=================
+*/
+static fsc_boolean FSC_DS_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
+	return ( (fsc_file_direct_t *)file )->refresh_count == fs->refresh_count ? fsc_true : fsc_false;
+}
+
+/*
+=================
+FSC_DS_GetModDir
+=================
+*/
+static const char *FSC_DS_GetModDir( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
+	return (const char *)STACKPTR( ( (fsc_file_direct_t *)file )->qp_mod_ptr );
+}
+
+/*
+=================
+FSC_DS_ExtractData
+=================
+*/
+static unsigned int FSC_DS_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
+	fsc_filehandle_t *fp;
 	unsigned int result;
 
 	// Open the file
-	fp = fsc_open_file(STACKPTR(((fsc_file_direct_t *)file)->os_path_ptr), "rb");
-	if(!fp) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "failed to open file", 0);
-		return 1; }
+	fp = FSC_FOpenRaw( (const fsc_ospath_t *)STACKPTR( ( (fsc_file_direct_t *)file )->os_path_ptr ), "rb" );
+	if ( !fp ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "failed to open file", FSC_NULL );
+		return 0;
+	}
 
-	result = fsc_fread(buffer, file->filesize, fp);
-	if(result != file->filesize) {
-		fsc_report_error(eh, FSC_ERROR_EXTRACT, "failed to read all data from file", 0);
-		fsc_fclose(fp);
-		return 1; }
+	result = FSC_FRead( buffer, file->filesize, fp );
+	FSC_ASSERT( result <= file->filesize );
 
-	fsc_fclose(fp);
-	return 0; }
+	FSC_FClose( fp );
+	return result;
+}
 
-static fsc_sourcetype_t direct_sourcetype = {FSC_SOURCETYPE_DIRECT, fsc_direct_is_file_active,
-		fsc_direct_get_mod_dir, fsc_direct_extract_data};
+// ----------------------------------------------------------------
 
-/* ******************************************************************************** */
-// Common file operations
-/* ******************************************************************************** */
+static fsc_sourcetype_t direct_sourcetype = {
+	FSC_SOURCETYPE_DIRECT,
+	FSC_DS_IsFileActive,
+	FSC_DS_GetModDir,
+	FSC_DS_ExtractData,
+};
 
-static const fsc_sourcetype_t *fsc_get_sourcetype(const fsc_file_t *file, const fsc_filesystem_t *fs) {
+/*
+###############################################################################################
+
+Common file operations
+
+###############################################################################################
+*/
+
+/*
+=================
+FSC_GetSourcetype
+
+Returns sourcetype object for given file.
+=================
+*/
+static const fsc_sourcetype_t *FSC_GetSourcetype( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
 	int i;
 
 	// Check built in sourcetypes
-	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) return &direct_sourcetype;
-	if(file->sourcetype == FSC_SOURCETYPE_PK3) return &pk3_sourcetype;
+	if ( file->sourcetype == FSC_SOURCETYPE_DIRECT )
+		return &direct_sourcetype;
+	if ( file->sourcetype == FSC_SOURCETYPE_PK3 )
+		return &pk3_sourcetype;
 
 	// Check custom sourcetypes
-	for(i=0; i<FSC_CUSTOM_SOURCETYPE_COUNT; ++i) {
-		if(file->sourcetype == fs->custom_sourcetypes[i].sourcetype_id) return &fs->custom_sourcetypes[i]; }
+	for ( i = 0; i < FSC_CUSTOM_SOURCETYPE_COUNT; ++i ) {
+		if ( file->sourcetype == fs->custom_sourcetypes[i].sourcetype_id )
+			return &fs->custom_sourcetypes[i];
+	}
 
-	return 0; }
+	return FSC_NULL;
+}
 
-const fsc_file_direct_t *fsc_get_base_file(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	// Returns the source pk3 if file is from a pk3, the file itself if file is on disk,
-	// and null if the file is from a custom sourcetype
-	FSC_ASSERT(file);
-	if(file->sourcetype == FSC_SOURCETYPE_DIRECT) {
-		return (const fsc_file_direct_t *)file; }
-	if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-		return (fsc_file_direct_t *)STACKPTR(((fsc_file_frompk3_t *)file)->source_pk3); }
-	return 0; }
+/*
+=================
+FSC_GetBaseFile
 
-int fsc_extract_file(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
-	// Provided buffer should be size file->filesize
-	// Returns 0 on success, 1 on error
+Returns the source pk3 if file is from a pk3, the file itself if file is on disk,
+or null if the file is from a custom sourcetype.
+=================
+*/
+const fsc_file_direct_t *FSC_GetBaseFile( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
+	FSC_ASSERT( file );
+	if ( file->sourcetype == FSC_SOURCETYPE_DIRECT ) {
+		return (const fsc_file_direct_t *)file;
+	}
+	if ( file->sourcetype == FSC_SOURCETYPE_PK3 ) {
+		return (fsc_file_direct_t *)STACKPTR( ( (fsc_file_frompk3_t *)file )->source_pk3 );
+	}
+	return FSC_NULL;
+}
+
+/*
+=================
+FSC_ExtractFile
+
+Extracts complete file contents into target buffer. Provided buffer should be size file->filesize.
+Returns number of bytes successfully read, which equals file->filesize on success.
+=================
+*/
+unsigned int FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	const fsc_sourcetype_t *sourcetype;
-	if(file->contents_cache) {
-		fsc_memcpy(buffer, STACKPTR(file->contents_cache), file->filesize);
-		return 0; }
-	sourcetype = fsc_get_sourcetype(file, fs);
-	FSC_ASSERT(sourcetype && sourcetype->extract_data);
-	return sourcetype->extract_data(file, buffer, fs, eh); }
+	unsigned int result;
+	if ( file->contents_cache ) {
+		FSC_Memcpy( buffer, STACKPTR( file->contents_cache ), file->filesize );
+		return file->filesize;
+	}
+	sourcetype = FSC_GetSourcetype( file, fs );
+	FSC_ASSERT( sourcetype && sourcetype->extract_data );
 
-int fsc_is_file_enabled(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	// Returns 1 if file enabled, 0 otherwise
-	const fsc_sourcetype_t *sourcetype = fsc_get_sourcetype(file, fs);
-	FSC_ASSERT(sourcetype && sourcetype->is_file_active);
-	return sourcetype->is_file_active(file, fs); }
+	result = sourcetype->extract_data( file, buffer, fs );
+	FSC_ASSERT( result <= file->filesize );
+	if ( result != file->filesize ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "failed to read all data from file", FSC_NULL );
+	}
+	return result;
+}
 
-const char *fsc_get_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	// Should not return null; may return empty string to represent omitted/invalid mod directory
-	const fsc_sourcetype_t *sourcetype = fsc_get_sourcetype(file, fs);
-	const char *mod_directory;
-	FSC_ASSERT(sourcetype && sourcetype->get_mod_dir);
-	mod_directory = sourcetype->get_mod_dir(file, fs);
-	FSC_ASSERT(mod_directory);
-	return mod_directory; }
+/*
+=================
+FSC_ExtractFileAllocated
 
-char *fsc_extract_file_allocated(fsc_filesystem_t *fs, fsc_file_t *file, fsc_errorhandler_t *eh) {
-	// Returns data on success, 0 on failure
-	// Caller is responsible for calling fsc_free on extracted data
+Extracts complete file contents into new allocated buffer. Returns null on error or data pointer on success.
+On success, caller is responsible for calling FSC_Free on the returned pointer.
+=================
+*/
+char *FSC_ExtractFileAllocated( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
 	char *data;
-	if(file->filesize + 1 < file->filesize) return 0;
-	data = (char *)fsc_malloc(file->filesize + 1);
-	if(fsc_extract_file(file, data, fs, eh)) {
-		fsc_free(data);
-		return 0; }
-	data[file->filesize] = 0;
-	return data; }
+	if ( file->filesize + 1 < file->filesize )
+		return FSC_NULL;
+	data = (char *)FSC_Malloc( file->filesize + 1 );
+	if ( FSC_ExtractFile( file, data, fs ) != file->filesize ) {
+		FSC_Free( data );
+		return FSC_NULL;
+	}
+	data[file->filesize] = '\0';
+	return data;
+}
 
-/* ******************************************************************************** */
-// File to printable string functions
-/* ******************************************************************************** */
+/*
+=================
+FSC_IsFileActive
 
-#define FSC_ADD_STRING(string) fsc_stream_append_string(stream, string)
+Returns true if file is active and expected to exist on disk, false otherwise.
+=================
+*/
+fsc_boolean FSC_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
+	const fsc_sourcetype_t *sourcetype = FSC_GetSourcetype( file, fs );
+	FSC_ASSERT( sourcetype && sourcetype->is_file_active );
+	return sourcetype->is_file_active( file, fs );
+}
 
-void fsc_file_to_stream(const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
-			int include_mod, int include_pk3_origin) {
-	if(include_mod) {
-		const char *mod_dir = fsc_get_mod_dir(file, fs);
-		if(!*mod_dir) mod_dir = "<no-mod-dir>";
-		FSC_ADD_STRING(mod_dir);
-		FSC_ADD_STRING("/"); }
+/*
+=================
+FSC_GetModDir
 
-	if(include_pk3_origin) {
-		if(file->sourcetype == FSC_SOURCETYPE_DIRECT && ((fsc_file_direct_t *)file)->pk3dir_ptr) {
-			FSC_ADD_STRING((const char *)STACKPTR(((fsc_file_direct_t *)file)->pk3dir_ptr));
-			FSC_ADD_STRING(".pk3dir->"); }
-		else if(file->sourcetype == FSC_SOURCETYPE_PK3) {
-			fsc_file_to_stream((const fsc_file_t *)fsc_get_base_file(file, fs), stream, fs, 0, 0);
-			FSC_ADD_STRING("->"); } }
+Returns mod directory for given file. May return empty string if mod directory is invalid,
+but should not return null.
+=================
+*/
+const char *FSC_GetModDir( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
+	const fsc_sourcetype_t *sourcetype = FSC_GetSourcetype( file, fs );
+	const char *mod_directory;
+	FSC_ASSERT( sourcetype && sourcetype->get_mod_dir );
+	mod_directory = sourcetype->get_mod_dir( file, fs );
+	FSC_ASSERT( mod_directory );
+	return mod_directory;
+}
 
-	if(file->qp_dir_ptr) {
-		FSC_ADD_STRING((const char *)STACKPTR(file->qp_dir_ptr));
-		FSC_ADD_STRING("/"); }
-	FSC_ADD_STRING((const char *)STACKPTR(file->qp_name_ptr));
-	if(file->qp_ext_ptr) {
-		FSC_ADD_STRING(".");
-		FSC_ADD_STRING((const char *)STACKPTR(file->qp_ext_ptr)); } }
+#define FSC_ADD_STRING(string) FSC_StreamAppendString(stream, string)
 
-/* ******************************************************************************** */
-// File Indexing
-/* ******************************************************************************** */
+/*
+=================
+FSC_FileToStream
 
-static void fsc_merge_stats(const fsc_stats_t *source, fsc_stats_t *target) {
+Writes a readable string representation of the given file to stream.
+=================
+*/
+
+#define FSC_ADD_STRING(string) FSC_StreamAppendString(stream, string)
+
+void FSC_FileToStream( const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
+		fsc_boolean include_mod, fsc_boolean include_pk3_origin ) {
+	if ( include_mod ) {
+		const char *mod_dir = FSC_GetModDir( file, fs );
+		if ( !*mod_dir )
+			mod_dir = "<no-mod-dir>";
+		FSC_ADD_STRING( mod_dir );
+		FSC_ADD_STRING( "/" );
+	}
+
+	if ( include_pk3_origin ) {
+		if ( file->sourcetype == FSC_SOURCETYPE_DIRECT && ( (fsc_file_direct_t *)file )->pk3dir_ptr ) {
+			FSC_ADD_STRING( (const char *)STACKPTR( ( (fsc_file_direct_t *)file )->pk3dir_ptr ) );
+			FSC_ADD_STRING( ".pk3dir->" );
+		} else if ( file->sourcetype == FSC_SOURCETYPE_PK3 ) {
+			FSC_FileToStream( (const fsc_file_t *)FSC_GetBaseFile( file, fs ), stream, fs, fsc_false, fsc_false );
+			FSC_ADD_STRING( "->" );
+		}
+	}
+
+	FSC_ADD_STRING( (const char *)STACKPTR( file->qp_dir_ptr ) );
+	FSC_ADD_STRING( (const char *)STACKPTR( file->qp_name_ptr ) );
+	FSC_ADD_STRING( (const char *)STACKPTR( file->qp_ext_ptr ) );
+}
+
+/*
+###############################################################################################
+
+File Indexing
+
+###############################################################################################
+*/
+
+/*
+=================
+FSC_MergeStats
+=================
+*/
+static void FSC_MergeStats( const fsc_stats_t *source, fsc_stats_t *target ) {
 	target->valid_pk3_count += source->valid_pk3_count;
 	target->pk3_subfile_count += source->pk3_subfile_count;
 	target->shader_file_count += source->shader_file_count;
 	target->shader_count += source->shader_count;
 	target->total_file_count += source->total_file_count;
-	target->cacheable_file_count += source->cacheable_file_count; }
+	target->cacheable_file_count += source->cacheable_file_count;
+}
 
-void fsc_register_file(fsc_stackptr_t file_ptr, fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
-	// Registers file in index and loads secondary content such as shaders
-	// Called for both files on disk and in pk3s
-	fsc_file_t *file = (fsc_file_t *)STACKPTR(file_ptr);
-	fsc_file_direct_t *base_file = (fsc_file_direct_t *)fsc_get_base_file(file, fs);
-	const char *qp_dir = (const char *)STACKPTRN(file->qp_dir_ptr);
-	const char *qp_name = (const char *)STACKPTR(file->qp_name_ptr);
-	const char *qp_ext = (const char *)STACKPTRN(file->qp_ext_ptr);
+/*
+=================
+FSC_SanityLimit
+
+Applies some limits to prevent potential vulnerabilities due to overloaded pk3 files.
+Returns true if limit hit, otherwise decrements limit counter and returns false.
+=================
+*/
+fsc_boolean FSC_SanityLimit( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit ) {
+	FSC_ASSERT( sanity_limit );
+	FSC_ASSERT( limit_value );
+
+	if ( *limit_value < size ) {
+		if ( !sanity_limit->warned ) {
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "pk3 content dropped due to sanity limits", (void *)sanity_limit->pk3file );
+			sanity_limit->warned = fsc_true;
+		}
+
+		return fsc_true;
+	}
+
+	*limit_value -= size;
+	return fsc_false;
+}
+
+/*
+=================
+FSC_RegisterFile
+
+Registers file in index and loads secondary content such as shaders.
+Called for both files on disk and in pk3s.
+=================
+*/
+void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs ) {
+	fsc_file_t *file = (fsc_file_t *)STACKPTR( file_ptr );
+	fsc_file_direct_t *base_file = (fsc_file_direct_t *)FSC_GetBaseFile( file, fs );
+	const char *qp_dir = (const char *)STACKPTR( file->qp_dir_ptr );
+	const char *qp_name = (const char *)STACKPTR( file->qp_name_ptr );
+	const char *qp_ext = (const char *)STACKPTR( file->qp_ext_ptr );
+
+	// Check for index overflow
+	if ( sanity_limit && FSC_SanityLimit( FSC_Strlen( qp_dir ) + FSC_Strlen( qp_name ) + FSC_Strlen( qp_ext ) + 64,
+			&sanity_limit->content_index_memory, sanity_limit ) ) {
+		return;
+	}
 
 	// Register file for main lookup and directory iteration
-	fsc_hashtable_insert(file_ptr, fsc_string_hash(qp_name, qp_dir), &fs->files);
-	fsc_iteration_register_file(file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack);
+	FSC_HashtableInsert( file_ptr, FSC_StringHash( qp_name, qp_dir ), &fs->files );
+	FSC_IterationRegisterFile( file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack );
 
 	// Index shaders and update shader counter on base file
-	if(qp_ext && qp_dir && !fsc_stricmp(qp_dir, "scripts") && !fsc_stricmp(qp_ext, "shader")) {
-		int count = index_shader_file(fs, file_ptr, eh);
-		if(base_file) {
+	if ( !FSC_Stricmp( qp_dir, "scripts/" ) && !FSC_Stricmp( qp_ext, ".shader" ) ) {
+		int count = FSC_IndexShaderFile( fs, file_ptr, sanity_limit );
+		if ( base_file ) {
 			base_file->shader_file_count += 1;
 			base_file->shader_count += count;
-			base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
+			base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT;
+		}
+	}
 
 	// Index crosshairs
-	if(qp_dir && !fsc_stricmp(qp_dir, "gfx/2d")) {
+	if ( !FSC_Stricmp( qp_dir, "gfx/2d/" ) ) {
 		char buffer[10];
-		fsc_strncpy(buffer, qp_name, sizeof(buffer));
-		if(!fsc_stricmp(buffer, "crosshair")) {
-			index_crosshair(fs, file_ptr, eh);
-			if(base_file) base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
+		FSC_Strncpy( buffer, qp_name, sizeof( buffer ) );
+		if ( !FSC_Stricmp( buffer, "crosshair" ) ) {
+			FSC_IndexCrosshair( fs, file_ptr, sanity_limit );
+			if ( base_file )
+				base_file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT;
+		}
+	}
 
 	// Cache small arena and bot file contents
-	if(file->filesize < 16384 && qp_dir && !fsc_stricmp(qp_dir, "scripts") && qp_ext &&
-			(!fsc_stricmp(qp_ext, "arena") || !fsc_stricmp(qp_ext, "bot"))) {
-		char *source_data = fsc_extract_file_allocated(fs, file, eh);
-		if(source_data) {
-			fsc_stackptr_t target_ptr = fsc_stack_allocate(&fs->general_stack, file->filesize);
-			char *target_data = (char *)STACKPTR(target_ptr);
-			fsc_memcpy(target_data, source_data, file->filesize);
+	if ( file->filesize < 16384 && !FSC_Stricmp( qp_dir, "scripts/" ) &&
+		 ( !FSC_Stricmp( qp_ext, ".arena" ) || !FSC_Stricmp( qp_ext, ".bot" ) ) &&
+		 ( !sanity_limit || !FSC_SanityLimit( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
+		char *source_data = FSC_ExtractFileAllocated( file, fs );
+		if ( source_data ) {
+			fsc_stackptr_t target_ptr = FSC_StackAllocate( &fs->general_stack, file->filesize );
+			char *target_data = (char *)STACKPTR( target_ptr );
+			FSC_Memcpy( target_data, source_data, file->filesize );
 			file->contents_cache = target_ptr;
-			fsc_free(source_data); } } }
+			FSC_Free( source_data );
+		}
+	}
+}
 
-static int fsc_nstring_compare(const char *s1, const char *s2) {
-	// Compares two potentially null strings, returns 1 if matching, 0 otherwise
-	if(!s1 && !s2) return 1;
-	if(!s1 || !s2) return 0;
-	return !fsc_strcmp(s1, s2); }
+/*
+=================
+FSC_NullStringCompare
 
-void fsc_load_file(int source_dir_id, const void *os_path, const char *mod_dir, const char *pk3dir_name,
-		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp, unsigned int filesize,
-		fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
+Compares two potentially null strings. Returns true if matching, false otherwise.
+=================
+*/
+static int FSC_NullStringCompare( const char *s1, const char *s2 ) {
+	if ( !s1 && !s2 )
+		return fsc_true;
+	if ( !s1 || !s2 )
+		return fsc_false;
+	return !FSC_Strcmp( s1, s2 );
+}
+
+/*
+=================
+FSC_LoadFile
+
+Registers a file on disk into the filesystem index.
+=================
+*/
+void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *mod_dir, const char *pk3dir_name,
+		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp,
+		unsigned int filesize, fsc_filesystem_t *fs ) {
 	fsc_stackptr_t file_ptr;
-	fsc_file_direct_t *file;
+	fsc_file_direct_t *file = FSC_NULL;
 	fsc_hashtable_iterator_t hti;
-	unsigned int fs_hash = fsc_string_hash(qp_name, qp_dir);
-	int unindexed_file = 0;		// File was not present in the index at all
-	int new_file = 0;	// File was not present in last refresh, but may have been in the index
+	unsigned int fs_hash = FSC_StringHash( qp_name, qp_dir );
+	fsc_boolean unindexed_file = fsc_false;		// File was not present in the index at all
+	fsc_boolean new_file = fsc_false;			// File was not present in last refresh, but may have been in the index
 
-	FSC_ASSERT(os_path);
-	FSC_ASSERT(qp_name);
-	FSC_ASSERT(fs);
+	FSC_ASSERT( os_path );
+	FSC_ASSERT( qp_dir );
+	FSC_ASSERT( qp_name );
+	FSC_ASSERT( qp_ext );
+	FSC_ASSERT( fs );
 
-	// Search filesystem to see if a sufficiently equivalent entry already exists
-	fsc_hashtable_open(&fs->files, fs_hash, &hti);
-	while((file_ptr = fsc_hashtable_next(&hti))) {
-		file = (fsc_file_direct_t *)STACKPTR(file_ptr);
-		if(file->f.sourcetype != FSC_SOURCETYPE_DIRECT) continue;
-		if(!fsc_nstring_compare((char *)STACKPTR(file->f.qp_name_ptr), qp_name)) continue;
-		if(!fsc_nstring_compare((char *)STACKPTRN(file->f.qp_dir_ptr), qp_dir)) continue;
-		if(!fsc_nstring_compare((char *)STACKPTRN(file->f.qp_ext_ptr), qp_ext)) continue;
-		if(!fsc_nstring_compare((char *)STACKPTRN(file->qp_mod_ptr), mod_dir)) continue;
-		if(!fsc_nstring_compare((char *)STACKPTRN(file->pk3dir_ptr), pk3dir_name)) continue;
-		if(file->os_path_ptr && fsc_compare_os_path(STACKPTR(file->os_path_ptr), os_path)) continue;
-		if(file->f.filesize != filesize || file->os_timestamp != os_timestamp) {
-			if(file->os_path_ptr && !(file->f.flags & FSC_FILEFLAG_LINKED_CONTENT) && !file->f.contents_cache) {
+	// Search filesystem to see if a sufficiently equivalent entry already exists.
+	FSC_HashtableIterateBegin( &fs->files, fs_hash, &hti );
+	while ( ( file_ptr = FSC_HashtableIterateNext( &hti ) ) ) {
+		file = (fsc_file_direct_t *)STACKPTR( file_ptr );
+		if ( file->f.sourcetype != FSC_SOURCETYPE_DIRECT )
+			continue;
+		if ( FSC_Strcmp( (char *)STACKPTR( file->f.qp_name_ptr ), qp_name ) )
+			continue;
+		if ( FSC_Strcmp( (char *)STACKPTR( file->f.qp_dir_ptr ), qp_dir ) )
+			continue;
+		if ( FSC_Strcmp( (char *)STACKPTR( file->f.qp_ext_ptr ), qp_ext ) )
+			continue;
+		if ( !FSC_NullStringCompare( (char *)STACKPTRN( file->qp_mod_ptr ), mod_dir ) )
+			continue;
+		if ( !FSC_NullStringCompare( (char *)STACKPTRN( file->pk3dir_ptr ), pk3dir_name ) )
+			continue;
+		if ( file->os_path_ptr && FSC_OSPathCompare( (const fsc_ospath_t *)STACKPTR( file->os_path_ptr ), os_path ) )
+			continue;
+		if ( file->f.filesize != filesize || file->os_timestamp != os_timestamp ) {
+			if ( file->os_path_ptr && !( file->f.flags & FSC_FILEFLAG_LINKED_CONTENT ) && !file->f.contents_cache ) {
 				// Reuse the same file object to save memory (this prevents files actively written
 				// by the game such as logs generating a new file object every refresh)
 				file->f.filesize = filesize;
 				file->os_timestamp = os_timestamp;
-				break; }
-			else {
+				break;
+			} else {
 				// Otherwise treat the file as non-matching
-				continue; } }
-		break; }
+				continue;
+			}
+		}
+		break;
+	}
 
-	if(file_ptr) {
+	if ( file_ptr ) {
 		// Have existing entry
-		if(file->refresh_count == fs->refresh_count) {
+		if ( file->refresh_count == fs->refresh_count ) {
 			// Existing file already active. This can happen with if there are duplicate source directories
 			// loaded in the same refresh cycle. Just leave the existing file unchanged.
-			return; }
+			return;
+		}
 
 		// Activate the entry
-		if(file->refresh_count != fs->refresh_count - 1) new_file = 1;
-		file->refresh_count = fs->refresh_count; }
+		if ( file->refresh_count != fs->refresh_count - 1 ) {
+			new_file = fsc_true;
+		}
+		file->refresh_count = fs->refresh_count;
+	}
 
 	else {
 		// Create a new entry
-		file_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(*file));
-		file = (fsc_file_direct_t *)STACKPTR(file_ptr);
+		file_ptr = FSC_StackAllocate( &fs->general_stack, sizeof( *file ) );
+		file = (fsc_file_direct_t *)STACKPTR( file_ptr );
 
 		// Set up fields (other fields are zeroed by default due to stack allocation)
 		file->f.sourcetype = FSC_SOURCETYPE_DIRECT;
-		file->f.qp_dir_ptr = qp_dir ? fsc_string_repository_getstring(qp_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
-		file->f.qp_name_ptr = fsc_string_repository_getstring(qp_name, 1, &fs->string_repository, &fs->general_stack);
-		file->f.qp_ext_ptr = qp_ext ? fsc_string_repository_getstring(qp_ext, 1, &fs->string_repository, &fs->general_stack) : 0;
-		file->qp_mod_ptr = mod_dir ? fsc_string_repository_getstring(mod_dir, 1, &fs->string_repository, &fs->general_stack) : 0;
-		file->pk3dir_ptr = pk3dir_name ? fsc_string_repository_getstring(pk3dir_name, 1, &fs->string_repository, &fs->general_stack) : 0;
+		file->f.qp_dir_ptr = FSC_StringRepositoryGetString( qp_dir, &fs->string_repository );
+		file->f.qp_name_ptr = FSC_StringRepositoryGetString( qp_name, &fs->string_repository );
+		file->f.qp_ext_ptr = FSC_StringRepositoryGetString( qp_ext, &fs->string_repository );
+		file->qp_mod_ptr = mod_dir ? FSC_StringRepositoryGetString( mod_dir, &fs->string_repository ) : FSC_SPNULL;
+		file->pk3dir_ptr = pk3dir_name ? FSC_StringRepositoryGetString( pk3dir_name, &fs->string_repository ) : FSC_SPNULL;
 		file->f.filesize = filesize;
 		file->os_timestamp = os_timestamp;
 		file->refresh_count = fs->refresh_count;
 
-		unindexed_file = new_file = 1; }
+		unindexed_file = fsc_true;
+		new_file = fsc_true;
+	}
 
 	// Update source dir and download folder flag
 	file->source_dir_id = source_dir_id;
 	file->f.flags &= ~FSC_FILEFLAG_DLPK3;
-	if(qp_ext && !fsc_stricmp(qp_ext, "pk3") && qp_dir && !fsc_stricmp(qp_dir, "downloads")) {
-		file->f.flags |= FSC_FILEFLAG_DLPK3; }
+	if ( !FSC_Stricmp( qp_ext, ".pk3" ) && !FSC_Stricmp( qp_dir, "downloads/" ) ) {
+		file->f.flags |= FSC_FILEFLAG_DLPK3;
+	}
 
 	// Save os path. This happens on loading a new file, and also when first activating an entry that was loaded from cache.
-	if(!file->os_path_ptr) {
-		int os_path_size = fsc_os_path_size(os_path);
-		file->os_path_ptr = fsc_stack_allocate(&fs->general_stack, os_path_size);
-		fsc_memcpy(STACKPTR(file->os_path_ptr), os_path, os_path_size); }
+	if ( !file->os_path_ptr ) {
+		int os_path_size = FSC_OSPathSize( os_path );
+		file->os_path_ptr = FSC_StackAllocate( &fs->general_stack, os_path_size );
+		FSC_Memcpy( STACKPTR( file->os_path_ptr ), os_path, os_path_size );
+	}
 
 	// Register file and load contents
-	if(unindexed_file) {
-		fsc_register_file(file_ptr, fs, eh);
-		if(qp_ext && !fsc_stricmp(qp_ext, "pk3") && (!qp_dir || !fsc_stricmp(qp_dir, "downloads"))) {
-			fsc_load_pk3(STACKPTR(file->os_path_ptr), fs, file_ptr, eh, 0, 0);
-			file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT; } }
+	if ( unindexed_file ) {
+		FSC_RegisterFile( file_ptr, FSC_NULL, fs );
+		if ( !FSC_Stricmp( qp_ext, ".pk3" ) && ( !*qp_dir || !FSC_Stricmp( qp_dir, "downloads/" ) ) ) {
+			FSC_LoadPk3( (fsc_ospath_t *)STACKPTR( file->os_path_ptr ), fs, file_ptr, FSC_NULL, FSC_NULL );
+			file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT;
+		}
+	}
 
 	// Update stats
-	{	fsc_stats_t stats;
-		fsc_memset(&stats, 0, sizeof(stats));
+	{
+		fsc_stats_t stats;
+		FSC_Memset( &stats, 0, sizeof( stats ) );
 
 		stats.total_file_count = 1 + file->pk3_subfile_count;
 
 		stats.cacheable_file_count = file->pk3_subfile_count;
-		if(file->shader_count || file->pk3_subfile_count) ++stats.cacheable_file_count;
+		if ( file->shader_count || file->pk3_subfile_count ) {
+			++stats.cacheable_file_count;
+		}
 
 		stats.pk3_subfile_count = file->pk3_subfile_count;
 
 		// By design, this field records only *valid* pk3s with a nonzero hash.
 		// Perhaps create another field that includes invalid pk3s?
-		if(file->pk3_hash) stats.valid_pk3_count = 1;
+		if ( file->pk3_hash ) {
+			stats.valid_pk3_count = 1;
+		}
 
 		stats.shader_file_count = file->shader_file_count;
 		stats.shader_count = file->shader_count;
 
-		fsc_merge_stats(&stats, &fs->active_stats);
-		if(unindexed_file) fsc_merge_stats(&stats, &fs->total_stats);
-		if(new_file) fsc_merge_stats(&stats, &fs->new_stats); } }
+		FSC_MergeStats( &stats, &fs->active_stats );
+		if ( unindexed_file ) {
+			FSC_MergeStats( &stats, &fs->total_stats );
+		}
+		if ( new_file ) {
+			FSC_MergeStats( &stats, &fs->new_stats );
+		}
+	}
+}
 
-static int fsc_app_extension(const char *name) {
-	// Returns 1 if name matches mac app bundle extension, 0 otherwise
-	int length = fsc_strlen(name);
-	if(length < 4) return 0;
-	if(!fsc_stricmp(name + (length - 4), ".app")) return 1;
-	return 0; }
+/*
+=================
+FSC_HasAppExtension
 
-void fsc_load_file_full_path(int source_dir_id, const void *os_path, const char *full_qpath, unsigned int os_timestamp,
-		unsigned int filesize, fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
-	char qp_buffer[FSC_MAX_QPATH];
+Returns true if name matches mac app bundle extension, false otherwise.
+=================
+*/
+static fsc_boolean FSC_HasAppExtension( const char *name ) {
+	int length = FSC_Strlen( name );
+	if ( length < 4 )
+		return fsc_false;
+	if ( !FSC_Stricmp( name + ( length - 4 ), ".app" ) )
+		return fsc_true;
+	return fsc_false;
+}
+
+/*
+=================
+FSC_LoadFileFromPath
+
+Registers a file on disk into the filesystem index. Performs some additional path parsing
+compared to the base FSC_LoadFile function.
+=================
+*/
+void FSC_LoadFileFromPath( int source_dir_id, const fsc_ospath_t *os_path, const char *game_path,
+		unsigned int os_timestamp, unsigned int filesize, fsc_filesystem_t *fs ) {
 	char qp_mod[FSC_MAX_MODDIR];
-	const char *qpath_start = 0;
-	int file_in_pk3dir = 0;
+	const char *qpath_start = FSC_NULL;
+	fsc_boolean file_in_pk3dir = fsc_false;
 	char pk3dir_buffer[FSC_MAX_QPATH];
-	const char *pk3dir_remainder = 0;
-	const char *qp_dir, *qp_name, *qp_ext;
+	const char *pk3dir_remainder = FSC_NULL;
+	fsc_qpath_buffer_t qpath_split;
 
 	// Process mod directory prefix
-	if(!fsc_get_leading_directory(full_qpath, qp_mod, sizeof(qp_mod), &qpath_start)) return;
-	if(!qpath_start) return;
-	if(fsc_app_extension(qp_mod)) return;	// Don't index mac app bundles as mods
+	if ( !FSC_SplitLeadingDirectory( game_path, qp_mod, sizeof( qp_mod ), &qpath_start ) ) {
+		return;
+	}
+	if ( !qpath_start ) {
+		return;
+	}
+	if ( FSC_HasAppExtension( qp_mod ) ) {
+		// Don't index mac app bundles as mods
+		return;
+	}
 
 	// Process pk3dir prefix
-	if(fsc_get_leading_directory(qpath_start, pk3dir_buffer, sizeof(pk3dir_buffer), &pk3dir_remainder)) {
-		if(pk3dir_remainder) {
-			int length = fsc_strlen(pk3dir_buffer);
-			if(length >= 7 && !fsc_stricmp(pk3dir_buffer + length - 7, ".pk3dir")) {
-				pk3dir_buffer[length - 7] = 0;
-				file_in_pk3dir = 1;
-				qpath_start = pk3dir_remainder; } } }
+	if ( FSC_SplitLeadingDirectory( qpath_start, pk3dir_buffer, sizeof( pk3dir_buffer ), &pk3dir_remainder ) ) {
+		if ( pk3dir_remainder ) {
+			int length = FSC_Strlen( pk3dir_buffer );
+			if ( length >= 7 && !FSC_Stricmp( pk3dir_buffer + length - 7, ".pk3dir" ) ) {
+				pk3dir_buffer[length - 7] = '\0';
+				file_in_pk3dir = fsc_true;
+				qpath_start = pk3dir_remainder;
+			}
+		}
+	}
 
 	// Process qpath
-	if(!fsc_process_qpath(qpath_start, qp_buffer, &qp_dir, &qp_name, &qp_ext)) return;
+	FSC_SplitQpath( qpath_start, &qpath_split, fsc_false );
 
 	// Load file
-	fsc_load_file(source_dir_id, os_path, qp_mod, file_in_pk3dir ? pk3dir_buffer : 0, qp_dir, qp_name, qp_ext,
-			os_timestamp, filesize, fs, eh); }
+	FSC_LoadFile( source_dir_id, os_path, qp_mod, file_in_pk3dir ? pk3dir_buffer : FSC_NULL, qpath_split.dir,
+				  qpath_split.name, qpath_split.ext, os_timestamp, filesize, fs );
+}
 
 typedef struct {
 	int source_dir_id;
 	fsc_filesystem_t *fs;
-	fsc_errorhandler_t *eh;
 } iterate_context_t;
 
-static void load_file_from_iteration(iterate_data_t *file_data, void *iterate_context) {
+/*
+=================
+FSC_LoadFileFromIteration
+=================
+*/
+static void FSC_LoadFileFromIteration( iterate_data_t *file_data, void *iterate_context ) {
 	iterate_context_t *iterate_context_typed = (iterate_context_t *)iterate_context;
-	fsc_load_file_full_path(iterate_context_typed->source_dir_id, file_data->os_path, file_data->qpath_with_mod_dir,
-			file_data->os_timestamp, file_data->filesize, iterate_context_typed->fs, iterate_context_typed->eh); }
+	FSC_LoadFileFromPath( iterate_context_typed->source_dir_id, file_data->os_path, file_data->qpath_with_mod_dir,
+			file_data->os_timestamp, file_data->filesize, iterate_context_typed->fs );
+}
 
-void fsc_filesystem_initialize(fsc_filesystem_t *fs) {
-	fsc_memset(fs, 0, sizeof(*fs));
-	fsc_stack_initialize(&fs->general_stack);
-	fsc_hashtable_initialize(&fs->files, &fs->general_stack, 65536);
-	fsc_hashtable_initialize(&fs->string_repository, &fs->general_stack, 65536);
-	fsc_hashtable_initialize(&fs->directories, &fs->general_stack, 16384);
-	fsc_hashtable_initialize(&fs->shaders, &fs->general_stack, 65536);
-	fsc_hashtable_initialize(&fs->crosshairs, &fs->general_stack, 1);
-	fsc_hashtable_initialize(&fs->pk3_hash_lookup, &fs->general_stack, 4096); }
+/*
+=================
+FSC_FilesystemInitialize
 
-void fsc_filesystem_free(fsc_filesystem_t *fs) {
-	// Can be called on a nulled, freed, initialized, or in some cases partially initialized filesystem
-	fsc_stack_free(&fs->general_stack);
-	fsc_hashtable_free(&fs->files);
-	fsc_hashtable_free(&fs->string_repository);
-	fsc_hashtable_free(&fs->directories);
-	fsc_hashtable_free(&fs->shaders);
-	fsc_hashtable_free(&fs->crosshairs);
-	fsc_hashtable_free(&fs->pk3_hash_lookup); }
+Initializes an empty filesystem.
+=================
+*/
+void FSC_FilesystemInitialize( fsc_filesystem_t *fs ) {
+	FSC_Memset( fs, 0, sizeof( *fs ) );
+	FSC_StackInitialize( &fs->general_stack );
+	FSC_HashtableInitialize( &fs->files, &fs->general_stack, 65536 );
+	FSC_HashtableInitialize( &fs->string_repository, &fs->general_stack, 65536 );
+	FSC_HashtableInitialize( &fs->directories, &fs->general_stack, 16384 );
+	FSC_HashtableInitialize( &fs->shaders, &fs->general_stack, 65536 );
+	FSC_HashtableInitialize( &fs->crosshairs, &fs->general_stack, 1 );
+	FSC_HashtableInitialize( &fs->pk3_hash_lookup, &fs->general_stack, 4096 );
+}
 
-void fsc_filesystem_reset(fsc_filesystem_t *fs) {
+/*
+=================
+FSC_FilesystemFree
+
+Frees a filesystem object. Can be called on a nulled, freed, initialized, or in some cases partially
+initialized filesystem.
+=================
+*/
+void FSC_FilesystemFree( fsc_filesystem_t *fs ) {
+	FSC_StackFree( &fs->general_stack );
+	FSC_HashtableFree( &fs->files );
+	FSC_HashtableFree( &fs->string_repository );
+	FSC_HashtableFree( &fs->directories );
+	FSC_HashtableFree( &fs->shaders );
+	FSC_HashtableFree( &fs->crosshairs );
+	FSC_HashtableFree( &fs->pk3_hash_lookup );
+}
+
+/*
+=================
+FSC_FilesystemReset
+
+Resets all files in filesystem to inactive state, resulting in an 'empty' filesystem. Inactive files
+can be reactivated during subsequent calls to FSC_LoadDirectory.
+=================
+*/
+void FSC_FilesystemReset( fsc_filesystem_t *fs ) {
 	++fs->refresh_count;
-	fsc_memset(&fs->active_stats, 0, sizeof(fs->active_stats));
-	fsc_memset(&fs->new_stats, 0, sizeof(fs->new_stats)); }
+	FSC_Memset( &fs->active_stats, 0, sizeof( fs->active_stats ) );
+	FSC_Memset( &fs->new_stats, 0, sizeof( fs->new_stats ) );
+}
 
-void fsc_load_directory(fsc_filesystem_t *fs, void *os_path, int source_dir_id, fsc_errorhandler_t *eh) {
+/*
+=================
+FSC_LoadDirectoryRawPath
+
+Scans the given game directory for files and registers them into the file index.
+=================
+*/
+void FSC_LoadDirectoryRawPath( fsc_filesystem_t *fs, fsc_ospath_t *os_path, int source_dir_id ) {
 	iterate_context_t context;
 	context.source_dir_id = source_dir_id;
 	context.fs = fs;
-	context.eh = eh;
-	iterate_directory(os_path, load_file_from_iteration, &context); }
+	FSC_IterateDirectory( os_path, FSC_LoadFileFromIteration, &context );
+}
+
+/*
+=================
+FSC_LoadDirectory
+
+Standard string path wrapper for FSC_LoadDirectoryRawPath.
+=================
+*/
+void FSC_LoadDirectory( fsc_filesystem_t *fs, const char *path, int source_dir_id ) {
+	fsc_ospath_t *os_path = FSC_StringToOSPath( path );
+	FSC_LoadDirectoryRawPath( fs, os_path, source_dir_id );
+	FSC_Free( os_path );
+}
 
 #endif	// NEW_FILESYSTEM

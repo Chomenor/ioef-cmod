@@ -78,13 +78,13 @@ typedef struct fsc_filesystem_s {
 } fsc_filesystem_t;
 ```
 
-- general_stack: Handles the memory allocation for the filesystem index. All fsc_stackptr_t pointers used throughout the index need to be dereferenced against this structure by calling the fsc_stack_retrieve function. This is usually abbreviated via the STACKPTR macro, which under fscore typically references an "fs" variable local to the calling function, and in the main filesystem references the global "fs" variable defined in fs_main.c.
+- general_stack: Handles the memory allocation for the filesystem index. All fsc_stackptr_t pointers used throughout the index need to be dereferenced against this structure by calling the FSC_StackRetrieve function. This is usually abbreviated via the STACKPTR macro, which under fscore typically references an "fs" variable local to the calling function, and in the main filesystem references the global "fs.index" variable.
 
 - string_repository: Used to allocate string storage from the general_stack, but in a deduplicated fashion so the same string is only stored once.
 
-- files: Main hashtable for all the files in the filesystem. The hash is based on the directory and name of the file, but not the extension. Note that files are never removed from this structure, so pointers stay valid, but they can be "disabled" if they are no longer available on the disk. When you iterate files you typically need to call fsc_is_file_enabled to check which files are actually available.
+- files: Main hashtable for all the files in the filesystem. The hash is based on the directory and name of the file, but not the extension. Note that files are never removed from this structure, so pointers stay valid, but they can be "inactive" if they are no longer available on the disk. The file iterator functions in fsc_iteration.c skip inactive files automatically. The state of files can also be checked manually by calling FSC_IsFileActive.
 
-- refresh_count: Controls which files are disabled. A refresh count value is stored for each file in the index; when it matches this value the file is considered enabled, otherwise it is considered disabled. To "reset" the filesystem and disable all files you can increment this value, although in practice you should use fsc_filesystem_reset which also updates the stat counters.
+- refresh_count: Controls which files are inactive. A refresh count value is stored for each file in the index; when it matches this value the file is considered enabled, otherwise it is considered inactive. To "reset" the filesystem and disable all files you can increment this value, although in practice you should use FSC_FilesystemReset which also updates the stat counters.
 
 - directories: Used to optimize file listing operations. For example, if you wanted to list just the files under "models/players/sarge" using the files hashtable, you would have to iterate over the entire filesystem to find them. This structure allows the file listing code to look up a specific directory and only iterate files under that directory.
 
@@ -106,45 +106,40 @@ Files are represented by the fsc_file_t structure, defined in fscore.h. It conta
 
 There are two basic types of files, those directly on the disk and those inside pk3s. The sourcetype field in fsc_file_t indicates the type. FSC_SOURCETYPE_DIRECT files can be cast to fsc_file_direct_t to access more fields and FSC_SOURCETYPE_PK3 files can be cast to fsc_file_frompk3_t. Note that many attributes are not defined directly in fsc_file_frompk3_t since they can to be obtained from the parent pk3 using the source_pk3 field.
 
-The filesystem core provides a number of utility functions that work on files of either sourcetype (or custom sourcetypes if they are set up). These include fsc_extract_file, fsc_is_file_enabled, fsc_get_mod_dir, and fsc_file_to_stream.
+The filesystem core provides a number of utility functions that work on files of either sourcetype (or custom sourcetypes if they are set up). These include FSC_ExtractFile, FSC_IsFileActive, FSC_GetModDir, and FSC_FileToStream.
 
 ## Initialization
 
 The simplest way to initialize the index and populate it with files is to use these steps:
 
 1) Allocate an fsc_filesystem_t structure
-2) Call fsc_filesystem_initialize on it
-3) Call fsc_load_directory on each source directory
+2) Call FSC_FilesystemInitialize on it
+3) Call FSC_LoadDirectory on each source directory
 
 For example, this code loads files from the "source1" and "source2" directories.
 
 ```
-void filesystem_test(void) {
-	void *source1_path = fsc_string_to_os_path("source1");
-	void *source2_path = fsc_string_to_os_path("source2");
+void FilesystemTest( void ) {
 	fsc_filesystem_t fs;
 
-	fsc_filesystem_initialize(&fs);
-	fsc_load_directory(&fs, source1_path, 0, 0);
-	fsc_load_directory(&fs, source2_path, 1, 0);
-
-	fsc_free(source1_path);
-	fsc_free(source2_path);
+	FSC_FilesystemInitialize( &fs );
+	FSC_LoadDirectory( &fs, "source1", 0, FSC_NULL );
+	FSC_LoadDirectory( &fs, "source2", 1, FSC_NULL );
 
 	// Do something with filesystem...
 }
 ```
 
-Note the 0 and 1 values to the source_dir_id parameter in fsc_load_directory. These values are not used internally by the filesystem core, but they get stored in the file structures so you can tell which source directory the file came from later.
+Note the 0 and 1 values to the source_dir_id parameter in FSC_LoadDirectory. These values are not used internally by the filesystem core, but they get stored in the file structures so you can tell which source directory the file came from later.
 
 ## File Refresh
 
-Once the filesystem is loaded, you can refresh it to update files that are changed or added on the disk. Simply call fsc_filesystem_reset to "clear" the filesystem and disable all files, then repeat the calls to fsc_load_directory that were used in the initialization.
+Once the filesystem is loaded, you can refresh it to update files that are changed or added on the disk. Simply call FSC_FilesystemReset to "clear" the filesystem and disable all files, then repeat the calls to FSC_LoadDirectory that were used in the initialization.
 
 ```
-fsc_filesystem_reset(&fs);
-fsc_load_directory(&fs, source1_path, 0, 0);
-fsc_load_directory(&fs, source2_path, 1, 0);
+FSC_FilesystemReset( &fs );
+FSC_LoadDirectory( &fs, "source1", 0, FSC_NULL );
+FSC_LoadDirectory( &fs, "source2", 1, FSC_NULL );
 ```
 
 This performs very quickly because pk3s already in the index, matched by name, size and timestamp, will simply be re-enabled rather than reindexed from scratch.
@@ -155,49 +150,49 @@ The index cache system works by creating a memory image of all the filesystem st
 
 To use the index cache, follow these steps:
 
-1) Create the cache file using fsc_cache_export_file. A good time to do this is usually right after the filesystem has been initialized and fsc_load_directory has been called on each source directory. The output filesystem will be reconstructed to only contain active files, so you don't have to worry about the cache being cluttered with old files.
+1) Create the cache file using FSC_CacheExportFile. A good time to do this is usually right after the filesystem has been initialized and FSC_LoadDirectory has been called on each source directory. The output filesystem will be reconstructed to only contain active files, so you don't have to worry about the cache being cluttered with old files.
 
-2) On subsequent startups, import the cache file using fsc_cache_import_file, in place of fsc_filesystem_initialize. This initializes the filesystem with all the cached elements starting in a disabled state. If this call fails (return value 1), fall back to calling fsc_filesystem_initialize instead to get an empty filesystem.
+2) On subsequent startups, import the cache file using FSC_CacheImportFile, in place of FSC_FilesystemInitialize. This initializes the filesystem with all the cached elements starting in a disabled state. If this call fails (return value fsc_true), fall back to calling FSC_FilesystemInitialize instead to get an empty filesystem.
 
-3) Call fsc_load_directory on each source directory like normal. If the files successfully match the cached elements, the cached elements will be enabled, otherwise new elements will be generated.
+3) Call FSC_LoadDirectory on each source directory like normal. If the files successfully match the cached elements, the cached elements will be enabled, otherwise new elements will be generated.
 
 The cache file is not considered secure against malicious tampering, so it is important to store it in a location such as base source directory where running VMs don't have write access to it.
 
 # Filesystem Main (fs_main.c)
 
-This component handles the filesystem initialization and refresh process, and holds the primary filesystem state including the cvars, source directories, index, current mod, and pure list from the connected server. By convention, the rest of the filesystem code can access the variables defined in fs_main, but they should only be modified from within fs_main.
+This component handles the filesystem initialization and refresh process, and holds the "fs" structure which contains the main filesystem state including the cvars, source directories, index, current mod, and pure list from the connected server. By convention, the rest of the filesystem code can access the variables defined in this structure, but they should only be modified from within fs_main.
 
 ## Initialization Process
 
-The initialization function, fs_startup, is called only once when the game starts. It initializes the filesystem cvars and configures the source directories, initializes the index using the cache file if possible, performs an initial refresh, and writes an updated cache file if enough new files were added to justify it.
+The initialization function, FS_Startup, is called only once when the game starts. It initializes the filesystem cvars and configures the source directories, initializes the index using the cache file if possible, performs an initial refresh, and writes an updated cache file if enough new files were added to justify it.
 
 ## Refresh Process
 
-The refresh function, fs_refresh, can be called at any time to check for new files on the disk and update them into the index. It uses the process described in the filesystem core section, which is to call fsc_filesystem_reset followed by fsc_load_directory on each source directory. It does not change any part of the filesystem state other than adding new files to the index.
+The refresh function, FS_Refresh, can be called at any time to check for new files on the disk and update them into the index. It uses the process described in the filesystem core section, which is to call FSC_FilesystemReset followed by FSC_LoadDirectory on each source directory. It does not change any part of the filesystem state other than adding new files to the index.
 
 ## Source Directory Handling
 
-The source directory names and paths are stored in the "fs_sourcedirs" array which is initialized in fs_startup and remains constant afterwards. The source directories are ordered by precedence with index 0 being highest priority. Each fs_source_directory_t entry contains the name of the source dir (the cvar name specified in fs_dirs), the path value, and whether the source directory is active.
+The source directory names and paths are stored in the "fs.sourcedirs" array which is initialized in FS_Startup and remains constant afterwards. The source directories are ordered by precedence with index 0 being highest priority. Each fs_source_directory_t entry contains the name of the source dir (the cvar name specified in fs_dirs), the path value, and whether the source directory is active.
 
-You can tell which source directory a file came from by checking its "source_dir_id" field, which represents the index to the fs_sourcedirs array.
+You can tell which source directory a file came from by checking its "source_dir_id" field, which represents the index to the fs.sourcedirs array.
 
-The write directory is always fs_sourcedirs[0], unless the filesystem is in read-only mode. Before doing write operations check the fs_read_only value and abort if it is true, or use the fs_generate_path_writedir function which includes the check automatically.
+The write directory is always fs.sourcedirs[0], unless the filesystem is in read-only mode. Before doing write operations check the fs.read_only value and abort if it is true, or use the FS_GeneratePathWritedir function which includes the check automatically.
 
 ## Mod Directory Handling
 
 Forms of the mod directory are stored in 3 locations:
 
-- fs_main.c->current_mod_dir: This is the functioning active mod directory used by all filesystem code and the FS_GetCurrentGameDir function. Note the conventions that when no mod is set, current_mod_dir is an empty string but FS_GetCurrentGameDir returns com_basegame.
+- fs.current_mod_dir (fs_main.c): This is the functioning active mod directory used by all filesystem code and the FS_GetCurrentGameDir function. Note the conventions that when no mod is set, fs.current_mod_dir is an empty string but FS_GetCurrentGameDir returns com_basegame.
 
-- fs_game cvar: This cvar is set by CL_SystemInfoChanged and by VMs. It is mainly a feeder value to current_mod_dir rather than used directly, and is transferred to current_mod_dir (with sanity checks applied) when fs_set_mod_dir is called.
+- fs_game cvar: This cvar is set by CL_SystemInfoChanged and by VMs. It is mainly a feeder value to fs.current_mod_dir rather than used directly, and is transferred to fs.current_mod_dir (with sanity checks applied) when FS_UpdateModDir is called.
 
-- cl_main.c->cl_oldGame: This is used to revert a server-set fs_game value when disconnecting from a server.
+- cl_oldGame (cl_main.c): This is used to revert a server-set fs_game value when disconnecting from a server.
 
-When fs_mod_settings is enabled, settings are loaded from the config file in the current mod dir. When the mod dir changes, Com_GameRestart must be called to clear the old settings and load the new config file. Care must be taken to avoid running fs_set_mod_dir separately from Com_GameRestart, as this could lead to the wrong config file being overwritten with the wrong settings. There are currently two ways for current_mod_dir to change:
+When fs_mod_settings is enabled, settings are loaded from the config file in the current mod dir. When the mod dir changes, Com_GameRestart must be called to clear the old settings and load the new config file. Care must be taken to avoid running FS_UpdateModDir separately from Com_GameRestart, as this could lead to the wrong config file being overwritten with the wrong settings. There are currently two ways for fs.current_mod_dir to change:
 
-- Through Com_GameRestart->fs_set_mod_dir.
+- Through Com_GameRestart->FS_UpdateModDir.
 
-- Through FS_ConditionalRestart->fs_set_mod_dir, but only if fs_mod_settings is disabled. If fs_mod_settings is enabled it will go through Com_GameRestart instead of calling fs_set_mod_dir directly.
+- Through FS_ConditionalRestart->FS_UpdateModDir, but only if fs_mod_settings is disabled. If fs_mod_settings is enabled it will go through Com_GameRestart instead of calling FS_UpdateModDir directly.
 
 # File Lookup (fs_lookup.c)
 
@@ -205,11 +200,11 @@ The file lookup system handles most requests for game content. It uses two main 
 
 - Wrapper functions: These functions handle a request from the game code for a specific type of resource, and construct a lookup_query_t (or two in the case of a combined vm/game dll lookup). The query processing functions are then called to either produce an output resource (normal mode) or print debug data (debug mode).
 
-- Query processing functions: These functions take one or more lookup_query_t inputs and call perform_selection on each of them to generate a list of lookup resources. They then either identify and return the best resource using the precedence functions (normal mode) or sort and print the list of resources to the console (debug mode).
+- Query processing functions: These functions take one or more lookup_query_t inputs and call FS_PerformSelection on each of them to generate a list of lookup resources. They then either identify and return the best resource using the precedence functions (normal mode) or sort and print the list of resources to the console (debug mode).
 
 - Resource construction: This section is used to convert a file or shader to a "lookup resource" (lookup_resource_t) which contains extra data used to sort the element.
 
-- Selection: The perform_selection function takes a single lookup_query_t as an input, finds all the elements that match the criteria, converts them to lookup resources, and adds them to the target selection_output_t. The selection_output_t is basically an auto-expanding array of lookup resources.
+- Selection: The FS_PerformSelection function takes a single lookup_query_t as an input, finds all the elements that match the criteria, converts them to lookup resources, and adds them to the target selection_output_t. The selection_output_t is basically an auto-expanding array of lookup resources.
 
 - Precedence: This section provides the comparison and sorting functions to select the best element from a list of lookup resources.
 
@@ -261,11 +256,11 @@ This component handles file read/write operations based on a specific path on th
 
 ## Path Handling Functions
 
-The fs_generate_path function provides a standardized method for generating paths anywhere in the game code. It takes up to 3 path inputs, separates them with a slash character, and writes them to the output buffer. Sanity checks for overflows, special characters, relative paths, and unsafe extensions are performed, but can be suppressed for individual path components using the flag parameters. If the path creation fails, the function returns 0.
+The FS_GeneratePath function provides a standardized method for generating paths anywhere in the game code. It takes up to 3 path inputs, separates them with a slash character, and writes them to the output buffer. Sanity checks for overflows, special characters, relative paths, and unsafe extensions are performed, but can be suppressed for individual path components using the flag parameters. If the path creation fails, the function returns 0.
 
-Creation of new directories on the disk is handled through fs_generate_path and is enabled by passing the FS_CREATE_DIRECTORIES or FS_CREATE_DIRECTORIES_FOR_FILE flags.
+Creation of new directories on the disk is handled through FS_GeneratePath and is enabled by passing the FS_CREATE_DIRECTORIES or FS_CREATE_DIRECTORIES_FOR_FILE flags.
 
-There are two other generate path variants: fs_generate_path_sourcedir, which creates a path starting with a specific source directory, and fs_generate_path_writedir, which creates a path starting with the write source directory and fails if the filesystem is in read-only mode.
+There are two other generate path variants: FS_GeneratePathSourcedir, which creates a path starting with a specific source directory, and FS_GeneratePathWritedir, which creates a path starting with the write source directory and fails if the filesystem is in read-only mode.
 
 ## Read Cache
 
@@ -273,23 +268,23 @@ The read cache is a circular buffer used to store file contents and reuse them w
 
 ## Data Reading
 
-The fs_read_data function takes either an fsc_file_t or an exact path and reads the entire file into memory. The allocation will be from the cache if possible, otherwise it will use system malloc to avoid any overflow risk to other memory systems. Either way, fs_free_data is used to free the result.
+The FS_ReadData function takes either an fsc_file_t or an exact path and reads the entire file into memory. The allocation will be from the cache if possible, otherwise it will use system malloc to avoid any overflow risk to other memory systems. Either way, FS_FreeData should be used to free the result.
 
 ## Handle Management
 
-The filesystem uses its own file handle type, fileHandle_t, which can represent several types of handles. Cache read handles use file data from fs_read_data internally. This form of read handle supports any type of file, including files inside pk3s. Direct read, write, and pipe handles are abstractions to the OS library functions which are only valid for files directly on the disk.
+The filesystem uses its own file handle type, fileHandle_t, which can represent several types of handles. Cache read handles use file data from FS_ReadData internally. This form of read handle supports any type of file, including files inside pk3s. Direct read, write, and pipe handles are abstractions to the OS library functions which are only valid for files directly on the disk.
 
 An ownership value can be set on file handles which is used to prevent VMs from accessing file handles they didn't create or leaving file handles open when they shutdown.
 
 # Downloads (fs_download.c)
 
-When connecting to a server, the download list is received in CL_SystemInfoChanged which calls fs_register_download_list. Each hash/name value is converted to a download_entry_t, which contains some extra path format data, and placed in the next_download linked list. Once the download entries are set up, each potential download is executed by the client as follows:
+When connecting to a server, the download list is received in CL_SystemInfoChanged which calls FS_RegisterDownloadList. Each hash/name value is converted to a download_entry_t, which contains some extra path format data, and placed in the next_download linked list. Once the download entries are set up, each potential download is executed by the client as follows:
 
-1) cl_main.c->CL_NextDownload calls fs_advance_next_needed_download, which pops download entries from next_download to current_download until either current_download represents a needed file or no download entries remain.
+1) cl_main.c->CL_NextDownload calls FS_AdvanceToNextNeededDownload, which pops download entries from next_download to current_download until either current_download represents a needed file or no download entries remain.
 
-2) cl_main.c->CL_NextDownload calls fs_get_current_download_info to get the current download filename. If a download is returned, CL_NextDownload can either start the download or if there is an error, skip it and loop back to calling fs_advance_next_needed_download.
+2) cl_main.c->CL_NextDownload calls FS_GetCurrentDownloadInfo to get the current download filename. If a download is returned, CL_NextDownload can either start the download or if there is an error, skip it and loop back to calling FS_AdvanceToNextNeededDownload.
 
-3) If the client successfully completes a download, fs_finalize_download is called to perform final sanity checks and move the download to the save location.
+3) If the client successfully completes a download, FS_FinalizeDownload is called to perform final sanity checks and move the download to the save location.
 
 The main rationale for the download handling being split between the filesystem and client is for ease of integration with new projects. The file-related aspects of the download are handled in the filesystem, which makes it easy to pull in without any extra integration work. Meanwhile the code in CL_NextDownload retains much of its original structure, so if a given project's implementation deviates from ioquake3, it will be easier to map those changes onto the new filesystem.
 
@@ -297,11 +292,11 @@ The main rationale for the download handling being split between the filesystem 
 
 The download system stores two sets of hashes, attempted_downloads and attempted_downloads_http, which are used to prevent trying to redownload the same file twice in the same session. Attempted downloads are handled in the following manner:
 
-- UDP download attempted: Download will be skipped in fs_advance_next_needed_download.
+- UDP download attempted: Download will be skipped in FS_AdvanceToNextNeededDownload.
 
-- http download attempted only, currently in cURL disconnected mode: Download will be skipped in fs_advance_next_needed_download. Once a normal connection to the server is reestablished an entirely new download list will be received through fs_register_download_list and a UDP download can be attempted.
+- http download attempted only, currently in cURL disconnected mode: Download will be skipped in FS_AdvanceToNextNeededDownload. Once a normal connection to the server is reestablished an entirely new download list will be received through FS_RegisterDownloadList and a UDP download can be attempted.
 
-- http download attempted only, currently not in cURL disconnected mode: Download will be accepted in fs_advance_next_needed_download, and the output parameter curl_already_attempted from fs_get_current_download_info will inform CL_NextDownload to only attempt a UDP download for that file.
+- http download attempted only, currently not in cURL disconnected mode: Download will be accepted in FS_AdvanceToNextNeededDownload, and the output parameter curl_already_attempted from FS_GetCurrentDownloadInfo will inform CL_NextDownload to only attempt a UDP download for that file.
 
 ## Download Scenarios
 
@@ -329,15 +324,15 @@ Keep in mind that downloads are not always essential, so it's usually desirable 
 
 This component handles file list requests, which are used primarily by UI menus and debug commands. The file listing process works in roughly these steps:
 
-- A shared function such as FS_ListFilteredFiles or FS_GetFileList is called, which creates a filelist_query_t object and calls list_files.
+- A shared function such as FS_ListFilteredFiles_Flags or FS_GetFileList is called, which creates a filelist_query_t object and calls list_files.
 
 - The "start directory" in the directory index is determined. This allows only files and subfiles under the directory specified in the query to be iterated, instead of having to iterate every file in the index like the original filesystem.
 
 - The file depths are calculated. This is to emulate the behavior of the original filesystem, which typically only lists files 2 directories deep from the base directory, but can use other depths due to various quirks.
 
-- A temporary file set is initialized and temp_file_set_populate is called. It iterates every file under the determined start directory, converts the file (and subdirectories) to strings, checks if the string matches the query criteria, and if so adds it to the file set. A sort key is stored with each file set entry, and duplicate entries are resolved to use the highest precedence sort key.
+- A temporary file set is initialized and FS_FileList_TempFileSetPopulate is called. It iterates every file under the determined start directory, converts the file (and subdirectories) to strings, checks if the string matches the query criteria, and if so adds it to the file set. A sort key is stored with each file set entry, and duplicate entries are resolved to use the highest precedence sort key.
 
-- temp_file_set_to_file_list is called to sort the file set using the included sort keys and convert it to the array format used by the game.
+- FS_FileList_TempSetToList is called to sort the file set using the included sort keys and convert it to the array format used by the game.
 
 # Pk3 Reference Handling (fs_reference.c)
 

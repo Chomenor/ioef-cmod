@@ -650,8 +650,7 @@ void Cmd_Exec_f(cmd_mode_t mode) {
 	if(!COM_CompareExtension(filename, ".cfg")) mode |= CMD_PROTECTED;
 #endif
 #ifdef NEW_FILESYSTEM
-	fs_execute_config_file(filename,
-			(mode & CMD_PROTECTED) ? FS_CONFIGTYPE_PROTECTED : FS_CONFIGTYPE_NONE, EXEC_INSERT, quiet);
+	FS_ExecuteConfigFile( filename, ( mode & CMD_PROTECTED ) ? FS_CONFIGTYPE_PROTECTED : FS_CONFIGTYPE_NONE, EXEC_INSERT, quiet );
 #else
 	FS_ReadFile( filename, &f.v);
 	if (!f.c) {

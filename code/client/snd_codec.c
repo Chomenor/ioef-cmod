@@ -70,34 +70,46 @@ static void *S_CodecGetSound(const char *filename, snd_info_t *info)
 	const char *extension;
 	snd_codec_t *codec;
 
-	COM_StripExtension(filename, localName, MAX_QPATH);
+	COM_StripExtension( filename, localName, MAX_QPATH );
 
 #ifdef ELITEFORCE
-	{	void *rtn = S_MangleNameEF(localName, info);
-		if(rtn) return rtn; }
+	{
+		void *rtn = S_MangleNameEF( localName, info );
+		if ( rtn ) {
+			return rtn;
+		}
+	}
 #endif
 
 	// Look up the file
-	file = fs_sound_lookup(localName, 0, qfalse);
-	if(!file) {
+	file = FS_SoundLookup( localName, 0, qfalse );
+	if ( !file ) {
 #ifdef ELITEFORCE
-		Com_DPrintf(S_COLOR_YELLOW "WARNING: Failed to %s sound %s!\n", info ? "load" : "open", filename);
+		Com_DPrintf( S_COLOR_YELLOW "WARNING: Failed to %s sound %s!\n", info ? "load" : "open", filename );
 #else
-		Com_Printf(S_COLOR_YELLOW "WARNING: Failed to %s sound %s!\n", info ? "load" : "open", filename);
+		Com_Printf( S_COLOR_YELLOW "WARNING: Failed to %s sound %s!\n", info ? "load" : "open", filename );
 #endif
-		return NULL; }
+		return NULL;
+	}
 
 	// Get extension
-	extension = fs_file_extension(file);
-	if(!extension) Com_Error(ERR_DROP, "S_CodecGetSound got file with invalid extension from fs_sound_lookup");
+	extension = FS_GetFileExtension( file );
+	if ( extension[0] == '.' ) {
+		extension = &extension[1];	// Skip leading dot
+	}
 
-	for(codec=codecs; codec; codec=codec->next) {
-			if(!Q_stricmp(extension, codec->ext)) {
-				// Load
-				if(info) return codec->load(va("%s.%s", localName, codec->ext), info);
-				else return codec->open(va("%s.%s", localName, codec->ext)); } }
+	for ( codec = codecs; codec; codec = codec->next ) {
+		if ( !Q_stricmp( extension, codec->ext ) ) {
+			// Load
+			if ( info ) {
+				return codec->load( va( "%s.%s", localName, codec->ext ), info );
+			} else {
+				return codec->open( va( "%s.%s", localName, codec->ext ) );
+			}
+		}
+	}
 
-	Com_Error(ERR_DROP, "S_CodecGetSound got file with unknown extension from fs_sound_lookup");
+	Com_Error( ERR_DROP, "S_CodecGetSound got file with unknown extension from FS_SoundLookup" );
 	return NULL;
 #else
 	snd_codec_t *codec;

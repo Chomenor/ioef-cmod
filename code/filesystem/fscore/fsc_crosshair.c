@@ -23,41 +23,55 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef NEW_FILESYSTEM
 #include "fscore.h"
 
-// This section is to support future crosshair lookup features
+// This file provides crosshair index support for potential crosshair lookup features. Supporting
+// crosshair indexing in the filesystem allows the hash of each crosshair to be cached so it doesn't
+// need to be recalculated each time the game is run.
 
-#define STACKPTR(pointer) ( FSC_STACK_RETRIEVE(&fs->general_stack, pointer, 0) )	// non-null
+#define STACKPTR( pointer ) ( FSC_STACK_RETRIEVE( &fs->general_stack, pointer, fsc_false ) ) // non-null
 
-/* ******************************************************************************** */
-// Crosshair Indexing
-/* ******************************************************************************** */
+/*
+=================
+FSC_IndexCrosshair
 
-int index_crosshair(fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_errorhandler_t *eh) {
-	// Returns 1 on success, 0 otherwise.
-	fsc_file_t *source_file = (fsc_file_t *)STACKPTR(source_file_ptr);
+Registers crosshair into crosshair index. Returns fsc_true on success, fsc_false otherwise.
+=================
+*/
+fsc_boolean FSC_IndexCrosshair( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, fsc_sanity_limit_t *sanity_limit ) {
+	fsc_file_t *source_file = (fsc_file_t *)STACKPTR( source_file_ptr );
+	unsigned int read_limit_size = source_file->filesize + 256 > source_file->filesize ? source_file->filesize + 256 : source_file->filesize;
 	unsigned int hash;
 
-	char *data = fsc_extract_file_allocated(fs, source_file, 0);
-	if(!data) {
-		fsc_report_error(eh, FSC_ERROR_CROSSHAIRFILE, "failed to extract/open crosshair file", source_file);
-		return 0; }
+	if ( !sanity_limit || !FSC_SanityLimit( read_limit_size, &sanity_limit->data_read, sanity_limit ) ) {
+		char *data = FSC_ExtractFileAllocated( source_file, fs );
+		if ( !data ) {
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_CROSSHAIRFILE, "failed to extract/open crosshair file", source_file );
+			return fsc_false;
+		}
 
-	hash = fsc_block_checksum(data, source_file->filesize);
-	fsc_free(data);
+		hash = FSC_BlockChecksum( data, source_file->filesize );
+		FSC_Free( data );
 
- {	fsc_stackptr_t new_crosshair_ptr = fsc_stack_allocate(&fs->general_stack, sizeof(fsc_crosshair_t));
-	fsc_crosshair_t *new_crosshair = (fsc_crosshair_t *)STACKPTR(new_crosshair_ptr);
+		if ( !sanity_limit || !FSC_SanityLimit( sizeof( fsc_crosshair_t ), &sanity_limit->content_index_memory, sanity_limit ) ) {
+			fsc_stackptr_t new_crosshair_ptr = FSC_StackAllocate( &fs->general_stack, sizeof( fsc_crosshair_t ) );
+			fsc_crosshair_t *new_crosshair = (fsc_crosshair_t *)STACKPTR( new_crosshair_ptr );
 
-	new_crosshair->hash = hash;
-	new_crosshair->source_file_ptr = source_file_ptr;
-	fsc_hashtable_insert(new_crosshair_ptr, hash, &fs->crosshairs); }
+			new_crosshair->hash = hash;
+			new_crosshair->source_file_ptr = source_file_ptr;
+			FSC_HashtableInsert( new_crosshair_ptr, hash, &fs->crosshairs );
+			return fsc_true;
+		}
+	}
 
-	return 1; }
+	return fsc_false;
+}
 
-/* ******************************************************************************** */
-// Other
-/* ******************************************************************************** */
-
-int is_crosshair_enabled(fsc_filesystem_t *fs, const fsc_crosshair_t *crosshair) {
-	return fsc_is_file_enabled((const fsc_file_t *)STACKPTR(crosshair->source_file_ptr), fs); }
+/*
+=================
+FSC_IsCrosshairActive
+=================
+*/
+fsc_boolean FSC_IsCrosshairActive( fsc_filesystem_t *fs, const fsc_crosshair_t *crosshair ) {
+	return FSC_IsFileActive( (const fsc_file_t *)STACKPTR( crosshair->source_file_ptr ), fs );
+}
 
 #endif	// NEW_FILESYSTEM

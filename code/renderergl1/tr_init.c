@@ -1301,7 +1301,7 @@ void R_Init( void ) {
 	Com_Memset( &tess, 0, sizeof( tess ) );
 
 #ifdef NEW_FILESYSTEM
-	tr.new_filesystem = ri.Cvar_VariableIntegerValue("new_filesystem") ? qtrue : qfalse;
+	tr.new_filesystem = ri.Cvar_VariableIntegerValue( "new_filesystem" ) ? qtrue : qfalse;
 #endif
 
 #ifdef ELITEFORCE

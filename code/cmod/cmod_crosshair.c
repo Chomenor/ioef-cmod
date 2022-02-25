@@ -158,9 +158,9 @@ CMCrosshair_GenSortKey
 ==================
 */
 static void CMCrosshair_GenSortKey( const fsc_file_t *file, fsc_stream_t *output ) {
-	fs_generate_core_sort_key( file, output, qtrue );
-	fs_write_sort_filename( file, output );
-	fs_write_sort_value( fs_get_source_dir_id( file ), output );
+	FS_WriteCoreSortKey( file, output, qtrue );
+	FS_WriteSortFilename( file, output );
+	FS_WriteSortValue( FS_GetSourceDirID( file ), output );
 }
 
 /*
@@ -171,8 +171,8 @@ CMCrosshair_CompareCrosshairFile
 static int CMCrosshair_CompareCrosshairFile( const fsc_file_t *file1, const fsc_file_t *file2 ) {
 	char buffer1[1024];
 	char buffer2[1024];
-	fsc_stream_t stream1 = { buffer1, 0, sizeof( buffer1 ), qfalse };
-	fsc_stream_t stream2 = { buffer2, 0, sizeof( buffer2 ), qfalse };
+	fsc_stream_t stream1 = FSC_InitStream( buffer1, sizeof( buffer1 ) );
+	fsc_stream_t stream2 = FSC_InitStream( buffer2, sizeof( buffer2 ) );
 	if ( file1->sourcetype == SOURCETYPE_CROSSHAIR && file2->sourcetype != SOURCETYPE_CROSSHAIR ) {
 		return -1;
 	}
@@ -181,7 +181,7 @@ static int CMCrosshair_CompareCrosshairFile( const fsc_file_t *file1, const fsc_
 	}
 	CMCrosshair_GenSortKey( file1, &stream1 );
 	CMCrosshair_GenSortKey( file2, &stream2 );
-	return fsc_memcmp( stream2.data, stream1.data,
+	return FSC_Memcmp( stream2.data, stream1.data,
 			stream1.position < stream2.position ? stream1.position : stream2.position );
 }
 
@@ -209,15 +209,15 @@ static qboolean CMCrosshair_IsCrosshairFileEnabled( const fsc_file_t *file ) {
 	if ( file->sourcetype == SOURCETYPE_CROSSHAIR ) {
 		return crosshair_builtin_file_enabled( file );
 	}
-	if ( !fsc_is_file_enabled( file, &fs ) ) {
+	if ( !FSC_IsFileActive( file, &fs.index ) ) {
 		return qfalse;
 	}
 
-	if ( fs_connected_server_pure_state() == 1 ) {
+	if ( FS_ConnectedServerPureState() == 1 ) {
 		// Connected to pure server
 		if ( file->sourcetype == FSC_SOURCETYPE_PK3 ) {
-			unsigned int pk3_hash = fsc_get_base_file( file, &fs )->pk3_hash;
-			if ( pk3_list_lookup( &connected_server_pure_list, pk3_hash ) ) {
+			unsigned int pk3_hash = FSC_GetBaseFile( file, &fs.index )->pk3_hash;
+			if ( FS_Pk3List_Lookup( &fs.connected_server_pure_list, pk3_hash ) ) {
 				return qtrue;
 			}
 		}
@@ -238,8 +238,8 @@ static void CMCrosshair_BuildCrosshairIndex( void ) {
 
 	crosshair_count = 0;
 
-	fsc_hashtable_open( &fs.crosshairs, 0, &hti );
-	while ( ( entry = STACKPTRN( fsc_hashtable_next( &hti ) ) ) ) {
+	FSC_HashtableIterateBegin( &fs.index.crosshairs, 0, &hti );
+	while ( ( entry = STACKPTRN( FSC_HashtableIterateNext( &hti ) ) ) ) {
 		fsc_file_t *file = STACKPTR( entry->source_file_ptr );
 		int index;
 		if ( !CMCrosshair_IsCrosshairFileEnabled( file ) ) {
@@ -424,7 +424,7 @@ static void CMCrosshair_DebugIndexCmd( void ) {
 	int i;
 	for ( i = 0; i < crosshair_count; ++i ) {
 		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer( crosshairs[i].file, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
+		FS_FileToBuffer( crosshairs[i].file, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
 		Com_Printf( "********** crosshair index entry **********\nhash: %08x\nfile: %s\nindex: %i\nspecial_priority: %i\n",
 				crosshairs[i].hash, buffer, i, crosshairs[i].special_priority );
 	}
@@ -441,10 +441,10 @@ static void CMCrosshair_DebugFilesCmd( void ) {
 	fsc_hashtable_iterator_t hti;
 	fsc_crosshair_t *entry;
 
-	fsc_hashtable_open( &fs.crosshairs, 0, &hti );
-	while ( ( entry = STACKPTRN( fsc_hashtable_next( &hti ) ) ) ) {
+	FSC_HashtableIterateBegin( &fs.index.crosshairs, 0, &hti );
+	while ( ( entry = STACKPTRN( FSC_HashtableIterateNext( &hti ) ) ) ) {
 		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer( STACKPTR( entry->source_file_ptr ), buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
+		FS_FileToBuffer( STACKPTR( entry->source_file_ptr ), buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
 		Com_Printf( "********** crosshair file **********\nhash: %08x\nfile: %s\n", entry->hash, buffer );
 	}
 }
@@ -459,7 +459,7 @@ static void CMCrosshair_StatusCmd( void ) {
 	crosshair_t *current = CMCrosshair_GetCurrentCrosshair();
 	if ( current ) {
 		char buffer[FS_FILE_BUFFER_SIZE];
-		fs_file_to_buffer( current->file, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
+		FS_FileToBuffer( current->file, buffer, sizeof( buffer ), qtrue, qtrue, qtrue, qfalse );
 		Com_Printf( "current crosshair: %08x - %s\n", current->hash, buffer );
 	} else {
 		Com_Printf( "current crosshair: none\n" );

@@ -394,7 +394,7 @@ void CL_SystemInfoChanged( void ) {
 	s = Info_ValueForKey( systemInfo, "sv_referencedPaks" );
 	t = Info_ValueForKey( systemInfo, "sv_referencedPakNames" );
 #ifdef NEW_FILESYSTEM
-	fs_register_download_list(s, t);
+	FS_RegisterDownloadList( s, t );
 #else
 	FS_PureServerSetReferencedPaks( s, t );
 #endif
@@ -429,7 +429,7 @@ void CL_SystemInfoChanged( void ) {
 #ifdef NEW_FILESYSTEM
 		if (!Q_stricmp(key, "sv_pure"))
 		{
-			fs_set_connected_server_sv_pure_value(atoi(value));
+			FS_SetConnectedServerPureValue( atoi( value ) );
 		}
 #endif
 
@@ -689,7 +689,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 
 			// rename the file
 #ifdef NEW_FILESYSTEM
-			fs_finalize_download();
+			FS_FinalizeDownload();
 #else
 			FS_SV_Rename ( clc.downloadTempName, clc.downloadName, qfalse );
 #endif

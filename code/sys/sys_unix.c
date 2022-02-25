@@ -300,7 +300,7 @@ FILE *Sys_Mkfifo( const char *ospath )
 	// if file already exists AND is a pipefile, remove it
 	if( !stat( ospath, &buf ) && S_ISFIFO( buf.st_mode ) )
 #ifdef NEW_FILESYSTEM
-		remove(ospath);
+		remove( ospath );
 #else
 		FS_Remove( ospath );
 #endif
@@ -581,7 +581,7 @@ void Sys_ErrorDialog( const char *error )
 	char ospath[FS_MAX_PATH];
 	char *fileName = ospath;
 
-	fs_generate_path_writedir("crashlog.txt", 0, 0, 0, ospath, sizeof(ospath));
+	FS_GeneratePathWritedir( "crashlog.txt", NULL, 0, 0, ospath, sizeof( ospath ) );
 #else
 	const char *homepath = Cvar_VariableString( "fs_homepath" );
 	const char *gamedir = Cvar_VariableString( "fs_game" );

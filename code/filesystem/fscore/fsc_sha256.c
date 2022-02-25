@@ -348,10 +348,11 @@ void Sha256_Final(CSha256 *p, Byte *digest)
 // Interface function
 /* ******************************************************************************** */
 
-void fsc_calculate_sha256(const char *data, unsigned int size, unsigned char *output) {
+void FSC_CalculateSHA256( const char *data, unsigned int size, unsigned char *output ) {
 	CSha256 csha;
-	Sha256_Init(&csha);
-	Sha256_Update(&csha, (const unsigned char *)data, size);
-	Sha256_Final(&csha, output); }
+	Sha256_Init( &csha );
+	Sha256_Update( &csha, (const unsigned char *)data, size );
+	Sha256_Final( &csha, output );
+}
 
 #endif	// NEW_FILESYSTEM

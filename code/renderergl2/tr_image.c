@@ -2335,26 +2335,35 @@ void R_LoadImageNewFS( const char *name, byte **pic, int *width, int *height, GL
 	*numMips = 0;
 
 	// Look up the file
-	COM_StripExtension(name, localName, MAX_QPATH);
-	file = ri.fs_image_lookup(localName, r_ext_compressed_textures->integer ? LOOKUPFLAG_ENABLE_DDS : 0, qfalse);
-	if(!file) return;
+	COM_StripExtension( name, localName, MAX_QPATH );
+	file = ri.FS_ImageLookup( localName, r_ext_compressed_textures->integer ? LOOKUPFLAG_ENABLE_DDS : 0, qfalse );
+	if ( !file ) {
+		return;
+	}
 
 	// Get extension
-	extension = ri.fs_file_extension(file);
-	if(!extension) extension = "";
+	extension = ri.FS_GetFileExtension( file );
+	if ( extension[0] == '.' ) {
+		// Skip leading dot
+		extension = &extension[1];
+	}
 
-	if(!Q_stricmp(extension, "dds")) {
-		R_LoadDDS(va("%s.%s", localName, extension), pic, width, height, picFormat, numMips);
-		return; }
+	if ( !Q_stricmp( extension, "dds" ) ) {
+		R_LoadDDS( va( "%s.%s", localName, extension ), pic, width, height, picFormat, numMips );
+		return;
+	}
 
-	for(i=0; i<numImageLoaders; ++i) {
-		if(!Q_stricmp(extension, imageLoaders[i].ext)) {
+	for ( i = 0; i < numImageLoaders; ++i ) {
+		if ( !Q_stricmp( extension, imageLoaders[i].ext ) ) {
 			// NOTE: It would be better to change the image loaders to take the actual fsc_file_t instead of
 			//    a string. However this seems to work for now and should *probably* have the same results.
-			imageLoaders[i].ImageLoader(va("%s.%s", localName, extension), pic, width, height);
-			return; } }
+			imageLoaders[i].ImageLoader( va( "%s.%s", localName, extension ), pic, width, height );
+			return;
+		}
+	}
 
-	ri.Printf(PRINT_DEVELOPER, "WARNING: R_LoadImage got file with unknown extension from fs_image_lookup"); }
+	ri.Printf( PRINT_DEVELOPER, "WARNING: R_LoadImage got file with unknown extension from FS_ImageLookup" );
+}
 #endif
 void R_LoadImage( const char *name, byte **pic, int *width, int *height, GLenum *picFormat, int *numMips )
 {
@@ -2366,9 +2375,10 @@ void R_LoadImage( const char *name, byte **pic, int *width, int *height, GLenum 
 	char *altName;
 
 #ifdef NEW_FILESYSTEM
-	if(tr.new_filesystem) {
-		R_LoadImageNewFS(name, pic, width, height, picFormat, numMips);
-		return; }
+	if ( tr.new_filesystem ) {
+		R_LoadImageNewFS( name, pic, width, height, picFormat, numMips );
+		return;
+	}
 #endif
 
 	*pic = NULL;

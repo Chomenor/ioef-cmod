@@ -170,13 +170,13 @@ const fsc_file_t *S_PredictSoundFileForPath( const char *path ) {
 		deutschName[9] = '_';
 		deutschName[10] = 'd';
 
-		deutschFile = fs_sound_lookup( deutschName, 0, qfalse );
+		deutschFile = FS_SoundLookup( deutschName, 0, qfalse );
 		if ( deutschFile ) {
 			return deutschFile;
 		}
 	}
 
-	return fs_sound_lookup( localName, 0, qfalse );
+	return FS_SoundLookup( localName, 0, qfalse );
 }
 
 /*

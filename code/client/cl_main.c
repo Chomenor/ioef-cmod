@@ -1125,7 +1125,7 @@ void CL_PlayDemo_f( void ) {
 
 #ifdef NEW_FILESYSTEM
 	// Refresh here in case a demo was just recorded or manually added
-	fs_auto_refresh();
+	FS_AutoRefresh();
 #endif
 
 	// make sure a local server is killed
@@ -1338,7 +1338,7 @@ Also called by Com_Error
 void CL_FlushMemory(void)
 {
 #ifdef NEW_FILESYSTEM
-	fs_advance_cache_stage();
+	FS_ReadCache_AdvanceStage();
 #endif
 	CL_ClearMemory(qfalse);
 	CL_StartHunkUsers(qfalse);
@@ -1519,8 +1519,10 @@ void CL_Disconnect( qboolean showMainMenu ) {
 	}
 	
 #ifdef NEW_FILESYSTEM
-	fs_disconnect_cleanup();
-	if(!clc.cURLReconnecting) fs_clear_attempted_downloads();
+	FS_DisconnectCleanup();
+	if ( !clc.cURLReconnecting ) {
+		FS_ClearAttemptedDownloads();
+	}
 	clc.cURLReconnecting = qfalse;
 #else
 	// Remove pure paks
@@ -2053,7 +2055,7 @@ void CL_Vid_Restart_f( void ) {
 		CL_ResetPureClientAtServer();
 #ifdef NEW_FILESYSTEM
 		// Refresh in case files have been manually changed
-		fs_auto_refresh();
+		FS_AutoRefresh();
 
 		// New filesystem currently doesn't store ui and cgame references
 #else
@@ -2246,7 +2248,9 @@ void CL_DownloadsComplete( void ) {
 	// if this is a local client then only the client part of the hunk
 	// will be cleared, note that this is done after the hunk mark has been set
 #ifdef NEW_FILESYSTEM
-	if(!FS_ConditionalRestart(clc.checksumFeed, qfalse)) CL_FlushMemory();
+	if ( !FS_ConditionalRestart( clc.checksumFeed, qfalse ) ) {
+		CL_FlushMemory();
+	}
 #else
 	CL_FlushMemory();
 #endif
@@ -2280,7 +2284,7 @@ void CL_BeginDownload( const char *localName, const char *remoteName ) {
 
 	Q_strncpyz ( clc.downloadName, localName, sizeof(clc.downloadName) );
 #ifdef NEW_FILESYSTEM
-	Com_sprintf(clc.downloadTempName, sizeof(clc.downloadTempName), "download.temp");
+	Com_sprintf( clc.downloadTempName, sizeof(clc.downloadTempName), "download.temp" );
 #else
 	Com_sprintf( clc.downloadTempName, sizeof(clc.downloadTempName), "%s.tmp", localName );
 #endif
@@ -2309,80 +2313,89 @@ void CL_NextDownload(void)
 #ifdef NEW_FILESYSTEM
 	// Attempts to initiate a download, or calls CL_DownloadsComplete if no more downloads are available
 	*clc.downloadTempName = *clc.downloadName = 0;
-	Cvar_Set("cl_downloadName", "");
+	Cvar_Set( "cl_downloadName", "" );
 
-	while(1) {
+	while ( 1 ) {
 		char *remoteName, *localName;
 		qboolean curl_already_attempted = qfalse;
 
 		// Get next potential download
-		fs_advance_next_needed_download(clc.cURLDisconnected);
-		if(!fs_get_current_download_info(&localName, &remoteName, &curl_already_attempted)) {
+		FS_AdvanceToNextNeededDownload( clc.cURLDisconnected );
+		if ( !FS_GetCurrentDownloadInfo( &localName, &remoteName, &curl_already_attempted ) ) {
 			CL_DownloadsComplete();
-			return; }
+			return;
+		}
 
 		// Check some skip conditions
-		if(!(cl_allowDownload->integer & DLF_ENABLE)) {
-			Com_Printf("WARNING: Skipping download '%s' because all downloads are disabled "
-				"on your client (cl_allowDownload is %d)\n", localName, cl_allowDownload->integer);
-			fs_advance_download();
-			continue; }
-		if(!Q_stricmp(clc.servername, "localhost")) {
+		if ( !( cl_allowDownload->integer & DLF_ENABLE ) ) {
+			Com_Printf( "WARNING: Skipping download '%s' because all downloads are disabled "
+					"on your client (cl_allowDownload is %d)\n", localName, cl_allowDownload->integer );
+			FS_AdvanceDownload();
+			continue;
+		}
+		if ( !Q_stricmp( clc.servername, "localhost" ) ) {
 			// Don't do any downloads when connected to a local game
 			// Otherwise the game could try to download from itself under certain circumstances
-			Com_Printf("WARNING: Skipping download '%s' because the game appears to be local.\n", localName);
-			fs_advance_download();
-			continue; }
+			Com_Printf( "WARNING: Skipping download '%s' because the game appears to be local.\n", localName );
+			FS_AdvanceDownload();
+			continue;
+		}
 
 #ifdef USE_CURL
 		// Attempt cURL download
-		if(curl_already_attempted) {
-			Com_Printf("NOTE: Attempting UDP download for '%s' because a cURL download appears"
-				" to have been unsuccessful.\n", localName); }
+		if ( curl_already_attempted ) {
+			Com_Printf( "NOTE: Attempting UDP download for '%s' because a cURL download appears"
+					" to have been unsuccessful.\n", localName );
+		}
 
-		else if(!(cl_allowDownload->integer & DLF_NO_REDIRECT)) {
+		else if ( !( cl_allowDownload->integer & DLF_NO_REDIRECT ) ) {
 			// cURL download enabled in client
-			if(!*clc.sv_dlURL) {
-				Com_Printf("NOTE: cURL download not available because server did not set sv_dlURL\n"); }
-			else if(clc.sv_allowDownload & DLF_NO_REDIRECT) {
-				Com_Printf("NOTE: cURL download not available due to server setting"
-					" (sv_allowDownload is %d)\n", clc.sv_allowDownload); }
-			else if(!CL_cURL_Init()) {
-				Com_Printf("NOTE: could not load cURL library\n"); }
-			else {
+			if ( !*clc.sv_dlURL ) {
+				Com_Printf( "NOTE: cURL download not available because server did not set sv_dlURL\n" );
+			} else if ( clc.sv_allowDownload & DLF_NO_REDIRECT ) {
+				Com_Printf( "NOTE: cURL download not available due to server setting"
+						" (sv_allowDownload is %d)\n", clc.sv_allowDownload );
+			} else if ( !CL_cURL_Init() ) {
+				Com_Printf( "NOTE: could not load cURL library\n" );
+			} else {
 				// Begin cURL Download
-				fs_register_current_download_attempt(qtrue);
+				FS_RegisterCurrentDownloadAttempt( qtrue );
 				// Using remoteName instead of localName for UI purposes
-				CL_cURL_BeginDownload(remoteName, va("%s/%s", clc.sv_dlURL, remoteName));
-				if(!clc.cURLDisconnected) clc.downloadRestart = qtrue;
-				return; } }
+				CL_cURL_BeginDownload( remoteName, va( "%s/%s", clc.sv_dlURL, remoteName ) );
+				if ( !clc.cURLDisconnected ) {
+					clc.downloadRestart = qtrue;
+				}
+				return;
+			}
+		}
 
-		else if(!(clc.sv_allowDownload & DLF_NO_REDIRECT) && *clc.sv_dlURL) {
+		else if ( !( clc.sv_allowDownload & DLF_NO_REDIRECT ) && *clc.sv_dlURL ) {
 			// cURL download not enabled in client, but enabled on server
-			Com_Printf("NOTE: cURL download not available due to client setting"
-				" (cl_allowDownload is %d)\n", cl_allowDownload->integer); }
+			Com_Printf( "NOTE: cURL download not available due to client setting"
+					" (cl_allowDownload is %d)\n", cl_allowDownload->integer );
+		}
 #endif
 
 		// Attempt UDP download
-		if((cl_allowDownload->integer & DLF_NO_UDP)) {
-			Com_Printf("WARNING: Skipping download '%s' because UDP downloads are disabled"
-				" on your client (cl_allowDownload is %d)\n",
-				localName, cl_allowDownload->integer);
-			fs_advance_download();
-			continue; }
-		else if(!(clc.sv_allowDownload & DLF_ENABLE) || (clc.sv_allowDownload & DLF_NO_UDP)) {
-			Com_Printf("WARNING: Skipping download '%s' because UDP downloads appear to be disabled"
-				" on the server (sv_allowDownload is %d)\n",
-				localName, clc.sv_allowDownload);
-			fs_advance_download();
-			continue; }
-		else {
+		if ( ( cl_allowDownload->integer & DLF_NO_UDP ) ) {
+			Com_Printf( "WARNING: Skipping download '%s' because UDP downloads are disabled"
+					" on your client (cl_allowDownload is %d)\n", localName, cl_allowDownload->integer );
+			FS_AdvanceDownload();
+			continue;
+		} else if ( !( clc.sv_allowDownload & DLF_ENABLE ) || ( clc.sv_allowDownload & DLF_NO_UDP ) ) {
+			Com_Printf( "WARNING: Skipping download '%s' because UDP downloads appear to be disabled"
+					" on the server (sv_allowDownload is %d)\n", localName, clc.sv_allowDownload );
+			FS_AdvanceDownload();
+			continue;
+		} else {
 			// Begin UDP Download
-			Com_Printf("Starting UDP download for '%s'\n", localName);
-			fs_register_current_download_attempt(qfalse);
+			Com_Printf( "Starting UDP download for '%s'\n", localName );
+			FS_RegisterCurrentDownloadAttempt( qfalse );
 			CL_BeginDownload( localName, remoteName );
 			clc.downloadRestart = qtrue;
-			return; } }
+			return;
+		}
+	}
 #else
 	char *s;
 	char *remoteName, *localName;
@@ -2491,11 +2504,12 @@ void CL_InitDownloads(void) {
 
 	*clc.downloadTempName = *clc.downloadName = 0;
 	Cvar_Set( "cl_downloadName", "" );
-	if(clc.download) {
-		FS_FCloseFile(clc.download);
-		clc.download = 0; }
+	if ( clc.download ) {
+		FS_FCloseFile( clc.download );
+		clc.download = 0;
+	}
 
-	fs_print_download_list();
+	FS_PrintDownloadList();
 
 	CL_NextDownload();
 #else
@@ -3585,12 +3599,12 @@ void CL_InitRef( void ) {
 	ri.Sys_LowPhysicalMemory = Sys_LowPhysicalMemory;
 
 #ifdef NEW_FILESYSTEM
-	ri.fs_general_lookup = fs_general_lookup;
-	ri.fs_image_lookup = fs_image_lookup;
-	ri.fs_shader_lookup = fs_shader_lookup;
-	ri.fs_read_shader = fs_read_shader;
-	ri.fs_file_extension = fs_file_extension;
-	ri.fs_files_from_same_pk3 = fs_files_from_same_pk3;
+	ri.FS_GeneralLookup = FS_GeneralLookup;
+	ri.FS_ImageLookup = FS_ImageLookup;
+	ri.FS_ShaderLookup = FS_ShaderLookup;
+	ri.FS_ReadShader = FS_ReadShader;
+	ri.FS_GetFileExtension = FS_GetFileExtension;
+	ri.FS_CheckFilesFromSamePk3 = FS_CheckFilesFromSamePk3;
 #endif
 
 	ret = GetRefAPI( REF_API_VERSION, &ri );

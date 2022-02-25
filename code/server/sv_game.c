@@ -352,19 +352,25 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 #endif
 	case G_FS_READ:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_QAGAME) return 0;
+		if ( FS_Handle_GetOwner( args[3] ) != FS_HANDLEOWNER_QAGAME ) {
+			return 0;
+		}
 #endif
 		FS_Read( VMA(1), args[2], args[3] );
 		return 0;
 	case G_FS_WRITE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[3]) != FS_HANDLEOWNER_QAGAME) return 0;
+		if ( FS_Handle_GetOwner( args[3] ) != FS_HANDLEOWNER_QAGAME ) {
+			return 0;
+		}
 #endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 	case G_FS_FCLOSE_FILE:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_QAGAME) return 0;
+		if ( FS_Handle_GetOwner( args[1] ) != FS_HANDLEOWNER_QAGAME ) {
+			return 0;
+		}
 #endif
 		FS_FCloseFile( args[1] );
 		return 0;
@@ -373,7 +379,9 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 #ifndef ELITEFORCE
 	case G_FS_SEEK:
 #ifdef NEW_FILESYSTEM
-		if(fs_handle_get_owner(args[1]) != FS_HANDLEOWNER_QAGAME) return 0;
+		if ( FS_Handle_GetOwner( args[1] ) != FS_HANDLEOWNER_QAGAME ) {
+			return 0;
+		}
 #endif
 		return FS_Seek( args[1], args[2], args[3] );
 #endif
@@ -968,7 +976,7 @@ void SV_ShutdownGameProgs( void ) {
 	}
 	VM_Call( gvm, GAME_SHUTDOWN, qfalse );
 #ifdef NEW_FILESYSTEM
-	fs_close_owner_handles(FS_HANDLEOWNER_QAGAME);
+	FS_Handle_CloseAllOwner( FS_HANDLEOWNER_QAGAME );
 #endif
 	VM_Free( gvm );
 	gvm = NULL;
@@ -1015,7 +1023,7 @@ void SV_RestartGameProgs( void ) {
 	}
 	VM_Call( gvm, GAME_SHUTDOWN, qtrue );
 #ifdef NEW_FILESYSTEM
-	fs_close_owner_handles(FS_HANDLEOWNER_QAGAME);
+	FS_Handle_CloseAllOwner( FS_HANDLEOWNER_QAGAME );
 #endif
 
 	// do a restart instead of a free

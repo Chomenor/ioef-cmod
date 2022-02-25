@@ -31,8 +31,6 @@
 #include "fscore.h"
 typedef unsigned int uint32_t;
 typedef unsigned char byte;
-#define Com_Memset fsc_memset
-#define Com_Memcpy fsc_memcpy
 
 typedef struct mdfour {
 	uint32_t A, B, C, D;
@@ -142,8 +140,8 @@ static void mdfour_tail(byte *in, int n)
 
 	b = m->totalN * 8;
 
-	Com_Memset(buf, 0, 128);
-	if (n) Com_Memcpy(buf, in, n);
+	FSC_Memset(buf, 0, 128);
+	if (n) FSC_Memcpy(buf, in, n);
 	buf[n] = 0x80;
 
 	if (n <= 55) {
@@ -199,7 +197,7 @@ static void mdfour(byte *out, byte *in, int n)
 
 //===================================================================
 
-unsigned int fsc_block_checksum(const void *buffer, int length)
+unsigned int FSC_BlockChecksum( const void *buffer, int length )
 {
 	int				digest[4];
 	unsigned	val;

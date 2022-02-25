@@ -613,11 +613,13 @@ qboolean CL_CloseAVI( void )
   // Open the temp index file
 #ifdef NEW_FILESYSTEM
   indexSize = 0;
-  { char path[FS_MAX_PATH];
-    if(fs_generate_path_writedir(FS_GetCurrentGameDir(), idxFileName,
-              0, FS_ALLOW_DIRECTORIES, path, sizeof(path)))
-      afd.idxF = fs_direct_read_handle_open(0, path, (unsigned int *)&indexSize); }
-  if(indexSize <= 0)
+  {
+    char path[FS_MAX_PATH];
+    if ( FS_GeneratePathWritedir( FS_GetCurrentGameDir(), idxFileName, 0, FS_ALLOW_DIRECTORIES, path, sizeof( path ) ) ) {
+      afd.idxF = FS_DirectReadHandle_Open( 0, path, (unsigned int *)&indexSize );
+    }
+  }
+  if ( indexSize <= 0 )
 #else
   if( ( indexSize = FS_FOpenFileRead( idxFileName,
           &afd.idxF, qtrue ) ) <= 0 )

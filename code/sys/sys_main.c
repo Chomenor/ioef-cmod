@@ -179,8 +179,9 @@ static char *Sys_PIDFileName( const char *gamedir )
 {
 #ifdef NEW_FILESYSTEM
 	char buffer[FS_MAX_PATH];
-	if(fs_generate_path_writedir(gamedir, PID_FILENAME, FS_CREATE_DIRECTORIES, 0,
-			buffer, sizeof(buffer))) return va("%s", buffer);
+	if ( FS_GeneratePathWritedir( gamedir, PID_FILENAME, FS_CREATE_DIRECTORIES, 0, buffer, sizeof( buffer ) ) ) {
+		return va( "%s", buffer );
+	}
 #else
 	const char *homePath = Cvar_VariableString( "fs_homepath" );
 
@@ -300,7 +301,7 @@ static __attribute__ ((noreturn)) void Sys_Exit( int exitCode )
 	{
 		// Normal exit
 #ifdef NEW_FILESYSTEM
-		Sys_RemovePIDFile( fs_pid_file_directory() );
+		Sys_RemovePIDFile( FS_PidFileDirectory() );
 #else
 		Sys_RemovePIDFile( FS_GetCurrentGameDir() );
 #endif
@@ -523,31 +524,44 @@ void *Sys_LoadDll(const char *name, qboolean useSystemLib)
 	char path[FS_MAX_PATH];
 
 	// Extra sanity check - this check shouldn't be security critical because it shouldn't be possible
-	//    to get an arbitrary file written to the dll search locations, regardless of extension
-	if(!Sys_DllExtension(name)) {
-		Com_Printf("Refusing to attempt to load library \"%s\": Extension not allowed.\n", name);
-		return NULL; }
+	//    to get an arbitrary file written to the dll search locations, regardless of extension.
+	if ( !Sys_DllExtension( name ) ) {
+		Com_Printf( "Refusing to attempt to load library \"%s\": Extension not allowed.\n", name );
+		return NULL;
+	}
 
-	if(useSystemLib) {
-		Com_Printf("Trying to load \"%s\"...\n", name);
-		if(fs_generate_path(name, 0, 0, FS_ALLOW_DLL, 0, 0, path, sizeof(path)))
-			dllhandle = Sys_LoadLibrary(path); }
+	if ( useSystemLib ) {
+		Com_Printf( "Trying to load \"%s\"...\n", name );
+		if ( FS_GeneratePath( name, NULL, NULL, FS_ALLOW_DLL, 0, 0, path, sizeof( path ) ) ) {
+			dllhandle = Sys_LoadLibrary( path );
+		}
+	}
 
-	if(!dllhandle) {
+	if ( !dllhandle ) {
 		const char *topDir = Sys_BinaryPath();
-		if(!*topDir) topDir = ".";
-		Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, topDir);
-		if(fs_generate_path(topDir, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path)))
-			dllhandle = Sys_LoadLibrary(path); }
+		if ( !*topDir ) {
+			topDir = ".";
+		}
+		Com_Printf( "Trying to load \"%s\" from \"%s\"...\n", name, topDir );
+		if ( FS_GeneratePath( topDir, name, NULL, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof( path ) ) ) {
+			dllhandle = Sys_LoadLibrary( path );
+		}
+	}
 
-	if(!dllhandle) {
-		const char *basePath = Cvar_VariableString("fs_basepath");
-		if(!basePath || !*basePath) basePath = ".";
-		Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, basePath);
-		if(fs_generate_path(basePath, name, 0, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof(path)))
-			dllhandle = Sys_LoadLibrary(path); }
+	if ( !dllhandle ) {
+		const char *basePath = Cvar_VariableString( "fs_basepath" );
+		if ( !basePath || !*basePath ) {
+			basePath = ".";
+		}
+		Com_Printf( "Trying to load \"%s\" from \"%s\"...\n", name, basePath );
+		if ( FS_GeneratePath( basePath, name, NULL, FS_NO_SANITIZE, FS_ALLOW_DLL, 0, path, sizeof( path ) ) ) {
+			dllhandle = Sys_LoadLibrary( path );
+		}
+	}
 
-	if(!dllhandle) Com_Printf("Loading \"%s\" failed\n", name);
+	if ( !dllhandle ) {
+		Com_Printf( "Loading \"%s\" failed\n", name );
+	}
 #else
 	void *dllhandle = NULL;
 

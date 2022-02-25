@@ -21049,45 +21049,46 @@ typedef struct {
 	crosshair_def_t *def;
 } crosshair_file_t;
 
-static int crosshair_is_active(const fsc_file_t *file, const fsc_filesystem_t *fs) {
-	return 1; }
+static fsc_boolean crosshair_is_active(const fsc_file_t *file, const fsc_filesystem_t *fs) {
+	return fsc_true; }
 
 static const char *crosshair_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
 	return "baseEF"; }
 
-static int crosshair_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs, fsc_errorhandler_t *eh) {
-	fsc_memcpy(buffer, ((crosshair_file_t *)file)->def->data, file->filesize);
-	return 0; }
+static unsigned int crosshair_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs) {
+	FSC_Memcpy(buffer, ((crosshair_file_t *)file)->def->data, file->filesize);
+	return file->filesize; }
 
 void crosshair_builtin_register(void) {
 	int i;
 	for(i=0; i<ARRAY_LEN(crosshair_defs); ++i) {
-		fsc_stackptr_t file_ptr = fsc_stack_allocate(&fs.general_stack, sizeof(crosshair_file_t));
+		fsc_stackptr_t file_ptr = FSC_StackAllocate(&fs.index.general_stack, sizeof(crosshair_file_t));
 		crosshair_file_t *file = STACKPTR(file_ptr);
-		fsc_stackptr_t crosshair_ptr = fsc_stack_allocate(&fs.general_stack, sizeof(fsc_crosshair_t));
+		fsc_stackptr_t crosshair_ptr = FSC_StackAllocate(&fs.index.general_stack, sizeof(fsc_crosshair_t));
 		fsc_crosshair_t *crosshair = STACKPTR(crosshair_ptr);
 
-		file->f.qp_name_ptr = fsc_string_repository_getstring("cmod_builtin_crosshair", 1, &fs.string_repository, &fs.general_stack);
-		file->f.qp_ext_ptr = fsc_string_repository_getstring("tga", 1, &fs.string_repository, &fs.general_stack);
+		file->f.qp_dir_ptr = FSC_StringRepositoryGetString("", &fs.index.string_repository);
+		file->f.qp_name_ptr = FSC_StringRepositoryGetString("cmod_builtin_crosshair", &fs.index.string_repository);
+		file->f.qp_ext_ptr = FSC_StringRepositoryGetString(".tga", &fs.index.string_repository);
 		file->f.filesize = crosshair_defs[i].data_size;
 		file->f.sourcetype = 3;
 		file->def = &crosshair_defs[i];
 
 		// No need to add the file to the main hashtables
-		// fs.crosshairs is sufficient because only the crosshair code will use this
+		// fs.index.crosshairs is sufficient because only the crosshair code will use this
 		crosshair->hash = crosshair_defs[i].crosshair_hash;
 		crosshair->source_file_ptr = file_ptr;
-		fsc_hashtable_insert(crosshair_ptr, crosshair_defs[i].crosshair_hash, &fs.crosshairs); }
+		FSC_HashtableInsert(crosshair_ptr, crosshair_defs[i].crosshair_hash, &fs.index.crosshairs); }
 
-	fs.custom_sourcetypes[0] = (fsc_sourcetype_t){SOURCETYPE_CROSSHAIR, crosshair_is_active, crosshair_mod_dir, crosshair_extract_data}; }
+	fs.index.custom_sourcetypes[0] = (fsc_sourcetype_t){SOURCETYPE_CROSSHAIR, crosshair_is_active, crosshair_mod_dir, crosshair_extract_data}; }
 
 qboolean crosshair_builtin_file_enabled(const fsc_file_t *file) {
-	if(fs_connected_server_pure_state() == 1) {
+	if(FS_ConnectedServerPureState() == 1) {
 		// Connected to pure server
 		int i;
 		crosshair_def_t *def = ((crosshair_file_t *)file)->def;
 		for(i=0; i<ARRAY_LEN(def->pk3_hashes); ++i) {
-			if(def->pk3_hashes[i] && pk3_list_lookup(&connected_server_pure_list, def->pk3_hashes[i])) return qtrue; }
+			if(def->pk3_hashes[i] && FS_Pk3List_Lookup(&fs.connected_server_pure_list, def->pk3_hashes[i])) return qtrue; }
 		return qfalse; }
 
 	return qtrue; }

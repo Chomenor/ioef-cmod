@@ -646,8 +646,10 @@ void SV_FreeClient(client_t *client)
 #endif
 
 #ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
-	if(client->download_map) cmod_fs_free_download_map(client->download_map);
-	client->download_map = 0;
+	if ( client->download_map ) {
+		cMod_FS_FreeDownloadMap( client->download_map );
+	}
+	client->download_map = NULL;
 #endif
 
 	SV_Netchan_FreeQueue(client);
@@ -764,8 +766,10 @@ static void SV_SendClientGameState( client_t *client ) {
 	// Store download map for the client so all the pk3s in the gamestate will be available
 	// for the client to download even if the global download list changed during the client
 	// download sequence
-	if(client->download_map) cmod_fs_free_download_map(client->download_map);
-	client->download_map = cmod_fs_obtain_download_map();
+	if ( client->download_map ) {
+		cMod_FS_FreeDownloadMap( client->download_map );
+	}
+	client->download_map = cMod_FS_ObtainDownloadMap();
 #endif
 
 	// when we receive the first packet from the client, we will
@@ -1010,41 +1014,57 @@ static void SV_BeginDownload_f( client_t *cl ) {
 }
 
 #ifdef NEW_FILESYSTEM
-static void SV_OpenDownloadError(client_t *cl, msg_t *msg, const char *errorMessage) {
-	// Sends error message to client
+/*
+==================
+SV_OpenDownloadError
+
+Sends error message to client.
+==================
+*/
+static void SV_OpenDownloadError( client_t *cl, msg_t *msg, const char *errorMessage ) {
 	MSG_WriteByte( msg, svc_download );
 	MSG_WriteShort( msg, 0 ); // client is expecting block zero
 	MSG_WriteLong( msg, -1 ); // illegal file size
 #ifdef ELITEFORCE
-	if(!msg->compat)
+	if ( !msg->compat )
 #endif
-	MSG_WriteString( msg, errorMessage ); }
+	MSG_WriteString( msg, errorMessage );
+}
 
-static qboolean SV_OpenDownload(client_t *cl, msg_t *msg) {
-	// Returns qtrue on success, qfalse otherwise
+/*
+==================
+SV_OpenDownload
+
+Returns qtrue on success, qfalse otherwise.
+==================
+*/
+static qboolean SV_OpenDownload( client_t *cl, msg_t *msg ) {
 	char pak_name[MAX_QPATH];
-	COM_StripExtension(cl->downloadName, pak_name, sizeof(pak_name));
+	COM_StripExtension( cl->downloadName, pak_name, sizeof( pak_name ) );
 
-	if(!(sv_allowDownload->integer & DLF_ENABLE) || (sv_allowDownload->integer & DLF_NO_UDP) ) {
-		Com_Printf("clientDownload: %d : \"%s\" UDP download disabled by server sv_allowDownload setting\n",
-				(int) (cl - svs.clients), cl->downloadName);
-		SV_OpenDownloadError(cl, msg, va("Could not download \"%s\" because autodownloading is disabled on the server.\n"
-				"Set autodownload to No in your settings and you might be able to join the game anyway.\n", cl->downloadName));
-		return qfalse; }
+	if ( !( sv_allowDownload->integer & DLF_ENABLE ) || ( sv_allowDownload->integer & DLF_NO_UDP ) ) {
+		Com_Printf( "clientDownload: %d : \"%s\" UDP download disabled by server sv_allowDownload setting\n",
+				(int)( cl - svs.clients ), cl->downloadName );
+		SV_OpenDownloadError( cl, msg, va( "Could not download \"%s\" because autodownloading is disabled on the server.\n"
+				"Set autodownload to No in your settings and you might be able to join the game anyway.\n", cl->downloadName ) );
+		return qfalse;
+	}
 
 #ifdef CMOD_PER_CLIENT_DOWNLOAD_MAP
-	cl->download = cmod_fs_open_download_pak(cl->downloadName, (unsigned int *)&cl->downloadSize, cl->download_map);
+	cl->download = cMod_FS_OpenDownloadPak( cl->downloadName, (unsigned int *)&cl->downloadSize, cl->download_map );
 #else
-	cl->download = fs_open_download_pak(cl->downloadName, (unsigned int *)&cl->downloadSize);
+	cl->download = FS_OpenDownloadPak( cl->downloadName, (unsigned int *)&cl->downloadSize );
 #endif
-	if(!cl->download) {
+	if ( !cl->download ) {
 		// This could happen if the map changed during a client's download sequence
-		Com_Printf("clientDownload: %d : \"%s\" failed to load download pk3\n", (int) (cl - svs.clients), cl->downloadName);
-		SV_OpenDownloadError(cl, msg, va("File \"%s\" not available on server for downloading.\n"
-				"Try reconnecting to the server.\n", cl->downloadName));
-		return qfalse; }
+		Com_Printf( "clientDownload: %d : \"%s\" failed to load download pk3\n", (int)( cl - svs.clients ), cl->downloadName );
+		SV_OpenDownloadError( cl, msg, va( "File \"%s\" not available on server for downloading.\n"
+				"Try reconnecting to the server.\n", cl->downloadName ) );
+		return qfalse;
+	}
 
-	return qtrue; }
+	return qtrue;
+}
 #endif
 
 /*
@@ -1071,9 +1091,10 @@ int SV_WriteDownloadToClient(client_t *cl, msg_t *msg)
 	if(!cl->download)
 	{
 #ifdef NEW_FILESYSTEM
-		if(!SV_OpenDownload(cl, msg)) {
-			*cl->downloadName = 0;
-			return 1; }
+		if ( !SV_OpenDownload( cl, msg ) ) {
+			*cl->downloadName = '\0';
+			return 1;
+		}
 #else
 		qboolean idPack = qfalse;
 #ifndef ELITEFORCE
@@ -1381,14 +1402,21 @@ static void SV_Disconnect_f( client_t *cl ) {
 #ifdef NEW_FILESYSTEM
 /*
 =================
-SV_VerifyPaks_f / SV_ResetPureClient_f
+SV_VerifyPaks_f
 
-Placeholder functions to handle the deprecated cp and vdr commands
+Placeholder functions to handle the deprecated cp command.
 =================
 */
 static void SV_VerifyPaks_f( client_t *cl ) {
 }
 
+/*
+=================
+SV_ResetPureClient_f
+
+Placeholder functions to handle the deprecated vdr command.
+=================
+*/
 static void SV_ResetPureClient_f( client_t *cl ) {
 }
 #else

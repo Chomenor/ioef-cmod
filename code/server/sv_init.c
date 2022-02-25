@@ -438,11 +438,11 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 #ifdef NEW_FILESYSTEM
 	// This is sometimes called in CL_MapLoading->CL_Disconnect, but not in the case
 	// of a previous local game, so do it here to be safe
-	fs_disconnect_cleanup();
+	FS_DisconnectCleanup();
 
 #ifdef DEDICATED
 	// Update mod directory in case fs_game was changed
-	fs_update_mod_dir();
+	FS_UpdateModDir();
 #endif
 #endif
 
@@ -603,7 +603,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 
 #ifdef NEW_FILESYSTEM
 	// Set download and pure list cvars
-	fs_generate_reference_lists();
+	FS_GenerateReferenceLists();
 #else
 	if ( sv_pure->integer ) {
 		// the server sends these to the clients so they will only

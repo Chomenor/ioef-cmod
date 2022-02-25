@@ -3290,7 +3290,7 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	char		*shaderText;
 #ifdef NEW_FILESYSTEM
 	const fsc_shader_t *fsShader;
-	char		*shaderTextToFree = 0;
+	char		*shaderTextToFree = NULL;
 #endif
 	image_t		*image;
 	shader_t	*sh;
@@ -3334,10 +3334,10 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	// attempt to define shader from an explicit parameter file
 	//
 #ifdef NEW_FILESYSTEM
-	if(tr.new_filesystem) {
-		fsShader = ri.fs_shader_lookup(strippedName, r_ext_compressed_textures->integer ? LOOKUPFLAG_ENABLE_DDS : 0, qfalse);
-		shaderText = shaderTextToFree = fsShader ? ri.fs_read_shader(fsShader) : 0; }
-	else
+	if ( tr.new_filesystem ) {
+		fsShader = ri.FS_ShaderLookup( strippedName, r_ext_compressed_textures->integer ? LOOKUPFLAG_ENABLE_DDS : 0, qfalse );
+		shaderText = shaderTextToFree = fsShader ? ri.FS_ReadShader( fsShader ) : NULL;
+	} else
 #endif
 	shaderText = FindShaderInShaderText( strippedName );
 	if ( shaderText ) {
@@ -3353,7 +3353,9 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 		}
 		sh = FinishShader();
 #ifdef NEW_FILESYSTEM
-		if(tr.new_filesystem) ri.Free(shaderTextToFree);
+		if ( tr.new_filesystem ) {
+			ri.Free( shaderTextToFree );
+		}
 #endif
 		return sh;
 	}
@@ -3982,7 +3984,7 @@ void R_InitShaders( void ) {
 	CreateInternalShaders();
 
 #ifdef NEW_FILESYSTEM
-	if(!tr.new_filesystem)
+	if ( !tr.new_filesystem )
 #endif
 	ScanAndLoadShaderFiles();
 
