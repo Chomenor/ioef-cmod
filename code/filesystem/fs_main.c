@@ -435,6 +435,12 @@ static void FS_InitSourceDirs( void ) {
 		// If write flag is set and no write directory yet, test writability
 		if ( write_flag && !have_write_dir ) {
 			Com_Printf( "Checking if %s is writable...\n", token );
+#ifdef __APPLE__
+			if ( Q_stristr( va( "%s/", path ), "/Applications/" ) ) {
+				Com_Printf( "Not writable due to mac applications directory.\n" );
+			}
+			else
+#endif
 			if ( FS_InitWritableDirectory( path ) ) {
 				Com_Printf( "Confirmed writable.\n" );
 				write_dir = qtrue;
