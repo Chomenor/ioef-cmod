@@ -198,6 +198,10 @@
 // [FEATURE] Reduce unnecessary console log messages in various parts of the game
 #define CMOD_REDUCE_WARNINGS
 
+// [FEATURE] Support loading files from "Resources" directory in Mac app bundle
+// Workaround for notarization issues if unsigned resource files are placed in MacOS directory
+#define CMOD_MAC_APP_RESOURCES
+
 // [FEATURE] Provides cvar option (in_mouse_warping) which attempts to use the same mouse capture
 // method as older EF versions
 #define CMOD_MOUSE_WARPING_OPTION

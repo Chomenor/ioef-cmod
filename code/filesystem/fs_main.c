@@ -262,7 +262,9 @@ void fs_initialize_sourcedirs(void) {
 	Cvar_Get("fs_gogpath", Sys_GogPath(), CVAR_INIT|CVAR_PROTECTED);
 #ifdef __APPLE__
 	Cvar_Get("fs_apppath", Sys_DefaultAppPath(), CVAR_INIT|CVAR_PROTECTED);
+#ifdef CMOD_MAC_APP_RESOURCES
 	Cvar_Get("fs_appresources", va( "%s/../Resources", Sys_DefaultAppPath() ), CVAR_INIT|CVAR_PROTECTED);
+#endif
 #endif
 
 	// Generate temp_dirs based on fs_dirs entries
@@ -482,7 +484,11 @@ void fs_startup(void) {
 
 #ifdef ELITEFORCE
 #ifdef __APPLE__
+#ifdef CMOD_MAC_APP_RESOURCES
 	fs_dirs = Cvar_Get("fs_dirs", "*fs_basepath *fs_homepath fs_gogpath fs_apppath fs_appresources", CVAR_INIT|CVAR_PROTECTED);
+#else
+	fs_dirs = Cvar_Get("fs_dirs", "*fs_basepath *fs_homepath fs_gogpath fs_apppath", CVAR_INIT|CVAR_PROTECTED);
+#endif
 #else
 	fs_dirs = Cvar_Get("fs_dirs", "*fs_basepath *fs_homepath fs_gogpath", CVAR_INIT|CVAR_PROTECTED);
 #endif
