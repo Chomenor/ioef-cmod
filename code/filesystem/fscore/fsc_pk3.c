@@ -504,7 +504,7 @@ static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t 
 	unsigned int data_position;
 
 	// Open the file
-	handle->input_handle = FSC_FOpenRaw( STACKPTR( source_pk3->os_path_ptr ), "rb" );
+	handle->input_handle = FSC_FOpenRaw( (const fsc_ospath_t *)STACKPTR( source_pk3->os_path_ptr ), "rb" );
 	if ( !handle->input_handle ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to open pk3 file", FSC_NULL );
 		return fsc_true;
@@ -641,7 +641,7 @@ FSC_Pk3_IsFileActive
 =================
 */
 static fsc_boolean FSC_Pk3_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
-	return FSC_GetBaseFile( file, fs )->refresh_count == fs->refresh_count;
+	return FSC_GetBaseFile( file, fs )->refresh_count == fs->refresh_count ? fsc_true : fsc_false;
 }
 
 /*
@@ -658,16 +658,17 @@ static const char *FSC_Pk3_GetModDir( const fsc_file_t *file, const fsc_filesyst
 FSC_Pk3_ExtractData
 =================
 */
-static fsc_boolean FSC_Pk3_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
-	fsc_boolean result = fsc_false;
-	const fsc_file_frompk3_t *File = (fsc_file_frompk3_t *)file;
-	fsc_pk3handle_t *handle = FSC_Pk3HandleOpen( File, File->compressed_size, fs );
+static unsigned int FSC_Pk3_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
+	unsigned int result = 0;
+	const fsc_file_frompk3_t *typedFile = (fsc_file_frompk3_t *)file;
+	fsc_pk3handle_t *handle = FSC_Pk3HandleOpen( typedFile, typedFile->compressed_size, fs );
 	if ( !handle ) {
-		return fsc_true;
+		return 0;
 	}
-	if ( FSC_Pk3HandleRead( handle, buffer, file->filesize ) != file->filesize ) {
-		result = fsc_true;
-	}
+
+	result = FSC_Pk3HandleRead( handle, buffer, file->filesize );
+	FSC_ASSERT( result <= file->filesize );
+
 	FSC_Pk3HandleClose( handle );
 	return result;
 }

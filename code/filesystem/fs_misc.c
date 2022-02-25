@@ -483,7 +483,7 @@ void FS_FileToStream( const fsc_file_t *file, fsc_stream_t *stream, qboolean inc
 		FSC_StreamAppendString( stream, "->" );
 	}
 
-	FSC_FileToStream( file, stream, &fs.index, include_mod, include_pk3_origin );
+	FSC_FileToStream( file, stream, &fs.index, include_mod ? fsc_true : fsc_false, include_pk3_origin ? fsc_true : fsc_false );
 
 	if ( include_size ) {
 		char buffer[24];

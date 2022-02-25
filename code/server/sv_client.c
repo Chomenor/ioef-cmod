@@ -992,7 +992,7 @@ int SV_WriteDownloadToClient(client_t *cl, msg_t *msg)
 	{
 #ifdef NEW_FILESYSTEM
 		if ( !SV_OpenDownload( cl, msg ) ) {
-			*cl->downloadName = 0;
+			*cl->downloadName = '\0';
 			return 1;
 		}
 #else

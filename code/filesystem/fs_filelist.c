@@ -60,7 +60,7 @@ Sort key functions
 
 typedef struct {
 	int length;
-	char key[];
+	// data appended to end of structure
 } file_list_sort_key_t;
 
 /*
@@ -77,7 +77,7 @@ static file_list_sort_key_t *FS_FileList_GenerateSortKey( const fsc_file_t *file
 
 	key = (file_list_sort_key_t *)FSC_STACK_RETRIEVE( stack, FSC_StackAllocate( stack, sizeof( *key ) + stream.position ), fsc_false );
 	key->length = stream.position;
-	FSC_Memcpy( key->key, stream.data, stream.position );
+	FSC_Memcpy( (char *)key + sizeof( key ), stream.data, stream.position );
 	return key;
 }
 
@@ -87,7 +87,8 @@ FS_FileList_CompareSortKey
 =================
 */
 static int FS_FileList_CompareSortKey( file_list_sort_key_t *key1, file_list_sort_key_t *key2 ) {
-	return FSC_Memcmp( key2->key, key1->key, key1->length < key2->length ? key1->length : key2->length );
+	return FSC_Memcmp( (char *)key2 + sizeof( key2 ), (char *)key1 + sizeof( key1 ),
+			key1->length < key2->length ? key1->length : key2->length );
 }
 
 /*

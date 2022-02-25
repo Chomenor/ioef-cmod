@@ -203,9 +203,9 @@ typedef struct {
 	// Should always return a valid static string.
 	const char *( *get_mod_dir )( const fsc_file_t *file, const fsc_filesystem_t *fs );
 
-	// Buffer should be length file->filesize
-	// Returns false on success, true on failure.
-	fsc_boolean ( *extract_data )( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs );
+	// Buffer should be length file->filesize.
+	// Returns number of bytes successfully read, which equals file->filesize on success.
+	unsigned int ( *extract_data )( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs );
 } fsc_sourcetype_t;
 
 typedef struct {
@@ -330,8 +330,8 @@ typedef struct {
 /* ******************************************************************************** */
 
 const fsc_file_direct_t *FSC_GetBaseFile( const fsc_file_t *file, const fsc_filesystem_t *fs );
-fsc_boolean FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs );
-char *FSC_ExtractFileAllocated( fsc_filesystem_t *index, fsc_file_t *file );
+unsigned int FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs );
+char *FSC_ExtractFileAllocated( const fsc_file_t *file, const fsc_filesystem_t *fs );
 fsc_boolean FSC_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs );
 const char *FSC_GetModDir( const fsc_file_t *file, const fsc_filesystem_t *fs );
 void FSC_FileToStream( const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,

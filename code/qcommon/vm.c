@@ -378,7 +378,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	Com_Printf( "Loading vm file %s...\n", filename );
 
 #ifdef NEW_FILESYSTEM
-	header.v = FS_ReadData(vm->source_file, 0, 0, "VM_LoadQVM");
+	header.v = FS_ReadData(vm->source_file, NULL, NULL, "VM_LoadQVM");
 #else
 	FS_ReadFileDir(filename, vm->searchPath, unpure, &header.v);
 #endif

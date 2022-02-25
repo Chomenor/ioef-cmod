@@ -87,7 +87,7 @@ void FSC_StreamAppendStringSubstituted( fsc_stream_t *stream, const char *string
 
 	while ( *string ) {
 		if ( stream->position >= stream->size - 1 ) {
-			stream->overflowed = 1;
+			stream->overflowed = fsc_true;
 			break;
 		}
 		if ( substitution_table ) {

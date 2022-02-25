@@ -737,6 +737,11 @@ void FS_Startup( void ) {
 #else
 	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath", CVAR_INIT | CVAR_PROTECTED );
 #endif
+#ifdef DEDICATED
+	fs.cvar.fs_game = Cvar_Get( "fs_game", "", CVAR_LATCH | CVAR_SYSTEMINFO );
+#else
+	fs.cvar.fs_game = Cvar_Get( "fs_game", "", CVAR_INIT | CVAR_SYSTEMINFO );
+#endif
 	fs.cvar.fs_mod_settings = Cvar_Get( "fs_mod_settings", "0", CVAR_INIT );
 	fs.cvar.fs_index_cache = Cvar_Get( "fs_index_cache", "1", CVAR_INIT );
 	fs.cvar.fs_read_inactive_mods = Cvar_Get( "fs_read_inactive_mods", "1", CVAR_ARCHIVE );
@@ -765,12 +770,6 @@ void FS_Startup( void ) {
 
 	FS_InitSourceDirs();
 	FS_InitIndex();
-
-#ifdef DEDICATED
-	fs.cvar.fs_game = Cvar_Get( "fs_game", "", CVAR_LATCH | CVAR_SYSTEMINFO );
-#else
-	fs.cvar.fs_game = Cvar_Get( "fs_game", "", CVAR_INIT | CVAR_SYSTEMINFO );
-#endif
 	FS_UpdateModDirExt( qfalse );
 
 	Com_Printf( "\n" );

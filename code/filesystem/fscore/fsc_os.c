@@ -268,7 +268,7 @@ fsc_boolean FSC_MkdirRaw( fsc_ospath_t *os_path ) {
 	if ( CreateDirectory( (LPCTSTR)os_path, 0 ) ) {
 		return fsc_false;
 	}
-	return GetLastError() != ERROR_ALREADY_EXISTS;
+	return GetLastError() != ERROR_ALREADY_EXISTS ? fsc_true : fsc_false;
 #else
 	if ( mkdir( (const char *)os_path, 0750 ) ) {
 		return errno != EEXIST;

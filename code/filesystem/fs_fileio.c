@@ -824,7 +824,7 @@ char *FS_ReadData( const fsc_file_t *file, const char *path, unsigned int *size_
 			goto error;
 		}
 	} else {
-		if ( FSC_ExtractFile( file, data, &fs.index ) ) {
+		if ( FSC_ExtractFile( file, data, &fs.index ) != file->filesize ) {
 			goto error;
 		}
 	}
@@ -1857,9 +1857,8 @@ fileHandle_t FS_FCreateOpenPipeFile( const char *filename ) {
 
 	if ( !fifo ) {
 		Com_Printf( S_COLOR_YELLOW "WARNING: Could not create new com_pipefile at %s. "
-								   "com_pipefile will not be used.\n",
-					path );
-		return 0;
+				"com_pipefile will not be used.\n", path );
+		return FS_INVALID_HANDLE;
 	}
 
 	if ( fs.cvar.fs_debug_fileio->integer ) {

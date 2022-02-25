@@ -2515,7 +2515,7 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	char		*shaderText;
 #ifdef NEW_FILESYSTEM
 	const fsc_shader_t *fsShader;
-	char		*shaderTextToFree = 0;
+	char		*shaderTextToFree = NULL;
 #endif
 	image_t		*image;
 	shader_t	*sh;
@@ -2567,7 +2567,7 @@ shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 #ifdef NEW_FILESYSTEM
 	if ( tr.new_filesystem ) {
 		fsShader = ri.FS_ShaderLookup( strippedName, 0, qfalse );
-		shaderText = shaderTextToFree = fsShader ? ri.FS_ReadShader( fsShader ) : 0;
+		shaderText = shaderTextToFree = fsShader ? ri.FS_ReadShader( fsShader ) : NULL;
 	} else
 #endif
 	shaderText = FindShaderInShaderText( strippedName );

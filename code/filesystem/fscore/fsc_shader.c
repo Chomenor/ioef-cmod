@@ -123,7 +123,7 @@ int FSC_IndexShaderFile( fsc_filesystem_t *fs, fsc_stackptr_t source_file_ptr, f
 	int shader_count = 0;
 
 	if ( !sanity_limit || !FSC_SanityLimit( read_limit_size, &sanity_limit->data_read, sanity_limit ) ) {
-		char *data = FSC_ExtractFileAllocated( fs, source_file );
+		char *data = FSC_ExtractFileAllocated( source_file, fs );
 		if ( !data ) {
 			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_SHADERFILE, "failed to read shader file", source_file );
 			return 0;

@@ -218,10 +218,10 @@ fsc_boolean FSC_FileIteratorAdvance( fsc_file_iterator_t *it ) {
 			}
 			if ( it->next_bucket == -1 ) {
 				// looking for a specific file, not a global iteration
-				if ( FSC_Stricmp( FSC_STACK_RETRIEVE( &it->fs->general_stack, it->file->qp_name_ptr, fsc_false ), it->name ) ) {
+				if ( FSC_Stricmp( (const char *)FSC_STACK_RETRIEVE( &it->fs->general_stack, it->file->qp_name_ptr, fsc_false ), it->name ) ) {
 					continue;
 				}
-				if ( FSC_Stricmp( FSC_STACK_RETRIEVE( &it->fs->general_stack, it->file->qp_dir_ptr, fsc_false ), it->dir ) ) {
+				if ( FSC_Stricmp( (const char *)FSC_STACK_RETRIEVE( &it->fs->general_stack, it->file->qp_dir_ptr, fsc_false ), it->dir ) ) {
 					continue;
 				}
 			}
@@ -370,14 +370,14 @@ fsc_boolean FSC_ShaderIteratorAdvance( fsc_shader_iterator_t *it ) {
 	while ( 1 ) {
 		it->shader_ptr = FSC_HashtableIterateNext( &it->hti );
 		if ( it->shader_ptr ) {
-			it->shader = (fsc_shader_t *)FSC_STACK_RETRIEVE( &it->fs->general_stack, it->shader_ptr, fsc_false );
+			it->shader = (const fsc_shader_t *)FSC_STACK_RETRIEVE( &it->fs->general_stack, it->shader_ptr, fsc_false );
 			src_file = (const fsc_file_t *)FSC_STACK_RETRIEVE( &it->fs->general_stack, it->shader->source_file_ptr, fsc_false );
 			if ( !FSC_IsFileActive( src_file, it->fs ) ) {
 				continue;
 			}
 			// check if looking for a specific shader
 			if ( it->next_bucket == -1 &&
-					FSC_Stricmp( FSC_STACK_RETRIEVE( &it->fs->general_stack, it->shader->shader_name_ptr, fsc_false ), it->name ) ) {
+					FSC_Stricmp( (const char *)FSC_STACK_RETRIEVE( &it->fs->general_stack, it->shader->shader_name_ptr, fsc_false ), it->name ) ) {
 				continue;
 			}
 			return fsc_true;

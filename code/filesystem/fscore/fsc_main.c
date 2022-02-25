@@ -40,7 +40,7 @@ FSC_DS_IsFileActive
 =================
 */
 static fsc_boolean FSC_DS_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
-	return ( (fsc_file_direct_t *)file )->refresh_count == fs->refresh_count;
+	return ( (fsc_file_direct_t *)file )->refresh_count == fs->refresh_count ? fsc_true : fsc_false;
 }
 
 /*
@@ -57,26 +57,22 @@ static const char *FSC_DS_GetModDir( const fsc_file_t *file, const fsc_filesyste
 FSC_DS_ExtractData
 =================
 */
-static fsc_boolean FSC_DS_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
+static unsigned int FSC_DS_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	fsc_filehandle_t *fp;
 	unsigned int result;
 
 	// Open the file
-	fp = FSC_FOpenRaw( STACKPTR( ( (fsc_file_direct_t *)file )->os_path_ptr ), "rb" );
+	fp = FSC_FOpenRaw( (const fsc_ospath_t *)STACKPTR( ( (fsc_file_direct_t *)file )->os_path_ptr ), "rb" );
 	if ( !fp ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "failed to open file", FSC_NULL );
-		return fsc_true;
+		return 0;
 	}
 
 	result = FSC_FRead( buffer, file->filesize, fp );
-	if ( result != file->filesize ) {
-		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "failed to read all data from file", FSC_NULL );
-		FSC_FClose( fp );
-		return fsc_true;
-	}
+	FSC_ASSERT( result <= file->filesize );
 
 	FSC_FClose( fp );
-	return fsc_false;
+	return result;
 }
 
 // ----------------------------------------------------------------
@@ -145,18 +141,25 @@ const fsc_file_direct_t *FSC_GetBaseFile( const fsc_file_t *file, const fsc_file
 FSC_ExtractFile
 
 Extracts complete file contents into target buffer. Provided buffer should be size file->filesize.
-Returns false on success, true on error.
+Returns number of bytes successfully read, which equals file->filesize on success.
 =================
 */
-fsc_boolean FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
+unsigned int FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	const fsc_sourcetype_t *sourcetype;
+	unsigned int result;
 	if ( file->contents_cache ) {
 		FSC_Memcpy( buffer, STACKPTR( file->contents_cache ), file->filesize );
-		return fsc_false;
+		return file->filesize;
 	}
 	sourcetype = FSC_GetSourcetype( file, fs );
 	FSC_ASSERT( sourcetype && sourcetype->extract_data );
-	return sourcetype->extract_data( file, buffer, fs );
+
+	result = sourcetype->extract_data( file, buffer, fs );
+	FSC_ASSERT( result <= file->filesize );
+	if ( result != file->filesize ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "failed to read all data from file", FSC_NULL );
+	}
+	return result;
 }
 
 /*
@@ -167,12 +170,12 @@ Extracts complete file contents into new allocated buffer. Returns null on error
 On success, caller is responsible for calling FSC_Free on the returned pointer.
 =================
 */
-char *FSC_ExtractFileAllocated( fsc_filesystem_t *fs, fsc_file_t *file ) {
+char *FSC_ExtractFileAllocated( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
 	char *data;
 	if ( file->filesize + 1 < file->filesize )
 		return FSC_NULL;
 	data = (char *)FSC_Malloc( file->filesize + 1 );
-	if ( FSC_ExtractFile( file, data, fs ) ) {
+	if ( FSC_ExtractFile( file, data, fs ) != file->filesize ) {
 		FSC_Free( data );
 		return FSC_NULL;
 	}
@@ -344,7 +347,7 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	if ( file->filesize < 16384 && !FSC_Stricmp( qp_dir, "scripts/" ) &&
 		 ( !FSC_Stricmp( qp_ext, ".arena" ) || !FSC_Stricmp( qp_ext, ".bot" ) ) &&
 		 ( !sanity_limit || !FSC_SanityLimit( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
-		char *source_data = FSC_ExtractFileAllocated( fs, file );
+		char *source_data = FSC_ExtractFileAllocated( file, fs );
 		if ( source_data ) {
 			fsc_stackptr_t target_ptr = FSC_StackAllocate( &fs->general_stack, file->filesize );
 			char *target_data = (char *)STACKPTR( target_ptr );
@@ -388,7 +391,9 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 	fsc_boolean new_file = fsc_false;			// File was not present in last refresh, but may have been in the index
 
 	FSC_ASSERT( os_path );
+	FSC_ASSERT( qp_dir );
 	FSC_ASSERT( qp_name );
+	FSC_ASSERT( qp_ext );
 	FSC_ASSERT( fs );
 
 	// Search filesystem to see if a sufficiently equivalent entry already exists.
@@ -397,17 +402,17 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 		file = (fsc_file_direct_t *)STACKPTR( file_ptr );
 		if ( file->f.sourcetype != FSC_SOURCETYPE_DIRECT )
 			continue;
-		if ( !FSC_NullStringCompare( (char *)STACKPTR( file->f.qp_name_ptr ), qp_name ) )
+		if ( FSC_Strcmp( (char *)STACKPTR( file->f.qp_name_ptr ), qp_name ) )
 			continue;
-		if ( !FSC_NullStringCompare( (char *)STACKPTR( file->f.qp_dir_ptr ), qp_dir ) )
+		if ( FSC_Strcmp( (char *)STACKPTR( file->f.qp_dir_ptr ), qp_dir ) )
 			continue;
-		if ( !FSC_NullStringCompare( (char *)STACKPTR( file->f.qp_ext_ptr ), qp_ext ) )
+		if ( FSC_Strcmp( (char *)STACKPTR( file->f.qp_ext_ptr ), qp_ext ) )
 			continue;
 		if ( !FSC_NullStringCompare( (char *)STACKPTRN( file->qp_mod_ptr ), mod_dir ) )
 			continue;
 		if ( !FSC_NullStringCompare( (char *)STACKPTRN( file->pk3dir_ptr ), pk3dir_name ) )
 			continue;
-		if ( file->os_path_ptr && FSC_OSPathCompare( STACKPTR( file->os_path_ptr ), os_path ) )
+		if ( file->os_path_ptr && FSC_OSPathCompare( (const fsc_ospath_t *)STACKPTR( file->os_path_ptr ), os_path ) )
 			continue;
 		if ( file->f.filesize != filesize || file->os_timestamp != os_timestamp ) {
 			if ( file->os_path_ptr && !( file->f.flags & FSC_FILEFLAG_LINKED_CONTENT ) && !file->f.contents_cache ) {
