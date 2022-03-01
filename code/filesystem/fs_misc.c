@@ -842,9 +842,8 @@ void FS_WriteCoreSortKey( const fsc_file_t *file, fsc_stream_t *output, qboolean
 	}
 	FS_WriteSortValue( FS_SortKey_BaseModDir( mod_type ), output );
 
-	// Deprioritize download folder pk3s, whether the flag is set for this file or this file's source pk3
-	FS_WriteSortValue( ( file->flags & FSC_FILEFLAG_DLPK3 ) || ( file->sourcetype == FSC_SOURCETYPE_PK3 &&
-			( FSC_GetBaseFile( file, &fs.index )->f.flags & FSC_FILEFLAG_DLPK3 ) ) ? 0 : 1, output );
+	// Deprioritize download folder pk3 contents
+	FS_WriteSortValue( FSC_FromDownloadPk3( file, &fs.index ) ? 0 : 1, output );
 
 	if ( file->sourcetype == FSC_SOURCETYPE_PK3 ||
 			( file->sourcetype == FSC_SOURCETYPE_DIRECT && ( (fsc_file_direct_t *)file )->pk3dir_ptr ) ) {

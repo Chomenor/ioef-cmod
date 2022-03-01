@@ -333,6 +333,7 @@ const fsc_file_direct_t *FSC_GetBaseFile( const fsc_file_t *file, const fsc_file
 unsigned int FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs );
 char *FSC_ExtractFileAllocated( const fsc_file_t *file, const fsc_filesystem_t *fs );
 fsc_boolean FSC_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs );
+fsc_boolean FSC_FromDownloadPk3( const fsc_file_t *file, const fsc_filesystem_t *fs );
 const char *FSC_GetModDir( const fsc_file_t *file, const fsc_filesystem_t *fs );
 void FSC_FileToStream( const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
 		fsc_boolean include_mod, fsc_boolean include_pk3_origin );
