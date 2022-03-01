@@ -198,6 +198,21 @@ fsc_boolean FSC_IsFileActive( const fsc_file_t *file, const fsc_filesystem_t *fs
 
 /*
 =================
+FSC_FromDownloadPk3
+
+Returns true if file either is a pk3 in a download directory, or is contained in one.
+=================
+*/
+fsc_boolean FSC_FromDownloadPk3( const fsc_file_t *file, const fsc_filesystem_t *fs ) {
+	const fsc_file_direct_t *baseFile = FSC_GetBaseFile( file, fs );
+	if ( baseFile && ( baseFile->f.flags & FSC_FILEFLAG_DLPK3 ) ) {
+		return fsc_true;
+	}
+	return fsc_false;
+}
+
+/*
+=================
 FSC_GetModDir
 
 Returns mod directory for given file. May return empty string if mod directory is invalid,
