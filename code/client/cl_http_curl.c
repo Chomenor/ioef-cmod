@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "client.h"
 
-#ifdef USE_LOCAL_HEADERS
+#ifdef USE_INTERNAL_CURL_HEADERS
   #include "curl/curl.h"
 #else
   #include <curl/curl.h>
