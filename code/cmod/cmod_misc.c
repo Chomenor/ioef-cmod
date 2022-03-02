@@ -21,22 +21,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#ifdef CMOD_COPYDEBUG_CMD_SUPPORTED
-#ifndef __INCLUDED_FSLOCAL
-#define __INCLUDED_FSLOCAL
+#if defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_VM_PERMISSIONS )
 #include "../filesystem/fslocal.h"
-#endif
-#include <windows.h>
 #else
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #endif
 
-#ifdef CMOD_VM_PERMISSIONS
-#ifndef __INCLUDED_FSLOCAL
-#define __INCLUDED_FSLOCAL
-#include "../filesystem/fslocal.h"
-#endif
+#if defined( _WIN32 ) && defined( CMOD_COPYDEBUG_CMD_SUPPORTED )
+#include <windows.h>
 #endif
 
 #ifdef CMOD_COMMON_STRING_FUNCTIONS
@@ -208,9 +201,11 @@ void cmod_copydebug_cmd(void) {
 	cmod_debug_get_autoexec(&stream);
 	cmod_stream_append_string_separated(&stream, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", "\n");
 
-	cmod_stream_append_string_separated(&stream, "file list\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "\n\n");
-	cmod_debug_get_filelist(&stream);
-	cmod_stream_append_string_separated(&stream, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", "\n");
+	if ( !Q_stricmp( Cmd_Argv(1), "files" ) ) {
+		cmod_stream_append_string_separated(&stream, "file list\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", "\n\n");
+		cmod_debug_get_filelist(&stream);
+		cmod_stream_append_string_separated(&stream, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", "\n");
+	}
 
 	cmod_stream_append_string_separated(&stream, "End of debug output.", "\n\n");
 	copydebug_write_clipboard(&stream);
