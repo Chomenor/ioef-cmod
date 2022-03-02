@@ -1840,6 +1840,7 @@ const special_cvar_t specials[] = {
 	{ "dedicated", "0", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_NOARCHIVE },
 #endif
 	{ "fs_game", "", CVARTYPE_NONE, FLAGS_NORMAL },
+	{ "fs_download_mode", "1", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "sv_killserver", "", CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "cmod_crosshair_enable", "1", CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "sv_hostname", NULL, CVARTYPE_NONE, FLAGS_NORMAL },
