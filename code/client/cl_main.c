@@ -1270,7 +1270,12 @@ void CL_ShutdownAll(qboolean shutdownRef)
 {
 #ifdef CMOD_CVAR_HANDLING
 	if ( !com_sv_running->integer && cls.cgameStarted ) {
-		cvar_end_session();
+		Cvar_EndSession();
+	}
+#endif
+#ifdef CMOD_BIND_PROTECTION
+	if ( !com_sv_running->integer && cls.cgameStarted ) {
+		Key_EndSession();
 	}
 #endif
 	if(CL_VideoRecording())

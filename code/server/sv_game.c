@@ -318,13 +318,21 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	case G_MILLISECONDS:
 		return Sys_Milliseconds();
 	case G_CVAR_REGISTER:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4], VMPermissions_CheckTrusted( VM_GAME ) );
+#else
 		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4] ); 
+#endif
 		return 0;
 	case G_CVAR_UPDATE:
 		Cvar_Update( VMA(1) );
 		return 0;
 	case G_CVAR_SET:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_SetSafe( (const char *)VMA(1), (const char *)VMA(2), VMPermissions_CheckTrusted( VM_GAME ) );
+#else
 		Cvar_SetSafe( (const char *)VMA(1), (const char *)VMA(2) );
+#endif
 		return 0;
 	case G_CVAR_VARIABLE_INTEGER_VALUE:
 		return Cvar_VariableIntegerValue( (const char *)VMA(1) );
@@ -338,13 +346,18 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return 0;
 	case G_SEND_CONSOLE_COMMAND:
 #ifdef CMOD_COMMAND_INTERPRETER
-		Cbuf_ExecuteTextByMode( args[1], VMA(2), CMD_PROTECTED );
+		Cbuf_ExecuteTextByMode( args[1], VMA(2), VMPermissions_CheckTrusted( VM_GAME ) ? 0 : CMD_PROTECTED );
 #else
 		Cbuf_ExecuteText( args[1], VMA(2) );
 #endif
 		return 0;
 
 	case G_FS_FOPEN_FILE:
+#ifdef CMOD_WRITE_PROTECTION
+		if ( args[3] != FS_READ && !VMPermissions_CheckTrusted( VM_GAME ) ) {
+			return 0;
+		}
+#endif
 #ifdef NEW_FILESYSTEM
 		return FS_FOpenFileByModeOwner( VMA(1), VMA(2), args[3], FS_HANDLEOWNER_QAGAME );
 #else

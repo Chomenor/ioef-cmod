@@ -42,7 +42,7 @@ typedef struct {
 
 	// Special
 	qboolean dll_query;
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 	qboolean cmod_qvm_query;
 #endif
 } lookup_query_t;
@@ -65,7 +65,7 @@ typedef struct {
 	int extension_position;
 	fs_modtype_t mod_type;
 	int flags;
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 	int cmod_pak_priority;
 #endif
 
@@ -132,7 +132,7 @@ static void FS_ConfigureLookupResource( const lookup_query_t *query, lookup_reso
 		}
 	}
 
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 	// Special priority for cmod qvm lookups
 	if ( query->cmod_qvm_query && resource->file->sourcetype == FSC_SOURCETYPE_PK3 ) {
 		resource->cmod_pak_priority = FS_CmodPk3Position( base_file->pk3_hash );
@@ -182,6 +182,9 @@ static void FS_ConfigureLookupResource( const lookup_query_t *query, lookup_reso
 	}
 
 	// Disable files not on pure list if connected to a pure server
+#ifdef CMOD_QVM_SELECTION
+	if ( !resource->cmod_pak_priority )
+#endif
 	if ( !resource->server_pure_position && FS_ConnectedServerPureState() == 1 && !( query->lookup_flags & LOOKUPFLAG_IGNORE_PURE_LIST ) &&
 			!( ( query->lookup_flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE ) && resource->file->sourcetype == FSC_SOURCETYPE_DIRECT ) ) {
 		resource->disabled = "connected to pure server and file is not on pure list";
@@ -421,7 +424,7 @@ PC_DEBUG( resource_disabled ) {
 	ADD_STRING( va( "Resource %i was selected because resource %i is disabled: %s", high_num, low_num, low->disabled ) );
 }
 
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 /*
 =================
 (CMP) cmod_paks
@@ -809,7 +812,7 @@ typedef struct {
 
 static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK( resource_disabled ),
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 	ADD_CHECK( cmod_paks ),
 #endif
 	ADD_CHECK( special_shaders ),
@@ -1013,7 +1016,13 @@ static void FS_DebugPrintLookupQuery( const lookup_query_t *query ) {
 FS_DebugLookup
 =================
 */
+#ifdef CMOD_QVM_SELECTION
+// Support output parameter
+#define FS_DebugLookup( queries, query_count, protected_vm_lookup ) FS_DebugLookup2( queries, query_count, protected_vm_lookup, NULL )
+static void FS_DebugLookup2( const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup, query_result_t *output ) {
+#else
 static void FS_DebugLookup( const lookup_query_t *queries, int query_count, qboolean protected_vm_lookup ) {
+#endif
 	int i;
 
 	// Print source queries
@@ -1067,6 +1076,15 @@ static void FS_DebugLookup( const lookup_query_t *queries, int query_count, qboo
 	} else if ( debug_selection.resources[0].disabled ) {
 		Com_Printf( "No resource was selected because element 1 is disabled: %s\n", debug_selection.resources[0].disabled );
 	}
+#ifdef CMOD_QVM_SELECTION
+	if ( output ) {
+		Com_Memset( output, 0, sizeof( *output ) );
+		if ( debug_selection.resource_count && !debug_selection.resources[0].disabled ) {
+			output->file = debug_selection.resources[0].file;
+			output->shader = debug_selection.resources[0].shader;
+		}
+	}
+#endif
 }
 
 /* *** Debug Comparison - Compares two resources, lists each test and result, and debug info for decisive test *** */
@@ -1420,7 +1438,7 @@ const fsc_file_t *FS_SoundLookup( const char *name, int lookup_flags, qboolean d
 	return lookup_result.file;
 }
 
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 // The following pk3s contain QVMs which are functionally interchangeable with the standard game
 // qvms, and can be safely replaced with the most up to date cMod qvms if available.
 static const int stock_qvms[] = {
@@ -1435,6 +1453,94 @@ static const int stock_qvms[] = {
 	34943118,		// pakcmod-current-2021-11-11.pk3
 	1803491023,		// pakcmod-current-2021-12-03.pk3
 };
+
+/*
+=================
+FS_IsStockQvm
+=================
+*/
+static qboolean FS_IsStockQvm( const fsc_file_t *file ) {
+	if ( file && file->sourcetype == FSC_SOURCETYPE_PK3 ) {
+		int i;
+		const fsc_file_direct_t *base_file = FSC_GetBaseFile( file, &fs.index );
+		for ( i = 0; i < ARRAY_LEN( stock_qvms ); ++i ) {
+			if ( (int)base_file->pk3_hash == stock_qvms[i] ) {
+				return qtrue;
+			}
+		}
+	}
+
+	return qfalse;
+}
+
+/*
+=================
+FS_CmodVmLookup2
+
+Returns qtrue if a valid match was found.
+=================
+*/
+static void FS_CmodVmLookup2( const char *name, qboolean qvm_only, qboolean prioritize_cmod, qboolean debug,
+		lookup_query_t *queries, int query_count, query_result_t *lookup_result ) {
+	queries[0].cmod_qvm_query = prioritize_cmod;
+
+	if ( debug )  {
+		FS_DebugLookup2( queries, query_count, qtrue, lookup_result );
+	} else {
+		FS_PerformLookup( queries, query_count, qtrue, lookup_result );
+	}
+
+	if ( debug || fs.cvar.fs_debug_lookup->integer ) {
+		FS_DPrintf( "********** dll/qvm lookup **********\n" );
+		FS_DebugIndentStart();
+		FS_DPrintf( "name: %s\n", name );
+		FS_DPrintf( "qvm only: %s\n", qvm_only ? "yes" : "no" );
+		FS_DPrintf( "prioritize cmod: %s\n", prioritize_cmod ? "yes" : "no" );
+		FS_Lookup_DebugPrintFile( lookup_result->file );
+		FS_DebugIndentStop();
+	}
+}
+
+/*
+=================
+FS_CmodVmLookup
+=================
+*/
+static void FS_CmodVmLookup( const char *name, qboolean qvm_only, qboolean debug,
+		lookup_query_t *queries, int query_count, query_result_t *lookup_result ) {
+	int native = 0;
+	if ( !Q_stricmp( name, "ui" ) ) {
+		native = ModcfgHandling_CurrentValues.nativeUI;
+	} else if ( !Q_stricmp( name, "cgame" ) ) {
+		native = ModcfgHandling_CurrentValues.nativeCgame;
+	}
+
+	if ( native == 2 ) {
+		Com_Printf( "Prioritizing cMod module for '%s' due to server native VM mode 2.\n", name );
+		FS_CmodVmLookup2( name, qvm_only, qtrue, debug, queries, query_count, lookup_result );
+		return;
+	}
+
+	FS_CmodVmLookup2( name, qvm_only, qfalse, debug, queries, query_count, lookup_result );
+	if ( !lookup_result->file ) {
+		return;
+	}
+
+	if ( FS_IsStockQvm( lookup_result->file ) ) {
+		Com_Printf( "Prioritizing cMod module for '%s' due to compatible configuration.\n", name );
+		FS_CmodVmLookup2( name, qvm_only, qtrue, debug, queries, query_count, lookup_result );
+		return;
+	}
+
+#ifdef CMOD_VM_PERMISSIONS
+	// native level 1 prefers cMod module only if the normally selected one is untrusted
+	if ( native == 1 && !VMPermissions_CheckTrustedVMFile( lookup_result->file, NULL ) ) {
+		Com_Printf( "Prioritizing cMod module for '%s' due to server native VM mode 1.\n", name );
+		FS_CmodVmLookup2( name, qvm_only, qtrue, debug, queries, query_count, lookup_result );
+		return;
+	}
+#endif
+}
 #endif
 
 /*
@@ -1472,10 +1578,9 @@ const fsc_file_t *FS_VMLookup( const char *name, qboolean qvm_only, qboolean deb
 		queries[1].dll_query = qtrue;
 	}
 
-#ifdef CMOD_QVM_LOADING
-	rerun_lookup:
-#endif
-
+#ifdef CMOD_QVM_SELECTION
+	FS_CmodVmLookup( name, qvm_only, debug, queries, query_count, &lookup_result );
+#else
 	if ( debug ) {
 		FS_DebugLookup( queries, query_count, qtrue );
 		return NULL;
@@ -1489,23 +1594,6 @@ const fsc_file_t *FS_VMLookup( const char *name, qboolean qvm_only, qboolean deb
 		FS_DPrintf( "qvm only: %s\n", qvm_only ? "yes" : "no" );
 		FS_Lookup_DebugPrintFile( lookup_result.file );
 		FS_DebugIndentStop();
-	}
-
-
-#ifdef CMOD_QVM_LOADING
-	if ( !queries[0].cmod_qvm_query && lookup_result.file && lookup_result.file->sourcetype == FSC_SOURCETYPE_PK3 ) {
-		int i;
-		const fsc_file_direct_t *base_file = FSC_GetBaseFile( lookup_result.file, &fs.index );
-		for ( i = 0; i < ARRAY_LEN( stock_qvms ); ++i ) {
-			if ( (int)base_file->pk3_hash == stock_qvms[i] ) {
-				if ( fs.cvar.fs_debug_lookup->integer ) {
-					FS_DPrintf( "Stock qvm detected, repeating query with cMod paks prioritized.\n" );
-				}
-				queries[0].cmod_qvm_query = qtrue;
-				queries[0].lookup_flags |= LOOKUPFLAG_IGNORE_PURE_LIST;
-				goto rerun_lookup;
-			}
-		}
 	}
 #endif
 

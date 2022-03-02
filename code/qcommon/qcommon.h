@@ -35,6 +35,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../filesystem/fspublic.h"
 #endif
 
+#ifdef CMOD_COMMON_DEFINES
+typedef enum {
+	VM_NONE,
+	VM_GAME,
+	VM_CGAME,
+	VM_UI,
+	VM_MAX
+} vmType_t;
+#endif
+
 //Ignore __attribute__ on non-gcc platforms
 #ifndef __GNUC__
 #ifndef __attribute__
@@ -444,17 +454,15 @@ files can be execed.
 typedef int cmd_mode_t;
 #define CMD_NORMAL 0
 #define CMD_PROTECTED 1
+#ifdef CMOD_HMCONFIG_IMPORT
 #define CMD_SETTINGS_IMPORT 2
+#endif
+#ifdef CMOD_SAFE_AUTOEXEC
+#define CMD_RESTRICTED_AUTOEXEC 4
+#endif
 
 void Cbuf_ExecuteTextByMode(int exec_when, const char *text, cmd_mode_t mode);
 void Cbuf_AddTextByMode(const char *text, cmd_mode_t mode);
-#else
-#ifdef CMOD_CVAR_HANDLING
-typedef int cmd_mode_t;
-#define CMD_NORMAL 0
-#define CMD_PROTECTED 1
-#define CMD_SETTINGS_IMPORT 2
-#endif
 #endif
 
 void Cbuf_Init (void);
@@ -562,12 +570,15 @@ modules of the program.
 */
 
 #ifdef CMOD_CVAR_HANDLING
-void cvar_command_set(const char *name, const char *value, int flags, cmd_mode_t mode, qboolean init, qboolean verbose);
-void cvar_end_session(void);
-qboolean cvar_command(cmd_mode_t mode);
-void cvar_vstr(cmd_mode_t mode);
+void Cvar_CommandSet(const char *name, const char *value, int flags, cmd_mode_t mode, qboolean init, qboolean verbose);
+void Cvar_EndSession(void);
+qboolean Cvar_Command(cmd_mode_t mode);
+void Cvar_Vstr(cmd_mode_t mode);
 void Cvar_StartupSet(const char *var_name, const char *value);
 void Cvar_SystemInfoSet( const char *var_name, const char *value );
+void Cvar_Register( vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags, qboolean trusted );
+void Cvar_SetSafe( const char *var_name, const char *value, qboolean trusted );
+void Cvar_SetValueSafe( const char *var_name, float value, qboolean trusted );
 #endif
 
 cvar_t *Cvar_Get( const char *var_name, const char *value, int flags );
@@ -576,8 +587,10 @@ cvar_t *Cvar_Get( const char *var_name, const char *value, int flags );
 // that allows variables to be unarchived without needing bitflags
 // if value is "", the value will not override a previously set value.
 
+#ifndef CMOD_CVAR_HANDLING
 void	Cvar_Register( vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags );
 // basically a slightly modified Cvar_Get for the interpreted modules
+#endif
 
 void	Cvar_Update( vmCvar_t *vmCvar );
 // updates an interpreted modules' version of a cvar
@@ -588,15 +601,19 @@ void 	Cvar_Set( const char *var_name, const char *value );
 cvar_t	*Cvar_Set2(const char *var_name, const char *value, qboolean force);
 // same as Cvar_Set, but allows more control over setting of cvar
 
+#ifndef CMOD_CVAR_HANDLING
 void	Cvar_SetSafe( const char *var_name, const char *value );
 // sometimes we set variables from an untrusted source: fail if flags & CVAR_PROTECTED
+#endif
 
 void Cvar_SetLatched( const char *var_name, const char *value);
 // don't set the cvar immediately
 
 void	Cvar_SetValue( const char *var_name, float value );
+#ifndef CMOD_CVAR_HANDLING
 void	Cvar_SetValueSafe( const char *var_name, float value );
 // expands value to a string and calls Cvar_Set/Cvar_SetSafe
+#endif
 
 float	Cvar_VariableValue( const char *var_name );
 int		Cvar_VariableIntegerValue( const char *var_name );
@@ -618,10 +635,12 @@ void 	Cvar_ForceReset(const char *var_name);
 void	Cvar_SetCheatState( void );
 // reset all testing vars to a safe value
 
+#ifndef CMOD_CVAR_HANDLING
 qboolean Cvar_Command( void );
 // called by Cmd_ExecuteString when Cmd_Argv(0) doesn't match a known
 // command.  Returns true if the command was a variable reference that
 // was handled. (print or change)
+#endif
 
 void 	Cvar_WriteVariables( fileHandle_t f );
 // writes lines containing "set variable value" for all variables
@@ -1120,7 +1139,7 @@ void Key_WriteBindings( fileHandle_t f );
 // for writing the config files
 
 #ifdef CMOD_SETTINGS
-void load_default_binds(void);
+void Key_LoadDefaultBinds( qboolean trusted );
 #endif
 
 void S_ClearSoundBuffer( void );

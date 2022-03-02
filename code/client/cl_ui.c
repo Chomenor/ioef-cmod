@@ -768,7 +768,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return Sys_Milliseconds();
 
 	case UI_CVAR_REGISTER:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4], VMPermissions_CheckTrusted( VM_UI ) );
+#else
 		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4] ); 
+#endif
 		return 0;
 
 	case UI_CVAR_UPDATE:
@@ -776,7 +780,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_CVAR_SET:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_SetSafe( VMA(1), VMA(2), VMPermissions_CheckTrusted( VM_UI ) );
+#else
 		Cvar_SetSafe( VMA(1), VMA(2) );
+#endif
 		return 0;
 
 	case UI_CVAR_VARIABLEVALUE:
@@ -787,7 +795,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_CVAR_SETVALUE:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_SetValueSafe( VMA(1), VMF(2), VMPermissions_CheckTrusted( VM_UI ) );
+#else
 		Cvar_SetValueSafe( VMA(1), VMF(2) );
+#endif
 		return 0;
 
 	case UI_CVAR_RESET:
@@ -795,7 +807,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_CVAR_CREATE:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_Register( NULL, VMA(1), VMA(2), args[3], VMPermissions_CheckTrusted( VM_UI ) );
+#else
 		Cvar_Register( NULL, VMA(1), VMA(2), args[3] );
+#endif
 		return 0;
 
 	case UI_CVAR_INFOSTRINGBUFFER:
@@ -818,14 +834,26 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 			Com_Printf (S_COLOR_YELLOW "turning EXEC_NOW '%.11s' into EXEC_INSERT\n", (const char*)VMA(2));
 			args[1] = EXEC_INSERT;
 		}
+#ifdef CMOD_SETTINGS
+		if ( !Q_stricmp( VMA(2), "exec default.cfg\n" ) ) {
+			// Load updated binds instead of using original default.cfg
+			Key_LoadDefaultBinds( VMPermissions_CheckTrusted( VM_UI ) );
+			return 0;
+		}
+#endif
 #ifdef CMOD_COMMAND_INTERPRETER
-		Cbuf_ExecuteTextByMode( args[1], VMA(2), CMD_PROTECTED );
+		Cbuf_ExecuteTextByMode( args[1], VMA(2), VMPermissions_CheckTrusted( VM_UI ) ? 0 : CMD_PROTECTED );
 #else
 		Cbuf_ExecuteText( args[1], VMA(2) );
 #endif
 		return 0;
 
 	case UI_FS_FOPENFILE:
+#ifdef CMOD_WRITE_PROTECTION
+		if ( args[3] != FS_READ && !VMPermissions_CheckTrusted( VM_UI ) ) {
+			return 0;
+		}
+#endif
 #ifdef NEW_FILESYSTEM
 		return FS_FOpenFileByModeOwner( VMA(1), VMA(2), args[3], FS_HANDLEOWNER_UI );
 #else
@@ -937,8 +965,8 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_KEY_SETBINDING:
-#ifdef CMOD_COMMAND_INTERPRETER
-		Key_SetBinding( args[1], VMA(2), CMD_PROTECTED );
+#ifdef CMOD_BIND_PROTECTION
+		Key_SetBinding( args[1], VMA(2), VMPermissions_CheckTrusted( VM_UI ) );
 #else
 		Key_SetBinding( args[1], VMA(2) );
 #endif

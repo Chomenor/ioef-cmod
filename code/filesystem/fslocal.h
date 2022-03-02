@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define FS_CORE_PAKS { 3376297517, 596947475, 3960871590, 1592359207 }
 #define FS_NODOWNLOAD_PAKS 4
 
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 #define CMOD_PAKS { \
 	401438010,		/* pakcmod-current-2021-09-18.pk3 */ \
 	-749739206,		/* pakcmod-current-2021-09-25.pk3 */ \

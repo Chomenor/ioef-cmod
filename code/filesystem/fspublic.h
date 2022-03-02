@@ -97,6 +97,8 @@ typedef enum {
 #endif
 #ifdef CMOD_SETTINGS
 	FS_CONFIGTYPE_GLOBAL_SETTINGS,
+#endif
+#ifdef CMOD_HMCONFIG_IMPORT
 	FS_CONFIGTYPE_SETTINGS_IMPORT,
 #endif
 } fs_config_type_t;
@@ -308,7 +310,7 @@ DEF_LOCAL( void FS_Pk3List_Free( pk3_list_t *pk3_list ) )
 
 // Pk3 precedence functions
 DEF_LOCAL( int FS_CorePk3Position( unsigned int hash ) )
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 DEF_LOCAL( int FS_CmodPk3Position(unsigned int hash) )
 #endif
 #ifdef FS_SERVERCFG_ENABLED

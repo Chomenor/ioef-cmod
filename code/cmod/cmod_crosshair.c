@@ -364,13 +364,26 @@ static crosshair_t *CMCrosshair_GetCurrentCrosshair( void ) {
 CMCrosshair_AdvanceCurrentCrosshair
 ==================
 */
-static void CMCrosshair_AdvanceCurrentCrosshair( void ) {
+static void CMCrosshair_AdvanceCurrentCrosshair( qboolean trusted ) {
 	int index = CMCrosshair_GetCurrentCrosshairIndex() + 1;
-	if ( index >= crosshair_count ) {
-		Cvar_Set( "cmod_crosshair_selection", "0" );
-	} else {
-		Cvar_Set( "cmod_crosshair_selection", va( "%08x", crosshairs[index].hash ) );
+	const char *value = "0";
+	if ( index < crosshair_count ) {
+		value = va( "%08x", crosshairs[index].hash );
 	}
+#ifdef CMOD_CVAR_HANDLING
+	Cvar_SetSafe( "cmod_crosshair_selection", value, trusted );
+#else
+	Cvar_SetSafe( "cmod_crosshair_selection", value );
+#endif
+}
+
+/*
+==================
+CMCrosshair_AdvanceCurrentCrosshairCmd
+==================
+*/
+static void CMCrosshair_AdvanceCurrentCrosshairCmd( void ) {
+	CMCrosshair_AdvanceCurrentCrosshair( qtrue );
 }
 
 /*
@@ -380,9 +393,9 @@ CMCrosshair_VMAdvanceCurrentCrosshair
 Returns 1 if successful, 0 if engine crosshair mode inactive.
 ==================
 */
-int CMCrosshair_VMAdvanceCurrentCrosshair( void ) {
+int CMCrosshair_VMAdvanceCurrentCrosshair( qboolean trusted ) {
 	if ( ENGINE_CROSSHAIR_ACTIVE ) {
-		CMCrosshair_AdvanceCurrentCrosshair();
+		CMCrosshair_AdvanceCurrentCrosshair( trusted );
 		return 1;
 	}
 
@@ -476,7 +489,7 @@ static void CMCrosshair_GeneralInit( void ) {
 	cmod_crosshair_enable = Cvar_Get( "cmod_crosshair_enable", "0", CVAR_ARCHIVE );
 	cmod_crosshair_selection = Cvar_Get( "cmod_crosshair_selection", "", CVAR_ARCHIVE );
 	Cmd_AddCommand( "cmod_crosshair_status", CMCrosshair_StatusCmd );
-	Cmd_AddCommand( "cmod_crosshair_advance", CMCrosshair_AdvanceCurrentCrosshair );
+	Cmd_AddCommand( "cmod_crosshair_advance", CMCrosshair_AdvanceCurrentCrosshairCmd );
 	Cmd_AddCommand( "cmod_crosshair_debug_index", CMCrosshair_DebugIndexCmd );
 	Cmd_AddCommand( "cmod_crosshair_debug_files", CMCrosshair_DebugFilesCmd );
 }

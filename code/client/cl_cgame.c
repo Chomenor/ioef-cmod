@@ -246,6 +246,11 @@ void CL_ConfigstringModified( void ) {
 		CL_SystemInfoChanged();
 	}
 
+#ifdef CMOD_CLIENT_MODCFG_HANDLING
+	// parse modcfg values
+	ModcfgHandling_ParseModConfig( cl.gameState.stringOffsets, cl.gameState.stringData );
+#endif
+
 }
 
 
@@ -444,13 +449,21 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 	case CG_MILLISECONDS:
 		return Sys_Milliseconds();
 	case CG_CVAR_REGISTER:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4], VMPermissions_CheckTrusted( VM_CGAME ) );
+#else
 		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4] ); 
+#endif
 		return 0;
 	case CG_CVAR_UPDATE:
 		Cvar_Update( VMA(1) );
 		return 0;
 	case CG_CVAR_SET:
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_SetSafe( VMA(1), VMA(2), VMPermissions_CheckTrusted( VM_CGAME ) );
+#else
 		Cvar_SetSafe( VMA(1), VMA(2) );
+#endif
 		return 0;
 	case CG_CVAR_VARIABLESTRINGBUFFER:
 		Cvar_VariableStringBuffer( VMA(1), VMA(2), args[3] );
@@ -464,6 +477,11 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		Cmd_ArgsBuffer( VMA(1), args[2] );
 		return 0;
 	case CG_FS_FOPENFILE:
+#ifdef CMOD_WRITE_PROTECTION
+		if ( args[3] != FS_READ && !VMPermissions_CheckTrusted( VM_CGAME ) ) {
+			return 0;
+		}
+#endif
 #ifdef NEW_FILESYSTEM
 		return FS_FOpenFileByModeOwner( VMA(1), VMA(2), args[3], FS_HANDLEOWNER_CGAME );
 #else
@@ -504,7 +522,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 #endif
 	case CG_SENDCONSOLECOMMAND:
 #ifdef CMOD_COMMAND_INTERPRETER
-		Cbuf_AddTextByMode( VMA(1), CMD_PROTECTED );
+		Cbuf_AddTextByMode( VMA(1), VMPermissions_CheckTrusted( VM_CGAME ) ? 0 : CMD_PROTECTED );
 #else
 		Cbuf_AddText( VMA(1) );
 #endif

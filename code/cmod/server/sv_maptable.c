@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../../server/server.h"
 
 #ifdef CMOD_CVAR_HANDLING
-#define CVAR_SET(cvar_name, value) cvar_command_set(cvar_name, value, 0, CMD_NORMAL, qfalse, qfalse)
+#define CVAR_SET(cvar_name, value) Cvar_CommandSet(cvar_name, value, 0, CMD_NORMAL, qfalse, qfalse)
 #else
 #define CVAR_SET(cvar_name, value) Cvar_Set(cvar_name, value)
 #endif

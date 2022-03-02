@@ -326,7 +326,7 @@ int FS_CorePk3Position( unsigned int hash ) {
 	return 0;
 }
 
-#ifdef CMOD_QVM_LOADING
+#ifdef CMOD_QVM_SELECTION
 int FS_CmodPk3Position( unsigned int hash ) {
 #ifdef CMOD_PAKS
 	SEARCH_PAK_DEFS( CMOD_PAKS )
@@ -900,10 +900,8 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 	cmd_mode_t mode = 0;
 	if ( config_type == FS_CONFIGTYPE_PROTECTED )
 		mode |= CMD_PROTECTED;
-	if ( config_type == FS_CONFIGTYPE_DEFAULT )
-		mode |= CMD_PROTECTED;
 #endif
-#ifdef CMOD_SETTINGS
+#ifdef CMOD_HMCONFIG_IMPORT
 	if ( config_type == FS_CONFIGTYPE_SETTINGS_IMPORT )
 		mode |= CMD_SETTINGS_IMPORT;
 #endif
@@ -928,8 +926,12 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 			data = FS_ReadData( NULL, path, NULL, "FS_ExecuteConfigFile" );
 		}
 		if ( !data ) {
+#ifdef CMOD_HMCONFIG_IMPORT
 			Com_Printf( "loading %s failed; attempting to import settings from " Q3CONFIG_CFG "\n", name );
 			FS_ExecuteConfigFile( Q3CONFIG_CFG, FS_CONFIGTYPE_SETTINGS_IMPORT, EXEC_APPEND, qfalse );
+#else
+			Com_Printf( "loading %s failed\n", name );
+#endif
 			return;
 		}
 	}
@@ -951,7 +953,7 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 			// For default.cfg - only load from appropriate fs_mod_settings locations
 			lookup_flags |= LOOKUPFLAG_SETTINGS_FILE;
 		}
-#ifdef CMOD_SETTINGS
+#ifdef CMOD_HMCONFIG_IMPORT
 		if ( config_type == FS_CONFIGTYPE_SETTINGS_IMPORT ) {
 			lookup_flags |= ( LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY );
 		}
@@ -978,23 +980,20 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 			return;
 		}
 #ifdef CMOD_COMMAND_INTERPRETER
-		if ( file->sourcetype != FSC_SOURCETYPE_DIRECT ) {
-			mode |= CMD_PROTECTED;
-		} else if ( Q_stricmp( STACKPTR( file->qp_ext_ptr ), ".cfg" ) ) {
+		// Restrict exec from downloaded pk3s
+		if ( FSC_FromDownloadPk3( file, &fs.index ) ) {
 			mode |= CMD_PROTECTED;
 		}
 #endif
 	}
 
-#ifdef CMOD_SETTINGS
-#ifndef DEDICATED
+#ifdef CMOD_SAFE_AUTOEXEC
 	if ( cmod_restrict_autoexec->integer && config_type == FS_CONFIGTYPE_SETTINGS && !Q_stricmp( name, "autoexec.cfg" ) ) {
 		Com_Printf( "NOTE: Running autoexec.cfg file in restricted mode to avoid compatibility issues. This "
 					"may cause some commands not to work. If you know your autoexec.cfg file is compatible with cMod, "
 					"set cmod_restrict_autoexec to 0 to enable full command support.\n" );
-		mode |= CMD_SETTINGS_IMPORT;
+		mode |= CMD_RESTRICTED_AUTOEXEC;
 	}
-#endif
 #endif
 
 	FS_Journal_WriteData( data, size );

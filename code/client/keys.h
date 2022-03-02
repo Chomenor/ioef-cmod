@@ -25,8 +25,9 @@ typedef struct {
 	qboolean	down;
 	int			repeats;		// if > 1, it is autorepeating
 	char		*binding;
-#ifdef CMOD_COMMAND_INTERPRETER
-	cmd_mode_t	cmd_mode;
+#ifdef CMOD_BIND_PROTECTION
+	char		*user_binding;
+	char		*restricted_binding;
 #endif
 #ifdef CMOD_SETTINGS
 	char		*default_binding;
@@ -52,8 +53,9 @@ extern	qboolean	chat_team;
 extern	int			chat_playerNum;
 
 void Key_WriteBindings( fileHandle_t f );
-#ifdef CMOD_COMMAND_INTERPRETER
-void Key_SetBinding( int keynum, const char *binding, cmd_mode_t cmd_mode );
+#ifdef CMOD_BIND_PROTECTION
+void Key_EndSession( void );
+void Key_SetBinding( int keynum, const char *binding, qboolean trusted );
 #else
 void Key_SetBinding( int keynum, const char *binding );
 #endif

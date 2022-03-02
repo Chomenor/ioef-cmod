@@ -24,12 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // For misc cmod stuff, included at the end of qcommon.h
 
 #ifdef CMOD_VM_EXTENSIONS
-typedef enum {
-	VM_GAME,
-	VM_CGAME,
-	VM_UI,
-} vmType_t;
-
 qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
 		void *( *VM_ArgPtr )( intptr_t intValue ), intptr_t *retval );
 void VMExt_Init( void );
@@ -79,7 +73,7 @@ void cmod_map_adjust_configure(const char *mapname);
 
 #ifdef CMOD_CROSSHAIR
 // Client hooks
-int CMCrosshair_VMAdvanceCurrentCrosshair( void );
+int CMCrosshair_VMAdvanceCurrentCrosshair( qboolean trusted );
 qhandle_t CMCrosshair_GetCurrentShader( void );
 void CMCrosshair_UIInit(void);
 void CMCrosshair_CGameInit( void );
@@ -116,4 +110,25 @@ void ClientAltSwap_SetState( qboolean swap );
 
 #ifdef CMOD_FAST_SOUND_RESET
 void S_ResetStaleSounds( void );
+#endif
+
+#ifdef CMOD_CORE_VM_PERMISSIONS
+qboolean VMPermissions_CheckTrusted( vmType_t vmType );
+#endif
+
+#ifdef CMOD_VM_PERMISSIONS
+qboolean VMPermissions_CheckTrustedVMFile( const fsc_file_t *file, const char *debug_name );
+void VMPermissions_OnVmCreate( const char *module, const fsc_file_t *sourceFile, qboolean is_dll );
+#endif
+
+#ifdef CMOD_CLIENT_MODCFG_HANDLING
+typedef struct {
+#ifdef CMOD_QVM_SELECTION
+	int nativeUI;
+	int nativeCgame;
+#endif
+} modCfgValues_t;
+
+extern modCfgValues_t ModcfgHandling_CurrentValues;
+void ModcfgHandling_ParseModConfig( int *stringOffsets, char *data );
 #endif

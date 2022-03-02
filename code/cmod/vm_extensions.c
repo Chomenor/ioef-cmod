@@ -60,7 +60,7 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 	}
 	if ( !Q_stricmp( command, "crosshair_advance_current" ) ) {
 		// Returns 1 if successful, 0 if engine crosshair mode is inactive.
-		Com_sprintf( buffer, size, "%i", CMCrosshair_VMAdvanceCurrentCrosshair() );
+		Com_sprintf( buffer, size, "%i", CMCrosshair_VMAdvanceCurrentCrosshair( VMPermissions_CheckTrusted( vm_type ) ) );
 		return qtrue;
 	}
 	if ( !Q_stricmp( command, "crosshair_register_support" ) ) {
@@ -165,8 +165,13 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 
 		// For now just set both the standard and framebuffer multisample values
 		// It's not pretty but it seems to work sufficiently well
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_SetSafe( "r_ext_multisample", va( "%i", value ), VMPermissions_CheckTrusted( vm_type ) );
+		Cvar_SetSafe( "r_ext_framebuffer_multisample", va( "%i", value ), VMPermissions_CheckTrusted( vm_type ) );
+#else
 		Cvar_SetSafe( "r_ext_multisample", va( "%i", value ) );
 		Cvar_SetSafe( "r_ext_framebuffer_multisample", va( "%i", value ) );
+#endif
 		return qtrue;
 	}
 
@@ -177,7 +182,11 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 	}
 	if ( !Q_stricmpn( command, "cmd_set_raw_mouse ", sizeof( "cmd_set_raw_mouse " ) - 1 ) ) {
 		int value = atoi( &command[sizeof( "cmd_set_raw_mouse " ) - 1] );
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_SetSafe( "in_mouse_warping", value ? "0" : "1", VMPermissions_CheckTrusted( vm_type ) );
+#else
 		Cvar_SetSafe( "in_mouse_warping", value ? "0" : "1" );
+#endif
 		Cbuf_AddText( "in_restart\n" );
 		return qtrue;
 	}

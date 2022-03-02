@@ -898,13 +898,35 @@ char *Key_KeynumToString( int keynum ) {
 }
 
 
+#ifdef CMOD_BIND_PROTECTION
+/*
+===================
+Key_EndSession
+
+Reset binds set by untrusted VMs when disconnecting from server.
+===================
+*/
+void Key_EndSession( void ) {
+	int i;
+
+	for ( i = 0; i < MAX_KEYS; ++i ) {
+		if ( keys[i].restricted_binding ) {
+			Z_Free( keys[i].restricted_binding );
+			keys[i].restricted_binding = NULL;
+		}
+
+		keys[i].binding = keys[i].user_binding;
+	}
+}
+#endif
+
 /*
 ===================
 Key_SetBinding
 ===================
 */
-#ifdef CMOD_COMMAND_INTERPRETER
-void Key_SetBinding( int keynum, const char *binding, cmd_mode_t cmd_mode ) {
+#ifdef CMOD_BIND_PROTECTION
+void Key_SetBinding( int keynum, const char *binding, qboolean trusted ) {
 #else
 void Key_SetBinding( int keynum, const char *binding ) {
 #endif
@@ -912,6 +934,29 @@ void Key_SetBinding( int keynum, const char *binding ) {
 		return;
 	}
 
+#ifdef CMOD_BIND_PROTECTION
+	// free old restricted binding
+	if ( keys[ keynum ].restricted_binding ) {
+		Z_Free( keys[ keynum ].restricted_binding );
+		keys[ keynum ].restricted_binding = NULL;
+	}
+
+	if ( trusted ) {
+		// free old user binding
+		if ( keys[ keynum ].user_binding ) {
+			Z_Free( keys[ keynum ].user_binding );
+		}
+
+		// allocate new user binding
+		keys[keynum].user_binding = CopyString( binding );
+		keys[keynum].binding = keys[keynum].user_binding;
+	} else {
+		// allocate new restricted binding
+		keys[keynum].restricted_binding = CopyString( binding );
+		keys[keynum].binding = keys[keynum].restricted_binding;
+	}
+
+#else
 	// free old bindings
 	if ( keys[ keynum ].binding ) {
 		Z_Free( keys[ keynum ].binding );
@@ -919,9 +964,6 @@ void Key_SetBinding( int keynum, const char *binding ) {
 		
 	// allocate memory for new binding
 	keys[keynum].binding = CopyString( binding );
-
-#ifdef CMOD_COMMAND_INTERPRETER
-	keys[keynum].cmd_mode = cmd_mode;
 #endif
 
 	// consider this like modifying an archived cvar, so the
@@ -967,7 +1009,11 @@ int Key_GetKey(const char *binding) {
 Key_Unbind_f
 ===================
 */
+#ifdef CMOD_COMMAND_INTERPRETER
+void Key_Unbind_f (cmd_mode_t cmdMode)
+#else
 void Key_Unbind_f (void)
+#endif
 {
 	int		b;
 
@@ -984,8 +1030,8 @@ void Key_Unbind_f (void)
 		return;
 	}
 
-#ifdef CMOD_COMMAND_INTERPRETER
-	Key_SetBinding (b, "", CMD_NORMAL);
+#ifdef CMOD_BIND_PROTECTION
+	Key_SetBinding (b, "", ( cmdMode & CMD_PROTECTED ) ? qfalse : qtrue);
 #else
 	Key_SetBinding (b, "");
 #endif
@@ -1002,8 +1048,8 @@ void Key_Unbindall_f (void)
 	
 	for (i=0 ; i < MAX_KEYS; i++)
 		if (keys[i].binding)
-#ifdef CMOD_COMMAND_INTERPRETER
-			Key_SetBinding (i, "", CMD_NORMAL);
+#ifdef CMOD_BIND_PROTECTION
+			Key_SetBinding (i, "", qtrue);
 #else
 			Key_SetBinding (i, "");
 #endif
@@ -1016,7 +1062,7 @@ Key_Bind_f
 ===================
 */
 #ifdef CMOD_COMMAND_INTERPRETER
-void Key_Bind_f(cmd_mode_t mode)
+void Key_Bind_f (cmd_mode_t cmdMode)
 #else
 void Key_Bind_f (void)
 #endif
@@ -1056,12 +1102,15 @@ void Key_Bind_f (void)
 			strcat (cmd, " ");
 	}
 
-#ifdef CMOD_COMMAND_INTERPRETER
-	if(mode & CMD_SETTINGS_IMPORT) {
+#ifdef CMOD_HMCONFIG_IMPORT
+	if(cmdMode & CMD_SETTINGS_IMPORT) {
 		// Don't override certain special keys in settings import mode
 		if(b == Key_StringToKeynum("`") || b == Key_StringToKeynum("~") ||
 				b == Key_StringToKeynum("F1") || b == Key_StringToKeynum("F2")) return; }
-	Key_SetBinding (b, cmd, (mode & CMD_PROTECTED) || !Q_stricmp(Cmd_Argv(0), "bindp") ? CMD_PROTECTED : CMD_NORMAL);
+#endif
+
+#ifdef CMOD_BIND_PROTECTION
+	Key_SetBinding (b, cmd, ( cmdMode & CMD_PROTECTED ) ? qfalse : qtrue);
 #else
 	Key_SetBinding (b, cmd);
 #endif
@@ -1080,27 +1129,36 @@ void Key_WriteBindings( fileHandle_t f ) {
 	int count = 0;
 
 	for(i=0; i<MAX_KEYS; ++i) {
-		if(!keys[i].binding) continue;
-		if(keys[i].default_binding && !Q_stricmp(keys[i].binding, keys[i].default_binding)) continue;
+#ifdef CMOD_BIND_PROTECTION
+		const char *binding = keys[i].user_binding;
+#else
+		const char *binding = keys[i].binding;
+#endif
+		if(!binding) continue;
+		if(keys[i].default_binding && !Q_stricmp(binding, keys[i].default_binding)) continue;
 
 		// Don't write if value is excessively long or contains characters that could
 		// cause problems parsing the config file
-		if(strlen(keys[i].binding) > 512) continue;
-		if(strchr(keys[i].binding, '\n')) continue;
-		if(strchr(keys[i].binding, '\r')) continue;
-		if(strchr(keys[i].binding, '\"')) continue;
+		if(strlen(binding) > 512) continue;
+		if(strchr(binding, '\n')) continue;
+		if(strchr(binding, '\r')) continue;
+		if(strchr(binding, '\"')) continue;
 
 		if(!count) FS_Printf(f, SYSTEM_NEWLINE "// Key bindings" SYSTEM_NEWLINE);
-		FS_Printf(f, "bind%s %s \"%s\"" SYSTEM_NEWLINE, (keys[i].cmd_mode & CMD_PROTECTED) ? "p" : "",
-				Key_KeynumToString(i), keys[i].binding);
+		FS_Printf(f, "bind %s \"%s\"" SYSTEM_NEWLINE, Key_KeynumToString(i), binding);
 		++count; }
 #else
 
 	FS_Printf (f, "unbindall\n" );
 
 	for (i=0 ; i<MAX_KEYS ; i++) {
+#ifdef CMOD_BIND_PROTECTION
+		if (keys[i].user_binding && keys[i].user_binding[0] ) {
+			FS_Printf (f, "bind %s \"%s\"\n", Key_KeynumToString(i), keys[i].user_binding);
+#else
 		if (keys[i].binding && keys[i].binding[0] ) {
 			FS_Printf (f, "bind %s \"%s\"\n", Key_KeynumToString(i), keys[i].binding);
+#endif
 
 		}
 
@@ -1190,12 +1248,17 @@ void CL_InitKeyCommands( void ) {
 	// register our functions
 #ifdef CMOD_COMMAND_INTERPRETER
 	Cmd_AddProtectableCommand("bind", Key_Bind_f);
+	// bindp command is supported for compatibility with old config files
 	Cmd_AddProtectableCommand("bindp", Key_Bind_f);
 #else
 	Cmd_AddCommand ("bind",Key_Bind_f);
 #endif
 	Cmd_SetCommandCompletionFunc( "bind", Key_CompleteBind );
+#ifdef CMOD_COMMAND_INTERPRETER
+	Cmd_AddProtectableCommand ("unbind",Key_Unbind_f);
+#else
 	Cmd_AddCommand ("unbind",Key_Unbind_f);
+#endif
 	Cmd_SetCommandCompletionFunc( "unbind", Key_CompleteUnbind );
 	Cmd_AddCommand ("unbindall",Key_Unbindall_f);
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f);
@@ -1260,8 +1323,8 @@ void CL_ParseBinding( int key, qboolean down, unsigned time )
 				char cmd[1024];
 				Com_sprintf( cmd, sizeof( cmd ), "%c%s %d %d\n",
 					( down ) ? '+' : '-', p + 1, key, time );
-#ifdef CMOD_COMMAND_INTERPRETER
-				Cbuf_AddTextByMode( cmd, keys[key].cmd_mode );
+#ifdef CMOD_BIND_PROTECTION
+				Cbuf_AddTextByMode( cmd, keys[key].restricted_binding ? CMD_PROTECTED : 0 );
 #else
 				Cbuf_AddText( cmd );
 #endif
@@ -1271,8 +1334,8 @@ void CL_ParseBinding( int key, qboolean down, unsigned time )
 		{
 			// normal commands only execute on key press
 			if ( allCommands || CL_BindUICommand( p ) ) {
-#ifdef CMOD_COMMAND_INTERPRETER
-				Cbuf_AddTextByMode( p, keys[key].cmd_mode );
+#ifdef CMOD_BIND_PROTECTION
+				Cbuf_AddTextByMode( p, keys[key].restricted_binding ? CMD_PROTECTED : 0 );
 #else
 				Cbuf_AddText( p );
 #endif
@@ -1723,16 +1786,28 @@ default_bind_t default_binds[] = {
 	{"MOUSE3", "+zoom"},
 };
 
-void load_default_binds(void) {
+/*
+===================
+Key_LoadDefaultBinds
+
+Called on game startup (before config file execution) to initialize default binds.
+Also called to reset binds (for UI-invoked settings reset).
+===================
+*/
+void Key_LoadDefaultBinds( qboolean trusted ) {
 	int i;
 	for(i=0; i<ARRAY_LEN(default_binds); ++i) {
 		int keynum = Key_StringToKeynum(default_binds[i].key);
 		if(keynum < 0) {
-			Com_Printf("load_default_binds: invalid key %s\n", default_binds[i].key);
+			Com_Printf("Key_LoadDefaultBinds: invalid key %s\n", default_binds[i].key);
 			continue; }
 
 		keys[keynum].default_binding = default_binds[i].binding;
-		Key_SetBinding(keynum, keys[keynum].default_binding, CMD_NORMAL);
+#ifdef CMOD_BIND_PROTECTION
+		Key_SetBinding(keynum, keys[keynum].default_binding, trusted);
+#else
+		Key_SetBinding(keynum, keys[keynum].default_binding);
+#endif
 	}
 }
 #endif

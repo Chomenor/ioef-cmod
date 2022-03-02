@@ -11,19 +11,47 @@
 // [FEATURE] New filesystem with various improvements
 #define NEW_FILESYSTEM
 
+/* ******************************************************************************** */
+// Settings & Security
+/* ******************************************************************************** */
+
 // [FEATURE] New command system with various improvements
 #define CMOD_COMMAND_INTERPRETER
 
-// [FEATURE] New cvar system with various improvements
-#if defined(NEW_FILESYSTEM) && defined(CMOD_COMMAND_INTERPRETER)	// required
-#define CMOD_CVAR_HANDLING
+// [FEATURE] New settings system with various improvements
+// Moves settings storage to cmod.cfg instead of hmconfig.cfg
+#if defined( NEW_FILESYSTEM ) && defined( CMOD_COMMAND_INTERPRETER )	// required
+#define CMOD_SETTINGS
 #endif
 
-// [FEATURE] New settings system with various improvements
-// Changes settings location to cmod.cfg instead of original hmconfig.cfg
-// and keeps same settings for different mods
-#if defined(NEW_FILESYSTEM) && defined(CMOD_COMMAND_INTERPRETER) && defined(CMOD_CVAR_HANDLING)		// required
-#define CMOD_SETTINGS
+// [FEATURE] Import binds and a limited subset of settings from hmconfig.cfg when
+// first starting the game if cmod.cfg doesn't exist.
+#if !defined( DEDICATED ) && defined( CMOD_SETTINGS )
+#define CMOD_HMCONFIG_IMPORT
+#endif
+
+// [FEATURE] Restrict settings that can be changed by autoexec.cfg, to avoid
+// issues with prepackaged config files in certain old EF installer packages
+#if !defined( DEDICATED ) && defined( CMOD_SETTINGS )
+#define CMOD_SAFE_AUTOEXEC
+#endif
+
+// [FEATURE] Support determining allowed permissions for game modules based on factors
+// such as download folder status and trusted hash.
+#if !defined( DEDICATED ) && defined( NEW_FILESYSTEM )
+#define CMOD_VM_PERMISSIONS
+#endif
+
+// [FEATURE] Restrict untrusted VMs from making persistent changes to binds
+// Binds set by untrusted VMs are allowed temporarily for compatibility purposes
+// but reset when disconnecting from server.
+#if defined( CMOD_VM_PERMISSIONS ) && defined( CMOD_COMMAND_INTERPRETER )
+#define CMOD_BIND_PROTECTION
+#endif
+
+// [FEATURE] Restrict untrusted VMs from writing files to disk
+#if defined( CMOD_VM_PERMISSIONS )
+#define CMOD_WRITE_PROTECTION
 #endif
 
 /* ******************************************************************************** */
@@ -193,7 +221,7 @@
 /* ******************************************************************************** */
 
 // [FEATURE] Load cMod QVM module releases in place of stock game QVMS
-#define CMOD_QVM_LOADING
+#define CMOD_QVM_SELECTION
 
 // [FEATURE] Reduce unnecessary console log messages in various parts of the game
 #define CMOD_REDUCE_WARNINGS
@@ -328,6 +356,9 @@
 //   work/compile but do not cause functional changes by themselves
 /* ******************************************************************************** */
 
+// [COMMON] Misc defines shared by multiple features
+#define CMOD_COMMON_DEFINES
+
 // [COMMON] Insert additional cMod headers into standard game includes
 #define CMOD_COMMON_HEADERS
 
@@ -343,11 +374,24 @@
 // [COMMON] Support extra VM interface functions for compatible VMs
 #define CMOD_VM_EXTENSIONS
 
+// [COMMON] Stub functions for VM permissions, to support compiling even if
+// CMOD_VM_PERMISSIONS is disabled
+#define CMOD_CORE_VM_PERMISSIONS
+
 /* ******************************************************************************** */
-// Setup
+// Setup and implied settings - should not be enabled/disabled directly.
 /* ******************************************************************************** */
 
 #if defined(CMOD_COPYDEBUG_CMD) && defined(_WIN32) && !defined(DEDICATED) && defined(CMOD_SETTINGS) \
 	&& defined(NEW_FILESYSTEM)
 #define CMOD_COPYDEBUG_CMD_SUPPORTED
+#endif
+
+#if defined(CMOD_SETTINGS)
+#define CMOD_CVAR_HANDLING
+#endif
+
+#if defined(CMOD_QVM_SELECTION)
+// Support for loading values from modcfg configstrings from remote server
+#define CMOD_CLIENT_MODCFG_HANDLING
 #endif

@@ -22,11 +22,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #ifdef CMOD_COPYDEBUG_CMD_SUPPORTED
+#ifndef __INCLUDED_FSLOCAL
+#define __INCLUDED_FSLOCAL
 #include "../filesystem/fslocal.h"
+#endif
 #include <windows.h>
 #else
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
+#endif
+
+#ifdef CMOD_VM_PERMISSIONS
+#ifndef __INCLUDED_FSLOCAL
+#define __INCLUDED_FSLOCAL
+#include "../filesystem/fslocal.h"
+#endif
 #endif
 
 #ifdef CMOD_COMMON_STRING_FUNCTIONS
@@ -235,5 +245,139 @@ void ClientAltSwap_ModifyCommand( usercmd_t *cmd ) {
 
 void ClientAltSwap_SetState( qboolean swap ) {
 	clientAltSwapActive = swap;
+}
+#endif
+
+#ifdef CMOD_VM_PERMISSIONS
+qboolean FS_CheckTrustedVMFile( const fsc_file_t *file );
+static qboolean vmTrusted[VM_MAX];
+static const fsc_file_t *initialUI = NULL;
+
+/*
+=================
+VMPermissions_CheckTrustedVMFile
+
+Returns qtrue if VM file is trusted.
+=================
+*/
+qboolean VMPermissions_CheckTrustedVMFile( const fsc_file_t *file, const char *debug_name ) {
+	// Download folder pk3s are checked by hash
+	if ( file && FSC_FromDownloadPk3( file, &fs.index ) ) {
+		if ( FS_CheckTrustedVMFile( file ) ) {
+			if ( debug_name ) {
+				Com_Printf( "Downloaded module '%s' trusted due to known mod hash.\n", debug_name );
+			}
+			return qtrue;
+		}
+
+		// Always trust the first loaded UI, to avoid situations with irregular configs where the
+		// default UI is restricted. This shouldn't affect security much because if the default UI
+		// is compromised there are already significant problems.
+		if ( initialUI == file ) {
+			if ( debug_name ) {
+				Com_Printf( "Downloaded module '%s' trusted due to matching initial selected UI.\n", debug_name );
+			}
+			return qtrue;
+		}
+
+		if ( debug_name ) {
+			Com_Printf( "Downloaded module '%s' restricted. Some settings may not be saved.\n", debug_name );
+		}
+		return qfalse;
+	}
+
+	// Other types are automatically trusted
+	return qtrue;
+}
+
+/*
+=================
+VMPermissions_OnVmCreate
+
+Called when a VM is about to be instantiated. sourceFile may be null in error cases.
+=================
+*/
+void VMPermissions_OnVmCreate( const char *module, const fsc_file_t *sourceFile, qboolean is_dll ) {
+	vmType_t vmType = VM_NONE;
+	if ( !Q_stricmp( module, "qagame" ) ) {
+		vmType = VM_GAME;
+	} else if ( !Q_stricmp( module, "cgame" ) ) {
+		vmType = VM_CGAME;
+	} else if ( !Q_stricmp( module, "ui" ) ) {
+		vmType = VM_UI;
+	} else {
+		return;
+	}
+
+	// Save first loaded UI
+	if ( vmType == VM_UI && !initialUI ) {
+		initialUI = sourceFile;
+	}
+
+	// Check if VM is trusted
+	vmTrusted[vmType] = VMPermissions_CheckTrustedVMFile( sourceFile, module );
+}
+#endif
+
+#ifdef CMOD_CORE_VM_PERMISSIONS
+/*
+=================
+VMPermissions_CheckTrusted
+
+Returns whether currently loaded VM is trusted.
+=================
+*/
+qboolean VMPermissions_CheckTrusted( vmType_t vmType ) {
+#ifdef CMOD_VM_PERMISSIONS
+	if ( vmType <= VM_NONE || vmType >= VM_MAX ) {
+		Com_Printf( "WARNING: VMPermissions_CheckTrusted with invalid vmType\n" );
+		return qfalse;
+	}
+
+	return vmTrusted[vmType];
+#else
+	return qtrue;
+#endif
+}
+#endif
+
+#ifdef CMOD_CLIENT_MODCFG_HANDLING
+modCfgValues_t ModcfgHandling_CurrentValues;
+
+/*
+=================
+ModcfgHandling_ParseModConfig
+
+Called when gamestate is received from the server.
+=================
+*/
+void ModcfgHandling_ParseModConfig( int *stringOffsets, char *data ) {
+	int i;
+	char key[BIG_INFO_STRING];
+	char value[BIG_INFO_STRING];
+
+	memset( &ModcfgHandling_CurrentValues, 0, sizeof( ModcfgHandling_CurrentValues ) );
+
+	// look for any configstring matching "!modcfg " prefix
+	for ( i = 0; i < MAX_CONFIGSTRINGS; ++i ) {
+		const char *str = data + stringOffsets[i];
+
+		if ( str[0] == '!' && !Q_stricmpn( str, "!modcfg ", 8 ) && strlen( str ) < BIG_INFO_STRING ) {
+			const char *cur = &str[8];
+
+			// load values
+			while ( 1 ) {
+				Info_NextPair( &cur, key, value );
+				if ( !key[0] )
+					break;
+#ifdef CMOD_QVM_SELECTION
+				if ( !Q_stricmp( key, "nativeUI" ) )
+					ModcfgHandling_CurrentValues.nativeUI = atoi( value );
+				if ( !Q_stricmp( key, "nativeCgame" ) )
+					ModcfgHandling_CurrentValues.nativeCgame = atoi( value );
+#endif
+			}
+		}
+	}
 }
 #endif

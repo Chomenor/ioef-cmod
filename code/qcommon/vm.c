@@ -639,6 +639,9 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 
 #ifdef NEW_FILESYSTEM
 	vm->source_file = FS_VMLookup( module, interpret == VMI_NATIVE ? qfalse : qtrue, qfalse, &is_dll );
+#ifdef CMOD_VM_PERMISSIONS
+	VMPermissions_OnVmCreate( module, vm->source_file, is_dll );
+#endif
 #ifdef CMOD_ENGINE_ASPECT_CORRECT
 	AspectCorrect_OnVmCreate( module, vm->source_file );
 #endif

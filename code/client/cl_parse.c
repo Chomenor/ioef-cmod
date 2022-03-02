@@ -578,6 +578,11 @@ void CL_ParseGamestate( msg_t *msg ) {
 	// parse serverId and other cvars
 	CL_SystemInfoChanged();
 
+#ifdef CMOD_CLIENT_MODCFG_HANDLING
+	// parse modcfg values
+	ModcfgHandling_ParseModConfig( cl.gameState.stringOffsets, cl.gameState.stringData );
+#endif
+
 	// stop recording now so the demo won't have an unnecessary level load at the end.
 	if(cl_autoRecordDemo->integer && clc.demorecording)
 		CL_StopRecord_f();

@@ -412,7 +412,7 @@ void Cmd_ExecuteStringByMode(const char *text, cmd_mode_t mode) {
 	
 	// check cvars
 #ifdef CMOD_CVAR_HANDLING
-	if(cvar_command(mode)) return;
+	if(Cvar_Command(mode)) return;
 #else
 	if(Cvar_Command()) return;
 #endif
@@ -646,9 +646,6 @@ void Cmd_Exec_f(cmd_mode_t mode) {
 
 	Q_strncpyz( filename, Cmd_Argv(1), sizeof( filename ) );
 	COM_DefaultExtension( filename, sizeof( filename ), ".cfg" );
-#ifndef DEDICATED
-	if(!COM_CompareExtension(filename, ".cfg")) mode |= CMD_PROTECTED;
-#endif
 #ifdef NEW_FILESYSTEM
 	FS_ExecuteConfigFile( filename, ( mode & CMD_PROTECTED ) ? FS_CONFIGTYPE_PROTECTED : FS_CONFIGTYPE_NONE, EXEC_INSERT, quiet );
 #else
@@ -669,7 +666,7 @@ void Cmd_Exec_f(cmd_mode_t mode) {
 // Inserts the current value of a variable as command text
 void Cmd_Vstr_f(cmd_mode_t mode) {
 #ifdef CMOD_CVAR_HANDLING
-	cvar_vstr(mode);
+	Cvar_Vstr(mode);
 #else
 	char	*v;
 
@@ -695,7 +692,6 @@ void Cmd_Echo_f(cmd_mode_t mode)
 
 static const char *base_protectable_commands[] = {
 	"minimize",
-	"cvar_restart",
 	"cmd",
 	"vid_restart",
 	"snd_restart",
@@ -712,12 +708,10 @@ static const char *base_protectable_commands[] = {
 	"map_restart",
 	"demo",
 	"devmap",
-	"screenshot",
 	"spmap",
 	"spdevmap",
 	"killserver"
 	"centerview",
-	"cmod_crosshair_advance",
 	"+moveup",
 	"-moveup",
 	"+movedown",
