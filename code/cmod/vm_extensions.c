@@ -96,6 +96,7 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			// Disable UI options for deprecated settings.
 			{ "ui_no_cd_key", "1" },
 			{ "ui_no_a3d", "1" },
+			{ "ui_skip_k_language", "1" },
 			{ "ui_skip_r_glDriver", "1" },
 			{ "ui_skip_r_allowExtensions", "1" },
 			{ "ui_skip_r_colorbits", "1" },
@@ -116,8 +117,12 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			{ "ui_support_cmd_set_raw_mouse", "1" },
 #endif
 
-			// Support minimize command.
+			// Indicate support for console commands.
 			{ "ui_support_minimize", "1" },
+			{ "ui_support_screenshotJPEG", "1" },
+
+			// Indicate that "globalservers" command with parameter 0 fetches all masters.
+			{ "ui_support_globalservers_multi_fetch", "1" },
 
 #ifdef CMOD_RESOLUTION_HANDLING
 			// Indicates that the r_mode cvar only applies to windowed mode, not fullscreen.
