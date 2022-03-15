@@ -1775,7 +1775,7 @@ default_bind_t default_binds[] = {
 	{"F2", "vote no"},
 	{"F3", "ui_teamorders"},
 	{"F4", "levelselect"},
-	{"F11", "screenshot"},
+	{"F11", "screenshotJPEG"},
 
 	{"y", "messagemode"},
 	{"t", "messagemode2"},
