@@ -351,6 +351,23 @@
 #define CMOD_EF_ICON
 
 /* ******************************************************************************** */
+// Error Handling
+/* ******************************************************************************** */
+
+// [TWEAK] Disable signal handlers
+// This disables the ioquake3 error signal handling, so the standard OS error handling
+// is invoked instead in the case of crashes. In most cases this results in more informative
+// error messages, and it also allows features like crash dumps to work correctly.
+#define CMOD_NO_ERROR_SIGNAL_HANDLER
+
+// [BUGFIX] In debug builds, force all errors to be fatal and go straight to an error popup.
+// This is a workaround for apparent ioquake3 issues related to longjmp being called during
+// QVM trap calls.
+#if !defined( NDEBUG )
+#define CMOD_ALL_ERRORS_FATAL
+#endif
+
+/* ******************************************************************************** */
 // Common library functions and code structure changes
 // This section is intended for components that are necessary for other features to
 //   work/compile but do not cause functional changes by themselves

@@ -287,6 +287,10 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	int			currentTime;
 	qboolean	restartClient;
 
+#ifdef CMOD_ALL_ERRORS_FATAL
+	code = ERR_FATAL;
+#endif
+
 	if(com_errorEntered)
 		Sys_Error("recursive error after: %s", com_errorMessage);
 

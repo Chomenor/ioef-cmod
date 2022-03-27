@@ -897,10 +897,12 @@ void Sys_PlatformInit( void )
 	const char* term = getenv( "TERM" );
 
 	signal( SIGHUP, Sys_SigHandler );
+#ifndef CMOD_NO_ERROR_SIGNAL_HANDLER
 	signal( SIGQUIT, Sys_SigHandler );
 	signal( SIGTRAP, Sys_SigHandler );
 	signal( SIGABRT, Sys_SigHandler );
 	signal( SIGBUS, Sys_SigHandler );
+#endif
 
 	Sys_SetFloatEnv();
 

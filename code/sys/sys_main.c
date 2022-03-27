@@ -814,9 +814,11 @@ int main( int argc, char **argv )
 	Com_Init( commandLine );
 	NET_Init( );
 
+#ifndef CMOD_NO_ERROR_SIGNAL_HANDLER
 	signal( SIGILL, Sys_SigHandler );
 	signal( SIGFPE, Sys_SigHandler );
 	signal( SIGSEGV, Sys_SigHandler );
+#endif
 	signal( SIGTERM, Sys_SigHandler );
 	signal( SIGINT, Sys_SigHandler );
 
