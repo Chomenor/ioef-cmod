@@ -184,6 +184,12 @@
 // [BUGFIX] Workaround to allow bots to join password-protected server
 #define CMOD_BOT_PASSWORD_FIX
 
+// [BUGFIX] Workaround for game code bug when creating EV_SHIELD_HIT event
+// This fixes an issue with the original game code in which EV_SHIELD_HIT events are created
+// with r.origin set to vec3_origin instead of the origin of the player being hit. Due to
+// entity visibility checks, this prevented the event from being sent to clients reliably.
+#define CMOD_SHIELD_EFFECT_FIX
+
 // [BUGFIX] Fixes for several issues that can interfere with the server being listed on
 // master servers and/or server browser tools
 #define CMOD_GETSTATUS_FIXES

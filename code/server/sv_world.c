@@ -213,6 +213,17 @@ void SV_LinkEntity( sharedEntity_t *gEnt ) {
 	float		*origin, *angles;
 	svEntity_t	*ent;
 
+#ifdef CMOD_SHIELD_EFFECT_FIX
+	// Workaround for game code bug when creating EV_SHIELD_HIT event.
+	if ( gEnt->s.eType == 89 && VectorCompare( gEnt->r.currentOrigin, vec3_origin ) ) {
+		// 89 = ET_EVENTS + EV_SHIELD_HIT
+		int clientNum = gEnt->s.otherEntityNum;
+		if ( clientNum >= 0 && clientNum < sv_maxclients->integer && svs.clients[clientNum].gentity ) {
+			VectorCopy( svs.clients[clientNum].gentity->r.currentOrigin, gEnt->r.currentOrigin );
+		}
+	}
+#endif
+
 	ent = SV_SvEntityForGentity( gEnt );
 
 	if ( ent->worldSector ) {
