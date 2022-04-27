@@ -215,7 +215,7 @@ void SV_LinkEntity( sharedEntity_t *gEnt ) {
 
 #ifdef CMOD_SHIELD_EFFECT_FIX
 	// Workaround for game code bug when creating EV_SHIELD_HIT event.
-	if ( gEnt->s.eType == 89 && VectorCompare( gEnt->r.currentOrigin, vec3_origin ) ) {
+	if ( gEnt->s.eType == 89 && !gEnt->r.contents && !gEnt->r.svFlags && VectorCompare( gEnt->r.currentOrigin, vec3_origin ) ) {
 		// 89 = ET_EVENTS + EV_SHIELD_HIT
 		int clientNum = gEnt->s.otherEntityNum;
 		if ( clientNum >= 0 && clientNum < sv_maxclients->integer && svs.clients[clientNum].gentity ) {
