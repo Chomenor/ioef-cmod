@@ -691,7 +691,7 @@ static void FSC_IterateDirectoryRecursive( iterate_work_t *iw, fsc_boolean junct
 			continue;
 		}
 
-		if ( entry->d_type & DT_DIR ) {
+		if ( S_ISDIR( st.st_mode ) ) {
 			// Have directory - check validity
 			if ( entry->d_name[0] == '.' && ( !entry->d_name[1] || ( entry->d_name[1] == '.' && !entry->d_name[2] ) ) ) {
 				continue;
