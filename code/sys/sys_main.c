@@ -205,6 +205,7 @@ void Sys_RemovePIDFile( const char *gamedir )
 		remove( pidFile );
 }
 
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 /*
 =================
 Sys_WritePIDFile
@@ -256,6 +257,7 @@ static qboolean Sys_WritePIDFile( const char *gamedir )
 
 	return stale;
 }
+#endif
 
 /*
 =================
@@ -263,6 +265,7 @@ Sys_InitPIDFile
 =================
 */
 void Sys_InitPIDFile( const char *gamedir ) {
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 	if( Sys_WritePIDFile( gamedir ) ) {
 #ifndef DEDICATED
 		char message[1024];
@@ -280,6 +283,7 @@ void Sys_InitPIDFile( const char *gamedir ) {
 		}
 #endif
 	}
+#endif
 }
 
 /*

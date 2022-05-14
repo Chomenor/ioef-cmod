@@ -288,7 +288,9 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	qboolean	restartClient;
 
 #ifdef CMOD_ALL_ERRORS_FATAL
-	code = ERR_FATAL;
+	if ( code != ERR_DISCONNECT ) {
+		code = ERR_FATAL;
+	}
 #endif
 
 	if(com_errorEntered)
