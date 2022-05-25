@@ -629,23 +629,6 @@ int FS_CheckFileDisabled( const fsc_file_t *file, int checks ) {
 		}
 	}
 
-	// Servercfg list limit check - blocks files restricted by fs_servercfg_listlimit for file listing
-#ifdef FS_SERVERCFG_ENABLED
-	if ( ( checks & FD_CHECK_LIST_SERVERCFG_LIMIT ) && fs.cvar.fs_servercfg_listlimit->integer &&
-			!FS_Servercfg_Priority( FSC_GetModDir( file, &fs.index ) ) ) {
-		// Limiting enabled and file not in servercfg directory
-		if ( fs.cvar.fs_servercfg_listlimit->integer == 1 ) {
-			// Allow core paks
-			const fsc_file_direct_t *base_file = FSC_GetBaseFile( file, &fs.index );
-			if ( !( base_file && FS_CorePk3Position( base_file->pk3_hash ) ) ) {
-				return FD_CHECK_LIST_SERVERCFG_LIMIT;
-			}
-		} else {
-			return FD_CHECK_LIST_SERVERCFG_LIMIT;
-		}
-	}
-#endif
-
 	return 0;
 }
 

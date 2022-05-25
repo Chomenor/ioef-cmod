@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // If the version in the cache file does not match this string, the cache will be rebuilt.
 // This version should always be incremented when anything affecting the cache file format changes.
-#define FSC_CACHE_VERSION "ioq3-fs-v12"
+#define FSC_CACHE_VERSION "ioq3-fs-v13"
 
 #define FSC_MAX_QPATH 256	// Buffer size including null terminator
 #define FSC_MAX_MODDIR 32	// Buffer size including null terminator
@@ -138,6 +138,11 @@ typedef enum {
 
 #define FSC_FILEFLAG_LINKED_CONTENT 1	// This file has other content like pk3 contents or shaders linked to it
 #define FSC_FILEFLAG_DLPK3 2	// This pk3 is located in a download directory
+#define FSC_FILEFLAG_REFONLY_PK3 4		// Pk3 available for pure/download lists, but contents not actually indexed
+#define FSC_FILEFLAG_NOLIST_PK3 8		// Pk3 indexed normally, but omitted from file listing operations
+
+// pk3 file from any of the special directories ("downloads", "refonly", or "nolist")
+#define FSC_FILEFLAGS_SPECIAL_PK3 ( FSC_FILEFLAG_DLPK3 | FSC_FILEFLAG_REFONLY_PK3 | FSC_FILEFLAG_NOLIST_PK3 )
 
 typedef struct fsc_file_s {
 	// Hash table compliance

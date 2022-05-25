@@ -446,7 +446,8 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 			crcs_for_hash[crcs_for_hash_count++] = CD_ENTRY_INT_LE( 16 );
 		}
 
-		if ( !(void *)receive_hash_data && !( !uncompressed_size && *( cd.data + entry_position + 46 + filename_length - 1 ) == '/' ) ) {
+		if ( !(void *)receive_hash_data && !( sourcefile->f.flags & FSC_FILEFLAG_REFONLY_PK3 ) &&
+				!( !uncompressed_size && *( cd.data + entry_position + 46 + filename_length - 1 ) == '/' ) ) {
 			// Not in hash mode and not a directory entry - load the file
 			FSC_RegisterPk3Subfile( fs, cd.data + entry_position + 46, filename_length, sourcefile_ptr,
 				header_position, compressed_size, CD_ENTRY_INT( 24 ), CD_ENTRY_SHORT( 10 ), &sanity_limit );

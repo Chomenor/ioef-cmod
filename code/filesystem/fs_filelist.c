@@ -360,12 +360,15 @@ Returns qtrue if file is valid to list, qfalse otherwise.
 =================
 */
 static qboolean FS_FileList_CheckFileListable( const fsc_file_t *file, const filelist_work_t *flw ) {
-	int disabled_checks = FD_CHECK_LIST_INACTIVE_MODS | FD_CHECK_LIST_SERVERCFG_LIMIT;
+	int disabled_checks = FD_CHECK_LIST_INACTIVE_MODS;
 	if ( !( flw->flags & LISTFLAG_IGNORE_PURE_LIST ) &&
 			!( ( flw->flags & LISTFLAG_PURE_ALLOW_DIRECT_SOURCE ) && file->sourcetype == FSC_SOURCETYPE_DIRECT ) ) {
 		disabled_checks |= FD_CHECK_PURE_LIST;
 	}
 	if ( FS_CheckFileDisabled( file, disabled_checks ) ) {
+		return qfalse;
+	}
+	if ( file->sourcetype == FSC_SOURCETYPE_PK3 && FSC_GetBaseFile( file, &fs.index )->f.flags & FSC_FILEFLAG_NOLIST_PK3 ) {
 		return qfalse;
 	}
 	if ( ( flw->flags & LISTFLAG_IGNORE_TAPAK0 ) && file->sourcetype == FSC_SOURCETYPE_PK3 &&

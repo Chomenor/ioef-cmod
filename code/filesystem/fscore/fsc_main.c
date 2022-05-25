@@ -479,11 +479,17 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 		new_file = fsc_true;
 	}
 
-	// Update source dir and download folder flag
+	// Update source dir and pk3 type flags
 	file->source_dir_id = source_dir_id;
-	file->f.flags &= ~FSC_FILEFLAG_DLPK3;
-	if ( !FSC_Stricmp( qp_ext, ".pk3" ) && !FSC_Stricmp( qp_dir, "downloads/" ) ) {
-		file->f.flags |= FSC_FILEFLAG_DLPK3;
+	file->f.flags &= ~FSC_FILEFLAGS_SPECIAL_PK3;
+	if ( !FSC_Stricmp( qp_ext, ".pk3" ) ) {
+		if ( !FSC_Stricmp( qp_dir, "downloads/" ) ) {
+			file->f.flags |= FSC_FILEFLAG_DLPK3;
+		} else if ( !FSC_Stricmp( qp_dir, "refonly/" ) ) {
+			file->f.flags |= FSC_FILEFLAG_REFONLY_PK3;
+		} else if ( !FSC_Stricmp( qp_dir, "nolist/" ) ) {
+			file->f.flags |= FSC_FILEFLAG_NOLIST_PK3;
+		}
 	}
 
 	// Save os path. This happens on loading a new file, and also when first activating an entry that was loaded from cache.
@@ -496,7 +502,8 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 	// Register file and load contents
 	if ( unindexed_file ) {
 		FSC_RegisterFile( file_ptr, FSC_NULL, fs );
-		if ( !FSC_Stricmp( qp_ext, ".pk3" ) && ( !*qp_dir || !FSC_Stricmp( qp_dir, "downloads/" ) ) ) {
+		if ( !FSC_Stricmp( qp_ext, ".pk3" ) &&
+				( !*qp_dir || ( file->f.flags & FSC_FILEFLAGS_SPECIAL_PK3 ) ) ) {
 			FSC_LoadPk3( (fsc_ospath_t *)STACKPTR( file->os_path_ptr ), fs, file_ptr, FSC_NULL, FSC_NULL );
 			file->f.flags |= FSC_FILEFLAG_LINKED_CONTENT;
 		}
