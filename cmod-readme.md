@@ -1,1 +1,1 @@
-This file has moved to [readme.md](readme.md).
+This file has moved to [README.md](README.md).
