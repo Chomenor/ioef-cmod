@@ -95,9 +95,6 @@ typedef enum {
 #ifdef CMOD_SETTINGS
 	FS_CONFIGTYPE_GLOBAL_SETTINGS,
 #endif
-#ifdef CMOD_HMCONFIG_IMPORT
-	FS_CONFIGTYPE_SETTINGS_IMPORT,
-#endif
 } fs_config_type_t;
 
 #define DEF_PUBLIC( f ) f;

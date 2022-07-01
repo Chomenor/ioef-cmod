@@ -454,7 +454,7 @@ files can be execed.
 typedef int cmd_mode_t;
 #define CMD_NORMAL 0
 #define CMD_PROTECTED 1
-#ifdef CMOD_HMCONFIG_IMPORT
+#ifdef CMOD_IMPORT_SETTINGS
 #define CMD_SETTINGS_IMPORT 2
 #endif
 #ifdef CMOD_SAFE_AUTOEXEC

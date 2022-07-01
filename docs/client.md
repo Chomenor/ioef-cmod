@@ -10,8 +10,6 @@ If cMod is installed somewhere where standard applications do not have write per
 
 Settings are stored in a file called "cmod.cfg" directly in the EF working directory. This is separate from the settings files used by other versions of EF, such as hmconfig.cfg. The cmod.cfg file is designed to be human-editable, so feel free to open it and make changes.
 
-*Settings Import:* If you install cMod in a location with an hmconfig.cfg file left over from a previous client, cMod will try to import binds and a limited subset of settings from that file and transfer them to cmod.cfg. If you wish to revert this, manually empty the cmod.cfg file, but don't delete it altogether as that may trigger the import again.
-
 *Autoexec Restriction:* By default, cMod restricts loading some settings from the autoexec.cfg file. This is to protect against autoexec.cfg files that are prepackaged in EF distributions and may be incompatible with cMod. If you encounter issues, set ```cmod_restrict_autoexec``` to 0 (in the console or cmod.cfg, not in the autoexec.cfg itself).
 
 ## Mod Handling

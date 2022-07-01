@@ -21,14 +21,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#if defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_VM_PERMISSIONS )
+#if defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_VM_PERMISSIONS ) || defined( CMOD_IMPORT_SETTINGS )
 #include "../filesystem/fslocal.h"
 #else
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #endif
 
-#if defined( _WIN32 ) && defined( CMOD_COPYDEBUG_CMD_SUPPORTED )
+#if defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_IMPORT_SETTINGS )
 #include <windows.h>
 #endif
 
@@ -371,6 +371,169 @@ void ModcfgHandling_ParseModConfig( int *stringOffsets, char *data ) {
 				if ( !Q_stricmp( key, "nativeCgame" ) )
 					ModcfgHandling_CurrentValues.nativeCgame = atoi( value );
 #endif
+			}
+		}
+	}
+}
+#endif
+
+#ifdef CMOD_IMPORT_SETTINGS
+#include <shlobj.h>
+#include <stdio.h>
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+/*
+=================
+Stef_ImportSettings_GetModifiedTime
+
+Retrieve file modification time. Returns 0 on error or file not found.
+=================
+*/
+static long long Stef_ImportSettings_GetModifiedTime( const char *path ) {
+	struct stat st = { 0 };
+	if ( stat( path, &st ) == -1 ) {
+		return 0;
+	}
+	return st.st_mtime;
+}
+
+/*
+=================
+Stef_ImportSettings_GetCurrentTime
+
+Retrieve system time in same format as modification time.
+=================
+*/
+static long long Stef_ImportSettings_GetCurrentTime( void ) {
+	time_t ltime = 0;
+	time( &ltime );
+	return ltime;
+}
+
+typedef struct {
+	long long modifiedTime;
+	char path[FS_MAX_PATH];
+	qboolean cmodFormat;
+} SettingsImportSource_t;
+
+/*
+=================
+Stef_ImportSettings_AddSource
+
+Checks a potential config file location. If file exists and has a more recent modified timestamp than
+the current best source file, replace the source file with this one.
+=================
+*/
+static void Stef_ImportSettings_AddSource( const char *path, qboolean cmodFormat, SettingsImportSource_t *target ) {
+	long long modifiedTime = Stef_ImportSettings_GetModifiedTime( path );
+	if ( modifiedTime ) {
+		Com_Printf( "Potential import config: %s (modified: %u)\n", path, (unsigned int)modifiedTime );
+	}
+
+	if ( modifiedTime && modifiedTime > target->modifiedTime ) {
+		target->modifiedTime = modifiedTime;
+		Q_strncpyz( target->path, path, sizeof( target->path ) );
+		target->cmodFormat = cmodFormat;
+	}
+}
+
+/*
+=================
+Stef_ImportSettings_GetSource
+
+Search potential config file locations and find the one with the most recent timestamp.
+=================
+*/
+static void Stef_ImportSettings_GetSource( SettingsImportSource_t *target ) {
+	int i;
+	char path[FS_MAX_PATH];
+	memset( target, 0, sizeof( *target ) );
+
+	// Check filesystem search locations
+	for ( i = 1; i < FS_MAX_SOURCEDIRS; ++i ) {
+		if ( fs.sourcedirs[i].active &&
+				FS_GeneratePathSourcedir( i, "cmod.cfg", NULL, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+			Stef_ImportSettings_AddSource( path, qtrue, target );
+		}
+	}
+
+	for ( i = 0; i < FS_MAX_SOURCEDIRS; ++i ) {
+		if ( fs.sourcedirs[i].active &&
+				FS_GeneratePathSourcedir( i, "baseEF/hmconfig.cfg", NULL, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+			Stef_ImportSettings_AddSource( path, qfalse, target );
+		}
+	}
+
+	// Check user directory (based on Sys_DefaultHomePath)
+	{
+		HMODULE shfolder = LoadLibrary( "shfolder.dll" );
+
+		if ( shfolder ) {
+			TCHAR szPath[MAX_PATH];
+			FARPROC qSHGetFolderPath = GetProcAddress( shfolder, "SHGetFolderPathA" );
+
+			if ( qSHGetFolderPath ) {
+				if ( SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_APPDATA, NULL, 0, szPath ) ) ) {
+					if ( FS_GeneratePath( szPath, "Lilium Voyager/baseEF/hmconfig.cfg",
+							NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+						Stef_ImportSettings_AddSource( path, qfalse, target );
+					}
+
+					if ( FS_GeneratePath( szPath, "Tulip Voyager/baseEF/hmconfig.cfg",
+							NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+						Stef_ImportSettings_AddSource( path, qfalse, target );
+					}
+				}
+
+				if ( SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_LOCAL_APPDATA, NULL, 0, szPath ) ) ) {
+					if ( FS_GeneratePath( szPath,
+							"VirtualStore/Program Files (x86)/Raven/Star Trek Voyager Elite Force/BaseEF/hmconfig.cfg",
+							NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+						Stef_ImportSettings_AddSource( path, qfalse, target );
+					}
+				}
+			}
+
+			FreeLibrary( shfolder );
+		}
+	}
+}
+
+/*
+=================
+Stef_ImportSettings_CheckImport
+
+Look for potential config files to import and display prompt if one is found.
+Called when the standard cmod.cfg doesn't exist.
+=================
+*/
+void Stef_ImportSettings_CheckImport( void ) {
+	SettingsImportSource_t source;
+	Stef_ImportSettings_GetSource( &source );
+
+	if ( source.modifiedTime ) {
+		long long currentTime = Stef_ImportSettings_GetCurrentTime();
+		if ( currentTime - source.modifiedTime > 30 * 24 * 60 * 60 ) {
+			// Don't bother prompting about files older than about 30 days
+			Com_Printf( "Import config too old: file modified time %u, system time %u\n",
+					(unsigned int)source.modifiedTime, (unsigned int)currentTime );
+
+		} else {
+			// Found a valid config to import
+			if ( Sys_Dialog( DT_YES_NO,
+					va( "An existing config was found at\n\n%s\n\nImport settings from this file?",
+					source.path ), "Settings Import" ) == DR_YES ) {
+				char *data = FS_ReadData( NULL, source.path, NULL, __FUNCTION__ );
+				if ( data ) {
+					// Exec cMod configs directly, but apply filtering to ones from other clients
+					cmd_mode_t mode = source.cmodFormat ? CMD_NORMAL : CMD_SETTINGS_IMPORT;
+					Com_Printf( "Importing settings: %s\n", source.path );
+					Cbuf_ExecuteTextByMode( EXEC_APPEND, data, mode );
+					Cbuf_ExecuteTextByMode( EXEC_APPEND, "\n", mode );
+					FS_FreeData( data );
+				}
 			}
 		}
 	}

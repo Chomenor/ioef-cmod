@@ -901,10 +901,6 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 	if ( config_type == FS_CONFIGTYPE_PROTECTED )
 		mode |= CMD_PROTECTED;
 #endif
-#ifdef CMOD_HMCONFIG_IMPORT
-	if ( config_type == FS_CONFIGTYPE_SETTINGS_IMPORT )
-		mode |= CMD_SETTINGS_IMPORT;
-#endif
 
 	if ( com_journalDataFile && com_journal->integer == 2 ) {
 		// In journal playback mode, try to load config files from journal data file
@@ -926,11 +922,9 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 			data = FS_ReadData( NULL, path, NULL, "FS_ExecuteConfigFile" );
 		}
 		if ( !data ) {
-#ifdef CMOD_HMCONFIG_IMPORT
-			Com_Printf( "loading %s failed; attempting to import settings from " Q3CONFIG_CFG "\n", name );
-			FS_ExecuteConfigFile( Q3CONFIG_CFG, FS_CONFIGTYPE_SETTINGS_IMPORT, EXEC_APPEND, qfalse );
-#else
 			Com_Printf( "loading %s failed\n", name );
+#ifdef CMOD_IMPORT_SETTINGS
+			Stef_ImportSettings_CheckImport();
 #endif
 			return;
 		}
@@ -953,11 +947,6 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 			// For default.cfg - only load from appropriate fs_mod_settings locations
 			lookup_flags |= LOOKUPFLAG_SETTINGS_FILE;
 		}
-#ifdef CMOD_HMCONFIG_IMPORT
-		if ( config_type == FS_CONFIGTYPE_SETTINGS_IMPORT ) {
-			lookup_flags |= ( LOOKUPFLAG_SETTINGS_FILE | LOOKUPFLAG_DIRECT_SOURCE_ONLY );
-		}
-#endif
 
 		if ( !quiet ) {
 			Com_Printf( "execing %s\n", name );

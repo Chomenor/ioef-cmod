@@ -132,3 +132,7 @@ typedef struct {
 extern modCfgValues_t ModcfgHandling_CurrentValues;
 void ModcfgHandling_ParseModConfig( int *stringOffsets, char *data );
 #endif
+
+#ifdef CMOD_IMPORT_SETTINGS
+void Stef_ImportSettings_CheckImport( void );
+#endif

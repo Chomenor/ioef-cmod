@@ -737,7 +737,7 @@ void Cvar_CommandSet( const char *name, const char *value, int flags, cmd_mode_t
 	} else {
 		int valueFlags = CVAR_TRUSTED_CREATED | CVAR_USER_CREATED;
 
-#ifdef CMOD_HMCONFIG_IMPORT
+#ifdef CMOD_IMPORT_SETTINGS
 		// Check for settings import mode
 		if ( ( mode & CMD_SETTINGS_IMPORT ) && ( !( cvar->engine_flags & CVAR_IMPORT_ALLOWED ) ||
 				( cvar->engine_default.string && value && !strcmp( cvar->engine_default.string, value ) ) ) ) {

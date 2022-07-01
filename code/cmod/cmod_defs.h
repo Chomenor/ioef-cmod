@@ -24,10 +24,11 @@
 #define CMOD_SETTINGS
 #endif
 
-// [FEATURE] Import binds and a limited subset of settings from hmconfig.cfg when
-// first starting the game if cmod.cfg doesn't exist.
-#if !defined( DEDICATED ) && defined( CMOD_SETTINGS )
-#define CMOD_HMCONFIG_IMPORT
+// [FEATURE] When starting the game, if regular cmod.cfg doesn't exist, search
+// for config files in other locations written in the last 30 days. If one or
+// more is found, prompt user if they want to import the most recent one.
+#if !defined( DEDICATED ) && defined( CMOD_SETTINGS ) && defined( _WIN32 )
+#define CMOD_IMPORT_SETTINGS
 #endif
 
 // [FEATURE] Restrict settings that can be changed by autoexec.cfg, to avoid

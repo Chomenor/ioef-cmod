@@ -1102,11 +1102,14 @@ void Key_Bind_f (void)
 			strcat (cmd, " ");
 	}
 
-#ifdef CMOD_HMCONFIG_IMPORT
-	if(cmdMode & CMD_SETTINGS_IMPORT) {
+#ifdef CMOD_IMPORT_SETTINGS
+	if ( cmdMode & CMD_SETTINGS_IMPORT ) {
 		// Don't override certain special keys in settings import mode
-		if(b == Key_StringToKeynum("`") || b == Key_StringToKeynum("~") ||
-				b == Key_StringToKeynum("F1") || b == Key_StringToKeynum("F2")) return; }
+		if ( b == Key_StringToKeynum( "`" ) || b == Key_StringToKeynum( "~" ) || b == Key_StringToKeynum( "F1" )
+				|| b == Key_StringToKeynum( "F2" ) || b == Key_StringToKeynum( "F11" ) ) {
+			return;
+		}
+	}
 #endif
 
 #ifdef CMOD_BIND_PROTECTION
