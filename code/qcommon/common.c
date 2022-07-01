@@ -3165,11 +3165,7 @@ void Com_WriteConfigToFile( const char *filename ) {
 	if ( !Q_stricmp( filename, Q3CONFIG_CFG ) ) {
 		f = FS_OpenSettingsFileWrite( Q3CONFIG_CFG );
 	} else {
-#ifdef CMOD_RESTRICT_VM_CFG_WRITE
-		f = FS_FOpenConfigFileWrite( filename );
-#else
 		f = FS_FOpenFileWrite( filename );
-#endif
 	}
 #else
 	f = FS_FOpenFileWrite( filename );

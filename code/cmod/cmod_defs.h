@@ -331,9 +331,6 @@
 #define CMOD_LOGGING_MESSAGES
 #endif
 
-// [COMMON] Add protections against VMs writing config files for security purposes
-#define CMOD_RESTRICT_VM_CFG_WRITE
-
 // [COMMON] Add console command to copy debug info to clipboard
 #define CMOD_COPYDEBUG_CMD
 
