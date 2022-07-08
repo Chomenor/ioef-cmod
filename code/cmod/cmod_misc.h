@@ -23,6 +23,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // For misc cmod stuff, included at the end of qcommon.h
 
+#ifdef CMOD_LONGJMP_FIX
+#if defined (_WIN32) && !defined(_MSC_VER)
+#define Q_setjmp __builtin_setjmp
+#define Q_longjmp __builtin_longjmp
+#else
+#define Q_setjmp setjmp
+#define Q_longjmp longjmp
+#endif
+#endif
+
 #ifdef CMOD_VM_EXTENSIONS
 qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
 		void *( *VM_ArgPtr )( intptr_t intValue ), intptr_t *retval );

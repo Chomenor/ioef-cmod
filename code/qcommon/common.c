@@ -287,12 +287,6 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	int			currentTime;
 	qboolean	restartClient;
 
-#ifdef CMOD_ALL_ERRORS_FATAL
-	if ( code != ERR_DISCONNECT ) {
-		code = ERR_FATAL;
-	}
-#endif
-
 	if(com_errorEntered)
 		Sys_Error("recursive error after: %s", com_errorMessage);
 
@@ -341,7 +335,11 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		// make sure we can get at our local stuff
 		FS_PureServerSetLoadedPaks("", "");
 		com_errorEntered = qfalse;
+#ifdef CMOD_LONGJMP_FIX
+		Q_longjmp (abortframe, 1);
+#else
 		longjmp (abortframe, -1);
+#endif
 	} else if (code == ERR_DROP) {
 		Com_Printf ("********************\nERROR: %s\n********************\n", com_errorMessage);
 		VM_Forced_Unload_Start();
@@ -357,7 +355,11 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 #ifdef CMOD_ERROR_POPUP_FIXES
 		Cbuf_AddText(va("err_dialog \"%s\"\n", com_errorMessage));
 #endif
+#ifdef CMOD_LONGJMP_FIX
+		Q_longjmp (abortframe, 1);
+#else
 		longjmp (abortframe, -1);
+#endif
 	} else if ( code == ERR_NEED_CD ) {
 		VM_Forced_Unload_Start();
 		SV_Shutdown( "Server didn't have CD" );
@@ -377,7 +379,11 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		FS_PureServerSetLoadedPaks("", "");
 
 		com_errorEntered = qfalse;
+#ifdef CMOD_LONGJMP_FIX
+		Q_longjmp (abortframe, 1);
+#else
 		longjmp (abortframe, -1);
+#endif
 	} else {
 		VM_Forced_Unload_Start();
 		CL_Shutdown(va("Client fatal crashed: %s", com_errorMessage), qtrue, qtrue);
@@ -2859,7 +2865,11 @@ void Com_Init( char *commandLine ) {
 
 	Com_Printf( "%s %s %s\n", Q3_VERSION, PLATFORM_STRING, PRODUCT_DATE );
 
+#ifdef CMOD_LONGJMP_FIX
+	if ( Q_setjmp (abortframe) ) {
+#else
 	if ( setjmp (abortframe) ) {
+#endif
 		Sys_Error ("Error during initialization");
 	}
 
@@ -3349,7 +3359,11 @@ void Com_Frame( void ) {
 	int		timeAfter;
   
 
+#ifdef CMOD_LONGJMP_FIX
+	if ( Q_setjmp (abortframe) ) {
+#else
 	if ( setjmp (abortframe) ) {
+#endif
 		return;			// an ERR_DROP was thrown
 	}
 

@@ -265,9 +265,7 @@ qboolean CL_GetServerCommand( int serverCommandNumber ) {
 	char	*s;
 	char	*cmd;
 	static char bigConfigString[BIG_INFO_STRING];
-#ifndef CMOD_ALL_ERRORS_FATAL
 	int argc;
-#endif
 
 	// if we have irretrievably lost a reliable command, drop the connection
 	if ( serverCommandNumber <= clc.serverCommandSequence - MAX_RELIABLE_COMMANDS ) {
@@ -292,9 +290,7 @@ qboolean CL_GetServerCommand( int serverCommandNumber ) {
 rescan:
 	Cmd_TokenizeString( s );
 	cmd = Cmd_Argv(0);
-#ifndef CMOD_ALL_ERRORS_FATAL
 	argc = Cmd_Argc();
-#endif
 
 	if ( !strcmp( cmd, "disconnect" ) ) {
 		// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=552
@@ -306,17 +302,10 @@ rescan:
 		Cbuf_AddText(va("err_dialog \"%s\"", Cmd_Argv(1)));
 #endif
 #endif
-#ifdef CMOD_ALL_ERRORS_FATAL
-		// wait until command buffer executes to actually process the disconnection
-		// (this is a hacky workaround to avoid calling longjmp from a VM trap, which
-		// currently causes issues in ioquake3 especially on Windows 11)
-		Cbuf_ExecuteText( EXEC_INSERT, "disconnect\n" );
-#else
 		if ( argc >= 2 )
 			Com_Error( ERR_SERVERDISCONNECT, "Server disconnected - %s", Cmd_Argv( 1 ) );
 		else
 			Com_Error( ERR_SERVERDISCONNECT, "Server disconnected" );
-#endif
 	}
 
 	if ( !strcmp( cmd, "bcs0" ) ) {

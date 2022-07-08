@@ -355,10 +355,9 @@
 // Error Handling
 /* ******************************************************************************** */
 
-// [BUGFIX] Force most errors to be fatal and go straight to an error popup. This is a
-// workaround for apparent ioquake3 issues related to longjmp being called during
-// QVM trap calls.
-#define CMOD_ALL_ERRORS_FATAL
+// [BUGFIX] Workaround for ioquake3 issues related to longjmp being called during
+// QVM trap calls, especially on Windows 11. Fix ported from Quake3e.
+#define CMOD_LONGJMP_FIX
 
 // [BUGFIX] Try to fix some issues with UI popup after errors.
 #define CMOD_ERROR_POPUP_FIXES
@@ -369,9 +368,8 @@
 // error messages, and it also allows features like crash dumps to work correctly.
 #define CMOD_NO_ERROR_SIGNAL_HANDLER
 
-// [TWEAK] Disable the pid file/safe mode prompt when restarting after error.
-// It doesn't work well with CMOD_ALL_ERRORS_FATAL and currently has limited use
-// anyway since it doesn't reset enough settings to fix most types of errors.
+// [TWEAK] Disable the pid file/safe mode prompt when restarting after error,
+// since it currently doesn't reset enough settings to fix most types of errors.
 #define CMOD_NO_SAFE_SETTINGS_PROMPT
 
 /* ******************************************************************************** */
