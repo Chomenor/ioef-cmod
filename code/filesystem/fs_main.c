@@ -792,7 +792,6 @@ void FS_Startup( void ) {
 	fs.cvar.fs_auto_refresh_enabled = Cvar_Get( "fs_auto_refresh_enabled", "1", 0 );
 #ifdef FS_SERVERCFG_ENABLED
 	fs.cvar.fs_servercfg = Cvar_Get( "fs_servercfg", "servercfg", 0 );
-	fs.cvar.fs_servercfg_listlimit = Cvar_Get( "fs_servercfg_listlimit", "0", 0 );
 	fs.cvar.fs_servercfg_writedir = Cvar_Get( "fs_servercfg_writedir", "", 0 );
 #endif
 

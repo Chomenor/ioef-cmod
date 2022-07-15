@@ -206,17 +206,14 @@ The standard fs_servercfg setting does not change the directory for game module 
 
 The setting "fs_servercfg_writedir" can be set to force a certain write directory for the server. This could be the same directory as the primary fs_servercfg directory, but it is possible to use any directory name. Example: ```set fs_servercfg_writedir serverlogs```
 
-### Server Source Limiting
+## Restricted Pk3 Sources
 
-In some cases it can be useful to prevent pk3s on the server, such as maps, from making unwanted changes to the server configuration (such as adding bots). A setting called "fs_servercfg_listlimit" is supported to help address this issue.
+In some cases it can be useful for pk3s to be installed on a server, but with restrictions on what the server can load from them. Currently two types of restrictions are supported:
 
-This setting applies limits to file listing operations used by the game module to locate files, and supports the following values:
+- "nolist": The pk3 is loaded on the server, but excluded from file list operations. This generally means maps can still be loaded from the pk3, but certain scripts such as bot files are not loaded.
+- "refonly": Prevents the server from loading any contents of the pk3, but it can still be used to populate pure and download lists.
 
-- 0 - no restrictions; all files normally available on server are accessed (default)
-- 1 - only files in servercfg and core pk3s (e.g. id paks pak0-pak8) are accessed
-- 2 - only files in servercfg are accessed
-
-A setting of 1 can be used to prevent conflicts such as the bot issue mentioned above. A setting of 2 can be used to support a fully self-contained servercfg that does not require any additional pk3s to function.
+To use these modes, create a folder called "nolist" or "refonly" within a mod directory, and move pk3s into it. For example, to apply the nolist restriction to a pk3 located at "baseq3/mymap.pk3", move it to "baseq3/nolist/mymap.pk3". Note that manifest rules should still refer to the short path, e.g. "baseq3/mymap".
 
 # Developer & Debugging Notes
 

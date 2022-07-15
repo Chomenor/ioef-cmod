@@ -111,7 +111,6 @@ typedef enum {
 #define FD_CHECK_READ_INACTIVE_MODS 2		// Check if file is blocked for file lookup by fs_read_inactive_mods setting
 #define FD_CHECK_READ_INACTIVE_MODS_IGNORE_SERVERCFG 4		// Same as above, but also treat servercfg as an inactive mod
 #define FD_CHECK_LIST_INACTIVE_MODS 8		// Check if file is blocked for file listing by fs_list_inactive_mods setting
-#define FD_CHECK_LIST_SERVERCFG_LIMIT 16	// Check if files is blocked for file listing due to fs_servercfg_listlimit
 
 #define STACKPTR( pointer ) ( FSC_STACK_RETRIEVE( &fs.index.general_stack, pointer, fsc_false ) )	// non-null
 #define STACKPTRN( pointer ) ( FSC_STACK_RETRIEVE( &fs.index.general_stack, pointer, fsc_true ) )	// null allowed
