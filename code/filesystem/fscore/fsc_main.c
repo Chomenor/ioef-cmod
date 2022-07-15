@@ -289,31 +289,6 @@ static void FSC_MergeStats( const fsc_stats_t *source, fsc_stats_t *target ) {
 
 /*
 =================
-FSC_SanityLimit
-
-Applies some limits to prevent potential vulnerabilities due to overloaded pk3 files.
-Returns true if limit hit, otherwise decrements limit counter and returns false.
-=================
-*/
-fsc_boolean FSC_SanityLimit( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit ) {
-	FSC_ASSERT( sanity_limit );
-	FSC_ASSERT( limit_value );
-
-	if ( *limit_value < size ) {
-		if ( !sanity_limit->warned ) {
-			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "pk3 content dropped due to sanity limits", (void *)sanity_limit->pk3file );
-			sanity_limit->warned = fsc_true;
-		}
-
-		return fsc_true;
-	}
-
-	*limit_value -= size;
-	return fsc_false;
-}
-
-/*
-=================
 FSC_RegisterFile
 
 Registers file in index and loads secondary content such as shaders.
@@ -326,15 +301,21 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	const char *qp_dir = (const char *)STACKPTR( file->qp_dir_ptr );
 	const char *qp_name = (const char *)STACKPTR( file->qp_name_ptr );
 	const char *qp_ext = (const char *)STACKPTR( file->qp_ext_ptr );
+	unsigned int hash = FSC_StringHash( qp_name, qp_dir );
 
-	// Check for index overflow
-	if ( sanity_limit && FSC_SanityLimit( FSC_Strlen( qp_dir ) + FSC_Strlen( qp_name ) + FSC_Strlen( qp_ext ) + 64,
-			&sanity_limit->content_index_memory, sanity_limit ) ) {
-		return;
+	// Check sanity limit
+	if ( sanity_limit ) {
+		if ( FSC_SanityLimitContent( FSC_Strlen( qp_dir ) + FSC_Strlen( qp_name ) + FSC_Strlen( qp_ext ) + 64,
+				&sanity_limit->content_index_memory, sanity_limit ) ) {
+			return;
+		}
+		if ( FSC_SanityLimitHash( hash, sanity_limit ) ) {
+			return;
+		}
 	}
 
 	// Register file for main lookup and directory iteration
-	FSC_HashtableInsert( file_ptr, FSC_StringHash( qp_name, qp_dir ), &fs->files );
+	FSC_HashtableInsert( file_ptr, hash, &fs->files );
 	FSC_IterationRegisterFile( file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack );
 
 	// Index shaders and update shader counter on base file
@@ -361,7 +342,7 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	// Cache small arena and bot file contents
 	if ( file->filesize < 16384 && !FSC_Stricmp( qp_dir, "scripts/" ) &&
 		 ( !FSC_Stricmp( qp_ext, ".arena" ) || !FSC_Stricmp( qp_ext, ".bot" ) ) &&
-		 ( !sanity_limit || !FSC_SanityLimit( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
+		 ( !sanity_limit || !FSC_SanityLimitContent( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
 		char *source_data = FSC_ExtractFileAllocated( file, fs );
 		if ( source_data ) {
 			fsc_stackptr_t target_ptr = FSC_StackAllocate( &fs->general_stack, file->filesize );

@@ -367,7 +367,8 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 	int crcs_for_hash_buffer[1024];
 	int crcs_for_hash_count = 0;
 
-	fsc_sanity_limit_t sanity_limit = { 0 };
+	fsc_sanity_limit_t sanity_limit;
+	FSC_Memset( &sanity_limit, 0, sizeof( sanity_limit ) );
 
 	if ( !receive_hash_data ) {
 		FSC_ASSERT( sourcefile_ptr );

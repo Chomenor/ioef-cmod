@@ -255,18 +255,6 @@ typedef struct fsc_filesystem_s {
 	fsc_stats_t new_stats;
 } fsc_filesystem_t;
 
-typedef struct {
-	// These counters are decremented as data is pulled from a pk3. If they drop below 0,
-	// further data from that category will be dropped.
-	unsigned int content_cache_memory;
-	unsigned int content_index_memory;
-	unsigned int data_read;
-
-	// For error reporting
-	fsc_boolean warned;
-	fsc_file_direct_t *pk3file;
-} fsc_sanity_limit_t;
-
 typedef struct fsc_shader_s {
 	// Hash table compliance
 	fsc_hashtable_entry_t hte;
@@ -330,6 +318,24 @@ typedef struct {
 	const char *name;
 } fsc_shader_iterator_t;
 
+#define FSC_SANITY_HASH_BUCKETS 32768
+#define FSC_SANITY_MAX_PER_HASH_BUCKET 128
+
+typedef struct {
+	// These counters are decremented as data is pulled from a pk3. If they drop below 0,
+	// further data from that category will be dropped.
+	unsigned int content_cache_memory;
+	unsigned int content_index_memory;
+	unsigned int data_read;
+
+	// Block pk3s containing too many files/shaders with the same hash.
+	unsigned char hash_buckets[FSC_SANITY_HASH_BUCKETS];
+
+	// For error reporting
+	fsc_boolean warned;
+	fsc_file_direct_t *pk3file;
+} fsc_sanity_limit_t;
+
 /* ******************************************************************************** */
 // Main Filesystem (fsc_main.c)
 /* ******************************************************************************** */
@@ -343,7 +349,6 @@ const char *FSC_GetModDir( const fsc_file_t *file, const fsc_filesystem_t *fs );
 void FSC_FileToStream( const fsc_file_t *file, fsc_stream_t *stream, const fsc_filesystem_t *fs,
 		fsc_boolean include_mod, fsc_boolean include_pk3_origin );
 
-fsc_boolean FSC_SanityLimit( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit );
 void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit, fsc_filesystem_t *fs );
 void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *mod_dir, const char *pk3dir_name,
 		const char *qp_dir, const char *qp_name, const char *qp_ext, unsigned int os_timestamp, unsigned int filesize,
@@ -395,6 +400,11 @@ fsc_boolean FSC_HashtableImport( fsc_hashtable_t *ht, fsc_stack_t *stack, fsc_st
 
 void FSC_SplitQpath( const char *input, fsc_qpath_buffer_t *output, fsc_boolean ignore_extension );
 unsigned int FSC_SplitLeadingDirectory( const char *input, char *buffer, unsigned int buffer_length, const char **remainder );
+
+// ***** Sanity Limits *****
+
+fsc_boolean FSC_SanityLimitContent( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit );
+fsc_boolean FSC_SanityLimitHash( unsigned int hash, fsc_sanity_limit_t *sanity_limit );
 
 // ***** Error Handling *****
 

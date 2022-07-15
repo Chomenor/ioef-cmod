@@ -640,6 +640,67 @@ unsigned int FSC_SplitLeadingDirectory( const char *input, char *buffer, unsigne
 /*
 ###############################################################################################
 
+Sanity Limits
+
+###############################################################################################
+*/
+
+/*
+=================
+FSC_SanityLimitContent
+
+Applies some limits to prevent potential vulnerabilities due to overloaded pk3 files.
+Returns true if limit hit, otherwise decrements limit counter and returns false.
+=================
+*/
+fsc_boolean FSC_SanityLimitContent( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit ) {
+	FSC_ASSERT( sanity_limit );
+	FSC_ASSERT( limit_value );
+
+	if ( *limit_value < size ) {
+		if ( !sanity_limit->warned ) {
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "pk3 content dropped due to sanity limits",
+					(void *)sanity_limit->pk3file );
+			sanity_limit->warned = fsc_true;
+		}
+
+		return fsc_true;
+	}
+
+	*limit_value -= size;
+	return fsc_false;
+}
+
+/*
+=================
+FSC_SanityLimitHash
+
+Apply limit to prevent exploits involving tons of files or shaders with the same hash.
+Returns true if limit hit, otherwise decrements limit counter and returns false.
+=================
+*/
+fsc_boolean FSC_SanityLimitHash( unsigned int hash, fsc_sanity_limit_t *sanity_limit ) {
+	unsigned char *bucket;
+	FSC_ASSERT( sanity_limit );
+
+	bucket = &sanity_limit->hash_buckets[hash % FSC_SANITY_HASH_BUCKETS];
+	if ( *bucket >= FSC_SANITY_MAX_PER_HASH_BUCKET ) {
+		if ( !sanity_limit->warned ) {
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "pk3 content dropped due to hash sanity limits",
+					(void *)sanity_limit->pk3file );
+			sanity_limit->warned = fsc_true;
+		}
+
+		return fsc_true;
+	}
+
+	*bucket += 1;
+	return fsc_false;
+}
+
+/*
+###############################################################################################
+
 Error Handling
 
 ###############################################################################################

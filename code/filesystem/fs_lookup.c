@@ -450,12 +450,22 @@ PC_COMPARE( server_pure_position ) {
 	if ( r2->server_pure_position < r1->server_pure_position )
 		return 1;
 
+	// Special case: Prefer non-downloaded pk3
+	if ( r1->server_pure_position ) {
+		if ( ( r1->flags & RESFLAG_IN_DOWNLOAD_PK3 ) && !( r2->flags & RESFLAG_IN_DOWNLOAD_PK3 ) )
+			return 1;
+		if ( ( r2->flags & RESFLAG_IN_DOWNLOAD_PK3 ) && !( r1->flags & RESFLAG_IN_DOWNLOAD_PK3 ) )
+			return -1;
+	}
+
 	return 0;
 }
 
 PC_DEBUG( server_pure_position ) {
 	if ( !low->server_pure_position ) {
 		ADD_STRING( va( "Resource %i was selected because it is on the server pure list and resource %i is not.", high_num, low_num ) );
+	} else if ( low->server_pure_position == high->server_pure_position ) {
+		ADD_STRING( va( "Resource %i was selected because it is on the pure list and not in a download folder.", high_num ) );
 	} else {
 		ADD_STRING( va( "Resource %i was selected because it has a lower server pure list position (%i) than resource %i (%i).",
 				high_num, high->server_pure_position, low_num, low->server_pure_position ) );
