@@ -104,6 +104,11 @@ void Con_ToggleConsole_f (void) {
 
 	Con_ClearNotify ();
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_CONSOLE );
+#ifdef CMOD_CONSOLE_AUTO_RESET
+	if ( con_autoReset->integer && ( Key_GetCatcher() & KEYCATCH_CONSOLE ) ) {
+		Con_Bottom();
+	}
+#endif
 }
 
 /*

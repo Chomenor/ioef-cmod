@@ -107,3 +107,7 @@ CVAR_DEF(cg_aspectCorrect, "1", CVAR_ARCHIVE)
 CVAR_DEF(cg_aspectCorrectGunPos, "-1", 0)
 CVAR_DEF(ui_aspectCorrect, "-1", 0)
 #endif
+
+#ifdef CMOD_CONSOLE_AUTO_RESET
+CVAR_DEF(con_autoReset, "1", CVAR_ARCHIVE)
+#endif

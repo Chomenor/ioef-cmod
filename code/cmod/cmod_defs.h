@@ -265,6 +265,9 @@
 #define CMOD_CLIENT_ALT_SWAP_SUPPORT
 #endif
 
+// [TWEAK] Restore console scroll position to end when reopening. Enabled by "con_autoReset" cvar.
+#define CMOD_CONSOLE_AUTO_RESET
+
 // [BUGFIX] Use traditional EF float casting behavior in VM, which fixes the physics behavior
 // in various mods
 #define CMOD_VMFLOATCAST
