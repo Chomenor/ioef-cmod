@@ -436,6 +436,15 @@ PC_COMPARE( cmod_paks ) {
 		return -1;
 	if ( r2->cmod_pak_priority > r1->cmod_pak_priority )
 		return 1;
+
+	// Special case: Prefer non-downloaded pk3
+	if ( r1->cmod_pak_priority ) {
+		if ( ( r1->flags & RESFLAG_IN_DOWNLOAD_PK3 ) && !( r2->flags & RESFLAG_IN_DOWNLOAD_PK3 ) )
+			return 1;
+		if ( ( r2->flags & RESFLAG_IN_DOWNLOAD_PK3 ) && !( r1->flags & RESFLAG_IN_DOWNLOAD_PK3 ) )
+			return -1;
+	}
+
 	return 0;
 }
 
@@ -1457,13 +1466,6 @@ static const int stock_qvms[] = {
 	1445632735,		// pakext2b.pk3
 	2099203013,		// pakcmod-stable-2021-07-16.pk3
 	732565402,		// pakcmod-dev-2021-07-16.pk3
-	401438010,		// pakcmod-current-2021-09-18.pk3
-	-749739206,		// pakcmod-current-2021-09-25.pk3
-	-1518584883,	// pakcmod-current-2021-10-15.pk3
-	34943118,		// pakcmod-current-2021-11-11.pk3
-	1803491023,		// pakcmod-current-2021-12-03.pk3
-	1289620810,		// pakcmod-current-2021-12-28.pk3
-	278974329,		// pakcmod-current-2022-04-03.pk3
 };
 
 /*
@@ -1475,6 +1477,11 @@ static qboolean FS_IsStockQvm( const fsc_file_t *file ) {
 	if ( file && file->sourcetype == FSC_SOURCETYPE_PK3 ) {
 		int i;
 		const fsc_file_direct_t *base_file = FSC_GetBaseFile( file, &fs.index );
+
+		if ( FS_CmodPk3Position( base_file->pk3_hash ) ) {
+			return qtrue;
+		}
+
 		for ( i = 0; i < ARRAY_LEN( stock_qvms ); ++i ) {
 			if ( (int)base_file->pk3_hash == stock_qvms[i] ) {
 				return qtrue;
@@ -1528,7 +1535,7 @@ static void FS_CmodVmLookup( const char *name, qboolean qvm_only, qboolean debug
 	}
 
 	if ( native == 2 ) {
-		Com_Printf( "Prioritizing cMod module for '%s' due to server native VM mode 2.\n", name );
+		Com_Printf( "Prioritizing default module for '%s' due to server native VM mode 2.\n", name );
 		FS_CmodVmLookup2( name, qvm_only, qtrue, debug, queries, query_count, lookup_result );
 		return;
 	}
@@ -1539,7 +1546,7 @@ static void FS_CmodVmLookup( const char *name, qboolean qvm_only, qboolean debug
 	}
 
 	if ( FS_IsStockQvm( lookup_result->file ) ) {
-		Com_Printf( "Prioritizing cMod module for '%s' due to compatible configuration.\n", name );
+		Com_Printf( "Prioritizing default module for '%s' due to compatible configuration.\n", name );
 		FS_CmodVmLookup2( name, qvm_only, qtrue, debug, queries, query_count, lookup_result );
 		return;
 	}
@@ -1547,7 +1554,7 @@ static void FS_CmodVmLookup( const char *name, qboolean qvm_only, qboolean debug
 #ifdef CMOD_VM_PERMISSIONS
 	// native level 1 prefers cMod module only if the normally selected one is untrusted
 	if ( native == 1 && !VMPermissions_CheckTrustedVMFile( lookup_result->file, NULL ) ) {
-		Com_Printf( "Prioritizing cMod module for '%s' due to server native VM mode 1.\n", name );
+		Com_Printf( "Prioritizing default module for '%s' due to server native VM mode 1.\n", name );
 		FS_CmodVmLookup2( name, qvm_only, qtrue, debug, queries, query_count, lookup_result );
 		return;
 	}
