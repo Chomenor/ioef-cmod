@@ -1248,7 +1248,18 @@ float	R_FogFactor( float s, float t ) {
 		s = 1.0;
 	}
 
+#ifdef CMOD_FOGFACTOR_FIX
+	{
+		// Probably unnecessary, but verify index here just to be safe
+		int index = (int)(s * (FOG_TABLE_SIZE-1));
+		if ( index < 0 || index >= FOG_TABLE_SIZE ) {
+			return 0;
+		}
+		d = tr.fogTable[ index ];
+	}
+#else
 	d = tr.fogTable[ (int)(s * (FOG_TABLE_SIZE-1)) ];
+#endif
 
 	return d;
 }

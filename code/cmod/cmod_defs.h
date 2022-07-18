@@ -122,6 +122,10 @@
 // [BUGFIX] Fix potential crash issue
 #define CMOD_FOGFACTOR_FIX
 
+// [BUGFIX] Fix renderer bug which may cause potential crash issue
+// Also fixed in Quake3e: https://github.com/ec-/Quake3e/commit/fdc6e858be40be2a447820f1d76d74b6c9042491
+#define CMOD_FRCL_ENTITYNUM_FIX
+
 // [BUGFIX] Fix potential crash issue on certain maps
 #define CMOD_FOGSIDE_FIX
 
