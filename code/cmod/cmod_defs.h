@@ -112,6 +112,9 @@
 // [BUGFIX] Fix a shader caching issue that can cause low framerates on certain maps
 #define CMOD_LIGHTMAPSTAGE_FIX
 
+// [BUGFIX] Hacky workaround for opengl2 renderer error seen on map 'ctf_storm'
+#define CMOD_GL2_MAX_FACE_POINTS_FIX
+
 // [BUGFIX] Properly unintialize certain handles on renderer shutdown to prevent potential issues
 // when using statically compiled renderer
 #define CMOD_GLIMP_SHUTDOWN_FIX

@@ -870,7 +870,13 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 
 			if(tri[j] >= numVerts)
 			{
+#ifdef CMOD_GL2_MAX_FACE_POINTS_FIX
+				tri -= 3;
+				badTriangles++;
+				goto skip;
+#else
 				ri.Error(ERR_DROP, "Bad index in face surface");
+#endif
 			}
 		}
 
@@ -879,6 +885,9 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 			tri -= 3;
 			badTriangles++;
 		}
+#ifdef CMOD_GL2_MAX_FACE_POINTS_FIX
+		skip:;
+#endif
 	}
 
 	if (badTriangles)
