@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/qcommon.h"
 #endif
 
-#if defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_IMPORT_SETTINGS )
+#if defined _WIN32 && ( defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_IMPORT_SETTINGS ) )
 #include <windows.h>
 #endif
 
@@ -378,7 +378,9 @@ void ModcfgHandling_ParseModConfig( int *stringOffsets, char *data ) {
 #endif
 
 #ifdef CMOD_IMPORT_SETTINGS
+#ifdef _WIN32
 #include <shlobj.h>
+#endif
 #include <stdio.h>
 #include <time.h>
 #include <sys/types.h>
@@ -466,6 +468,7 @@ static void Stef_ImportSettings_GetSource( SettingsImportSource_t *target ) {
 		}
 	}
 
+#ifdef _WIN32
 	// Check user directory (based on Sys_DefaultHomePath)
 	{
 		HMODULE shfolder = LoadLibrary( "shfolder.dll" );
@@ -499,6 +502,7 @@ static void Stef_ImportSettings_GetSource( SettingsImportSource_t *target ) {
 			FreeLibrary( shfolder );
 		}
 	}
+#endif
 }
 
 /*
