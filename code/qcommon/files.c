@@ -4185,9 +4185,11 @@ void FS_Restart( int checksumFeed ) {
 	lastGameDir = ( lastValidGame[0] ) ? lastValidGame : lastValidComBaseGame;
 
 	if ( Q_stricmp( FS_GetCurrentGameDir(), lastGameDir ) ) {
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 		Sys_RemovePIDFile( lastGameDir );
 		Sys_InitPIDFile( FS_GetCurrentGameDir() );
 
+#endif
 		// skip the q3config.cfg if "safe" is on the command line
 		if ( !Com_SafeMode() ) {
 			Cbuf_AddText ("exec " Q3CONFIG_CFG "\n");

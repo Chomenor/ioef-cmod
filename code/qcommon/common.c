@@ -3049,10 +3049,12 @@ void Com_Init( char *commandLine ) {
 
 	Sys_Init();
 
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 #ifdef NEW_FILESYSTEM
 	Sys_InitPIDFile( FS_PidFileDirectory() );
 #else
 	Sys_InitPIDFile( FS_GetCurrentGameDir() );
+#endif
 #endif
 
 	// Pick a random port value

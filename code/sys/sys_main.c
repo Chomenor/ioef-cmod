@@ -170,6 +170,7 @@ char *Sys_GetClipboardData(void)
 #	define PID_FILENAME PRODUCT_NAME ".pid"
 #endif
 
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 /*
 =================
 Sys_PIDFileName
@@ -205,7 +206,6 @@ void Sys_RemovePIDFile( const char *gamedir )
 		remove( pidFile );
 }
 
-#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 /*
 =================
 Sys_WritePIDFile
@@ -257,7 +257,6 @@ static qboolean Sys_WritePIDFile( const char *gamedir )
 
 	return stale;
 }
-#endif
 
 /*
 =================
@@ -265,7 +264,6 @@ Sys_InitPIDFile
 =================
 */
 void Sys_InitPIDFile( const char *gamedir ) {
-#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 	if( Sys_WritePIDFile( gamedir ) ) {
 #ifndef DEDICATED
 		char message[1024];
@@ -283,8 +281,8 @@ void Sys_InitPIDFile( const char *gamedir ) {
 		}
 #endif
 	}
-#endif
 }
+#endif
 
 /*
 =================
@@ -301,6 +299,7 @@ static __attribute__ ((noreturn)) void Sys_Exit( int exitCode )
 	SDL_Quit( );
 #endif
 
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 	if( exitCode < 2 && com_fullyInitialized )
 	{
 		// Normal exit
@@ -310,6 +309,7 @@ static __attribute__ ((noreturn)) void Sys_Exit( int exitCode )
 		Sys_RemovePIDFile( FS_GetCurrentGameDir() );
 #endif
 	}
+#endif
 
 	NET_Shutdown( );
 

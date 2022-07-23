@@ -205,9 +205,11 @@ will be updated to match fs_game.
 =================
 */
 static void FS_UpdateModDirExt( qboolean move_pid ) {
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 	char old_pid_dir[FSC_MAX_MODDIR];
 	Q_strncpyz( old_pid_dir, FS_PidFileDirectory(), sizeof( old_pid_dir ) );
 
+#endif
 	// Update fs.current_mod_dir and convert basegame to empty value
 	Cvar_Get( "fs_game", "", 0 ); // make sure unlatched
 	FS_SanitizeModDir( fs.cvar.fs_game->string, fs.current_mod_dir );
@@ -218,6 +220,7 @@ static void FS_UpdateModDirExt( qboolean move_pid ) {
 		fs.current_mod_dir[0] = '\0';
 	}
 
+#ifndef CMOD_NO_SAFE_SETTINGS_PROMPT
 	// Move pid file to new mod dir if necessary
 	if ( move_pid && strcmp( old_pid_dir, FS_PidFileDirectory() ) ) {
 		if ( fs.cvar.fs_debug_state->integer ) {
@@ -226,6 +229,7 @@ static void FS_UpdateModDirExt( qboolean move_pid ) {
 		Sys_RemovePIDFile( old_pid_dir );
 		Sys_InitPIDFile( FS_PidFileDirectory() );
 	}
+#endif
 
 	// Read CD keys
 #ifndef CMOD_DISABLE_AUTH_STUFF
