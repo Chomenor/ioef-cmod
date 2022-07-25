@@ -80,13 +80,13 @@ if [ "$1" == "notarize" ]; then
 	RELEASE_LOCATION="build/release-darwin-universal2"
 
 	# release build name
-	RELEASE_BUILD="ioEF-cMod.app"
+	RELEASE_BUILD="cMod-stvoyHM.app"
 
 	# Pre-notarized zip file (not what is shipped)
-	PRE_NOTARIZED_ZIP="ioEF-cMod-prenotarized.zip"
+	PRE_NOTARIZED_ZIP="cMod-stvoyHM-prenotarized.zip"
 
 	# Post-notarized zip file (shipped)
-	POST_NOTARIZED_ZIP="ioEF-cMod-mac.zip"
+	POST_NOTARIZED_ZIP="cMod-stvoyHM-mac.zip"
 
 	BUNDLE_ID="org.stvef.cmod"
 

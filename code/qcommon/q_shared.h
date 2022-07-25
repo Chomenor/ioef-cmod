@@ -42,10 +42,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //  #define LEGACY_PROTOCOL	// You probably don't need this for your standalone game
 #else
 #ifdef ELITEFORCE
+#ifdef CMOD_VERSION_STRING
+  #define PRODUCT_NAME		"cMod HM"
+  #define BASEGAME			"baseEF"
+  #define CLIENT_WINDOW_TITLE     	"cMod Holomatch"
+#else
   #define PRODUCT_NAME		"ioST:V HM"
   #define BASEGAME			"baseEF"
   #define CLIENT_WINDOW_TITLE     	"iostvoyHM"
   #define CLIENT_WINDOW_MIN_TITLE 	"iostvoyHM"
+#endif
   #define HOMEPATH_NAME_UNIX		".stvef"
   #define HOMEPATH_NAME_WIN		"STVEF"
   #define HOMEPATH_NAME_MACOSX	HOMEPATH_NAME_WIN
@@ -94,7 +100,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #ifdef CMOD_VERSION_STRING
-#define Q3_VERSION "ioEF:cMod HM v" PRODUCT_VERSION
+#define Q3_VERSION PRODUCT_NAME " v" PRODUCT_VERSION
 #else
 #define Q3_VERSION PRODUCT_NAME " " PRODUCT_VERSION
 #endif

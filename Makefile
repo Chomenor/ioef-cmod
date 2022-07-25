@@ -116,11 +116,23 @@ VERSION=1.24
 endif
 
 ifndef CLIENTBIN
-CLIENTBIN=ioEF-cMod
+ifeq ($(PLATFORM),darwin)
+  # Use new binary name on Mac
+  CLIENTBIN=cMod-stvoyHM
+else
+  # Use older format on other platforms for now for compatibility
+  CLIENTBIN=ioEF-cMod
+endif
 endif
 
 ifndef SERVERBIN
-SERVERBIN=cmod_dedicated
+ifeq ($(PLATFORM),darwin)
+  # Use new binary name on Mac
+  SERVERBIN=cMod-dedicated
+else
+  # Use older format on other platforms for now for compatibility
+  SERVERBIN=cmod_dedicated
+endif
 endif
 
 ifndef RENDERER_PREFIX

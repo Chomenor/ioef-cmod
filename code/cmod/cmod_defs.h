@@ -349,7 +349,7 @@
 // Version Identification
 /* ******************************************************************************** */
 
-// [COMMON] Add cMod version info to version string
+// [COMMON] Set cMod version identifier strings and window title
 #define CMOD_VERSION_STRING
 
 // [COMMON] Add version string to userinfo and clean up which other values are included

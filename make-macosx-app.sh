@@ -164,7 +164,7 @@ UI="ui"
 
 RENDERER_OPENGL="cmod_renderer_opengl"
 
-DEDICATED_NAME="cmod_dedicated"
+DEDICATED_NAME="cMod-dedicated"
 
 CGAME_NAME="${CGAME}.dylib"
 GAME_NAME="${GAME}.dylib"
@@ -179,7 +179,7 @@ PKGINFO="APPLIOQ3"
 
 OBJROOT="build"
 #BUILT_PRODUCTS_DIR="${OBJROOT}/${TARGET_NAME}-darwin-${CURRENT_ARCH}"
-PRODUCT_NAME="ioEF-cMod"
+PRODUCT_NAME="cMod-stvoyHM"
 WRAPPER_EXTENSION="app"
 WRAPPER_NAME="${PRODUCT_NAME}.${WRAPPER_EXTENSION}"
 CONTENTS_FOLDER_PATH="${WRAPPER_NAME}/Contents"
@@ -364,7 +364,7 @@ fi
 
 PLIST="${PLIST}
     <key>NSHumanReadableCopyright</key>
-    <string>QUAKE III ARENA Copyright © 1999-2000 id Software, Inc. All rights reserved.</string>
+    <string>This app contains code under copyright from Quake III Arena (id Software), ioquake3 (and contributors), and Star Trek Voyager Elite Force (Raven Software).</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSHighResolutionCapable</key>
