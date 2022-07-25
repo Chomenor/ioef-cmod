@@ -74,7 +74,7 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 		int i;
 		static const char *keys[][2] = {
 			// Display this version value in the UI menu pane.
-			{ "ui_version_string", "cMod HM v1.24" },
+			{ "ui_version_string", "cMod HM v1.25" },
 
 			// Enable UI options for various cvar settings.
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
