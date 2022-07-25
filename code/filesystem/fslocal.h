@@ -32,14 +32,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifdef CMOD_QVM_SELECTION
 #define CMOD_PAKS { \
-	401438010,		/* pakcmod-current-2021-09-18.pk3 */ \
-	-749739206,		/* pakcmod-current-2021-09-25.pk3 */ \
-	-1518584883,	/* pakcmod-current-2021-10-15.pk3 */ \
-	34943118,		/* pakcmod-current-2021-11-11.pk3 */ \
-	1803491023,		/* pakcmod-current-2021-12-03.pk3 */ \
-	1289620810,		/* pakcmod-current-2021-12-28.pk3 */ \
-	278974329,		/* pakcmod-current-2022-04-03.pk3 */ \
-	46565630,		/* pakcmod-current-2022-04-26.pk3 */ \
+	401438010,		/* pakcmod-release-2021-09-18.pk3 */ \
+	-749739206,		/* pakcmod-release-2021-09-25.pk3 */ \
+	-1518584883,	/* pakcmod-release-2021-10-15.pk3 */ \
+	34943118,		/* pakcmod-release-2021-11-11.pk3 */ \
+	1803491023,		/* pakcmod-release-2021-12-03.pk3 */ \
+	1289620810,		/* pakcmod-release-2021-12-28.pk3 */ \
+	278974329,		/* pakcmod-release-2022-04-03.pk3 */ \
+	46565630,		/* pakcmod-release-2022-04-26.pk3 */ \
+	-1112900480,	/* pakcmod-release-2022-07-25.pk3 */ \
 }
 #endif
 #else
