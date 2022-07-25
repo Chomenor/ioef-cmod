@@ -34,7 +34,7 @@ It is also fine to extract cMod directly to the install directory, but the above
 
 - Create an empty folder anywhere on your system.
 - Download the [cMod release](https://github.com/Chomenor/ioef-cmod/releases) corresponding to your operating system. Extract it to that folder.
-- Create a folder named "baseEF" inside that folder (if it doesn't already exist). Copy the base paks (pak0 - pak3) to that folder. If you don't have these paks available, use one of the other installation methods first.
+- Create a folder named "baseEF" inside that folder (if it doesn't already exist). Copy the base paks (pak0 - pak3) to that folder. If you don't have these paks available, you may be able to obtain them from the [holomat.ch](https://holomat.ch) Linux release.
 
 A minimal install for Windows should look something like this:
 

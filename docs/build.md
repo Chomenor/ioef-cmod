@@ -63,7 +63,7 @@ All changes in cMod compared to the base ioquake3 source code are listed in the 
 
 ## Game Modules
 
-The game modules are included in the cMod releases via the pakcmod pk3 file. If you have built the engine from source, you can simply copy the pakcmod pk3 from the latest cMod release to your baseEF folder. The pk3 is platform-neutral.
+The game modules are included in the cMod releases via the pakcmod pk3 file. If you have built the engine from source, but don't need to modify the game modules, you can simply copy the pakcmod pk3 from the latest cMod release to your baseEF folder. The pk3 is platform-neutral.
 
 ### Building QVM Modules
 
