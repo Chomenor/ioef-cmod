@@ -67,7 +67,7 @@ struct {
 	{-1359736521, {0.5f, 0.0f, 1}},		// ef_turnpike - urban terror lighting
 	{1038626548, {0.5f, 0.0f, 0}},		// ctf_becks - darken
 	{2006033781, {0.5f, 0.0f, 0}},		// chickens - darken
-	{1948057473, {0.7f, 0.0f, 0}},		// longgone - darken
+	{1948057473, {1.0f, 0.0f, 0, 1.5f}},	// longgone - darken
 	{-1571214409, {0.7f, 0.0f, 0}},		// otc - darken
 	{-101413010, {1.0f, 0.0f, 0, 1.5f}},	// bod_lunchroom - darken
 	{-1316605387, {1.0f, 0.0f, 0, 1.5f}},	// whitemeat - darken
