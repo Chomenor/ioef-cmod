@@ -1829,10 +1829,10 @@ const special_cvar_t specials[] = {
 	{ "com_soundMegs", "32", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "s_sdlSpeed", "44100", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "com_altivec", "0", CVARTYPE_NONE, FLAGS_RESTRICTED },
-	{ "sv_master1", "master.stvef.org", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_master2", "efmaster.tjps.eu", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_master3", "master.stef1.daggolin.de", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_master4", "master.stef1.ravensoft.com", CVARTYPE_NONE, FLAGS_NORMAL },
+	{ "sv_master1", "master.stef1.ravensoft.com", CVARTYPE_NONE, FLAGS_NORMAL },
+	{ "sv_master2", "master.stvef.org", CVARTYPE_NONE, FLAGS_NORMAL },
+	{ "sv_master3", "efmaster.tjps.eu", CVARTYPE_NONE, FLAGS_NORMAL },
+	{ "sv_master4", "master.stef1.daggolin.de", CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "sv_master5", "", CVARTYPE_NONE, FLAGS_NORMAL },
 #ifdef DEDICATED
 	{ "dedicated", "1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_NOARCHIVE },
@@ -1903,7 +1903,7 @@ const special_cvar_t specials[] = {
 #ifdef USE_RENDERER_DLOPEN
 	{ "cl_renderer", "opengl1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 #endif
-	{ "com_maxfps", "125", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
+	{ "com_maxfps", "240", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_fullscreen", "1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_mode", "1280x720", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_fullscreenMode", "-2", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
@@ -1922,7 +1922,7 @@ const special_cvar_t specials[] = {
 	{ "r_swapInterval", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_fastsky", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_fastskyColor", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
-	{ "r_gamma", "1.4", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT | CVAR_NUMERIC },
+	{ "r_gamma", "1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT | CVAR_NUMERIC },
 	{ "r_ignorehwgamma", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_lodBias", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_subdivisions", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
