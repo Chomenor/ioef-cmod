@@ -81,11 +81,14 @@ struct {
 	{-790481733, {1.0f, 0.0f, 0, 1.5f}},	// pro_akilo2 - darken
 	{1262130506, {1.0f, 0.0f, 0, 1.5f}},	// pro_akilo3 - darken
 	{723156790, {1.0f, 0.0f, 0, 1.0f}},		// danger_christmas - darken
+	{519839263, {1.0f, 0.0f, 0, 1.0f}},		// leafland (ef) - darken
+	{-658192787, {1.0f, 0.0f, 0, 1.0f}},	// skunkysbitch - darken
 	{1599589538, {1.0f, 0.0f, 0, 1.0f}},	// snowcity - darken
 	{1736560496, {1.0f, 0.0f, 0, 1.2f}},	// ctf_gen_xmas - darken
 	{1701618430, {1.0f, 0.0f, 0, 1.5f}},	// dm_ic - darken
 	{1818880400, {1.0f, 0.0f, 0, 1.5f}},	// ctf_ic - darken
 	{2108385997, {1.0f, 0.0f, 1, 1.4f}},	// ef_abbey2 - darken
+	{-1695979, {1.0f, 0.0f, 1, 1.4f}},		// ef_algiers - darken
 	{-2096164947, {1.0f, 0.0f, 1, 1.4f}},	// ef_kingdom - darken
 	{1671051894, {1.0f, 0.0f, 1, 1.3f}},	// rtcw_ice - darken
 	{-1374186326, {2.0f, 0.1f, 1}},		// ut_subway - brighten
