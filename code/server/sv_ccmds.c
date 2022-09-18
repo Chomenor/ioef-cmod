@@ -412,9 +412,6 @@ static void SV_MapRestart_f( void ) {
 	VM_Call (gvm, GAME_RUN_FRAME, sv.time);
 	sv.time += 100;
 	svs.time += 100;
-#ifdef CMOD_VOTING
-	cmod_voting_handle_map_restart();
-#endif
 #ifdef CMOD_SERVER_CMD_TRIGGERS
 	trigger_exec_type(TRIGGER_MAP_RESTART);
 #endif

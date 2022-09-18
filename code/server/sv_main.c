@@ -1246,9 +1246,6 @@ void SV_Frame( int msec ) {
 
 	// send a heartbeat to the master if needed
 	SV_MasterHeartbeat(HEARTBEAT_FOR_MASTER);
-#ifdef CMOD_VOTING
-	cmod_voting_frame();
-#endif
 #ifdef CMOD_SERVER_CMD_TRIGGERS
 	trigger_exec_type(TRIGGER_TIMER);
 	trigger_exec_type(TRIGGER_REPEAT);

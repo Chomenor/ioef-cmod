@@ -63,17 +63,6 @@ CVAR_DEF(sv_mapscript_mapcmd, "", CVAR_ROM)
 CVAR_DEF(sv_mapscript_mapname, "", CVAR_ROM)
 #endif
 
-#ifdef CMOD_VOTING
-CVAR_DEF(cmod_sv_voting_enabled, "0", 0)
-CVAR_DEF(cmod_sv_voting_debug, "0", 0)
-CVAR_DEF(cmod_sv_voting_duration, "20", 0)
-CVAR_DEF(cmod_sv_voting_mode, "0", 0)		// 0 = normal, 1 = default no
-CVAR_DEF(cmod_sv_voting_max_voters_per_ip, "1", 0)
-CVAR_DEF(cmod_sv_voting_option_list, "", 0)
-CVAR_DEF(cmod_sv_voting_preoption_script, "", 0)
-CVAR_DEF(cmod_sv_voting_postoption_script, "", 0)
-#endif
-
 #ifdef CMOD_MAPTABLE
 CVAR_DEF(sv_maptable_source_dirs, "maps", 0)
 CVAR_DEF(sv_maptable_entry_count, "-1", CVAR_ROM)

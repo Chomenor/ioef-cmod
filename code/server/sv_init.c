@@ -672,10 +672,6 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	record_process_map_loaded();
 #endif
 
-#ifdef CMOD_VOTING
-	cmod_voting_handle_map_change();
-#endif
-
 #ifdef CMOD_SERVER_CMD_TRIGGERS
 	trigger_exec_type(TRIGGER_MAP_CHANGE);
 #endif

@@ -152,9 +152,6 @@
 // [FEATURE] Console command event trigger support (requires CMOD_SERVER_CMD_TOOLS)
 #define CMOD_SERVER_CMD_TRIGGERS
 
-// [FEATURE] Support for engine-based voting system
-#define CMOD_VOTING
-
 // [FEATURE] Support for map index system
 #define CMOD_MAPTABLE
 

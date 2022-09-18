@@ -58,7 +58,6 @@ unsigned int cmod_read_token_ws(const char **current, char *buffer, unsigned int
 #define CMLogList \
 	CMLogEntry(LOG_SERVER, "server", 1) \
 	CMLogEntry(LOG_RECORD, "record", 1) \
-	CMLogEntry(LOG_VOTING, "voting", 1)
 
 #define CMLogEntry(id, name, date_mode) id,
 typedef enum {

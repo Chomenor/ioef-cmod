@@ -49,13 +49,6 @@ qboolean record_process_packet_event(netadr_t *address, msg_t *msg, int qport);
 void cmod_sv_cmd_tools_init(void);
 #endif
 
-#ifdef CMOD_VOTING
-qboolean cmod_voting_handle_command(client_t *client, const char *cmd_string);
-void cmod_voting_handle_map_restart(void);
-void cmod_voting_handle_map_change(void);
-void cmod_voting_frame(void);
-#endif
-
 #ifdef CMOD_MAPTABLE
 typedef struct {
 	char *key;
