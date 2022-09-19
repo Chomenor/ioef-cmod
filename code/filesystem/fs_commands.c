@@ -52,12 +52,27 @@ FS_FindShader_f
 =================
 */
 static void FS_FindShader_f( void ) {
+	int flags = 0;
+
 	if ( Cmd_Argc() < 2 ) {
 		Com_Printf( "Usage: find_shader <shader/image name> <optional flag value>\n" );
 		return;
 	}
 
-	FS_ShaderLookup( Cmd_Argv( 1 ), atoi( Cmd_Argv( 2 ) ), qtrue );
+	if ( *Cmd_Argv( 2 ) ) {
+		flags = atoi( Cmd_Argv( 2 ) );
+	} else {
+		if ( !Q_stricmp( Cvar_VariableString( "cl_renderer" ), "opengl2" ) ) {
+			// try to guess flags that gl2 renderer uses
+			flags |= LOOKUPFLAG_ENABLE_MTR;
+			if ( Cvar_VariableIntegerValue( "r_ext_compressed_textures" ) ) {
+				flags |= LOOKUPFLAG_ENABLE_DDS;
+			}
+			Com_Printf( "Note: Performing lookup using GL2 renderer flags (%i) due to cl_renderer value.\n\n", flags );
+		}
+	}
+
+	FS_ShaderLookup( Cmd_Argv( 1 ), flags, qtrue );
 }
 
 /*
@@ -90,13 +105,14 @@ static void FS_FindVM_f( void ) {
 
 /*
 =================
-FS_Compare_f
+FS_FSCompare_f
 =================
 */
-static void FS_Compare_f( void ) {
+static void FS_FSCompare_f( void ) {
 	if ( Cmd_Argc() != 3 ) {
-		Com_Printf( "Usage: compare <resource #> <resource #>\n\nRun this command following a 'find_file', 'find_shader', "
-				"'find_sound', or 'find_vm' command and specify the resource numbers you wish to compare.\n" );
+		Com_Printf( "Usage: fs_compare <resource #> <resource #>\n\nRun this command following a 'find_file', 'find_shader', "
+				"'find_sound', or 'find_vm' command and specify the resource numbers you wish to compare.\n\n"
+				"Example: 'fs_compare 1 2' to compare first and second resources.\n" );
 		return;
 	}
 
@@ -312,7 +328,7 @@ void FS_RegisterCommands( void ) {
 	Cmd_AddCommand( "find_shader", FS_FindShader_f );
 	Cmd_AddCommand( "find_sound", FS_FindSound_f );
 	Cmd_AddCommand( "find_vm", FS_FindVM_f );
-	Cmd_AddCommand( "compare", FS_Compare_f );
+	Cmd_AddCommand( "fs_compare", FS_FSCompare_f );
 
 	Cmd_AddCommand( "fs_refresh", FS_Refresh_f );
 	Cmd_AddCommand( "readcache_debug", FS_ReadCacheDebug_f );

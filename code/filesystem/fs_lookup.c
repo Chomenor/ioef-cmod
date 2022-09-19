@@ -1069,6 +1069,10 @@ static void FS_DebugLookup( const lookup_query_t *queries, int query_count, qboo
 	} else if ( debug_selection.resources[0].disabled ) {
 		Com_Printf( "No resource was selected because element 1 is disabled: %s\n", debug_selection.resources[0].disabled );
 	}
+
+	if ( debug_selection.resource_count > 1 ) {
+		Com_Printf( "Use the 'fs_compare' command to get precedence details.\n" );
+	}
 }
 
 /* *** Debug Comparison - Compares two resources, lists each test and result, and debug info for decisive test *** */
