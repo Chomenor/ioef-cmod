@@ -255,7 +255,7 @@ The following commands can be used to get an idea of where resources will come f
 - find_sound <sound name>: Locate sound resources with this name. Example: find_sound sound/weapons/noammo
 - find_vm <vm/dll name>: Locate vm or dll resources with this name. Example: find_vm cgame
 
-Once you run one of the above commands, you can use the "compare" command to find why one element in the list was chosen over the other. For example, run "compare 1 2" to check why the top element was selected over the second element. The list from one previous find command is stored in memory for the purpose of supporting this command.
+Once you run one of the above commands, you can use the "fs_compare" command to find why one element in the list was chosen over the other. For example, run "fs_compare 1 2" to check why the top element was selected over the second element. The list from one previous find command is stored in memory for the purpose of supporting this command.
 
 # Known Issues
 
