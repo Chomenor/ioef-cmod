@@ -47,16 +47,19 @@ typedef struct fsc_shader_s fsc_shader_t;
 
 #define FS_INVALID_HANDLE 0
 
+// Lookup flags shared with renderer. Must match values in tr_public.h!
+#define LOOKUPFLAG_ENABLE_DDS 1					// Enable dds format for image lookups.
+#define LOOKUPFLAG_ENABLE_MTR 2					// Enable mtr shader files.
+
 // Lookup flags
-#define LOOKUPFLAG_ENABLE_DDS 1					// Enable dds format for image lookups. Must match value in tr_public.h!
-#define LOOKUPFLAG_IGNORE_PURE_LIST 2			// Ignore pure list entirely (allow all files AND ignore ordering)
-#define LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE 4	// Allow files on disk (non-pk3) when pure
-#define LOOKUPFLAG_IGNORE_CURRENT_MAP 8			// Ignore current map precedence criteria
-#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 16		// Only allow files on disk
-#define LOOKUPFLAG_PK3_SOURCE_ONLY 32			// Only allow files in pk3s
-#define LOOKUPFLAG_SETTINGS_FILE 64				// Apply fs_mod_settings for auto-executed config files (e.g. q3config, autoexec, default)
-#define LOOKUPFLAG_NO_DOWNLOAD_FOLDER 128		// Don't allow files from download folder
-#define LOOKUPFLAG_IGNORE_SERVERCFG 256			// Ignore servercfg precedence (can still read servercfg directory; just don't prioritize)
+#define LOOKUPFLAG_IGNORE_PURE_LIST 4			// Ignore pure list entirely (allow all files AND ignore ordering)
+#define LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE 8	// Allow files on disk (non-pk3) when pure
+#define LOOKUPFLAG_IGNORE_CURRENT_MAP 16		// Ignore current map precedence criteria
+#define LOOKUPFLAG_DIRECT_SOURCE_ONLY 32		// Only allow files on disk
+#define LOOKUPFLAG_PK3_SOURCE_ONLY 64			// Only allow files in pk3s
+#define LOOKUPFLAG_SETTINGS_FILE 128			// Apply fs_mod_settings for auto-executed config files (e.g. q3config, autoexec, default)
+#define LOOKUPFLAG_NO_DOWNLOAD_FOLDER 256		// Don't allow files from download folder
+#define LOOKUPFLAG_IGNORE_SERVERCFG 512			// Ignore servercfg precedence (can still read servercfg directory; just don't prioritize)
 
 // File List Flags
 #define LISTFLAG_IGNORE_TAPAK0 1				// Ignore missionpak pak0.pk3 (to keep incompatible models out of model list)

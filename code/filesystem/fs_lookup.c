@@ -48,6 +48,7 @@ typedef struct {
 #define RESFLAG_IN_CURRENT_MAP_PAK 2
 #define RESFLAG_FROM_DLL_QUERY 4
 #define RESFLAG_CASE_MISMATCH 8
+#define RESFLAG_MTR_SHADER 16
 
 typedef struct {
 	// This should contain only static data, i.e. no pointers that expire when the query
@@ -148,6 +149,14 @@ static void FS_ConfigureLookupResource( const lookup_query_t *query, lookup_reso
 			resource->disabled = "dll files can only be loaded directly from disk";
 		}
 		resource->flags |= RESFLAG_FROM_DLL_QUERY;
+	}
+
+	// Mtr shader handling
+	if ( resource->shader && !FSC_Stricmp( (const char *)STACKPTR( resource->file->qp_ext_ptr ), ".mtr" ) ) {
+		resource->flags |= RESFLAG_MTR_SHADER;
+		if ( !( query->lookup_flags & LOOKUPFLAG_ENABLE_MTR ) ) {
+			resource->disabled = "disabling mtr shader due to no enable_mtr flag (mtr shaders require gl2 renderer)";
+		}
 	}
 
 	// Disable files according to lookupflag sourcetype restrictions
@@ -619,6 +628,24 @@ PC_DEBUG( shader_over_image ) {
 
 /*
 =================
+(CMP) shader_type
+=================
+*/
+
+PC_COMPARE( shader_type ) {
+	if ( ( r1->flags & RESFLAG_MTR_SHADER ) && !( r2->flags & RESFLAG_MTR_SHADER ) )
+		return -1;
+	if ( !( r1->flags & RESFLAG_MTR_SHADER ) && ( r2->flags & RESFLAG_MTR_SHADER ) )
+		return 1;
+	return 0;
+}
+
+PC_DEBUG( shader_type ) {
+	ADD_STRING( va( "Resource %i was selected because it is a shader from an mtr file and %i is not.", high_num, low_num ) );
+}
+
+/*
+=================
 (CMP) dll_over_qvm
 =================
 */
@@ -797,6 +824,7 @@ static const precedence_check_t precedence_checks[] = {
 	ADD_CHECK( inactive_mod_dir ),
 	ADD_CHECK( downloads_folder ),
 	ADD_CHECK( shader_over_image ),
+	ADD_CHECK( shader_type ),
 	ADD_CHECK( dll_over_qvm ),
 	ADD_CHECK( direct_over_pk3 ),
 	ADD_CHECK( pk3_name_precedence ),

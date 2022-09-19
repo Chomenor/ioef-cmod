@@ -319,7 +319,8 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	FSC_IterationRegisterFile( file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack );
 
 	// Index shaders and update shader counter on base file
-	if ( !FSC_Stricmp( qp_dir, "scripts/" ) && !FSC_Stricmp( qp_ext, ".shader" ) ) {
+	if ( !FSC_Stricmp( qp_dir, "scripts/" ) && ( !FSC_Stricmp( qp_ext, ".shader" )
+			|| !FSC_Stricmp( qp_ext, ".mtr" ) ) ) {
 		int count = FSC_IndexShaderFile( fs, file_ptr, sanity_limit );
 		if ( base_file ) {
 			base_file->shader_file_count += 1;
