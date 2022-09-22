@@ -21,7 +21,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#if defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_VM_PERMISSIONS ) || defined( CMOD_IMPORT_SETTINGS )
+#if defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_VM_PERMISSIONS ) || defined( CMOD_IMPORT_SETTINGS ) \
+		|| defined ( CMOD_MARIO_MOD_FIX )
 #include "../filesystem/fslocal.h"
 #else
 #include "../qcommon/q_shared.h"
@@ -537,6 +538,29 @@ void Stef_ImportSettings_CheckImport( void ) {
 					Cbuf_ExecuteTextByMode( EXEC_APPEND, data, mode );
 					Cbuf_ExecuteTextByMode( EXEC_APPEND, "\n", mode );
 					FS_FreeData( data );
+				}
+			}
+		}
+	}
+}
+#endif
+
+#ifdef CMOD_MARIO_MOD_FIX
+qboolean Stef_MarioModFix_ModActive = qfalse;
+
+void Stef_MarioModFix_OnVMCreate( const char *module, const fsc_file_t *sourceFile ) {
+	if ( !Q_stricmp( module, "qagame" ) ) {
+		Stef_MarioModFix_ModActive = qfalse;
+
+		if ( sourceFile && sourceFile->filesize == 672876 ) {
+			unsigned int size = 0;
+			char *data = FS_ReadData( sourceFile, NULL, &size, __func__ );
+			if ( data ) {
+				unsigned int hash = Com_BlockChecksum( data, size );
+				FS_FreeData( data );
+				if ( hash == 2630475216u ) {
+					Com_Printf( "Enabling engine workaround for Mario Mod connection issues.\n" );
+					Stef_MarioModFix_ModActive = qtrue;
 				}
 			}
 		}

@@ -227,6 +227,12 @@
 // [BUGFIX] Improved server ping calculation, enabled by sv_pingFix cvar
 #define CMOD_SV_PINGFIX
 
+// [BUGFIX] Workaround for "Super Mario Mod" mod, to allow players to connect to server
+// without loading the mod first
+#if defined( NEW_FILESYSTEM )
+#define CMOD_MARIO_MOD_FIX
+#endif
+
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */

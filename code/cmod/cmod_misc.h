@@ -145,3 +145,8 @@ void ModcfgHandling_ParseModConfig( int *stringOffsets, char *data );
 #ifdef CMOD_IMPORT_SETTINGS
 void Stef_ImportSettings_CheckImport( void );
 #endif
+
+#ifdef CMOD_MARIO_MOD_FIX
+extern qboolean Stef_MarioModFix_ModActive;
+void Stef_MarioModFix_OnVMCreate( const char *module, const fsc_file_t *sourceFile );
+#endif

@@ -645,6 +645,9 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 #ifdef CMOD_ENGINE_ASPECT_CORRECT
 	AspectCorrect_OnVmCreate( module, vm->source_file );
 #endif
+#ifdef CMOD_MARIO_MOD_FIX
+	Stef_MarioModFix_OnVMCreate( module, vm->source_file );
+#endif
 	if ( !vm->source_file ) {
 		return NULL;
 	}

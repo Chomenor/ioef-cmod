@@ -403,6 +403,11 @@ void SV_DirectConnect( netadr_t from ) {
 		}
 	}
 	
+#ifdef CMOD_MARIO_MOD_FIX
+	if ( Stef_MarioModFix_ModActive ) {
+		Info_SetValueForKey( userinfo, "cg_mmodVersn", "base_md01" );
+	}
+#endif
 	// don't let "ip" overflow userinfo string
 	if ( NET_IsLocalAddress (from) )
 		ip = "localhost";
