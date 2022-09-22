@@ -283,6 +283,11 @@
 // [BUGFIX] Attempt to prevent Com_QueueEvent errors by increasing queue size
 #define CMOD_EVENT_QUEUE_SIZE
 
+// [BUGFIX] Attempt to handle invalid memory addresses on VM block copy operations by wrapping
+// the addresses rather than triggering an error, similar to old ioq3/ioef versions prior to
+// around 2011. Potential fix for issue with Super FFA mod.
+#define CMOD_VM_TOLERANT_BLOCKCOPY
+
 // [BUGFIX] Fix strncpy range check issue which caused a problem on mac platform
 #define CMOD_VM_STRNCPY_FIX
 

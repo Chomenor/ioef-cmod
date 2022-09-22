@@ -1057,7 +1057,22 @@ void VM_BlockCopy(unsigned int dest, unsigned int src, size_t n)
 	|| ((dest + n) & dataMask) != dest + n
 	|| ((src + n) & dataMask) != src + n)
 	{
+#ifdef CMOD_VM_TOLERANT_BLOCKCOPY
+		static qboolean warned = qfalse;
+		if ( !warned ) {
+			Com_Printf( "WARNING: Ignoring OP_BLOCK_COPY range error; game module memory may be corrupt.\n" );
+			warned = qtrue;
+		}
+
+		dest = dest & dataMask;
+		src = src & dataMask;
+
+		if ( ( ( dest + n ) & dataMask ) != dest + n || ( ( src + n ) & dataMask ) != src + n ) {
+			return;
+		}
+#else
 		Com_Error(ERR_DROP, "OP_BLOCK_COPY out of range!");
+#endif
 	}
 
 	Com_Memcpy(currentVM->dataBase + dest, currentVM->dataBase + src, n);
