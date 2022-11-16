@@ -233,6 +233,9 @@
 #define CMOD_MARIO_MOD_FIX
 #endif
 
+// [TWEAK] Enable ipv6 support by default for dedicated server builds
+#define CMOD_DEDICATED_SERVER_IPV6_DEFAULT
+
 /* ******************************************************************************** */
 // Misc
 /* ******************************************************************************** */
