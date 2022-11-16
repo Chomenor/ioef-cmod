@@ -270,6 +270,12 @@
 #define CMOD_SERVER_BROWSER_SUPPORT
 #endif
 
+// [FEATURE] Support asynchronous host name resolution when querying master servers, and automatically
+// query for both ipv4 and ipv6 servers when possible.
+#if !defined(DEDICATED)
+#define CMOD_MULTI_MASTER_QUERY
+#endif
+
 // [FEATURE] Support VM calls to enable cgame alt fire button swapping features without server support
 #if !defined(DEDICATED)
 #define CMOD_CLIENT_ALT_SWAP_SUPPORT

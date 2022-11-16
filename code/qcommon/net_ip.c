@@ -1711,3 +1711,419 @@ void NET_Restart_f(void)
 {
 	NET_Config(qtrue);
 }
+
+#ifdef CMOD_MULTI_MASTER_QUERY
+/*
+==============================================================================
+
+MULTI MASTER SERVER QUERYING
+
+==============================================================================
+*/
+
+#define MASTER_CURRENT_TIME ( (unsigned int)Sys_Milliseconds() )
+#define MASTER_TIMEOUT 4000
+
+#ifdef _WIN32
+static CRITICAL_SECTION Master_CriticalSection;
+static qboolean Master_CriticalSection_Initialized;
+#else
+#include <pthread.h>
+static pthread_mutex_t Master_Mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+/*
+=================
+Stef_MultiMasterQuery_InitLock
+
+Call before starting threads.
+=================
+*/
+static void Stef_MultiMasterQuery_InitLock( void ) {
+#ifdef _WIN32
+	if ( !Master_CriticalSection_Initialized ) {
+		if ( !InitializeCriticalSectionAndSpinCount( &Master_CriticalSection, 0x00000400 ) ) {
+			// Shouldn't happen
+			Com_Printf( "^1WARNING: Stef_MultiMasterQuery_InitLock received error value\n" );
+		}
+		Master_CriticalSection_Initialized = qtrue;
+	}
+#endif
+}
+
+/*
+=================
+Stef_MultiMasterQuery_AcquireLock
+=================
+*/
+static void Stef_MultiMasterQuery_AcquireLock( void ) {
+#ifdef _WIN32
+	EnterCriticalSection( &Master_CriticalSection );
+#else
+	pthread_mutex_lock( &Master_Mutex );
+#endif
+}
+
+/*
+=================
+Stef_MultiMasterQuery_ReleaseLock
+=================
+*/
+static void Stef_MultiMasterQuery_ReleaseLock( void ) {
+#ifdef _WIN32
+	LeaveCriticalSection( &Master_CriticalSection );
+#else
+	pthread_mutex_unlock( &Master_Mutex );
+#endif
+}
+
+typedef struct {
+	// whether worker thread is currently running
+	volatile qboolean threadActive;
+
+	// worker thread input
+	sa_family_t adrType;
+	char hostname[256];
+
+	// worker thread output
+	qboolean success;
+	netadr_t result;	// valid if success is true
+	char error[256];	// set if success is false
+	unsigned int endTime;
+
+	// only used by main thread
+	qboolean waiting;	// waiting for address to resolve (not timed out or completed)
+	unsigned int startTime;
+	char command[256];	// command to send to master if address resolves successfully
+	unsigned short port;
+} lookupThread_t;
+
+static lookupThread_t resolveThreads[32];
+static qboolean anyResolveThreadsWaiting;
+
+/*
+=================
+Stef_MultiMasterQuery_ResolveThread
+
+Performs master server address resolution. Sets threadActive to qfalse when complete.
+=================
+*/
+#ifdef _WIN32
+static DWORD WINAPI Stef_MultiMasterQuery_ResolveThread( LPVOID threadParam ) {
+#else
+static void *Stef_MultiMasterQuery_ResolveThread( void *threadParam ) {
+#endif
+	lookupThread_t *thread = (lookupThread_t *)threadParam;
+	struct addrinfo hints;
+	struct addrinfo *res = NULL;
+	int retval;
+
+	// Based on Sys_StringToAdr
+	memset( &hints, '\0', sizeof( hints ) );
+	hints.ai_family = thread->adrType;
+	hints.ai_socktype = SOCK_DGRAM;
+
+	retval = getaddrinfo( thread->hostname, NULL, &hints, &res );
+
+	Stef_MultiMasterQuery_AcquireLock();
+
+	if ( !retval ) {
+		struct addrinfo *search = SearchAddrInfo( res, thread->adrType );
+		if ( search ) {
+			// Copy out address contents, like Sys_StringToSockaddr, just to be safe
+			// Probably could just use SockadrToNetadr( search->ai_addr, &thread->result );
+			struct sockaddr_storage sadr;
+			if ( search->ai_addrlen > sizeof( sadr ) ) {
+				search->ai_addrlen = sizeof( sadr );
+			}
+			memset( &sadr, 0, sizeof( sadr ) );
+			memcpy( &sadr, search->ai_addr, search->ai_addrlen );
+			SockadrToNetadr( (struct sockaddr *)&sadr, &thread->result );
+			thread->success = qtrue;
+
+		} else {
+			strncpy( thread->error, "No address of required type found.", sizeof( thread->error ) );
+			thread->error[sizeof( thread->error ) - 1] = '\0';
+		}
+
+	} else {
+		strncpy( thread->error, gai_strerror( retval ), sizeof( thread->error ) );
+		thread->error[sizeof( thread->error ) - 1] = '\0';
+	}
+
+	if ( res ) {
+		freeaddrinfo( res );
+	}
+	thread->endTime = MASTER_CURRENT_TIME;
+	thread->threadActive = qfalse;
+	Stef_MultiMasterQuery_ReleaseLock();
+	return 0;
+}
+
+/*
+=================
+Stef_MultiMasterQuery_StartThread
+
+Initiate domain resolution thread for master query.
+=================
+*/
+static void Stef_MultiMasterQuery_StartThread( const char *hostname, const char *command,
+		sa_family_t adrType, unsigned short port ) {
+	int i;
+
+	for ( i = 0; i < ARRAY_LEN( resolveThreads ); ++i ) {
+		lookupThread_t *thread = &resolveThreads[i];
+		if ( thread->threadActive || thread->waiting ) {
+			continue;
+		}
+
+		// found a free slot
+		memset( thread, 0, sizeof( *thread ) );
+		thread->threadActive = qtrue;
+		thread->startTime = MASTER_CURRENT_TIME;
+		thread->waiting = qtrue;
+		anyResolveThreadsWaiting = qtrue;
+		thread->adrType = adrType;
+		Q_strncpyz( thread->hostname, hostname, sizeof( thread->hostname ) );
+		Q_strncpyz( thread->command, command, sizeof( thread->command ) );
+		thread->port = port;
+
+		// launch the thread
+		Stef_MultiMasterQuery_InitLock();
+#ifdef _WIN32
+		CreateThread( NULL, 0, Stef_MultiMasterQuery_ResolveThread, (LPVOID)thread, 0, NULL );
+#else
+		{
+			pthread_t thread_id;
+			pthread_create( &thread_id, NULL, Stef_MultiMasterQuery_ResolveThread, (void *)thread );
+		}
+#endif
+		break;
+	}
+
+	if ( i >= ARRAY_LEN( resolveThreads ) ) {
+		Com_Printf( "Failed to allocate resolve thread for %s.\n", hostname );
+	}
+}
+
+/*
+=================
+Stef_MultiMasterQuery_AddArgs
+
+Add extra arguments from the "globalservers" console command to the master query.
+=================
+*/
+static void Stef_MultiMasterQuery_AddArgs( char *command, int commandLen ) {
+	int i;
+	int argc = Cmd_Argc();
+
+	for ( i = 3; i < argc; i++ ) {
+		Q_strcat( command, commandLen, " " );
+		Q_strcat( command, commandLen, Cmd_Argv( i ) );
+	}
+}
+
+/*
+=================
+Stef_MultiMasterQuery_QueryMaster
+
+Query a specific master server address, using both ipv4 and ipv6 if enabled.
+Uses arguments from "globalservers" command.
+=================
+*/
+static void Stef_MultiMasterQuery_QueryMaster( const char *address ) {
+	char	base[MAX_STRING_CHARS], *search;
+	char	*port = NULL;
+	const char *protocol = Cmd_Argv(2);
+
+	// Separate port based on NET_StringToAdr
+	Q_strncpyz( base, address, sizeof( base ) );
+
+	if(*base == '[' || Q_CountChar(base, ':') > 1)
+	{
+		// This is an ipv6 address, handle it specially.
+		search = strchr(base, ']');
+		if(search)
+		{
+			*search = '\0';
+			search++;
+
+			if(*search == ':')
+				port = search + 1;
+		}
+
+		if(*base == '[')
+			search = base + 1;
+		else
+			search = base;
+	}
+	else
+	{
+		// look for a port number
+		port = strchr( base, ':' );
+
+		if ( port ) {
+			*port = '\0';
+			port++;
+		}
+
+		search = base;
+	}
+
+	{
+		int netEnabled = Cvar_VariableIntegerValue( "net_enabled" );
+		int queryEnabled = cl_masterMultiQuery->integer & netEnabled & 3;
+		int portVal = port ? BigShort( (short)atoi( port ) ) : BigShort( PORT_MASTER );
+		char command[256];
+
+		if ( !queryEnabled ) {
+			queryEnabled = netEnabled & 3;
+		}
+		if ( queryEnabled & NET_ENABLEV4 ) {
+			// standard ipv4 query
+			Com_sprintf( command, sizeof( command ), "getservers %s", protocol );
+			Stef_MultiMasterQuery_AddArgs( command, sizeof( command ) );
+			Stef_MultiMasterQuery_StartThread( search, command, AF_INET, portVal );
+		}
+		if ( queryEnabled & NET_ENABLEV6 ) {
+			if ( netEnabled & NET_ENABLEV4 ) {
+				// allow getting both ipv4 and ipv6 servers
+				Com_sprintf( command, sizeof( command ), "getserversExt %s %s", com_gamename->string, protocol );
+			} else {
+				// try to get ipv6 servers only
+				Com_sprintf( command, sizeof( command ), "getserversExt %s %s ipv6", com_gamename->string, protocol );
+			}
+			Stef_MultiMasterQuery_AddArgs( command, sizeof( command ) );
+			Stef_MultiMasterQuery_StartThread( search, command, AF_INET6, portVal );
+		}
+	}
+}
+
+/*
+=================
+Stef_MultiMasterQuery_QueryMasterNum
+
+Queries specific master server from 1 to 5. Uses arguments from "globalservers" command.
+=================
+*/
+static void Stef_MultiMasterQuery_QueryMasterNum( int master ) {
+	if ( master >= 1 && master <= MAX_MASTER_SERVERS ) {
+		const char *masteraddress = Cvar_VariableString( va( "sv_master%i", master ) );
+		if ( *masteraddress ) {
+			Stef_MultiMasterQuery_QueryMaster( masteraddress );
+		}
+	}
+}
+
+/*
+=================
+Stef_MultiMasterQuery_RunQuery
+
+Queries master server(s) using arguments from "globalservers" command.
+=================
+*/
+void Stef_MultiMasterQuery_RunQuery( void ) {
+	int master = atoi( Cmd_Argv( 1 ) );
+	if ( master == 0 ) {
+		// query all masters
+		int i;
+		for ( i = 1; i <= MAX_MASTER_SERVERS; ++i ) {
+			Stef_MultiMasterQuery_QueryMasterNum( i );
+		}
+	} else {
+		// query specific master
+		Stef_MultiMasterQuery_QueryMasterNum( master );
+	}
+}
+
+/*
+=================
+Stef_MultiMasterQuery_CheckUnsupportedAddress
+
+Currently ignore "ipv6" masters with mapped ipv4 addresses. The reasoning is that if regular
+ipv4 support is available, it will result in redundant queries, because the ipv4 domain
+resolution and query will be done separately. And if ipv4 support isn't available, there
+is no point in making the request because even though we may get a response from the master,
+it will only contain ipv4 addresses that we can't connect to without support for translating
+them to a compatible format.
+
+Returns qtrue if address is unsupported, qfalse otherwise.
+=================
+*/
+static qboolean Stef_MultiMasterQuery_CheckUnsupportedAddress( netadr_t *adr ) {
+	if ( adr->type == NA_IP6 ) {
+		static const unsigned char mapped_prefix[] =
+				{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff };
+		static const unsigned char nat64_prefix[] =
+				{ 0x00, 0x64, 0xff, 0x9b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+		if ( !memcmp( adr->ip6, mapped_prefix, sizeof( mapped_prefix ) ) ) {
+			return qtrue;
+		}
+		if ( !memcmp( adr->ip6, nat64_prefix, sizeof( nat64_prefix ) ) ) {
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
+/*
+=================
+Stef_MultiMasterQuery_RunFrame
+
+Check for completed or timed out master server address resolutions. Issue query commands
+to successfully resolved masters.
+=================
+*/
+void Stef_MultiMasterQuery_RunFrame( void ) {
+	if ( anyResolveThreadsWaiting ) {
+		int i;
+		anyResolveThreadsWaiting = qfalse;
+		unsigned int curTime = MASTER_CURRENT_TIME;
+		Stef_MultiMasterQuery_AcquireLock();
+
+		for ( i = 0; i < ARRAY_LEN( resolveThreads ); ++i ) {
+			lookupThread_t *thread = &resolveThreads[i];
+			if ( !thread->waiting ) {
+				continue;
+			}
+
+			if ( !thread->threadActive ) {
+				// something completed
+				thread->waiting = qfalse;
+				if ( thread->success ) {
+					thread->result.port = thread->port;
+					if ( Stef_MultiMasterQuery_CheckUnsupportedAddress( &thread->result ) ) {
+						Com_Printf( "^3Ignoring unsupported mapped address for %s (ipv%s)\n^7Resolved to %s in %ims\n",
+								thread->hostname, thread->adrType == AF_INET6 ? "6" : "4",
+								NET_AdrToStringwPort( thread->result ), thread->endTime - thread->startTime );
+					} else {
+						Com_Printf( "^3Requesting servers from %s (ipv%s)\n^7Resolved to %s in %ims\n",
+								thread->hostname, thread->adrType == AF_INET6 ? "6" : "4",
+								NET_AdrToStringwPort( thread->result ), thread->endTime - thread->startTime );
+						NET_OutOfBandPrint( NS_SERVER, thread->result, "%s", thread->command );
+					}
+				} else {
+					Com_Printf( "^3Failed to resolve %s (ipv%s)\n^7Received error '%s' in %ims\n",
+							thread->hostname, thread->adrType == AF_INET6 ? "6" : "4",
+							thread->error, thread->endTime - thread->startTime );
+				}
+			}
+
+			else if ( curTime - thread->startTime > MASTER_TIMEOUT ) {
+				// timed out
+				thread->waiting = qfalse;
+				Com_Printf( "^3Failed to resolve %s (ipv%s)\n^7Request timed out.\n",
+						thread->hostname, thread->adrType == AF_INET6 ? "6" : "4" );
+			}
+
+			else {
+				// still waiting
+				anyResolveThreadsWaiting = qtrue;
+			}
+		}
+
+		Stef_MultiMasterQuery_ReleaseLock();
+	}
+}
+#endif

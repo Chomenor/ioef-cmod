@@ -100,3 +100,9 @@ CVAR_DEF(ui_aspectCorrect, "-1", 0)
 #ifdef CMOD_CONSOLE_AUTO_RETURN
 CVAR_DEF(con_autoReturn, "1", CVAR_ARCHIVE)
 #endif
+
+#ifdef CMOD_MULTI_MASTER_QUERY
+// 0 = original master server query mode (select ipv4 or ipv6 but not both),
+// 1 = ipv4 only, 2 = ipv6 only, 3 = both ipv4 and ipv6
+CVAR_DEF(cl_masterMultiQuery, "3", CVAR_ARCHIVE)
+#endif

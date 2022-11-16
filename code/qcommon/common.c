@@ -3555,6 +3555,9 @@ void Com_Frame( void ) {
 #ifdef CMOD_LOGGING_SYSTEM
 	cmod_logging_frame();
 #endif
+#ifdef CMOD_MULTI_MASTER_QUERY
+	Stef_MultiMasterQuery_RunFrame();
+#endif
 }
 
 /*

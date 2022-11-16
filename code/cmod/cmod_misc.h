@@ -150,3 +150,8 @@ void Stef_ImportSettings_CheckImport( void );
 extern qboolean Stef_MarioModFix_ModActive;
 void Stef_MarioModFix_OnVMCreate( const char *module, const fsc_file_t *sourceFile );
 #endif
+
+#ifdef CMOD_MULTI_MASTER_QUERY
+void Stef_MultiMasterQuery_RunQuery( void );
+void Stef_MultiMasterQuery_RunFrame( void );
+#endif

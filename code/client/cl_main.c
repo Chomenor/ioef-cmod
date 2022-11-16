@@ -4575,6 +4575,16 @@ void CL_GlobalServers_f( void ) {
 		return;	
 	}
 
+#ifdef CMOD_MULTI_MASTER_QUERY
+	if ( cl_masterMultiQuery->integer ) {
+		cls.numglobalservers = -1;
+		cls.pingUpdateSource = AS_GLOBAL;
+
+		Stef_MultiMasterQuery_RunQuery();
+		return;
+	}
+#endif
+
 	// request from all master servers
 	if ( masterNum == 0 ) {
 		int numAddress = 0;

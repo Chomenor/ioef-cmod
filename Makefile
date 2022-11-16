@@ -419,12 +419,12 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   LIBS=-ldl -lm
   AUTOUPDATER_LIBS += -ldl
 
-  CLIENT_LIBS=$(SDL_LIBS)
+  CLIENT_LIBS=$(SDL_LIBS) $(THREAD_LIBS)
   RENDERER_LIBS = $(SDL_LIBS)
 
   ifeq ($(USE_OPENAL),1)
     ifneq ($(USE_OPENAL_DLOPEN),1)
-      CLIENT_LIBS += $(THREAD_LIBS) $(OPENAL_LIBS)
+      CLIENT_LIBS += $(OPENAL_LIBS)
     endif
   endif
 
