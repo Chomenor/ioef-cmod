@@ -292,7 +292,9 @@ PROTOCOL
 extern int demo_protocols[];
 
 #ifdef ELITEFORCE
+#ifndef CMOD_DISABLE_MOTD
 #define	UPDATE_SERVER_NAME	"motd.stef1.ravensoft.com"
+#endif
 #define MASTER_SERVER_NAME	"master.stef1.ravensoft.com"
 #define	AUTHORIZE_SERVER_NAME	"authenticate.stef1.ravensoft.com"
 #else

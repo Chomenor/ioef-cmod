@@ -320,6 +320,10 @@
 // anyway and often goes down causing issues
 #define CMOD_DISABLE_AUTH_STUFF
 
+// [TWEAK] Disable motd server contact which currently does not appear to have any working
+// functionality attached
+#define CMOD_DISABLE_MOTD
+
 // [BUGFIX] Extend some ioq3 overflow checks to EF-specific sections of msg.c
 #define CMOD_MSG_OVERFLOW_CHECKS
 
