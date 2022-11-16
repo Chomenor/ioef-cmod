@@ -1823,6 +1823,7 @@ const special_cvar_t specials[] = {
 	// Special cvars and defaults
 	{ "ui_cdkeychecked", "1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_NOARCHIVE },
 	{ "ui_cdkeychecked2", "1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_NOARCHIVE },
+	{ "ui_spSelection", "", CVARTYPE_NONE, FLAGS_PERSISTENT | CVAR_NOARCHIVE },
 	{ "cl_motd", "0", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "com_hunkmegs", "256", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "com_zoneMegs", "128", CVARTYPE_NONE, FLAGS_RESTRICTED },
@@ -1953,6 +1954,7 @@ const special_cvar_t specials[] = {
 	{ "ui_initialsetup", "0", CVARTYPE_MENU, FLAGS_PERSISTENT | CVAR_IMPORT_ALLOWED },
 	{ "ui_browserGameType", "0", CVARTYPE_MENU, FLAGS_PERSISTENT },
 	{ "ui_browserMaster", "1", CVARTYPE_MENU, FLAGS_PERSISTENT },
+	{ "ui_browserIpProtocol", "0", CVARTYPE_MENU, FLAGS_PERSISTENT },
 	{ "ui_browserShowEmpty", "1", CVARTYPE_MENU, FLAGS_PERSISTENT },
 	{ "ui_browserShowFull", "1", CVARTYPE_MENU, FLAGS_PERSISTENT },
 	{ "ui_browserSortKey", "4", CVARTYPE_MENU, FLAGS_PERSISTENT },

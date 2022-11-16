@@ -220,10 +220,16 @@ static void SV_Map_f( void ) {
 	if(cmd[0] == '_') ++cmd;
 #endif
 	if( Q_stricmpn( cmd, "sp", 2 ) == 0 ) {
+#ifdef CMOD_CVAR_HANDLING
+		// use vm set to avoid unwanted persistant changes
+		Cvar_SetValueSafe( "g_gametype", GT_SINGLE_PLAYER, qtrue );
+		Cvar_SetValueSafe( "g_doWarmup", 0, qtrue );
+#else
 		Cvar_SetValue( "g_gametype", GT_SINGLE_PLAYER );
 		Cvar_SetValue( "g_doWarmup", 0 );
 		// may not set sv_maxclients directly, always set latched
 		Cvar_SetLatched( "sv_maxclients", "8" );
+#endif
 		cmd += 2;
 		if (!Q_stricmp( cmd, "devmap" ) ) {
 			cheat = qtrue;

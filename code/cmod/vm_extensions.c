@@ -104,6 +104,7 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			{ "ui_skip_r_stencilbits", "1" },
 			{ "ui_skip_r_texturebits", "1" },
 			{ "ui_skip_r_lowEndVideo", "1" },
+			{ "ui_skip_r_finish", "1" },
 			{ "ui_skip_s_khz", "1" },
 			{ "ui_skip_strafe", "1" },
 			{ "ui_suppress_cg_viewsize", "1" },
