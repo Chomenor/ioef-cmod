@@ -54,20 +54,23 @@ static void apply_shift_set(shift_set_t *shift_set) {
 // Hash checks
 /* ******************************************************************************** */
 
+#define URBAN_TERROR_STANDARD {0.5f, 0.0f, 1}
+#define QUAKE3_STANDARD {2.0f, 0.0f, 1}
+
 struct {
 	int hash;
 	shift_set_t shift_set;
 } special_shifts[] = {
 	{-1864270671, {1.0f, 0.0f, 1}},		// matrix - quake-style environment map
 	{429256076, {1.0f, 0.0f, 1}},		// dangercity - quake-style environment map
-	{875359710, {0.5f, 0.0f, 1}},		// pokernight - urban terror lighting
-	{1006385614, {0.6f, 0.0f, 1}},		// 1upxmas - urban terror lighting
-	{-443776329, {0.5f, 0.0f, 1}},		// crazychristmas - urban terror lighting
-	{-768581189, {0.5f, 0.0f, 1}},		// ut4_terrorism4 - urban terror lighting
-	{-1359736521, {0.5f, 0.0f, 1}},		// ef_turnpike - urban terror lighting
+	{875359710, URBAN_TERROR_STANDARD},		// pokernight - urban terror lighting
+	{1006385614, {0.6f, 0.0f, 1}},			// 1upxmas - urban terror lighting
+	{-443776329, URBAN_TERROR_STANDARD},	// crazychristmas - urban terror lighting
+	{-768581189, URBAN_TERROR_STANDARD},	// ut4_terrorism4 - urban terror lighting
+	{-1359736521, URBAN_TERROR_STANDARD},	// ef_turnpike - urban terror lighting
 	{1038626548, {0.5f, 0.0f, 0}},		// ctf_becks - darken
 	{2006033781, {0.5f, 0.0f, 0}},		// chickens - darken
-	{1948057473, {1.0f, 0.0f, 0, 1.5f}},	// longgone - darken
+	{1948057473, {1.0f, 0.0f, 0, 1.4f}},	// longgone - darken
 	{-1571214409, {0.7f, 0.0f, 0}},		// otc - darken
 	{-101413010, {1.0f, 0.0f, 0, 1.5f}},	// bod_lunchroom - darken
 	{-1316605387, {1.0f, 0.0f, 0, 1.5f}},	// whitemeat - darken
@@ -80,17 +83,20 @@ struct {
 	{-1510930769, {1.0f, 0.0f, 0, 1.5f}},	// ctf_akilo3 - darken
 	{-790481733, {1.0f, 0.0f, 0, 1.5f}},	// pro_akilo2 - darken
 	{1262130506, {1.0f, 0.0f, 0, 1.5f}},	// pro_akilo3 - darken
-	{723156790, {1.0f, 0.0f, 0, 1.0f}},		// danger_christmas - darken
-	{519839263, {1.0f, 0.0f, 0, 1.0f}},		// leafland (ef) - darken
+	{519839263, {1.0f, 0.0f, 0, 1.0f}},		// leafland (ef version) - darken
 	{-658192787, {1.0f, 0.0f, 0, 1.0f}},	// skunkysbitch - darken
+	{723156790, {1.0f, 0.0f, 0, 1.0f}},		// danger_christmas - darken
 	{1599589538, {1.0f, 0.0f, 0, 1.0f}},	// snowcity - darken
-	{1736560496, {1.0f, 0.0f, 0, 1.2f}},	// ctf_gen_xmas - darken
-	{1701618430, {1.0f, 0.0f, 0, 1.5f}},	// dm_ic - darken
-	{1818880400, {1.0f, 0.0f, 0, 1.5f}},	// ctf_ic - darken
-	{2108385997, {1.0f, 0.0f, 1, 1.4f}},	// ef_abbey2 - darken
-	{-1695979, {1.0f, 0.0f, 1, 1.4f}},		// ef_algiers - darken
-	{-2096164947, {1.0f, 0.0f, 1, 1.4f}},	// ef_kingdom - darken
+	{1736560496, {1.0f, 0.0f, 0, 1.1f}},	// ctf_gen_xmas - darken
+	{1701618430, {1.0f, 0.0f, 0, 1.0f}},	// dm_ic - darken
+	{1818880400, {1.0f, 0.0f, 0, 1.0f}},	// ctf_ic - darken
+	{2108385997, {1.0f, 0.0f, 1, 1.3f}},	// ef_abbey2 - darken
+	{-1695979, {1.0f, 0.0f, 0, 1.2f}},		// ef_algiers - darken
+	{-424018281, {1.0f, 0.0f, 0, 1.2f}},	// ef_algiersroofs - darken
+	{-2096164947, {1.0f, 0.0f, 1, 1.3f}},	// ef_kingdom - darken
 	{1671051894, {1.0f, 0.0f, 1, 1.3f}},	// rtcw_ice - darken
+	{-162049488, {2.0f, 0.0f, 1, 1.0f}},	// perramses - darken
+	{-1026364727, {1.0f, 0.2f, 0, 1.2f}},	// sd6 - adjust
 	{-1374186326, {2.0f, 0.1f, 1}},		// ut_subway - brighten
 	{610817057, {1.0f, 0.2f, 0}},		// ctf_twilight - brighten
 	{-4369078, {1.0f, 0.2f, 0}},		// amenhotep - brighten
@@ -105,6 +111,7 @@ struct {
 	{-993374657, {2.0f, 0.0f, 0}},		// ctf_finalhour - brighten
 	{-1935206618, {2.0f, 0.0f, 0}},		// ctf_rg2_e - brighten
 	{-485373179, {2.0f, 0.0f, 0}},		// ctf_rg2_h - brighten
+	{-1267516348, QUAKE3_STANDARD},		// leaks2 (ef version) - brighten
 };
 
 static qboolean check_brightshift_hash(int hash) {
@@ -178,7 +185,7 @@ static qboolean check_quake3_entities(char *entities) {
 	//Com_Printf("quake entity hits: %i\n", entity_hits);
 
 	if(entity_hits >= 3) {
-		apply_shift_set(&(shift_set_t){2.0f, 0.0f, 1});
+		apply_shift_set(&(shift_set_t)QUAKE3_STANDARD);
 		return qtrue; }
 	return qfalse; }
 
