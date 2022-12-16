@@ -1016,6 +1016,10 @@ static void SV_InitGameVM( qboolean restart ) {
 		svs.clients[i].gentity = NULL;
 	}
 	
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+	SV_StatusScoresOverride_Reset();
+#endif
+
 	// use the current msec count for a random seed
 	// init for this gamestate
 	VM_Call (gvm, GAME_INIT, sv.time, Com_Milliseconds(), restart);

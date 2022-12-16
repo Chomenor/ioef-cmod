@@ -155,3 +155,9 @@ void Stef_MarioModFix_OnVMCreate( const char *module, const fsc_file_t *sourceFi
 void Stef_MultiMasterQuery_RunQuery( void );
 void Stef_MultiMasterQuery_RunFrame( void );
 #endif
+
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+void SV_StatusScoresOverride_Reset( void );
+void SV_StatusScoresOverride_SetArray( int *sharedArray, int clientCount );
+int SV_StatusScoresOverride_AdjustScore( int defaultScore, int clientNum );
+#endif

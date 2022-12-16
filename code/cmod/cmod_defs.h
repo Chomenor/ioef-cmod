@@ -175,6 +175,11 @@
 // Ignores error generated in g_items.c->FinishSpawningItem which can occur on Q3 maps
 #define CMOD_IGNORE_STARTSOLID_ERROR
 
+// [FEATURE] Allow mods to set custom player score values that are sent in response to
+// status queries, instead of using the playerstate score field. Especially useful for
+// Elimination mode in cases where the score field is needed for round indicator features.
+#define CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+
 // [BUGFIX] Various server download support fixes and improvements
 #define CMOD_DOWNLOAD_PROTOCOL_FIXES
 

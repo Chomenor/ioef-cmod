@@ -39,6 +39,9 @@ typedef enum {
 #ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
 	VMEXT_ALTSWAP_SET_STATE,
 #endif
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+	VMEXT_STATUS_SCORES_OVERRIDE_SET_ARRAY,
+#endif
 
 	VMEXT_FUNCTION_COUNT
 } vmext_function_id_t;
@@ -219,6 +222,10 @@ static int VMExt_CheckGetFunction( const char *command ) {
 	if ( !Q_stricmp( command, "trap_altswap_set_state" ) )
 		return VMEXT_ALTSWAP_SET_STATE;
 #endif
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+	if ( !Q_stricmp( command, "trap_status_scores_override_set_array" ) )
+		return VMEXT_STATUS_SCORES_OVERRIDE_SET_ARRAY;
+#endif
 
 	return -1;
 }
@@ -272,6 +279,13 @@ qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
 #ifdef CMOD_CLIENT_ALT_SWAP_SUPPORT
 		if ( function_id == VMEXT_ALTSWAP_SET_STATE ) {
 			ClientAltSwap_SetState( args[1] );
+			*retval = qtrue;
+			return qtrue;
+		}
+#endif
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+		if ( function_id == VMEXT_STATUS_SCORES_OVERRIDE_SET_ARRAY ) {
+			SV_StatusScoresOverride_SetArray( VMA(1), args[2] );
 			*retval = qtrue;
 			return qtrue;
 		}

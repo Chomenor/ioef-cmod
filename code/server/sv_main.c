@@ -596,7 +596,11 @@ static void SVC_Status( netadr_t from ) {
 		if ( cl->state >= CS_CONNECTED ) {
 			ps = SV_GameClientNum( i );
 			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+				SV_StatusScoresOverride_AdjustScore( ps->persistant[ PERS_SCORE ], i ), cl->ping, cl->name);
+#else
 				ps->persistant[PERS_SCORE], cl->ping, cl->name);
+#endif
 			playerLength = strlen(player);
 			if (statusLength + playerLength >= sizeof(status) ) {
 				break;		// can't hold any more

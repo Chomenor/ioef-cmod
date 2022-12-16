@@ -1258,7 +1258,11 @@ static void SV_Status_f( void ) {
 			continue;
 		Com_Printf ("%2i ", i);
 		ps = SV_GameClientNum( i );
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+		Com_Printf ("%5i ", SV_StatusScoresOverride_AdjustScore( ps->persistant[PERS_SCORE], i ));
+#else
 		Com_Printf ("%5i ", ps->persistant[PERS_SCORE]);
+#endif
 
 		if (cl->state == CS_CONNECTED)
 			Com_Printf ("CON ");

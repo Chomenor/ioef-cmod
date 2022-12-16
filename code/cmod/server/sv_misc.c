@@ -101,3 +101,43 @@ void sv_calculate_max_baselines(client_t *client, msg_t msg) {
 	else {
 		client->baseline_cutoff = -1; } }
 #endif
+
+#ifdef CMOD_SUPPORT_STATUS_SCORES_OVERRIDE
+static struct {
+	int *sharedArray;
+	int clientCount;
+} statusScoresOverride_state;
+
+/*
+==================
+SV_StatusScoresOverride_Reset
+==================
+*/
+void SV_StatusScoresOverride_Reset( void ) {
+	statusScoresOverride_state.sharedArray = NULL;
+	statusScoresOverride_state.clientCount = 0;
+}
+
+/*
+==================
+SV_StatusScoresOverride_SetArray
+==================
+*/
+void SV_StatusScoresOverride_SetArray( int *sharedArray, int clientCount ) {
+	statusScoresOverride_state.sharedArray = sharedArray;
+	statusScoresOverride_state.clientCount = clientCount;
+}
+
+/*
+==================
+SV_StatusScoresOverride_AdjustScore
+==================
+*/
+int SV_StatusScoresOverride_AdjustScore( int defaultScore, int clientNum ) {
+	if ( !statusScoresOverride_state.sharedArray || clientNum >= statusScoresOverride_state.clientCount ) {
+		return defaultScore;
+	}
+
+	return statusScoresOverride_state.sharedArray[clientNum];
+}
+#endif
