@@ -211,7 +211,7 @@ void *FSC_StackRetrieve( const fsc_stack_t *stack, const fsc_stackptr_t pointer,
 		unsigned int offset = pointer & ( ( 1 << STACK_BUCKET_POSITION_BITS ) - 1 );
 
 		if ( bucket < 0 || bucket > stack->buckets_position || offset < sizeof( fsc_stack_bucket_t ) ||
-				offset - sizeof( fsc_stack_bucket_t ) >= stack->buckets[bucket]->position ) {
+				offset - sizeof( fsc_stack_bucket_t ) > stack->buckets[bucket]->position ) {
 			FSC_FatalErrorTagged( "stackptr out of range", caller, expression );
 		}
 
