@@ -452,6 +452,18 @@ void framebuffer_render(void) {
 								  GL_COLOR_BUFFER_BIT, GL_NEAREST); }
 		glsl_render(); } }
 
+void framebuffer_setup_depth_test(void) {
+	// used for flares
+	if(tr.framebuffer_active && r_ext_multisample->integer) {
+		GL_BindFramebuffer(GL_READ_FRAMEBUFFER_EXT, fbo_state.draw_framebuffer);
+		GL_BindFramebuffer(GL_DRAW_FRAMEBUFFER_EXT, fbo_state.resolve_framebuffer);
+		qglBlitFramebuffer(0, 0, glConfig.vidWidth, glConfig.vidHeight,
+								0, 0, glConfig.vidWidth, glConfig.vidHeight,
+								GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		GL_BindFramebuffer(GL_READ_FRAMEBUFFER_EXT, fbo_state.resolve_framebuffer);
+	}
+}
+
 void framebuffer_bind(void) {
 	if(tr.framebuffer_active) GL_BindFramebuffer(GL_FRAMEBUFFER_EXT, fbo_state.draw_framebuffer); }
 

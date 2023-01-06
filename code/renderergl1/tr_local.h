@@ -1680,6 +1680,7 @@ void RB_CalcDiffuseColor_altivec( unsigned char *colors );
 void framebuffer_shutdown(void);
 void framebuffer_init(void);
 void framebuffer_render(void);
+void framebuffer_setup_depth_test(void);
 void framebuffer_bind(void);
 void framebuffer_unbind(void);
 void framebuffer_test(void);

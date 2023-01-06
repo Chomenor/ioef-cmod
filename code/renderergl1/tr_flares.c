@@ -476,6 +476,15 @@ void RB_RenderFlares (void) {
 
 //	RB_AddDlightFlares();
 
+#ifdef CMOD_FRAMEBUFFER
+	if ( r_ext_multisample->integer ) {
+		if ( !r_activeFlares ) {
+			return;
+		}
+		framebuffer_setup_depth_test();
+	}
+#endif
+
 	// perform z buffer readback on each flare in this view
 	draw = qfalse;
 	prev = &r_activeFlares;
@@ -506,6 +515,12 @@ void RB_RenderFlares (void) {
 
 		prev = &f->next;
 	}
+
+#ifdef CMOD_FRAMEBUFFER
+	if ( r_ext_multisample->integer ) {
+		framebuffer_bind();
+	}
+#endif
 
 	if ( !draw ) {
 		return;		// none visible
