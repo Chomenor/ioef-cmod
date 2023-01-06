@@ -136,6 +136,11 @@
 // Original issue involved broken console shader on release builds using clang v13.0 x86_64
 #define CMOD_TCGEN_FIX
 
+// [TWEAK] Allow increasing r_lodCurveError value which would otherwise be blocked by cheat
+// protection. Unlike low values, which could potentially expose cracks in walls, allowing
+// higher values shouldn't present any cheating risk.
+#define CMOD_ALLOW_INCREASED_LOD_CURVE_ERROR
+
 /* ******************************************************************************** */
 // Server
 /* ******************************************************************************** */

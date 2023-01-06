@@ -1357,7 +1357,16 @@ void R_Register( void )
 	//
 	// archived variables that can change at any time
 	//
+#ifdef CMOD_ALLOW_INCREASED_LOD_CURVE_ERROR
+	r_lodCurveError = ri.Cvar_Get( "r_lodCurveError", "250", CVAR_ARCHIVE );
+	if ( ri.Cvar_VariableIntegerValue( "sv_cheats" ) ) {
+		ri.Cvar_CheckRange( r_lodCurveError, 0, 10000, qtrue );
+	} else {
+		ri.Cvar_CheckRange( r_lodCurveError, 250, 10000, qtrue );
+	}
+#else
 	r_lodCurveError = ri.Cvar_Get( "r_lodCurveError", "250", CVAR_ARCHIVE|CVAR_CHEAT );
+#endif
 	r_lodbias = ri.Cvar_Get( "r_lodbias", "0", CVAR_ARCHIVE );
 	r_flares = ri.Cvar_Get ("r_flares", "0", CVAR_ARCHIVE );
 	r_znear = ri.Cvar_Get( "r_znear", "4", CVAR_CHEAT );
