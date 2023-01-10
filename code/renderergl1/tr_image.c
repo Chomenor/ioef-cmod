@@ -309,10 +309,18 @@ static void ResampleTexture( unsigned *in, int inwidth, int inheight, unsigned *
 	int		i, j;
 	unsigned	*inrow, *inrow2;
 	unsigned	frac, fracstep;
+#ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
+	unsigned	p1[16384], p2[16384];
+#else
 	unsigned	p1[2048], p2[2048];
+#endif
 	byte		*pix1, *pix2, *pix3, *pix4;
 
+#ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
+	if (outwidth>16384)
+#else
 	if (outwidth>2048)
+#endif
 		ri.Error(ERR_DROP, "ResampleTexture: max width");
 								
 	fracstep = inwidth*0x10000/outwidth;
@@ -609,6 +617,14 @@ static void Upload32( unsigned *data,
 		scaled_width >>= 1;
 	if ( r_roundImagesDown->integer && scaled_height > height )
 		scaled_height >>= 1;
+
+#ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
+	// avoid ResampleTexture overflow
+	while ( scaled_width > 16384 || scaled_height > 16384 ) {
+		scaled_width >>= 1;
+		scaled_height >>= 1;
+	}
+#endif
 
 	if ( scaled_width != width || scaled_height != height ) {
 		resampledBuffer = ri.Hunk_AllocateTempMemory( scaled_width * scaled_height * 4 );

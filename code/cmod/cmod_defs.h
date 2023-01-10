@@ -136,6 +136,10 @@
 // Original issue involved broken console shader on release builds using clang v13.0 x86_64
 #define CMOD_TCGEN_FIX
 
+// [BUGFIX] Support increased texture size in ResampleTexture to avoid errors with
+// r_roundImagesDown set to 0.
+#define CMOD_INCREASE_MAX_TEXTURE_SIZE
+
 // [TWEAK] Allow increasing r_lodCurveError value which would otherwise be blocked by cheat
 // protection. Unlike low values, which could potentially expose cracks in walls, allowing
 // higher values shouldn't present any cheating risk.

@@ -334,10 +334,18 @@ static void ResampleTexture( byte *in, int inwidth, int inheight, byte *out,
 	int		i, j;
 	byte	*inrow, *inrow2;
 	int		frac, fracstep;
+#ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
+	int		p1[16384], p2[16384];
+#else
 	int		p1[2048], p2[2048];
+#endif
 	byte	*pix1, *pix2, *pix3, *pix4;
 
+#ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
+	if (outwidth>16384)
+#else
 	if (outwidth>2048)
+#endif
 		ri.Error(ERR_DROP, "ResampleTexture: max width");
 								
 	fracstep = inwidth*0x10000/outwidth;
@@ -1521,6 +1529,14 @@ static qboolean RawImage_ScaleToPower2( byte **data, int *inout_width, int *inou
 		scaled_width >>= 1;
 	if ( r_roundImagesDown->integer && scaled_height > height )
 		scaled_height >>= 1;
+
+#ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
+	// avoid ResampleTexture overflow
+	while ( scaled_width > 16384 || scaled_height > 16384 ) {
+		scaled_width >>= 1;
+		scaled_height >>= 1;
+	}
+#endif
 
 	if ( picmip && data && resampledBuffer && r_imageUpsample->integer && 
 	     scaled_width < r_imageUpsampleMaxSize->integer && scaled_height < r_imageUpsampleMaxSize->integer)
