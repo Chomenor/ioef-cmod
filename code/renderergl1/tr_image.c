@@ -494,6 +494,9 @@ static void R_MipMap (byte *in, int width, int height) {
 	int		i, j;
 	byte	*out;
 	int		row;
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+	byte	*inrow = in;
+#endif
 
 	if ( !r_simpleMipMaps->integer ) {
 		R_MipMap2( (unsigned *)in, width, height );
@@ -520,8 +523,13 @@ static void R_MipMap (byte *in, int width, int height) {
 		return;
 	}
 
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+	for (i=0 ; i<height ; i++, inrow +=row* 2) {
+		for (in = inrow, j=0 ; j<width ; j++, out+=4, in+=8) {
+#else
 	for (i=0 ; i<height ; i++, in+=row) {
 		for (j=0 ; j<width ; j++, out+=4, in+=8) {
+#endif
 			out[0] = (in[0] + in[4] + in[row+0] + in[row+4])>>2;
 			out[1] = (in[1] + in[5] + in[row+1] + in[row+5])>>2;
 			out[2] = (in[2] + in[6] + in[row+2] + in[row+6])>>2;
@@ -617,6 +625,13 @@ static void Upload32( unsigned *data,
 		scaled_width >>= 1;
 	if ( r_roundImagesDown->integer && scaled_height > height )
 		scaled_height >>= 1;
+
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+	if ( useNonPowerOfTwoTextures ) {
+		scaled_width = width;
+		scaled_height = height;
+	}
+#endif
 
 #ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
 	// avoid ResampleTexture overflow

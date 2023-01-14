@@ -63,6 +63,10 @@ void (APIENTRYP qglMultiTexCoord2fARB) (GLenum target, GLfloat s, GLfloat t);
 void (APIENTRYP qglLockArraysEXT) (GLint first, GLsizei count);
 void (APIENTRYP qglUnlockArraysEXT) (void);
 
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+qboolean useNonPowerOfTwoTextures = qfalse;
+#endif
+
 #define GLE(ret, name, ...) name##proc * qgl##name = NULL;
 QGL_1_1_PROCS;
 QGL_1_1_FIXED_FUNCTION_PROCS;
@@ -1030,6 +1034,23 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 	{
 		ri.Printf( PRINT_ALL, "...GL_SGIS_texture_edge_clamp not found\n" );
 	}
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+	{
+		cvar_t *npotCvar = ri.Cvar_Get( "r_ext_texture_non_power_of_two", "0", CVAR_ARCHIVE | CVAR_LATCH );
+		useNonPowerOfTwoTextures = qfalse;
+		if ( npotCvar->integer ) {
+			if ( SDL_GL_ExtensionSupported( "GL_ARB_texture_non_power_of_two" ) )
+			{
+				ri.Printf( PRINT_ALL, "...using GL_ARB_texture_non_power_of_two\n" );
+				useNonPowerOfTwoTextures = qtrue;
+			}
+			else
+			{
+				ri.Printf( PRINT_ALL, "...GL_ARB_texture_non_power_of_two not found\n" );
+			}
+		}
+	}
+#endif
 }
 
 #define R_MODE_FALLBACK 3 // 640 * 480

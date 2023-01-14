@@ -1381,6 +1381,10 @@ static void R_MipMapsRGB( byte *in, int inWidth, int inHeight)
 
 			*out++ = (*(in) + *(in + 4) + *(in2) + *(in2 + 4)) >> 2; in += 5, in2 += 5;
 		}
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+		in += ( stride - inWidth * 8 );
+		in2 += ( stride - inWidth * 8 );
+#endif
 	}
 }
 
@@ -1529,6 +1533,13 @@ static qboolean RawImage_ScaleToPower2( byte **data, int *inout_width, int *inou
 		scaled_width >>= 1;
 	if ( r_roundImagesDown->integer && scaled_height > height )
 		scaled_height >>= 1;
+
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+	if ( type == IMGTYPE_COLORALPHA && useNonPowerOfTwoTextures ) {
+		scaled_width = width;
+		scaled_height = height;
+	}
+#endif
 
 #ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
 	// avoid ResampleTexture overflow

@@ -84,6 +84,9 @@ extern qboolean  textureFilterAnisotropic;
 extern int       maxAnisotropy;
 extern float     displayAspect;
 extern qboolean  haveClampToEdge;
+#ifdef CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+extern qboolean  useNonPowerOfTwoTextures;
+#endif
 
 //
 // cvars

@@ -145,6 +145,11 @@
 // higher values shouldn't present any cheating risk.
 #define CMOD_ALLOW_INCREASED_LOD_CURVE_ERROR
 
+// [TWEAK] Experimental support for loading non power of two textures without resizing,
+// for slight graphical improvements on some maps.
+// Enabled by "r_ext_texture_non_power_of_two" cvar.
+#define CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
+
 /* ******************************************************************************** */
 // Server
 /* ******************************************************************************** */
