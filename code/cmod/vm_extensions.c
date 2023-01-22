@@ -116,6 +116,8 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			// Use extension commands instead of cvars to access/modify certain settings to allow more engine implementation flexibility.
 			{ "ui_support_cmd_get_multisample", "1" },
 			{ "ui_support_cmd_set_multisample", "1" },
+			{ "ui_support_cmd_get_framebuffer", "1" },
+			{ "ui_support_cmd_set_framebuffer", "1" },
 #ifdef CMOD_MOUSE_WARPING_OPTION
 			{ "ui_support_cmd_get_raw_mouse", "1" },
 			{ "ui_support_cmd_set_raw_mouse", "1" },
@@ -180,6 +182,28 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 #else
 		Cvar_SetSafe( "r_ext_multisample", va( "%i", value ) );
 		Cvar_SetSafe( "r_ext_framebuffer_multisample", va( "%i", value ) );
+#endif
+		return qtrue;
+	}
+
+	if ( !Q_stricmp( command, "cmd_get_framebuffer" ) ) {
+		// Returns whether framebuffer is currently enabled
+		if ( !Q_stricmp( Cvar_VariableString( "cl_renderer" ), "opengl2" ) ) {
+			Q_strncpyz( buffer, Cvar_VariableIntegerValue( "r_ext_framebuffer_object" ) ? "1" : "0", size );
+		} else {
+			Q_strncpyz( buffer, Cvar_VariableIntegerValue( "r_framebuffer" ) ? "1" : "0", size );
+		}
+		return qtrue;
+	}
+	if ( !Q_stricmpn( command, "cmd_set_framebuffer ", sizeof( "cmd_set_framebuffer " ) - 1 ) ) {
+		int value = atoi( &command[sizeof( "cmd_set_framebuffer " ) - 1] ) ? 1 : 0;
+		// For now just set both opengl1 (r_framebuffer) and opengl2 (r_ext_framebuffer_object) values
+#ifdef CMOD_CVAR_HANDLING
+		Cvar_SetSafe( "r_framebuffer", va( "%i", value ), VMPermissions_CheckTrusted( vm_type ) );
+		Cvar_SetSafe( "r_ext_framebuffer_object", va( "%i", value ), VMPermissions_CheckTrusted( vm_type ) );
+#else
+		Cvar_SetSafe( "r_framebuffer", va( "%i", value ) );
+		Cvar_SetSafe( "r_ext_framebuffer_object", va( "%i", value ) );
 #endif
 		return qtrue;
 	}

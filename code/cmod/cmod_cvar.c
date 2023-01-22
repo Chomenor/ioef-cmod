@@ -1917,6 +1917,8 @@ const special_cvar_t specials[] = {
 	{ "r_ext_max_anisotropy", "16", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_ext_multisample", "0", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_ext_framebuffer_multisample", "0", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
+	{ "r_framebuffer", "1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
+	{ "r_ext_framebuffer_object", "1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_textureMode", "GL_LINEAR_MIPMAP_LINEAR", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_flares", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_finish", NULL, CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
