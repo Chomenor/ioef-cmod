@@ -1262,22 +1262,6 @@ lighting range
 */
 void R_LightScaleTexture (byte *in, int inwidth, int inheight, qboolean only_gamma )
 {
-#ifdef CMOD_TEXTURE_GAMMA
-	if(r_textureGamma->value != 1.0f) {
-		int		i, c;
-		byte	*p;
-
-		p = (byte *)in;
-
-		c = inwidth*inheight;
-		for (i=0 ; i<c ; i++, p+=4)
-		{
-			p[0] = 255.0 * pow(p[0]/255.0f, 1.0f/r_textureGamma->value);
-			p[1] = 255.0 * pow(p[1]/255.0f, 1.0f/r_textureGamma->value);
-			p[2] = 255.0 * pow(p[2]/255.0f, 1.0f/r_textureGamma->value);
-		}
-	}
-#endif
 	if ( only_gamma )
 	{
 		if ( !glConfig.deviceSupportsGamma )
@@ -1324,6 +1308,22 @@ void R_LightScaleTexture (byte *in, int inwidth, int inheight, qboolean only_gam
 			}
 		}
 	}
+#ifdef CMOD_TEXTURE_GAMMA
+	if(r_textureGamma->value != 1.0f) {
+		int		i, c;
+		byte	*p;
+
+		p = (byte *)in;
+
+		c = inwidth*inheight;
+		for (i=0 ; i<c ; i++, p+=4)
+		{
+			p[0] = 255.0 * pow(p[0]/255.0f, 1.0f/r_textureGamma->value);
+			p[1] = 255.0 * pow(p[1]/255.0f, 1.0f/r_textureGamma->value);
+			p[2] = 255.0 * pow(p[2]/255.0f, 1.0f/r_textureGamma->value);
+		}
+	}
+#endif
 }
 
 
