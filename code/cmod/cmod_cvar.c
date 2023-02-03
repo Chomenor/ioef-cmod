@@ -1943,6 +1943,9 @@ const special_cvar_t specials[] = {
 	{ "cmod_map_adjust_enabled", "1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "cmod_anti_burnin", "0", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_autoExposure", "0", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
+#ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
+	{ "r_roundImagesDown", "0", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
+#endif
 
 	// Sound settings
 	// Don't default to OpenAL since it currently doesn't work nicely with some EF maps
