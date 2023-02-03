@@ -147,6 +147,9 @@ Returns number of bytes successfully read, which equals file->filesize on succes
 unsigned int FSC_ExtractFile( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	const fsc_sourcetype_t *sourcetype;
 	unsigned int result;
+	if ( file->filesize <= 0 ) {
+		return 0;
+	}
 	if ( file->contents_cache ) {
 		FSC_Memcpy( buffer, STACKPTR( file->contents_cache ), file->filesize );
 		return file->filesize;
@@ -341,7 +344,7 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	}
 
 	// Cache small arena and bot file contents
-	if ( file->filesize < 16384 && !FSC_Stricmp( qp_dir, "scripts/" ) &&
+	if ( file->filesize > 0 && file->filesize < 16384 && !FSC_Stricmp( qp_dir, "scripts/" ) &&
 		 ( !FSC_Stricmp( qp_ext, ".arena" ) || !FSC_Stricmp( qp_ext, ".bot" ) ) &&
 		 ( !sanity_limit || !FSC_SanityLimitContent( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
 		char *source_data = FSC_ExtractFileAllocated( file, fs );
