@@ -2692,6 +2692,10 @@ static void FixRenderCommandList( int newShader ) {
 	if( cmdList ) {
 		const void *curCmd = cmdList->cmds;
 
+#ifdef CMOD_FRCL_ITERATION_FIX
+		*( (int *)( cmdList->cmds + cmdList->used ) ) = RC_END_OF_LIST;
+#endif
+
 		while ( 1 ) {
 			curCmd = PADP(curCmd, sizeof(void *));
 
