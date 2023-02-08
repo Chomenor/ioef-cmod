@@ -1268,16 +1268,6 @@ CL_ShutdownAll
 */
 void CL_ShutdownAll(qboolean shutdownRef)
 {
-#ifdef CMOD_CVAR_HANDLING
-	if ( !com_sv_running->integer && cls.cgameStarted ) {
-		Cvar_EndSession();
-	}
-#endif
-#ifdef CMOD_BIND_PROTECTION
-	if ( !com_sv_running->integer && cls.cgameStarted ) {
-		Key_EndSession();
-	}
-#endif
 	if(CL_VideoRecording())
 		CL_CloseAVI();
 
@@ -1523,6 +1513,18 @@ void CL_Disconnect( qboolean showMainMenu ) {
 		CL_WritePacket();
 	}
 	
+#ifdef CMOD_CVAR_HANDLING
+	// clear temporary cvar values
+	if ( clc.state > CA_DISCONNECTED && !clc.cURLReconnecting ) {
+		Cvar_EndSession();
+	}
+#endif
+#ifdef CMOD_BIND_PROTECTION
+	if ( clc.state > CA_DISCONNECTED && !clc.cURLReconnecting ) {
+		Key_EndSession();
+	}
+#endif
+
 #ifdef NEW_FILESYSTEM
 	FS_DisconnectCleanup();
 	if ( !clc.cURLReconnecting ) {
