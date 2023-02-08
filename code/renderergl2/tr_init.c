@@ -270,6 +270,7 @@ cvar_t	*r_envMapMode;
 cvar_t	*r_autoMapLightingFactor;
 cvar_t	*r_autoMapLightingGammaMod;
 cvar_t	*r_autoOverBrightFactorMax;
+cvar_t	*r_autoOverBrightFactorShift;
 cvar_t	*r_autoEnvMapMode;
 #endif
 
@@ -1480,6 +1481,7 @@ void R_Register( void )
 	r_autoMapLightingFactor = ri.Cvar_Get("r_autoMapLightingFactor", "", 0);
 	r_autoMapLightingGammaMod = ri.Cvar_Get("r_autoMapLightingGammaMod", "", 0);
 	r_autoOverBrightFactorMax = ri.Cvar_Get("r_autoOverBrightFactorMax", "", 0);
+	r_autoOverBrightFactorShift = ri.Cvar_Get("r_autoOverBrightFactorShift", "", 0);
 	r_autoEnvMapMode = ri.Cvar_Get("r_autoEnvMapMode", "", 0);
 #endif
 

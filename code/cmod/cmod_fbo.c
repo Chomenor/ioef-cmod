@@ -252,6 +252,10 @@ static GLuint glsl_create_gamma_program(void) {
 		"}\n";
 	char fragment_data[1000];
 #ifdef CMOD_MAP_AUTO_ADJUST
+	if ( r_autoOverBrightFactorShift->value < 0.0f && overBrightFactor > 1.0f )
+		overBrightFactor = MAX( 1.0f, overBrightFactor + r_autoOverBrightFactorShift->value );
+	if ( r_autoOverBrightFactorShift->value > 0.0f && overBrightFactor < 2.0f )
+		overBrightFactor = MIN( 2.0f, overBrightFactor + r_autoOverBrightFactorShift->value );
 	if ( r_autoOverBrightFactorMax->value > 0.0f && r_autoOverBrightFactorMax->value < overBrightFactor )
 		overBrightFactor = r_autoOverBrightFactorMax->value;
 #endif

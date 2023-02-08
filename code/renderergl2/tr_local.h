@@ -1880,6 +1880,7 @@ extern	cvar_t	*r_envMapMode;
 extern	cvar_t	*r_autoMapLightingFactor;
 extern	cvar_t	*r_autoMapLightingGammaMod;
 extern	cvar_t	*r_autoOverBrightFactorMax;
+extern	cvar_t	*r_autoOverBrightFactorShift;
 extern	cvar_t	*r_autoEnvMapMode;
 #endif
 

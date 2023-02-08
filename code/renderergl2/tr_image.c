@@ -2993,6 +2993,10 @@ void R_SetColorMappings( void ) {
 #ifdef CMOD_MAP_BRIGHTNESS_SETTINGS
 	tr.overbrightFactor = r_overBrightFactor->value;
 #ifdef CMOD_MAP_AUTO_ADJUST
+	if ( r_autoOverBrightFactorShift->value < 0.0f && tr.overbrightFactor > 1.0f )
+		tr.overbrightFactor = MAX( 1.0f, tr.overbrightFactor + r_autoOverBrightFactorShift->value );
+	if ( r_autoOverBrightFactorShift->value > 0.0f && tr.overbrightFactor < 2.0f )
+		tr.overbrightFactor = MIN( 2.0f, tr.overbrightFactor + r_autoOverBrightFactorShift->value );
 	if ( r_autoOverBrightFactorMax->value > 0.0f && r_autoOverBrightFactorMax->value < tr.overbrightFactor )
 		tr.overbrightFactor = r_autoOverBrightFactorMax->value;
 #endif
