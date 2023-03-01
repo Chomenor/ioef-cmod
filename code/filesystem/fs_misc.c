@@ -937,7 +937,7 @@ Used by vm.c
 Returns dll handle, or null on error
 =================
 */
-void *FS_LoadGameDLL( const fsc_file_t *dll_file, intptr_t( QDECL **entryPoint )( int, ... ),
+void *FS_LoadGameDLL( const fsc_file_t *dll_file, void *entryPoint,
 		intptr_t( QDECL *systemcalls )( intptr_t, ... ) ) {
 	char dll_info_string[FS_FILE_BUFFER_SIZE];
 	const void *dll_path;
@@ -965,7 +965,7 @@ void *FS_LoadGameDLL( const fsc_file_t *dll_file, intptr_t( QDECL **entryPoint )
 	}
 
 	// Attemt to open the dll
-	dll_handle = Sys_LoadGameDll( dll_path_string, entryPoint, systemcalls );
+	dll_handle = Sys_LoadGameDll( dll_path_string, (vmMainProc *)entryPoint, systemcalls );
 	if ( !dll_handle ) {
 		Com_Printf( "Error: failed to load game dll\n" );
 	}
