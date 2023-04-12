@@ -480,6 +480,8 @@ void FSC_Free( void *allocation );
 // and should be nulled during normal filesystem loading
 void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr,
 		void ( *receive_hash_data )( void *context, char *data, int size ), void *receive_hash_data_context );
+unsigned int FSC_GetPk3HashRawPath( fsc_ospath_t *os_path );
+unsigned int FSC_GetPk3Hash( const char *path );
 void FSC_RegisterPk3HashLookup( fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t *pk3_hash_lookup, fsc_stack_t *stack );
 
 typedef struct fsc_pk3handle_s fsc_pk3handle_t;

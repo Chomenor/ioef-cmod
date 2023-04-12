@@ -352,7 +352,7 @@ Can also be called with receive_hash_data set to extract pk3 hash checksums with
 */
 void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t sourcefile_ptr,
 		void ( *receive_hash_data )( void *context, char *data, int size ), void *receive_hash_data_context ) {
-	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTRN( sourcefile_ptr );
+	fsc_file_direct_t *sourcefile = fs ? (fsc_file_direct_t *)STACKPTRN( sourcefile_ptr ) : FSC_NULL;
 	central_directory_t cd;
 	int entry_position = 0;		// Position of current entry relative to central directory data
 	int entry_counter;			// Number of current entry
@@ -472,6 +472,42 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 	if ( crcs_for_hash != crcs_for_hash_buffer ) {
 		FSC_Free( crcs_for_hash );
 	}
+}
+
+/*
+=================
+FSC_GetPk3HashCallback
+=================
+*/
+static void FSC_GetPk3HashCallback( void *context, char *data, int size ) {
+	*(unsigned int *)context = FSC_BlockChecksum( data, size );
+}
+
+/*
+=================
+FSC_GetPk3HashRawPath
+
+Calculates standard hash value from a pk3 file on disk.
+=================
+*/
+unsigned int FSC_GetPk3HashRawPath( fsc_ospath_t *os_path ) {
+	unsigned int result = 0;
+	FSC_LoadPk3( os_path, FSC_NULL, FSC_SPNULL, FSC_GetPk3HashCallback, &result );
+	return result;
+}
+
+/*
+=================
+FSC_GetPk3Hash
+
+Standard string path wrapper for FSC_GetPk3HashRawPath.
+=================
+*/
+unsigned int FSC_GetPk3Hash( const char *path ) {
+	fsc_ospath_t *os_path = FSC_StringToOSPath( path );
+	unsigned int result = FSC_GetPk3HashRawPath( os_path );
+	FSC_Free( os_path );
+	return result;
 }
 
 /*

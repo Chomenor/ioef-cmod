@@ -456,28 +456,6 @@ Download Completion
 
 /*
 =================
-FS_TempDownloadHashCallback
-=================
-*/
-static void FS_TempDownloadHashCallback( void *context, char *data, int size ) {
-	*(unsigned int *)context = FSC_BlockChecksum( data, size );
-}
-
-/*
-=================
-FS_GetTempDownloadPk3Hash
-=================
-*/
-static unsigned int FS_GetTempDownloadPk3Hash( const char *tempfile_path ) {
-	void *os_path = FSC_StringToOSPath( tempfile_path );
-	unsigned int result = 0;
-	FSC_LoadPk3( os_path, &fs.index, FSC_SPNULL, FS_TempDownloadHashCallback, &result );
-	FSC_Free( os_path );
-	return result;
-}
-
-/*
-=================
 FS_FinalizeDownload
 
 Does some final verification and moves the download, which hopefully has been written to
@@ -506,7 +484,7 @@ void FS_FinalizeDownload( void ) {
 		return;
 	}
 
-	actual_hash = FS_GetTempDownloadPk3Hash( tempfile_path );
+	actual_hash = FSC_GetPk3Hash( tempfile_path );
 	if ( !actual_hash ) {
 		Com_Printf( "WARNING: Downloaded pk3 %s appears to be missing or corrupt. Download not saved.\n",
 				current_download->local_name );
