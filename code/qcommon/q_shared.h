@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define CINEMATICS_LOGO		"foologo.roq"
   #define CINEMATICS_INTRO		"intro.roq"
 //  #define LEGACY_PROTOCOL	// You probably don't need this for your standalone game
+//  #define PROTOCOL_HANDLER		"foobar"
 #else
 #ifdef ELITEFORCE
 #ifdef CMOD_VERSION_STRING
@@ -74,6 +75,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define CINEMATICS_LOGO		"idlogo.RoQ"
   #define CINEMATICS_INTRO		"intro.RoQ"
   #define LEGACY_PROTOCOL
+  #define PROTOCOL_HANDLER		"quake3"
 #endif
 #endif
 
