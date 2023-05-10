@@ -196,7 +196,7 @@ CONTENTS_FOLDER_PATH="${WRAPPER_NAME}/Contents"
 UNLOCALIZED_RESOURCES_FOLDER_PATH="${CONTENTS_FOLDER_PATH}/Resources"
 EXECUTABLE_FOLDER_PATH="${CONTENTS_FOLDER_PATH}/MacOS"
 EXECUTABLE_NAME="${PRODUCT_NAME}"
-PROTOCOL_HANDLER="quake3"
+PROTOCOL_HANDLER="stvef"
 
 # loop through the architectures to build string lists for each universal binary
 for ARCH in $SEARCH_ARCHS; do

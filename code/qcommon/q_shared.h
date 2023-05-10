@@ -59,6 +59,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define GOGPATH_ID				"1581756945"
   #define GAMENAME_FOR_MASTER		"EliteForce"
   #define LEGACY_PROTOCOL
+  #define PROTOCOL_HANDLER		"stvef"
 #else
   #define PRODUCT_NAME				"ioq3"
   #define BASEGAME					"baseq3"
