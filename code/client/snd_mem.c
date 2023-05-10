@@ -228,9 +228,11 @@ qboolean S_LoadSound( sfx_t *sfx )
 		Com_DPrintf(S_COLOR_YELLOW "WARNING: %s is a 8 bit audio file\n", sfx->soundName);
 	}
 
+#ifndef CMOD_REDUCE_WARNINGS
 	if ( info.rate != 22050 ) {
 		Com_DPrintf(S_COLOR_YELLOW "WARNING: %s is not a 22kHz audio file\n", sfx->soundName);
 	}
+#endif
 
 	samples = Hunk_AllocateTempMemory(info.channels * info.samples * sizeof(short) * 2);
 
