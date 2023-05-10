@@ -319,6 +319,10 @@ static void framebuffer_init2(void) {
 	int maxRenderbufferSize = 0;
 
 	if(!r_framebuffer->integer) return;
+
+	// stereo rendering currently not supported
+	if(glConfig.stereoEnabled || r_anaglyphMode->integer) return;
+
 	fbo_gls_init();
 
 	qglGetIntegerv(GL_MAX_RENDERBUFFER_SIZE_EXT, &maxRenderbufferSize);
