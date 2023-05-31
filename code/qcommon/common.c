@@ -2954,6 +2954,10 @@ void Com_Init( char *commandLine ) {
 	Cmd_AddCommand("copydebug", cmod_copydebug_cmd);
 #endif
 
+#ifdef CMOD_URI_REGISTER_COMMAND
+	Cmd_AddCommand("uri", Stef_UriCmd);
+#endif
+
 #ifdef CMOD_SETTINGS
 #ifndef DEDICATED
 	Key_LoadDefaultBinds( qtrue );

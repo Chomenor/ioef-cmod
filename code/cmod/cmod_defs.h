@@ -307,6 +307,11 @@
 #define CMOD_CLIENT_ALT_SWAP_SUPPORT
 #endif
 
+// [FEATURE] Support "URI" console command to register/deregister URI handler on Windows.
+// On other platforms it will currently only display an error message.
+// Based on https://github.com/stefansundin/ioq3/commit/13060022021866704167aa28a086fd5a7043350a
+#define CMOD_URI_REGISTER_COMMAND
+
 // [TWEAK] Restore console scroll position to end when reopening. Enabled by "con_autoReturn" cvar.
 #define CMOD_CONSOLE_AUTO_RETURN
 

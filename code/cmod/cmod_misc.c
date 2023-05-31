@@ -29,7 +29,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/qcommon.h"
 #endif
 
-#if defined _WIN32 && ( defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_IMPORT_SETTINGS ) )
+#if defined( CMOD_URI_REGISTER_COMMAND ) && defined( PROTOCOL_HANDLER) && defined( _WIN32 ) && !defined( UNICODE )
+#define URI_REGISTER_SUPPORTED
+#endif
+
+#if defined _WIN32 && ( defined( CMOD_COPYDEBUG_CMD_SUPPORTED ) || defined( CMOD_IMPORT_SETTINGS ) \
+		|| defined( URI_REGISTER_SUPPORTED ) )
 #include <windows.h>
 #endif
 
@@ -565,5 +570,133 @@ void Stef_MarioModFix_OnVMCreate( const char *module, const fsc_file_t *sourceFi
 			}
 		}
 	}
+}
+#endif
+
+#ifdef CMOD_URI_REGISTER_COMMAND
+#ifdef URI_REGISTER_SUPPORTED
+#include <winreg.h>
+
+/*
+=================
+Stef_UriCmd_Remove
+
+Remove URI handler.
+=================
+*/
+void Stef_UriCmd_Remove(void) {
+	// Delete keys individually, rather than using RegDeleteTree. This provides a bit of extra safety,
+	// as the operation will fail if there are any unexpected subkeys created by a different application.
+	LSTATUS result;
+	RegDeleteKeyA( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER "\\shell\\open\\command" );
+	RegDeleteKeyA( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER "\\shell\\open" );
+	RegDeleteKeyA( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER "\\shell" );
+	RegDeleteKeyA( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER "\\DefaultIcon" );
+	result = RegDeleteKeyA( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER );
+
+	if ( result == ERROR_SUCCESS || result == ERROR_FILE_NOT_FOUND ) {
+		Com_Printf( "^3Successfully removed handler at HKEY_CURRENT_USER\\Software\\Classes\\" PROTOCOL_HANDLER "\n" );
+		Com_Printf( "If you wish to restore it, use the command \"uri register\".\n" );
+	} else {
+		Com_Printf( "^3Error: Protocol handler may not be fully removed.\n" );
+		Com_Printf( "To ensure complete removal, open the Windows Registry Editor and manually delete the key "
+				"at HKEY_CURRENT_USER\\Software\\Classes\\" PROTOCOL_HANDLER "\n" );
+	}
+}
+
+/*
+=================
+Stef_UriCmd_WriteRegistryValue
+
+Writes a value to the registry, creating key if it doesn't already exist.
+valueName may be NULL to set unnamed value.
+=================
+*/
+static void Stef_UriCmd_WriteRegistryValue( HKEY rootKey, const char *subKey, const char *valueName, const char *value ) {
+	HKEY hKey = NULL;
+	DWORD dontcare = 0;
+	LSTATUS result;
+
+	result = RegCreateKeyExA( rootKey, subKey, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, &dontcare );
+	if ( result == ERROR_SUCCESS ) {
+		LSTATUS result2;
+
+		result2 = RegSetValueExA( hKey, valueName, 0, REG_SZ, (const BYTE *)value, strlen( value ) + 1 );
+		if ( result2 != ERROR_SUCCESS ) {
+			Com_Printf( "RegSetValueExA error: subKey(%s) valueName(%s) value(%s) error(%i)\n",
+					subKey, valueName ? valueName : "<null>", value, (int)result2 );
+		}
+
+		result2 = RegCloseKey( hKey );
+		if ( result2 != ERROR_SUCCESS ) {
+			Com_Printf( "RegCloseKey error: subKey(%s) valueName(%s) value(%s) error(%i)\n",
+					subKey, valueName ? valueName : "<null>", value, (int)result2 );
+		}
+	} else {
+		Com_Printf( "RegCreateKeyExA error: subKey(%s) valueName(%s) value(%s) error(%i)\n",
+				subKey, valueName ? valueName : "<null>", value, (int)result );
+	}
+}
+
+/*
+=================
+Stef_UriCmd_Register
+
+Register URI handler.
+=================
+*/
+static void Stef_UriCmd_Register(void) {
+	char appPath[MAX_PATH];
+	appPath[0] = '\0';
+
+    if ( !GetModuleFileNameA( NULL, appPath, MAX_PATH ) ) {
+		Com_Printf( "Failed to retrieve app path (%i)\n", (int)GetLastError() );
+		return;
+	}
+
+	if ( !FS_FileInPathExists( appPath ) ) {
+		Com_Printf( "Failed to verify app path\n" );
+		return;
+	}
+
+	Stef_UriCmd_WriteRegistryValue( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER, "CustomUrlApplication", appPath );
+	Stef_UriCmd_WriteRegistryValue( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER, "CustomUrlArguments", "\"%1\"" );
+	Stef_UriCmd_WriteRegistryValue( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER, "URL Protocol", "" );
+	Stef_UriCmd_WriteRegistryValue( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER "\\DefaultIcon", NULL,
+			va( "%s,0", appPath ) );
+	Stef_UriCmd_WriteRegistryValue( HKEY_CURRENT_USER, "Software\\Classes\\" PROTOCOL_HANDLER "\\shell\\open\\command", NULL,
+			va( "\"%s\" --uri \"%%1\"", appPath ) );
+
+	Com_Printf( "^3Registered protocol " PROTOCOL_HANDLER ":// at HKEY_CURRENT_USER\\Software\\Classes\\" PROTOCOL_HANDLER "\n" );
+	Com_Printf( "^3You should now be able to join servers using links in your web browser.\n" );
+	Com_Printf( "If you wish to reverse this, use the command \"uri remove\".\n" );
+}
+#endif
+
+/*
+=================
+Stef_UriCmd
+
+Handle "uri" console command.
+=================
+*/
+void Stef_UriCmd( void ) {
+#ifdef URI_REGISTER_SUPPORTED
+	const char *arg = Cmd_Argv( 1 );
+	if ( !Q_stricmp( arg, "register" ) ) {
+		Stef_UriCmd_Register();
+	} else if ( !Q_stricmp( arg, "remove" ) ) {
+		Stef_UriCmd_Remove();
+	} else {
+		Com_Printf( "Usage: uri [register|remove]\n^3uri register^7: Registers URI handler to support joining "
+				"servers through links in your web browser.\n^3uri remove^7: Removes URI handler.\n" );
+	}
+#else
+#ifdef _WIN32
+	Com_Printf( "Not built with URI handler support.\n" );
+#else
+	Com_Printf( "URI register command is currently only supported on Windows.\n" );
+#endif
+#endif
 }
 #endif

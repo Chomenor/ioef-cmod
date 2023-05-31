@@ -68,6 +68,12 @@ In the original game, the console and chat font are displayed at a fixed size, u
 - A setting between 0 and 1 scales to some fraction of the font size represented by 1. However it will not scale below the original unscaled font size.
 - A setting of 0 produces the original unscaled font size.
 
+## URI Handler
+
+To enable launching the game and joining servers directly from web-based server browsers such as [efservers.com](https://efservers.com/) on Windows, open the in-game console and run the command ```uri register```.
+
+The handler can also be unregistered using the command ```uri remove```.
+
 ## Download Folder Support
 
 The "fs_download_mode" setting can be used to customize pk3 download handling on the client. It supports the following values:

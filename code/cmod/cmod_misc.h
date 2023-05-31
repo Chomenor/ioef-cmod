@@ -161,3 +161,7 @@ void SV_StatusScoresOverride_Reset( void );
 void SV_StatusScoresOverride_SetArray( int *sharedArray, int clientCount );
 int SV_StatusScoresOverride_AdjustScore( int defaultScore, int clientNum );
 #endif
+
+#ifdef CMOD_URI_REGISTER_COMMAND
+void Stef_UriCmd( void );
+#endif
