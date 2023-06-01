@@ -155,6 +155,90 @@
 #define CMOD_SUPPORT_NON_POWER_OF_TWO_TEXTURES
 
 /* ******************************************************************************** */
+// Sound
+/* ******************************************************************************** */
+
+#ifndef DEDICATED
+
+// [FEATURE] Support "s_noOverlap" option to emulate 1.20 behavior of only playing one copy
+// of the same sound effect at the same time.
+#define CMOD_FILTER_OVERLAPPING_SOUNDS
+
+// [BUGFIX] Reset sound system on map changes to avoid getting cached sounds from a previous
+// map or mod.
+#define CMOD_SOUND_RESET
+
+// [TWEAK] Optimization of sound reset above to avoid load time impact.
+#if defined(CMOD_SOUND_RESET) && defined(NEW_FILESYSTEM)
+#define CMOD_FAST_SOUND_RESET
+#endif
+
+// [BUGFIX] Remove apparently unnecessary abort condition in MP3 decoder, which breaks the
+// music in certain maps such as 'amenhotep' and 'hm_stronghold'.
+#define CMOD_MP3_LAYER_CHECK_FIX
+
+// [BUGFIX] Disable passing "allow change" flags to SDL_OpenAudioDevice by default.
+// This fixes a crash issue seen when connecting/disconnecting USB audio devices, and
+// could have other stability or sound configuration benefits.
+#define CMOD_SOUND_DISABLE_SDL_FORMAT_CHANGES
+
+// [TWEAK] Increase concurrent sound limit to reduce rapidfire weapon stuttering.
+#define CMOD_CONCURRENT_SOUNDS
+
+// [BUGFIX] Fix for possible sound buffer synchronization issues due to time overflow condition.
+// Not sure if this is actually necessary, but it shouldn't hurt.
+#define CMOD_SOUND_DMA_BUFFER_TWEAK
+
+#endif	// !DEDICATED
+
+/* ******************************************************************************** */
+// Client
+/* ******************************************************************************** */
+
+#ifndef DEDICATED
+
+// [FEATURE] Support VM calls to extend server querying features for the UI server browser.
+#define CMOD_SERVER_BROWSER_SUPPORT
+
+// [FEATURE] Support asynchronous host name resolution when querying master servers, and
+// automatically query for both ipv4 and ipv6 servers when possible.
+#define CMOD_MULTI_MASTER_QUERY
+
+// [FEATURE] New crosshair system to allow selecting any installed crosshair, rather
+// than just a small fixed group, when combined with QVM support.
+#if defined(NEW_FILESYSTEM)	// required
+#define CMOD_CROSSHAIR
+#endif
+
+// [FEATURE] Support VM calls to enable cgame alt fire button swapping features without server support.
+#define CMOD_CLIENT_ALT_SWAP_SUPPORT
+
+// [FEATURE] Provides cvar option (in_mouse_warping) which attempts to use the same mouse capture
+// method as older EF versions.
+#define CMOD_MOUSE_WARPING_OPTION
+
+// [FEATURE] Support "URI" console command to register/deregister URI handler on Windows.
+// On other platforms it will currently only display an error message.
+// Based on https://github.com/stefansundin/ioq3/commit/13060022021866704167aa28a086fd5a7043350a
+#define CMOD_URI_REGISTER_COMMAND
+
+// [BUGFIX] Attempt to improve detection of console opening key on non-US keyboard layouts.
+#define CMOD_CONSOLE_KEY_FIXES
+
+// [BUGFIX] Fix an issue in the client which can cause it to disconnect after completing
+// a download in certain situations.
+#define CMOD_DL_LASTMSG_FIX
+
+// [TWEAK] Restore console scroll position to end when reopening. Enabled by "con_autoReturn" cvar.
+#define CMOD_CONSOLE_AUTO_RETURN
+
+// [TWEAK] Disable motd server contact which currently does not appear to have any working
+// functionality attached.
+#define CMOD_DISABLE_MOTD
+
+#endif	// !DEDICATED
+
+/* ******************************************************************************** */
 // Server
 /* ******************************************************************************** */
 
@@ -273,47 +357,9 @@
 // Workaround for notarization issues if unsigned resource files are placed in MacOS directory
 #define CMOD_MAC_APP_RESOURCES
 
-// [FEATURE] Provides cvar option (in_mouse_warping) which attempts to use the same mouse capture
-// method as older EF versions
-#define CMOD_MOUSE_WARPING_OPTION
-
-// [FEATURE] New crosshair system to allow selecting any installed crosshair, rather
-// than just a small fixed group, when combined with QVM support.
-#if !defined(DEDICATED) && defined(NEW_FILESYSTEM)	// required
-#define CMOD_CROSSHAIR
-#endif
-
-// [FEATURE] Support "s_noOverlap" option to emulate 1.20 behavior of only playing one copy
-// of the same sound effect at the same time
-#define CMOD_FILTER_OVERLAPPING_SOUNDS
-
 // [FEATURE] Make certain engine information and setting preferences available to VMs
 // Used to enable features in the cMod VMs that are too specialized to enable by default for all engines
 #define CMOD_VM_CONFIG_VALUES
-
-// [FEATURE] Support VM calls to extend server querying features for the UI server browser
-#if !defined(DEDICATED)
-#define CMOD_SERVER_BROWSER_SUPPORT
-#endif
-
-// [FEATURE] Support asynchronous host name resolution when querying master servers, and automatically
-// query for both ipv4 and ipv6 servers when possible.
-#if !defined(DEDICATED)
-#define CMOD_MULTI_MASTER_QUERY
-#endif
-
-// [FEATURE] Support VM calls to enable cgame alt fire button swapping features without server support
-#if !defined(DEDICATED)
-#define CMOD_CLIENT_ALT_SWAP_SUPPORT
-#endif
-
-// [FEATURE] Support "URI" console command to register/deregister URI handler on Windows.
-// On other platforms it will currently only display an error message.
-// Based on https://github.com/stefansundin/ioq3/commit/13060022021866704167aa28a086fd5a7043350a
-#define CMOD_URI_REGISTER_COMMAND
-
-// [TWEAK] Restore console scroll position to end when reopening. Enabled by "con_autoReturn" cvar.
-#define CMOD_CONSOLE_AUTO_RETURN
 
 // [BUGFIX] Use traditional EF float casting behavior in VM, which fixes the physics behavior
 // in various mods
@@ -337,47 +383,12 @@
 // [BUGFIX] Workaround for an issue which can cause a crash on certain maps
 #define CMOD_CM_ALIGN_FIX
 
-// [BUGFIX] Fix an issue in the client which can cause it to disconnect after completing
-// a download in certain situations
-#define CMOD_DL_LASTMSG_FIX
-
-// [BUGFIX] Attempt to improve detection of console opening key on non-US keyboard layouts
-#define CMOD_CONSOLE_KEY_FIXES
-
 // [BUGFIX] Disable auth system since EF auth server currently doesn't enforce any restrictions
 // anyway and often goes down causing issues
 #define CMOD_DISABLE_AUTH_STUFF
 
-// [TWEAK] Disable motd server contact which currently does not appear to have any working
-// functionality attached
-#define CMOD_DISABLE_MOTD
-
 // [BUGFIX] Extend some ioq3 overflow checks to EF-specific sections of msg.c
 #define CMOD_MSG_OVERFLOW_CHECKS
-
-// [BUGFIX] Reset sound system on map changes to avoid getting cached sounds from a previous map or mod
-#define CMOD_SOUND_RESET
-
-// [TWEAK] Optimized version of sound reset above to avoid load time impact
-#if defined(CMOD_SOUND_RESET) && defined(NEW_FILESYSTEM)
-#define CMOD_FAST_SOUND_RESET
-#endif
-
-// [BUGFIX] Increase concurrent sound limit to reduce rapidfire weapon stuttering
-#define CMOD_CONCURRENT_SOUNDS
-
-// [BUGFIX] Remove apparently unnecessary abort condition in MP3 decoder, which breaks the
-// music in certain maps such as 'amenhotep' and 'hm_stronghold'
-#define CMOD_MP3_LAYER_CHECK_FIX
-
-// [BUGFIX] Fix for possible sound buffer synchronization issues due to time overflow condition.
-// Not sure if this is actually necessary, but it shouldn't hurt.
-#define CMOD_SOUND_DMA_BUFFER_TWEAK
-
-// [BUGFIX] Disable passing "allow change" flags to SDL_OpenAudioDevice by default.
-// This fixes a crash issue seen when connecting/disconnecting USB audio devices, and
-// could have other stability or sound configuration benefits.
-#define CMOD_SOUND_DISABLE_SDL_FORMAT_CHANGES
 
 // [BUGFIX] Prevent overwriting argv[0] (can cause problems with server scripts accessing
 //   process name, for example)
