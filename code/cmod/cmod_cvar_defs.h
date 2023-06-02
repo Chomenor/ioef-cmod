@@ -106,3 +106,11 @@ CVAR_DEF(con_autoReturn, "1", CVAR_ARCHIVE)
 // 1 = ipv4 only, 2 = ipv6 only, 3 = both ipv4 and ipv6
 CVAR_DEF(cl_masterMultiQuery, "3", CVAR_ARCHIVE)
 #endif
+
+#ifdef CMOD_UI_MOUSE_SENSITIVITY
+// Positive value sets a specific UI mouse sensitivity (5 = original sensitivity).
+// Value of -1 (default) uses value of main "sensitivity" cvar if it is below 5, but
+// does not go above 5. This way low sensitivity values will lower menu sensitivity,
+// but high values don't increase it, to be safe and ensure menu stays navigable.
+CVAR_DEF(cl_menuSensitivity, "-1", CVAR_ARCHIVE)
+#endif

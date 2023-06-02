@@ -361,7 +361,35 @@ CL_MouseEvent
 */
 void CL_MouseEvent( int dx, int dy, int time ) {
 	if ( Key_GetCatcher( ) & KEYCATCH_UI ) {
+#ifdef CMOD_UI_MOUSE_SENSITIVITY
+		int i;
+		int value[2] = { dx, dy };
+		static float residual[2];
+
+		// Check "cl_menuSensitivity" cvar first
+		float sensitivity = cl_menuSensitivity->value;
+		if ( sensitivity < 0.1f ) {
+			// Get value from "sensitivity" cvar instead
+			sensitivity = Com_Clamp( 0.5f, 5.0f, cl_sensitivity->value );
+		}
+		sensitivity *= 0.2f;
+
+		// Merge with subpixel values left from previous moves
+		for ( i = 0; i < 2; ++i ) {
+			residual[i] += value[i] * sensitivity;
+			value[i] = (int)residual[i];
+			residual[i] -= value[i];
+			// Keep residual in range 0-1
+			if ( residual[i] < 0.0f ) {
+				value[i] -= 1;
+				residual[i] += 1.0f;
+			}
+		}
+
+		VM_Call( uivm, UI_MOUSE_EVENT, value[0], value[1] );
+#else
 		VM_Call( uivm, UI_MOUSE_EVENT, dx, dy );
+#endif
 #ifndef ELITEFORCE
 	} else if (Key_GetCatcher( ) & KEYCATCH_CGAME) {
 		VM_Call (cgvm, CG_MOUSE_EVENT, dx, dy);

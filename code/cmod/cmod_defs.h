@@ -217,6 +217,11 @@
 // method as older EF versions.
 #define CMOD_MOUSE_WARPING_OPTION
 
+// [FEATURE] Improved UI mouse sensitivity handling. By default, the cursor speed in UI will be reduced
+// if ingame sensitivity is set below the default of 5. A specific UI menu sensitivity that is higher or
+// lower than ingame sensitivity can also be set using "cl_menuSensitivity" cvar.
+#define CMOD_UI_MOUSE_SENSITIVITY
+
 // [FEATURE] Support "URI" console command to register/deregister URI handler on Windows.
 // On other platforms it will currently only display an error message.
 // Based on https://github.com/stefansundin/ioq3/commit/13060022021866704167aa28a086fd5a7043350a
