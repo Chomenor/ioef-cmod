@@ -114,3 +114,8 @@ CVAR_DEF(cl_masterMultiQuery, "3", CVAR_ARCHIVE)
 // but high values don't increase it, to be safe and ensure menu stays navigable.
 CVAR_DEF(cl_menuSensitivity, "-1", CVAR_ARCHIVE)
 #endif
+
+#ifdef CMOD_MODEL_NAME_LENGTH_LIMIT
+// Maximum allowed length of player model string.
+CVAR_DEF( sv_maxModelLength, "48", 0 )
+#endif

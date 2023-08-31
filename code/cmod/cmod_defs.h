@@ -345,6 +345,10 @@
 #define CMOD_MARIO_MOD_FIX
 #endif
 
+// [BUGFIX] Limit player model length as workaround for EF-specific game code bug in
+// which long model names can cause client errors in certain cases
+#define CMOD_MODEL_NAME_LENGTH_LIMIT
+
 // [TWEAK] Enable ipv6 support by default for dedicated server builds
 #define CMOD_DEDICATED_SERVER_IPV6_DEFAULT
 

@@ -403,6 +403,19 @@ void SV_DirectConnect( netadr_t from ) {
 		}
 	}
 	
+#ifdef CMOD_MODEL_NAME_LENGTH_LIMIT
+	if ( sv_maxModelLength->integer >= 16 &&
+			strlen( Info_ValueForKey( userinfo, "model" ) ) > sv_maxModelLength->integer ) {
+		// wipe the model name
+		Info_SetValueForKey( userinfo, "model", "munro/default" );
+
+		// confirm set was successful
+		if ( strlen( Info_ValueForKey( userinfo, "model" ) ) > sv_maxModelLength->integer ) {
+			NET_OutOfBandPrint( NS_SERVER, from, "print\nBad model name.\n" );
+			return;
+		}
+	}
+#endif
 #ifdef CMOD_MARIO_MOD_FIX
 	if ( Stef_MarioModFix_ModActive ) {
 		Info_SetValueForKey( userinfo, "cg_mmodVersn", "base_md01" );
@@ -1618,6 +1631,20 @@ void SV_UserinfoChanged( client_t *cl ) {
 	char	*ip;
 	int		i;
 	int	len;
+
+#ifdef CMOD_MODEL_NAME_LENGTH_LIMIT
+	if ( sv_maxModelLength->integer >= 16 &&
+			strlen( Info_ValueForKey( cl->userinfo, "model" ) ) > sv_maxModelLength->integer ) {
+		// wipe the model name
+		Info_SetValueForKey( cl->userinfo, "model", "munro/default" );
+
+		// confirm set was successful
+		// if it failed due to overflow wipe the whole userinfo
+		if ( strlen( Info_ValueForKey( cl->userinfo, "model" ) ) > sv_maxModelLength->integer ) {
+			Q_strncpyz( cl->userinfo, "\\model\\munro/default", sizeof( cl->userinfo ) );
+		}
+	}
+#endif
 
 	// name for C code
 	Q_strncpyz( cl->name, Info_ValueForKey (cl->userinfo, "name"), sizeof(cl->name) );
