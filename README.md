@@ -17,7 +17,7 @@ Author: Noah Metzger chomenor@gmail.com
 
 Download the [release](https://github.com/Chomenor/ioef-cmod/releases), extract it into your Elite Force directory, and run the included application. In most cases your existing EF client will continue to work without conflicts, but if you want to be extra safe, make a backup of your EF directory before installing cMod.
 
-GOG users: If you installed Elite Force through [Good Old Games](https://www.gog.com/en/game/star_trek_voyager_elite_force), you can alternatively extract the zip into an empty directory and run it from there. The game files should be automatically located from the GOG installation.
+GOG users: If you installed Elite Force through [Good Old Games](https://www.gog.com/en/game/star_trek_voyager_elite_force), you can alternatively extract the zip into an empty directory anywhere on your system and run it from there. The game files should be automatically located from the GOG installation.
 
 ## Documentation
 

@@ -4,7 +4,7 @@
 
 If possible, cMod will store files such as settings and downloads in the same location it is installed, like the original version of Elite Force.
 
-If cMod is installed somewhere where standard applications do not have write permissions, such as Program Files on Windows, it will store files in a folder under the user directory instead. On Windows this will be typically be located at ```%appdata%\STVEF```, on Linux at ```~/.stvef```, and on Mac at ```~/Library/Application Support/STVEF```.
+If cMod is installed somewhere where standard applications do not have write permissions, such as Program Files on Windows, it will store files in a folder under the user directory instead. On Windows this will typically be located at ```%appdata%\STVEF```, on Linux at ```~/.stvef```, and on Mac at ```~/Library/Application Support/STVEF```.
 
 ## Settings Handling
 
@@ -86,11 +86,13 @@ A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 co
 
 # FAQ
 
+**Q:** Mouse movement is different from other clients.  
+**A:** By default, cMod uses raw mouse input mode, which bypasses OS acceleration settings and is generally considered more accurate for FPS games. If you prefer the mouse input to be the same as older versions of EF, try disabling the ```RAW MOUSE``` option in the Mouse menu.
+
+Also make sure your sensitivity setting matches your old client. Use the `/sensitivity` console command to check the value in your old client, and `/sensitivity {value}` to set the same value in cMod.
+
 **Q:** Problems opening console.  
 **A:** There are known issues with the normal console key on some keyboard layouts. Try using the alternative combination, ```Shift + ESC``` to open the console.
-
-**Q:** Problems opening ingame chat.  
-**A:** There is a known bug in cMod versions prior to 1.08. Make sure you are using the latest version of cMod.
 
 **Q:** Settings "r_overBrightBits" and "r_mapOverBrightBits" not working.  
 **A:** cMod uses r_overBrightFactor and r_mapLightingFactor instead, with the following mapping:
@@ -100,10 +102,10 @@ r_mapLightingFactor = 2 ^ r_mapOverBrightBits
 
 For example, a setting of r_mapOverBrightBits 3 in another client translates to r_mapLightingFactor 8 in cMod.
 
-**Q:** Problems with jerkiness / low framerates.  
-**A:** By default, cMod uses higher graphics settings than the original version of EF. These settings work best on newer computers and those with at least low end gaming-grade video cards. Check your video card/GPU model at [videocardbenchmark.net](https://videocardbenchmark.net). I recommend a score of 600 minimum, and 1200+ ideally, to run EF at full detail and 1080p resolution. If your hardware scores below these numbers you might consider upgrading your PC/video card.
+**Q:** Problems with low framerates or jerkiness.  
+**A:** By default, cMod uses higher graphics settings than the original version of EF. These settings work best on newer computers and those intended for gaming. Check your video card/GPU model at [videocardbenchmark.net](https://videocardbenchmark.net). I recommend a score of 600 minimum, and 1200+ ideally, to run EF at full detail and 1080p resolution. If your hardware scores below these numbers you might consider upgrading your PC/video card.
 
 If you are having trouble with framerates in cMod you can try lowering the graphics quality settings in the menu.
 
-**Q:** Mouse movement is different from original EF.  
-**A:** By default, cMod tries to use raw input mode for mouse input, which bypasses OS acceleration settings and is generally more accurate for FPS games. If you prefer the mouse input to be the same as older versions of EF, try disabling the ```RAW MOUSE``` option in the Mouse menu.
+**Q:** Problems opening ingame chat.  
+**A:** There is a known bug in cMod versions prior to 1.08. Make sure you are using the latest version of cMod.
