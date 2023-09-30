@@ -580,7 +580,7 @@ static void SVC_Status( netadr_t from ) {
 
 #ifdef CMOD_GETSTATUS_FIXES
 	Info_SetValueForKey( infostring, "version_cmod", "v" PRODUCT_VERSION " " PLATFORM_STRING " " PRODUCT_DATE);
-	Info_SetValueForKey( infostring, "version", "ioEF:cMod HM v1.20 compatible");
+	Info_SetValueForKey( infostring, "version", "cMod HM v1.20 compatible");
 	if(*Cmd_Argv(1)) Info_SetValueForKey( infostring, "gamename", "baseEF" );
 #endif
 
