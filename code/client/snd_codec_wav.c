@@ -140,6 +140,11 @@ static qboolean S_ReadRIFFHeader(fileHandle_t file, snd_info_t *info)
 	// Scan for the format chunk
 	if((fmtlen = S_FindRIFFChunk(file, "fmt ")) < 0)
 	{
+#ifdef CMOD_REDUCE_WARNINGS
+		if ( cl.warned_wavFormat )
+			Com_DPrintf( S_COLOR_RED "ERROR: Couldn't find \"fmt\" chunk\n");
+		else
+#endif
 		Com_Printf( S_COLOR_RED "ERROR: Couldn't find \"fmt\" chunk\n");
 		return qfalse;
 	}
@@ -154,6 +159,11 @@ static qboolean S_ReadRIFFHeader(fileHandle_t file, snd_info_t *info)
 
 	if( bits < 8 )
 	{
+#ifdef CMOD_REDUCE_WARNINGS
+	  if ( cl.warned_wavFormat )
+		  Com_DPrintf( S_COLOR_RED "ERROR: Less than 8 bit sound is not supported\n");
+	  else
+#endif
 	  Com_Printf( S_COLOR_RED "ERROR: Less than 8 bit sound is not supported\n");
 	  return qfalse;
 	}
@@ -171,6 +181,11 @@ static qboolean S_ReadRIFFHeader(fileHandle_t file, snd_info_t *info)
 	// Scan for the data chunk
 	if( (info->size = S_FindRIFFChunk(file, "data")) < 0)
 	{
+#ifdef CMOD_REDUCE_WARNINGS
+		if ( cl.warned_wavFormat )
+			Com_DPrintf( S_COLOR_RED "ERROR: Couldn't find \"data\" chunk\n");
+		else
+#endif
 		Com_Printf( S_COLOR_RED "ERROR: Couldn't find \"data\" chunk\n");
 		return qfalse;
 	}
@@ -211,8 +226,19 @@ void *S_WAV_CodecLoad(const char *filename, snd_info_t *info)
 	if(!S_ReadRIFFHeader(file, info))
 	{
 		FS_FCloseFile(file);
+#ifdef CMOD_REDUCE_WARNINGS
+		if ( cl.warned_wavFormat ) {
+			Com_DPrintf( S_COLOR_RED "ERROR: Incorrect/unsupported format in \"%s\"\n",
+					filename);
+		} else {
+			Com_Printf( S_COLOR_RED "ERROR: Incorrect/unsupported format in \"%s\"\n",
+					filename);
+			cl.warned_wavFormat = qtrue;
+		}
+#else
 		Com_Printf( S_COLOR_RED "ERROR: Incorrect/unsupported format in \"%s\"\n",
 				filename);
+#endif
 		return NULL;
 	}
 
