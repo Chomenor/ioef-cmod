@@ -43,6 +43,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	-1112900480,	/* pakcmod-release-2022-07-25.pk3 */ \
 	-782642155,		/* pakcmod-release-2022-11-16.pk3 */ \
 	1339915926,		/* pakcmod-release-2023-02-07.pk3 */ \
+	-1411557209,	/* pakcmod-release-2023-09-17.pk3 */ \
+	-992215600,		/* pakcmod-release-2023-09-18.pk3 */ \
 }
 #endif
 #else
