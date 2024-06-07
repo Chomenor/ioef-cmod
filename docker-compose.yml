@@ -1,0 +1,12 @@
+services:
+  ioef-cmod:
+    image: ghcr.io/Chomenor/ioef-cmod:master
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ioef-cmod
+    ports:
+      - "27960:27960/udp"
+    volumes:
+      - /path/to/your/data:/usr/local/bin/baseEF
+    restart: unless-stopped
