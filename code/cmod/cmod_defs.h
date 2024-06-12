@@ -6,17 +6,23 @@
 #define ELITEFORCE
 
 // [COMMON] Mp3 Support
+#if !defined( __EMSCRIPTEN__ )
 #define USE_CODEC_MP3
+#endif
 
 // [FEATURE] New filesystem with various improvements
+#if !defined( __EMSCRIPTEN__ )
 #define NEW_FILESYSTEM
+#endif
 
 /* ******************************************************************************** */
 // Settings & Security
 /* ******************************************************************************** */
 
 // [FEATURE] New command system with various improvements
+#if !defined( __EMSCRIPTEN__ )
 #define CMOD_COMMAND_INTERPRETER
+#endif
 
 // [FEATURE] New settings system with various improvements
 // Moves settings storage to cmod.cfg instead of hmconfig.cfg
@@ -83,7 +89,9 @@
 
 // [FEATURE] Support separate mode setting in windowed/fullscreen mode (r_mode and r_fullscreenMode)
 // Also support directly specifying custom resolutions in r_mode and r_fullscreenMode
+#if !defined( __EMSCRIPTEN__ )
 #define CMOD_RESOLUTION_HANDLING
+#endif
 
 // [FEATURE] Support scaling console/chat font with display resolution (controlled by cmod_font_scaling cvar)
 #define CMOD_FONT_SCALING
@@ -104,7 +112,9 @@
 #define CMOD_EF_ENVIRONMENT_MAP_MODE
 
 // [BUGFIX] Fixes potential vid restart loop issues (potentially related to r_fullscreenMode support)
+#if !defined( __EMSCRIPTEN__ )
 #define CMOD_IGNORE_RESIZE_MESSAGES
+#endif
 
 // [BUGFIX] Fix potential graphics glitch during loading screen
 #define CMOD_LOADINGSCREEN_FIX

@@ -148,7 +148,7 @@ ifndef RENDERER_PREFIX
 endif
 
 ifndef BASEGAME
-BASEGAME=baseq3
+BASEGAME=baseEF
 endif
 
 ifndef BASEGAME_CFLAGS

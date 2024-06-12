@@ -1,3 +1,4 @@
+#ifdef USE_CODEC_MP3
 /*
  * libmad - MPEG audio decoder library
  * Copyright (C) 2000-2004 Underbit Technologies, Inc.
@@ -3105,3 +3106,5 @@ struct hufftable const mad_huff_pair_table[32] = {
   /* 30 */ { hufftab24, 11, 4 },
   /* 31 */ { hufftab24, 13, 4 }
 };
+
+#endif  // USE_CODEC_MP3

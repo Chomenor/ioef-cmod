@@ -1,3 +1,4 @@
+#ifdef USE_CODEC_MP3
 /*
  * libmad - MPEG audio decoder library
  * Copyright (C) 2000-2004 Underbit Technologies, Inc.
@@ -499,3 +500,5 @@ void mad_frame_mute(struct mad_frame *frame)
     }
   }
 }
+
+#endif  // USE_CODEC_MP3

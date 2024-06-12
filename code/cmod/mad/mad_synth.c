@@ -1,3 +1,4 @@
+#ifdef USE_CODEC_MP3
 /*
  * libmad - MPEG audio decoder library
  * Copyright (C) 2000-2004 Underbit Technologies, Inc.
@@ -853,3 +854,5 @@ void mad_synth_frame(struct mad_synth *synth, struct mad_frame const *frame)
 
   synth->phase = (synth->phase + ns) % 16;
 }
+
+#endif  // USE_CODEC_MP3

@@ -1,3 +1,4 @@
+#ifdef USE_CODEC_MP3
 /*
  * libmad - MPEG audio decoder library
  * Copyright (C) 2000-2004 Underbit Technologies, Inc.
@@ -2694,3 +2695,5 @@ int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
 
   return result;
 }
+
+#endif  // USE_CODEC_MP3

@@ -1,3 +1,4 @@
+#ifdef USE_CODEC_MP3
 /*
  * libmad - MPEG audio decoder library
  * Copyright (C) 2000-2004 Underbit Technologies, Inc.
@@ -77,3 +78,5 @@ mad_fixed_t mad_f_div(mad_fixed_t x, mad_fixed_t y)
 
   return q << bits;
 }
+
+#endif  // USE_CODEC_MP3

@@ -1,3 +1,4 @@
+#ifdef USE_CODEC_MP3
 /*
  * libmad - MPEG audio decoder library
  * Copyright (C) 2000-2004 Underbit Technologies, Inc.
@@ -87,3 +88,5 @@ char const mad_build[] = ""
   "OPT_STRICT "
 # endif
 ;
+
+#endif  // USE_CODEC_MP3
