@@ -67,6 +67,16 @@ int compatibleVMHashes[] = {
 // Should be same as default set in other places to avoid unwanted overrides
 #define CG_FOV_DEFAULT "85*"
 
+// Have cgame render at this fov, then convert to actual fov afterwards
+#define CGAME_FOV 80
+
+#define GUN_OFFSET( fov ) ( fov > 80.0f ? -0.2f * ( fov - 80.0f ) : 0 )		// CG_AddViewWeapon
+#define SCREEN_QUAD_RADIUS( fov ) ( fov > 80 ? 8.0f + ( fov - 80 ) * 0.2f : 8.0f )	// CG_DrawScreenQuad
+#define SCREEN_QUAD_RADIUS_EXT( fov ) ( SCREEN_QUAD_RADIUS( fov ) + ( fov > 120 ? ( fov - 120 ) * 0.4f : 0 ) )
+
+#define CONVERT_FOV( old_fov, old_size, new_size ) \
+	( atan2( new_size, ( old_size ) / tan( ( old_fov ) / 360.0f * M_PI ) ) * 360.0f / M_PI )
+
 /*
 ================
 AspectCorrect_UpdateValues
@@ -199,30 +209,6 @@ static void AspectCorrect_DrawStretchPic( float x, float y, float w, float h,
 
 /*
 ================
-AspectCorrect_RenderScene
-================
-*/
-static void AspectCorrect_RenderScene( const refdef_t *fd, scaleMode_t mode ) {
-	refdef_t newfd = *fd;
-	AspectCorrect_AdjustFrom640Int( &newfd.x, &newfd.y, &newfd.width, &newfd.height, mode );
-
-	if ( fd->width == 640 && fd->height == 480 ) {
-		// First extrapolate game's fov_y value into fov_x
-		float x = 480.0 / tan( newfd.fov_y / 360 * M_PI );
-		float fov_x = atan2( 640.0, x );
-		fov_x = fov_x * 360 / M_PI;
-
-		// Convert to real screen fov_y value
-		x = cls.glconfig.vidWidth / tan( fov_x / 360 * M_PI );
-		newfd.fov_y = atan2( cls.glconfig.vidHeight, x );
-		newfd.fov_y = newfd.fov_y * 360 / M_PI;
-	}
-
-	re.RenderScene( &newfd );
-}
-
-/*
-================
 AspectCorrect_GetFovSetting
 
 Get the current cg_fov cvar value, adjusting for the trailing '*' scaling specifier if needed.
@@ -234,30 +220,43 @@ static float AspectCorrect_GetFovSetting( void ) {
 	if ( !cvar_cg_fov ) {
 		cvar_cg_fov = Cvar_Get( "cg_fov", "85*", 0 );
 	}
+	fov = Com_Clamp( 1, 120, cvar_cg_fov->value );
 
 	if ( strchr( cvar_cg_fov->string, '*' ) ) {
-		// Calculate fov_y based on fov_x at theoretical 640x480 resolution
-		float x = 640.0 / tan( cvar_cg_fov->value / 360 * M_PI );
-		float fov_y = atan2( 480.0, x );
-		fov_y = fov_y * 360 / M_PI;
-
-		// Recalculate fov_x based on fov_y
-		x = cls.glconfig.vidHeight / tan( fov_y / 360 * M_PI );
-		fov = atan2( cls.glconfig.vidWidth, x );
-		fov = fov * 360 / M_PI;
-	} else {
-		fov = cvar_cg_fov->value;
+		// Convert hor+ fov
+		fov = CONVERT_FOV( fov, cls.glconfig.vidHeight * 4.0f / 3.0f, cls.glconfig.vidWidth );
 	}
 
-	if ( fov < 1.0f )
-		return 1.0f;
-	if ( fov > 120.0f )
-		return 120.0f;
 	return fov;
 }
 
-// Original game calculations to determine gun Z offset from fov
-#define FOV_OFFSET( fov ) ( fov > 80.0f ? -0.2f * ( fov - 80.0f ) : 0 )
+/*
+================
+AspectCorrect_RenderScene
+================
+*/
+static void AspectCorrect_RenderScene( const refdef_t *fd, scaleMode_t mode ) {
+	refdef_t newfd = *fd;
+	AspectCorrect_AdjustFrom640Int( &newfd.x, &newfd.y, &newfd.width, &newfd.height, mode );
+
+	if ( fd->width == 640 && fd->height == 480 ) {
+		if ( cl.snap.ps.pm_type == PM_INTERMISSION && cls.glconfig.vidWidth * 3 > cls.glconfig.vidHeight * 4
+				&& mode == SCALE_AUTO ) {
+			newfd.fov_x = CONVERT_FOV( newfd.fov_y, cls.glconfig.vidHeight, cls.glconfig.vidWidth );
+		} else if ( cl.snap.ps.pm_type == PM_INTERMISSION || cl.snap.ps.introTime > cl.serverTime ) {
+			newfd.fov_y = CONVERT_FOV( newfd.fov_x, cls.glconfig.vidWidth, cls.glconfig.vidHeight );
+		} else {
+			// Recalculate both x and y fov
+			float factor = tan( CGAME_FOV / 360.0f * M_PI ) / tan( AspectCorrect_GetFovSetting() / 360.0f * M_PI );
+			float x = cls.glconfig.vidWidth / tan( newfd.fov_x / 360.0f * M_PI );
+			newfd.fov_x = atan2( cls.glconfig.vidWidth, x * factor ) * 360.0f / M_PI;
+			x = ( cls.glconfig.vidWidth * 3.0f / 4.0f ) / tan( newfd.fov_y / 360.0f * M_PI );
+			newfd.fov_y = atan2( cls.glconfig.vidHeight, x * factor ) * 360.0f / M_PI;
+		}
+	}
+
+	re.RenderScene( &newfd );
+}
 
 /*
 ================
@@ -267,21 +266,10 @@ Get the cg_gunZ correction value to patch gun location.
 ================
 */
 static float AspectCorrect_GetGunAdjust( void ) {
+	// Calculate gun offset we want to use and subtract original adjustment done by cgame
 	float fov = AspectCorrect_GetFovSetting();
-	float adjustedFov;
-
-	// calculate vertical fov
-	float x = cls.glconfig.vidWidth / tan( fov / 360 * M_PI );
-	float fov_y = atan2( cls.glconfig.vidHeight, x );
-	fov_y = fov_y * 360 / M_PI;
-
-	// convert it to horizontal fov at theoretical 4:3 aspect ratio
-	x = 480.0 / tan( fov_y / 360 * M_PI );
-	adjustedFov = atan2( 640.0, x );
-	adjustedFov = adjustedFov * 360 / M_PI;
-
-	// calculate gun adjustment we want to use, and subtract the original adjustment done by cgame
-	return Cvar_VariableValue( "cg_gunZ" ) + FOV_OFFSET( adjustedFov ) - FOV_OFFSET( fov );
+	float adjustedFov = CONVERT_FOV( fov, cls.glconfig.vidWidth, cls.glconfig.vidHeight * 4.0f / 3.0f );
+	return Cvar_VariableValue( "cg_gunZ" ) + GUN_OFFSET( adjustedFov ) - GUN_OFFSET( CGAME_FOV );
 }
 
 /*
@@ -319,6 +307,28 @@ qboolean AspectCorrect_OnCgameSyscall( intptr_t *args, intptr_t *retval ) {
 				return qtrue;
 			}
 
+			case CG_R_ADDREFENTITYTOSCENE:
+			{
+				refEntity_t *refent = VMA(1);
+				if ( refent->reType == RT_SPRITE && refent->renderfx == RF_FIRST_PERSON &&
+						refent->data.sprite.radius >= 8.0f && refent->shaderRGBA[0] == refent->shaderRGBA[1] &&
+						refent->shaderRGBA[0] == refent->shaderRGBA[2]) {
+					// Recalculate radius for fullscreen shaders from CG_DrawScreenQuad, such as
+					// transporter effect, or Medusan Ambassador from tos weapons mod
+					float fov = AspectCorrect_GetFovSetting();
+					if ( cl.snap.ps.pm_type == PM_INTERMISSION ) {
+						if ( cls.glconfig.vidWidth * 3 > cls.glconfig.vidHeight * 4 && CGAME_ASPECT_CORRECT_ENABLED ) {
+							fov = CONVERT_FOV( 90, cls.glconfig.vidHeight * 4.0f / 3.0f, cls.glconfig.vidWidth );
+						} else{
+							fov = 90;
+						}
+					}
+					refent->data.sprite.radius = SCREEN_QUAD_RADIUS_EXT( fov );
+				}
+				re.AddRefEntityToScene( refent );
+				return qtrue;
+			}
+
 			case CG_R_RENDERSCENE:
 				AspectCorrect_RenderScene( VMA(1), CGAME_ASPECT_CORRECT_ENABLED ? SCALE_AUTO : SCALE_STRETCH );
 				return qtrue;
@@ -332,7 +342,7 @@ qboolean AspectCorrect_OnCgameSyscall( intptr_t *args, intptr_t *retval ) {
 			{
 				vmCvar_t *cvar = VMA(1);
 				if ( cvar->handle == asc.fovCvarHandle ) {
-					AspectCorrect_OverrideVMCvar( cvar, AspectCorrect_GetFovSetting() );
+					AspectCorrect_OverrideVMCvar( cvar, CGAME_FOV );
 					return qtrue;
 				}
 				if ( cvar->handle == asc.gunZCvarHandle && ASPECT_CORRECT_GUN_POS_ENABLED ) {
