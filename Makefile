@@ -275,10 +275,10 @@ NDIR=$(MOUNT_DIR)/null
 UIDIR=$(MOUNT_DIR)/ui
 Q3UIDIR=$(MOUNT_DIR)/q3_ui
 JPDIR=$(MOUNT_DIR)/jpeg-8c
-OGGDIR=$(MOUNT_DIR)/libogg-1.3.3
-VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.6
-OPUSDIR=$(MOUNT_DIR)/opus-1.2.1
-OPUSFILEDIR=$(MOUNT_DIR)/opusfile-0.9
+OGGDIR=$(MOUNT_DIR)/libogg-1.3.6
+VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.7
+OPUSDIR=$(MOUNT_DIR)/opus-1.5.2
+OPUSFILEDIR=$(MOUNT_DIR)/opusfile-0.12
 ZDIR=$(MOUNT_DIR)/zlib
 TOOLSDIR=$(MOUNT_DIR)/tools
 Q3ASMDIR=$(MOUNT_DIR)/tools/asm
@@ -2194,6 +2194,7 @@ Q3OBJ += \
   $(B)/client/opus/opus_multistream_encoder.o \
   $(B)/client/opus/opus_multistream_decoder.o \
   $(B)/client/opus/repacketizer.o \
+  $(B)/client/opus/extensions.o \
   \
   $(B)/client/opus/bands.o \
   $(B)/client/opus/celt.o \
