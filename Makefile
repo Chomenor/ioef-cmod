@@ -1136,6 +1136,8 @@ ifndef CC
   CC=gcc
 endif
 
+CC_VERSION=$(shell $(CC) --version | head -n1)
+
 ifndef RANLIB
   RANLIB=ranlib
 endif
@@ -1598,6 +1600,7 @@ targets: makedirs
 	@echo "  HAVE_VM_COMPILED: $(HAVE_VM_COMPILED)"
 	@echo "  PKG_CONFIG: $(PKG_CONFIG)"
 	@echo "  CC: $(CC)"
+	@echo "  CC_VERSION: $(CC_VERSION)"
 ifeq ($(PLATFORM),mingw32)
 	@echo "  WINDRES: $(WINDRES)"
 endif
