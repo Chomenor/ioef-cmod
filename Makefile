@@ -2940,6 +2940,12 @@ $(B)/client/%.o: $(OPUSFILEDIR)/src/%.c
 $(B)/client/%.o: $(ZDIR)/%.c
 	$(DO_THIRDPARTY_CC)
 
+$(B)/client/ioapi.o: $(CMDIR)/ioapi.c
+	$(DO_THIRDPARTY_CC)
+
+$(B)/client/unzip.o: $(CMDIR)/unzip.c
+	$(DO_THIRDPARTY_CC)
+
 $(B)/client/%.o: $(SDLDIR)/%.c
 	$(DO_CC)
 
@@ -2999,6 +3005,12 @@ $(B)/ded/%.o: $(CMDIR)/%.c
 
 $(B)/ded/%.o: $(ZDIR)/%.c
 	$(DO_THIRDPARTY_DED_CC)
+
+$(B)/ded/ioapi.o: $(CMDIR)/ioapi.c
+	$(DO_THIRDPARTY_CC)
+
+$(B)/ded/unzip.o: $(CMDIR)/unzip.c
+	$(DO_THIRDPARTY_CC)
 
 $(B)/ded/%.o: $(BLIBDIR)/%.c
 	$(DO_BOT_CC)
