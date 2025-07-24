@@ -286,7 +286,7 @@ TOMSFASTMATHSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/tomsfastmath-0.13.1
 LOKISETUPDIR=misc/setup
 NSISDIR=misc/nsis
 WEBDIR=$(MOUNT_DIR)/web
-SDLHDIR=$(MOUNT_DIR)/SDL2
+SDLHDIR=$(MOUNT_DIR)/SDL2-2.32.8
 LIBSDIR=$(MOUNT_DIR)/libs
 
 bin_path=$(shell which $(1) 2> /dev/null)
@@ -546,10 +546,10 @@ ifeq ($(PLATFORM),darwin)
     # We copy sdlmain before ranlib'ing it so that subversion doesn't think
     #  the file has been modified by each build.
     LIBSDLMAIN = $(B)/libSDL2main.a
-    LIBSDLMAINSRC = $(LIBSDIR)/macosx-ub2/libSDL2main.a
-    CLIENT_LIBS += $(LIBSDIR)/macosx-ub2/libSDL2-2.0.0.dylib
-    RENDERER_LIBS += $(LIBSDIR)/macosx-ub2/libSDL2-2.0.0.dylib
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/macosx-ub2/libSDL2-2.0.0.dylib
+    LIBSDLMAINSRC = $(LIBSDIR)/macos/libSDL2main.a
+    CLIENT_LIBS += $(LIBSDIR)/macos/libSDL2-2.0.0.dylib
+    RENDERER_LIBS += $(LIBSDIR)/macos/libSDL2-2.0.0.dylib
+    CLIENT_EXTRA_FILES += $(LIBSDIR)/macos/libSDL2-2.0.0.dylib
   else
     BASE_CFLAGS += -I/Library/Frameworks/SDL2.framework/Headers
     CLIENT_LIBS += -framework SDL2
@@ -707,12 +707,12 @@ ifdef MINGW
     SDLDLL=SDL2.dll
     CLIENT_EXTRA_FILES += $(LIBSDIR)/win32/SDL2.dll
     else
-    CLIENT_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
-                      $(LIBSDIR)/win64/libSDL264.dll.a
-    RENDERER_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
-                      $(LIBSDIR)/win64/libSDL264.dll.a
-    SDLDLL=SDL264.dll
-    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL264.dll
+    CLIENT_LIBS += $(LIBSDIR)/win64/libSDL2main.a \
+                      $(LIBSDIR)/win64/libSDL2.dll.a
+    RENDERER_LIBS += $(LIBSDIR)/win64/libSDL2main.a \
+                      $(LIBSDIR)/win64/libSDL2.dll.a
+    SDLDLL=SDL2.dll
+    CLIENT_EXTRA_FILES += $(LIBSDIR)/win64/SDL2.dll
     endif
   else
     CLIENT_CFLAGS += $(SDL_CFLAGS)
