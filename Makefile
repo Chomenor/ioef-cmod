@@ -2987,10 +2987,10 @@ $(B)/ded/%.o: $(ZDIR)/%.c
 	$(DO_THIRDPARTY_DED_CC)
 
 $(B)/ded/ioapi.o: $(CMDIR)/ioapi.c
-	$(DO_THIRDPARTY_CC)
+	$(DO_THIRDPARTY_DED_CC)
 
 $(B)/ded/unzip.o: $(CMDIR)/unzip.c
-	$(DO_THIRDPARTY_CC)
+	$(DO_THIRDPARTY_DED_CC)
 
 $(B)/ded/%.o: $(BLIBDIR)/%.c
 	$(DO_BOT_CC)
