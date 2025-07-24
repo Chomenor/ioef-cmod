@@ -37,3 +37,4 @@ prepare "https://downloads.xiph.org/releases/opus/opusfile-0.12.tar.gz" "./confi
 prepare "https://zlib.net/zlib-1.3.1.tar.gz" "./configure" "\./[^/]*\.[ch]" "\./gz.*\.[c]"
 prepare "https://www.ijg.org/files/jpegsrc.v9f.tar.gz" "./configure" "\./\(j.*\.c\|.*\.h\)" "\./\(jmem\(ansi\|dos\|mac\|name\)\|jpegtran\)\.c"
 prepare "https://curl.se/download/curl-8.15.0.tar.gz" "./configure --with-openssl" "\.*/include/.*\.h"
+prepare "https://github.com/kcat/openal-soft/archive/refs/tags/1.24.3.tar.gz" "" "\./include/AL/.*\.h"
