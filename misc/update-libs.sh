@@ -48,7 +48,7 @@ prepare "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" "./configure" "\./[^/]*\.
 prepare "https://www.ijg.org/files/jpegsrc.v${JPEG_VERSION}.tar.gz" "./configure" "\./\(j.*\.c\|.*\.h\)" "\./\(jmem\(ansi\|dos\|mac\|name\)\|jpegtran\)\.c"
 prepare "https://curl.se/download/curl-${CURL_VERSION}.tar.gz" "./configure --with-openssl" "\.*/include/.*\.h"
 prepare "https://github.com/kcat/openal-soft/archive/refs/tags/${OPENAL_VERSION}.tar.gz" "" "\./include/AL/.*\.h"
-prepare "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-${SDL_VERSION}.tar.gz" "./configure" "\./include/.*\.h"
+prepare "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-${SDL_VERSION}.tar.gz" "" "\./include/.*\.h"
 
 TMPDIR=$(mktemp -d)
 cd ${TMPDIR}
