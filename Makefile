@@ -372,7 +372,7 @@ endif
 
 ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu"))
   WARNINGS_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes
-  BASE_CFLAGS = -pipe -DUSE_ICON -DARCH_STRING=\\\"$(ARCH)\\\"
+  BASE_CFLAGS = -pipe -DUSE_ICON
   CLIENT_CFLAGS += $(SDL_CFLAGS)
 
   OPTIMIZEVM = -O3

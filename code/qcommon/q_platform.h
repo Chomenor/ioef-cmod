@@ -186,8 +186,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PATH_SEP '/'
 
-#if !defined(ARCH_STRING)
-# error ARCH_STRING should be defined by the Makefile
+#if defined(__x86_64__) || defined(__amd64__)
+# define ARCH_STRING "x86_64"
+#elif defined(__i386__)
+# define ARCH_STRING "x86"
+#elif defined(__aarch64__)
+# define ARCH_STRING "arm64"
+#elif defined(__arm__)
+# define ARCH_STRING "arm"
+#elif defined(__powerpc64__) || defined(__ppc64__)
+# define ARCH_STRING "ppc64"
+#elif defined(__powerpc__) || defined(__ppc__)
+# define ARCH_STRING "ppc"
+#elif defined(__alpha__)
+# define ARCH_STRING "alpha"
+#else
+# error Unknown or unsupported architecture
 #endif
 
 #if defined __x86_64__
