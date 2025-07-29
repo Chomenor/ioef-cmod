@@ -239,10 +239,6 @@ ifndef USE_INTERNAL_JPEG
 USE_INTERNAL_JPEG=$(USE_INTERNAL_LIBS)
 endif
 
-ifndef USE_LOCAL_HEADERS
-USE_LOCAL_HEADERS=$(USE_INTERNAL_LIBS)
-endif
-
 ifndef USE_RENDERER_DLOPEN
 USE_RENDERER_DLOPEN=1
 endif
@@ -334,8 +330,11 @@ else
   OPENAL_LIBS ?= -lopenal
 endif
 
-ifeq ($(USE_LOCAL_HEADERS),1)
+ifeq ($(USE_INTERNAL_CURL_HEADERS),1)
   CURL_CFLAGS+=-I$(CURLDIR)/include
+endif
+
+ifeq ($(USE_INTERNAL_OPENAL_HEADERS),1)
   OPENAL_CFLAGS+=-I${OPENALDIR}/include
 endif
 
@@ -534,7 +533,7 @@ ifeq ($(PLATFORM),darwin)
   BASE_CFLAGS += -fno-strict-aliasing -fno-common -pipe
 
   ifeq ($(USE_OPENAL),1)
-    ifneq ($(USE_LOCAL_HEADERS),1)
+    ifneq ($(USE_INTERNAL_OPENAL_HEADERS),1)
       CLIENT_CFLAGS += -I/System/Library/Frameworks/OpenAL.framework/Headers
     endif
     ifneq ($(USE_OPENAL_DLOPEN),1)
