@@ -3274,7 +3274,7 @@ void CL_InitRef( void ) {
 		Com_Printf("failed:\n\"%s\"\n", Sys_LibraryError());
 		Cvar_ForceReset("cl_renderer");
 
-		Com_sprintf(dllName, sizeof(dllName), "renderer_opengl2" RENDERER_ARCH_DLL_EXT);
+		Com_sprintf(dllName, sizeof(dllName), "renderer_%s" RENDERER_ARCH_DLL_EXT, cl_renderer->resetString);
 		rendererLib = Sys_LoadDll(dllName, qfalse);
 	}
 
