@@ -3055,9 +3055,15 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 # EMSCRIPTEN
 #############################################################################
 
-$(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html
+EMSCRIPTEN_PRELOAD_FILE_SWITCH := $(if $(filter 1,$(EMSCRIPTEN_PRELOAD_FILE)),ON,OFF)
+$(B)/$(CLIENTBIN).html: $(WEBDIR)/client.html.in
 	$(echo_cmd) "SED $@"
-	$(Q)sed 's/__CLIENTBIN__/$(CLIENTBIN)/g;s/__BASEGAME__/$(BASEGAME)/g;s/__EMSCRIPTEN_PRELOAD_FILE__/$(EMSCRIPTEN_PRELOAD_FILE)/g' < $< > $@
+	$(Q)sed \
+		-e 's/@CLIENT_NAME@/$(CLIENTBIN)/g;' \
+		-e 's/@CLIENT_BINARY@/$(CLIENTBIN)_opengl2.$(ARCH)/g;' \
+		-e 's/@BASEGAME@/$(BASEGAME)/g;' \
+		-e 's/@EMSCRIPTEN_PRELOAD_FILE@/$(EMSCRIPTEN_PRELOAD_FILE_SWITCH)/g' \
+		< $< > $@
 
 $(B)/$(CLIENTBIN)-config.json: $(WEBDIR)/client-config.json
 	$(echo_cmd) "CP $@"
