@@ -53,7 +53,11 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
+#ifdef WINDOWS_ICON_PATH
+IDI_ICON1               ICON    DISCARDABLE     WINDOWS_ICON_PATH
+#else
 IDI_ICON1               ICON    DISCARDABLE     "quake3.ico"
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////
