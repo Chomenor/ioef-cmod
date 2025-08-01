@@ -2081,10 +2081,10 @@ ifneq ($(USE_RENDERER_DLOPEN), 0)
     $(B)/renderergl1/tr_subs.o
 
   Q3R2OBJ += \
-    $(B)/renderergl1/q_shared.o \
-    $(B)/renderergl1/puff.o \
-    $(B)/renderergl1/q_math.o \
-    $(B)/renderergl1/tr_subs.o
+    $(B)/renderergl2/q_shared.o \
+    $(B)/renderergl2/puff.o \
+    $(B)/renderergl2/q_math.o \
+    $(B)/renderergl2/tr_subs.o
 endif
 
 ifneq ($(USE_INTERNAL_JPEG),0)
@@ -2935,6 +2935,9 @@ $(B)/renderergl2/glsl/%.c: $(RGL2DIR)/glsl/%.glsl $(STRINGIFY)
 	$(DO_REF_STR)
 
 $(B)/renderergl2/glsl/%.o: $(B)/renderergl2/glsl/%.c
+	$(DO_REF_CC)
+
+$(B)/renderergl2/%.o: $(CMDIR)/%.c
 	$(DO_REF_CC)
 
 $(B)/renderergl2/%.o: $(RCOMMONDIR)/%.c
