@@ -57,6 +57,9 @@ endif()
 
 add_compile_definitions(PRODUCT_VERSION="${PRODUCT_VERSION}")
 
+# For CI to read from
+file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/version.txt CONTENT ${PRODUCT_VERSION})
+
 set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/code)
 
 include(compilers/all)

@@ -2,8 +2,8 @@ name: Build
 on: [push, pull_request]
 
 jobs:
-  linux:
-    name: Linux
+  linux-legacy:
+    name: Linux (Legacy Makefile)
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
@@ -19,8 +19,8 @@ jobs:
       with:
         name: Linux
         path: build/*.zip
-  windows:
-    name: Windows
+  windows-legacy:
+    name: Windows (Legacy Makefile)
     runs-on: windows-2022
     steps:
     - uses: actions/checkout@v4
@@ -34,8 +34,8 @@ jobs:
       with:
         name: Windows
         path: build/*.zip
-  macos:
-    name: macOS
+  macos-legacy:
+    name: macOS (Legacy Makefile)
     runs-on: macos-13
     steps:
     - uses: actions/checkout@v4
@@ -47,7 +47,8 @@ jobs:
       with:
         name: macOS
         path: build/*.zip
-  web:
+  emscripten-legacy:
+    name: Emscripten (Legacy Makefile)
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -70,3 +71,98 @@ jobs:
       with:
         name: Web
         path: build/*.zip
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsdl2-dev
+    - name: Compile
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build build
+        echo "VERSION=$(cat build/version.txt)" >> $GITHUB_ENV
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-linux-${{ env.VERSION }}
+        path: |
+          build/Release/**/*
+  windows-msvc:
+    name: Windows MSVC
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v4
+    - name: Compile
+      run: |
+        cmake -S . -B build -G "Visual Studio 17 2022"
+        cmake --build build --config Release
+        $version = Get-Content build/version.txt -Raw
+        Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$version"
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-windows-msvc-${{ env.VERSION }}
+        path: |
+          build/Release/**/*.dll
+          build/Release/**/*.exe
+          build/Release/**/*.qvm
+  windows-mingw:
+    name: Windows MinGW
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v4
+    - name: Compile
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build build
+        $version = Get-Content build/version.txt -Raw
+        Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$version"
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-windows-mingw-${{ env.VERSION }}
+        path: |
+          build/Release/**/*.dll
+          build/Release/**/*.exe
+          build/Release/**/*.qvm
+  macos:
+    name: macOS
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+    - name: Compile
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build build
+        echo "VERSION=$(cat build/version.txt)" >> $GITHUB_ENV
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-macOS-${{ env.VERSION }}
+        path: |
+          build/Release/**/*
+  emscripten:
+    name: Emscripten
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install emsdk
+      uses: mymindstorm/setup-emsdk@v13
+      with:
+        version: 3.1.58
+    - name: Compile
+      run: |
+        emcmake cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build build
+        echo "VERSION=$(cat build/version.txt)" >> $GITHUB_ENV
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-emscripten-${{ env.VERSION }}
+        path: |
+          build/Release/**/*
