@@ -13,12 +13,6 @@ jobs:
         sudo apt-get install libsdl2-dev
     - name: Compile
       run: make release -j$(nproc)
-      env:
-        ARCHIVE: 1
-    - uses: actions/upload-artifact@v4
-      with:
-        name: Linux
-        path: build/*.zip
   windows-legacy:
     name: Windows (Legacy Makefile)
     runs-on: windows-2022
@@ -26,14 +20,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Compile
       run: |
-        choco install zip
         make release -j $env:NUMBER_OF_PROCESSORS
-      env:
-        ARCHIVE: 1
-    - uses: actions/upload-artifact@v4
-      with:
-        name: Windows
-        path: build/*.zip
   macos-legacy:
     name: macOS (Legacy Makefile)
     runs-on: macos-13
@@ -41,12 +28,6 @@ jobs:
     - uses: actions/checkout@v4
     - name: Compile
       run: make release -j$(sysctl -n hw.logicalcpu)
-      env:
-        ARCHIVE: 1
-    - uses: actions/upload-artifact@v4
-      with:
-        name: macOS
-        path: build/*.zip
   emscripten-legacy:
     name: Emscripten (Legacy Makefile)
     runs-on: ubuntu-latest
@@ -62,15 +43,9 @@ jobs:
         ./emsdk install 3.1.58
         ./emsdk activate 3.1.58
     - name: Compile
-      env:
-        ARCHIVE: 1
       run: |
         source emsdk/emsdk_env.sh
         emmake make release -j$(nproc)
-    - uses: actions/upload-artifact@v4
-      with:
-        name: Web
-        path: build/*.zip
 
   linux:
     name: Linux
