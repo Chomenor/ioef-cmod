@@ -20,6 +20,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+
+#if defined(powerc) || defined(powerpc) || defined(__powerpc__) || \
+	defined(ppc) || defined(__ppc) || defined(__ppc__) || \
+	defined(__powerpc64__) || defined(__ppc64__)
+
 #include <sys/types.h> /* needed by sys/mman.h on OSX */
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -3233,3 +3238,5 @@ VM_CallCompiled( vm_t *vm, int *args )
 
 	return retVal;
 }
+
+#endif // powerpc

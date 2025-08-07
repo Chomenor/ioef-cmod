@@ -20,6 +20,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+#if defined(__sparc) || defined(__sparc__)
+
 /* This code is based almost entirely upon the vm_powerpc.c code by
  * Przemyslaw Iskra.  All I did was make it work on Sparc :-) -DaveM
  */
@@ -1741,3 +1743,5 @@ int VM_CallCompiled(vm_t *vm, int *args)
 
 	return retVal;
 }
+
+#endif // sparc
