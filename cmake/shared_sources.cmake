@@ -46,7 +46,7 @@ elseif(ARCH MATCHES "ppc" OR ARCH MATCHES "ppc64")
     )
 elseif(ARCH MATCHES "arm")
     list(APPEND COMMON_SOURCES
-        ${SOURCE_DIR}/qcommon/vm_armv71.c
+        ${SOURCE_DIR}/qcommon/vm_armv7l.c
     )
 elseif(ARCH MATCHES "sparc")
     list(APPEND COMMON_SOURCES
