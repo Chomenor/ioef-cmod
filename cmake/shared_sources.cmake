@@ -1,7 +1,6 @@
 include_guard(GLOBAL)
 
 include(utils/add_git_dependency)
-include(utils/arch)
 include(utils/disable_warnings)
 
 set(COMMON_SOURCES
@@ -25,7 +24,11 @@ set(COMMON_SOURCES
     ${SOURCE_DIR}/qcommon/unzip.c
     ${SOURCE_DIR}/qcommon/ioapi.c
     ${SOURCE_DIR}/qcommon/vm.c
+    ${SOURCE_DIR}/qcommon/vm_armv7l.c
     ${SOURCE_DIR}/qcommon/vm_interpreted.c
+    ${SOURCE_DIR}/qcommon/vm_powerpc.c
+    ${SOURCE_DIR}/qcommon/vm_sparc.c
+    ${SOURCE_DIR}/qcommon/vm_x86.c
 )
 
 disable_warnings(
@@ -34,24 +37,6 @@ disable_warnings(
 )
 
 add_git_dependency(${SOURCE_DIR}/qcommon/common.c)
-
-if(ARCH MATCHES "x86" OR ARCH MATCHES "x86_64")
-    list(APPEND COMMON_SOURCES
-        ${SOURCE_DIR}/qcommon/vm_x86.c
-    )
-elseif(ARCH MATCHES "ppc" OR ARCH MATCHES "ppc64")
-    list(APPEND COMMON_SOURCES
-        ${SOURCE_DIR}/qcommon/vm_powerpc.c
-    )
-elseif(ARCH MATCHES "arm")
-    list(APPEND COMMON_SOURCES
-        ${SOURCE_DIR}/qcommon/vm_armv7l.c
-    )
-elseif(ARCH MATCHES "sparc")
-    list(APPEND COMMON_SOURCES
-        ${SOURCE_DIR}/qcommon/vm_sparc.c
-    )
-endif()
 
 set(SYSTEM_SOURCES
     ${SOURCE_DIR}/sys/con_log.c
