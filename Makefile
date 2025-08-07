@@ -1064,10 +1064,6 @@ ifndef RANLIB
   RANLIB=ranlib
 endif
 
-ifneq ($(HAVE_VM_COMPILED),true)
-  BASE_CFLAGS += -DNO_VM_COMPILED
-endif
-
 TARGETS =
 
 ifndef FULLBINEXT
