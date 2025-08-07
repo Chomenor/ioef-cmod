@@ -2528,7 +2528,7 @@ ifeq ($(HAVE_VM_COMPILED),true)
       $(B)/ded/vm_x86.o
   endif
   ifneq ($(findstring $(ARCH),ppc ppc64),)
-    Q3DOBJ += $(B)/ded/vm_powerpc.o $(B)/ded/vm_powerpc_asm.o
+    Q3DOBJ += $(B)/ded/vm_powerpc.o
   endif
   ifeq ($(ARCH),sparc)
     Q3DOBJ += $(B)/ded/vm_sparc.o

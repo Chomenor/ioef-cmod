@@ -42,7 +42,6 @@ if(ARCH MATCHES "x86" OR ARCH MATCHES "x86_64")
 elseif(ARCH MATCHES "ppc" OR ARCH MATCHES "ppc64")
     list(APPEND COMMON_SOURCES
         ${SOURCE_DIR}/qcommon/vm_powerpc.c
-        ${SOURCE_DIR}/qcommon/vm_powerpc_asm.c
     )
 elseif(ARCH MATCHES "arm")
     list(APPEND COMMON_SOURCES
