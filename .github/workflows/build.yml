@@ -141,3 +141,17 @@ jobs:
         name: ${{ github.event.repository.name }}-emscripten-${{ env.VERSION }}
         path: |
           build/Release/**/*
+  linux-external-libraries:
+    name: Linux (USE_INTERNAL_LIBS OFF)
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsdl2-dev zlib1g-dev libjpeg-dev libopenal-dev \
+          libogg-dev libvorbis-dev libopus-dev libcurl4-openssl-dev
+    - name: Compile
+      run: |
+        cmake -S . -B build -G Ninja -DUSE_INTERNAL_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+        cmake --build build
