@@ -16,3 +16,5 @@ add_compile_options(-Wall -Wimplicit
 
 add_compile_options(-Wno-strict-aliasing
     -Wno-format-zero-length -Wno-format-nonliteral)
+
+set(CMAKE_INSTALL_PREFIX /opt/quake3)

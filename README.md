@@ -132,11 +132,9 @@ For Emscripten,
      see https://developer.chrome.com/blog/wasm-debugging-2020
 
 Installation, for *nix
-  1. Set the COPYDIR variable in the shell to be where you installed Quake 3
-     to. By default it will be /usr/local/games/quake3 if you haven't set it.
-     This is the path as used by the original Linux Q3 installer and subsequent
-     point releases.
-  2. Run 'make copyfiles'.
+  1. Set the CMAKE_INSTALL_PREFIX to your prefered installation directory.
+     By default it will be set to /opt/quake3/.
+  2. ```cmake --install build```.
 
 It is also possible to cross compile for Windows under *nix using MinGW. Your
 distribution may have mingw32 packages available. On debian/Ubuntu, you need to

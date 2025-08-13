@@ -59,4 +59,6 @@ if(USE_RENDERER_DLOPEN)
     target_link_options(        ${RENDERER_GL1_BINARY} PRIVATE ${RENDERER_LINK_OPTIONS})
 
     set_output_dirs(${RENDERER_GL1_BINARY})
+    install(TARGETS ${RENDERER_GL1_BINARY} LIBRARY DESTINATION .)
 endif()
+
