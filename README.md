@@ -20,7 +20,7 @@ Some of the major features currently implemented are:
     quality)
   * Full x86_64 support on Linux
   * VoIP support, both in-game and external support through Mumble.
-  * MinGW compilation support on Windows and cross compilation support on Linux
+  * MinGW compilation support on Windows
   * AVI video capture of demos
   * Much improved console autocompletion
   * Persistent console history
@@ -29,7 +29,7 @@ Some of the major features currently implemented are:
   * Much improved QVM tools
   * Support for various esoteric operating systems
   * cl_guid support
-  * HTTP/FTP download redirection (using cURL)
+  * Web server download redirection
   * Multiuser support on Windows systems (user specific game data
     is stored in "%APPDATA%\Quake3")
   * PNG support
