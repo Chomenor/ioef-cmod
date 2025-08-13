@@ -2,6 +2,10 @@ if(NOT USE_FREETYPE)
     return()
 endif()
 
+if(NOT BUILD_RENDERER_GL1 AND NOT BUILD_RENDERER_GL2)
+    return()
+endif()
+
 find_package(Freetype REQUIRED)
 
 list(APPEND RENDERER_INCLUDE_DIRS ${FREETYPE_INCLUDE_DIRS})
