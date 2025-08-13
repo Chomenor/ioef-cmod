@@ -84,18 +84,17 @@ You can make your own mod that either requires the original game data or a new g
 that does not. Please read the **Creating standalone games** section for more information
 on the latter.
 
-For *nix
+For *nix,
   1. ```git clone git://github.com/ioquake/ioq3.git```
   2. ```cd ioq3```
   3. Install dependencies according to your operating system's instructions.  
-     for apt-based systems, ```sudo apt-get install cmake libsdl2-dev ninja-build```
-  4. Run these commands:  
-     ```cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release```
+     for apt-based systems, ```sudo apt install cmake libsdl2-dev```
+  4. ```cmake -S . -B build -DCMAKE_BUILD_TYPE=Release```
      ```cmake --build build```
   5. The resulting files will be in the ```build``` directory.
 
 For Windows,
-  1. Install Visual Studio Community Edition from Microsoft  
+  1. Install Visual Studio Community Edition from Microsoft.
      https://visualstudio.microsoft.com/vs/community/
   2. Install CMake https://cmake.org/cmake/download
   3. Clone our git repository either using the command-line or a GUI tool:  
@@ -103,28 +102,31 @@ For Windows,
   4. Compile using Visual Studio by selecting our CMakeLists.txt and clicking Build.
   5. Or using the command-line:  
      ```cmake -S . -B build -G "Visual Studio 17 2022"```
-     ```make --build build --config Release```
+     ```cmake --build build --config Release```
 
 For macOS,
-  1. Install XCode
+  1. Install XCode.
   2. CMake via homebrew https://brew.sh or your package manager of choice.
   3. ```git clone git://github.com/ioquake/ioq3.git```
   4. ```cd ioq3```
-  5. ```cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release```
+  5. ```cmake -S . -B build -DCMAKE_BUILD_TYPE=Release```
   6. ```cmake --build build```
   7. Copy the resulting ```ioquake3.app``` in ```/build/```
      to your ```/Applications/ioquake3``` folder.
 
-For Web, building with Emscripten
+For Emscripten,
   1. Follow the installation instructions for the Emscripten SDK including
-     setting up the environment with emsdk_env.
-  2. Run `emmake make debug` (or release).
-  3. Copy or symlink your baseq3 pk3 files into the `build/debug-emscripten-wasm32/baseq3`
+     setting up the environment with emsdk_env. https://emscripten.org/
+  2. ```git clone git://github.com/ioquake/ioq3.git```
+  3. ```cd ioq3```
+  4. ```emcmake -S . -B build -DCMAKE_BUILD_TYPE=Release```
+  5. ```cmake --build build```
+  3. Copy or symlink your baseq3 pk3 files into the `build/Release/baseq3`
      directory so they can be loaded at run-time. Only game files listed in
      `client-config.json` will be loaded.
   4. Start a web server serving this directory. `python3 -m http.server`
      is an easy default that you may already have installed.
-  5. Open `http://localhost:8000/build/debug-emscripten-wasm32/ioquake3.html`
+  5. Open `http://localhost:8000/build/Release/ioquake3.html`
      in a web browser. Open the developer console to see errors and warnings.
   6. Debugging the C code is possible using a Chrome extension. For details
      see https://developer.chrome.com/blog/wasm-debugging-2020
