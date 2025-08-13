@@ -136,65 +136,47 @@ Installation, for *nix
      By default it will be set to /opt/quake3/.
   2. ```cmake --install build```.
 
-It is also possible to cross compile for Windows under *nix using MinGW. Your
-distribution may have mingw32 packages available. On debian/Ubuntu, you need to
-install 'mingw-w64'. Thereafter cross compiling is simply a case running
-'PLATFORM=mingw32 ARCH=x86 make' in place of 'make'. ARCH may also be set to
-x86_64.
-
-The following variables may be set, either on the command line or in
-Makefile.local:
+The following CMake variables may be set, using `-D` on the command line.
 
 ```
-  DEPEND_MAKEFILE      - set to 0 to disable rebuilding all targets when
-                         the Makefile or Makefile.local is changed
-  CFLAGS               - use this for custom CFLAGS
-  V                    - set to show cc command line when building
-  DEFAULT_BASEDIR      - extra path to search for baseq3 and such
-  BUILD_SERVER         - build the 'ioq3ded' server binary
-  BUILD_CLIENT         - build the 'ioquake3' client binary
-  BUILD_BASEGAME       - build the 'baseq3' binaries
-  BUILD_MISSIONPACK    - build the 'missionpack' binaries
-  BUILD_GAME_SO        - build the game shared libraries
-  BUILD_GAME_QVM       - build the game qvms
-  BUILD_STANDALONE     - build binaries suited for stand-alone games
-  SERVERBIN            - rename 'ioq3ded' server binary
-  CLIENTBIN            - rename 'ioquake3' client binary
-  USE_ARCHLESS_FILENAMES don't include the architecture in binary filenames
-  USE_RENDERER_DLOPEN  - build and use the renderer in a library
-  BUILD_RENDERER_OPENGL1 build the opengl1 client / renderer library
-  BUILD_RENDERER_OPENGL2 build the opengl2 client / renderer library
-  USE_YACC             - use yacc to update code/tools/lcc/lburg/gram.c
-  BASEGAME             - rename 'baseq3'
-  BASEGAME_CFLAGS      - custom CFLAGS for basegame
-  MISSIONPACK          - rename 'missionpack'
-  MISSIONPACK_CFLAGS   - custom CFLAGS for missionpack (default '-DMISSIONPACK')
-  USE_OPENAL           - use OpenAL where available
-  USE_OPENAL_DLOPEN    - link with OpenAL at runtime
-  USE_HTTP             - enable http download support
-  USE_CODEC_VORBIS     - enable Ogg Vorbis support
-  USE_CODEC_OPUS       - enable Ogg Opus support
-  USE_MUMBLE           - enable Mumble support
-  USE_VOIP             - enable built-in VoIP support
-  USE_FREETYPE         - enable FreeType support for rendering fonts
-  USE_INTERNAL_LIBS    - build internal libraries instead of dynamically
-                         linking against system libraries; this just sets
-                         the default for USE_INTERNAL_ZLIB etc.
-  USE_INTERNAL_ZLIB    - build and link against internal zlib
-  USE_INTERNAL_JPEG    - build and link against internal JPEG library
-  USE_INTERNAL_OGG     - build and link against internal ogg library
-  USE_INTERNAL_OPUS    - build and link against internal opus/opusfile libraries
-  USE_INTERNAL_VORBIS  - build and link against internal Vorbis library
-  DEBUG_CFLAGS         - C compiler flags to use for building debug version
-  COPYDIR              - the target installation directory
-  TEMPDIR              - specify user defined directory for temp files
+  BUILD_SERVER            - build the 'ioq3ded' server binary
+  BUILD_CLIENT            - build the 'ioquake3' client binary
+  BUILD_RENDERER_OPENGL1  - build the opengl1 client / renderer library
+  BUILD_RENDERER_OPENGL2  - build the opengl2 client / renderer library
+  BUILD_GAME_LIBRARIES    - build the game shared libraries
+  BUILD_GAME_QVMS         - build the game qvms
+  BUILD_STANDALONE        - build binaries suited for stand-alone games
+
+  USE_ARCHLESS_FILENAMES  - don't include the architecture in binary filenames
+  USE_RENDERER_DLOPEN     - build and use the renderer in a library
+  USE_OPENAL              - use OpenAL where available
+  USE_OPENAL_DLOPEN       - link with OpenAL at runtime
+  USE_HTTP                - enable http download support
+  USE_CODEC_VORBIS        - enable Ogg Vorbis support
+  USE_CODEC_OPUS          - enable Ogg Opus support
+  USE_MUMBLE              - enable Mumble support
+  USE_VOIP                - enable built-in VoIP support
+  USE_FREETYPE            - enable FreeType support for rendering fonts
+
+  USE_INTERNAL_LIBS       - build internal libraries instead of dynamically
+                            linking against system libraries; this just sets
+                            the default for USE_INTERNAL_ZLIB etc.
+  USE_INTERNAL_SDL        - link against internal SDL (if available)
+  USE_INTERNAL_ZLIB       - build and link against internal zlib
+  USE_INTERNAL_JPEG       - build and link against internal JPEG library
+  USE_INTERNAL_OGG        - build and link against internal ogg library
+  USE_INTERNAL_VORBIS     - build and link against internal Vorbis library
+  USE_INTERNAL_OPUS       - build and link against internal opus/opusfile libraries
+
   EMSCRIPTEN_PRELOAD_FILE - set to 1 to package 'baseq3' (BASEGAME) directory
                             containing pk3s and loose files as a single
                             .data file that is loaded instead of listing
                             individual files in client-config.json
+
+  CMAKE_BUILD_TYPE        - on single config CMake, set to Debug or Release
 ```
 
-The defaults for these variables differ depending on the target platform.
+The defaults for these variables may differ depending on the target platform.
 
 
 # OpenGL ES support
