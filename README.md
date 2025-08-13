@@ -85,42 +85,42 @@ that does not. Please read the **Creating standalone games** section for more in
 on the latter.
 
 For *nix,
-  1. ```git clone git://github.com/ioquake/ioq3.git```
-  2. ```cd ioq3```
+  1. `git clone git://github.com/ioquake/ioq3.git`
+  2. `cd ioq3`
   3. Install dependencies according to your operating system's instructions.  
-     for apt-based systems, ```sudo apt install cmake libsdl2-dev```
-  4. ```cmake -S . -B build -DCMAKE_BUILD_TYPE=Release```
-     ```cmake --build build```
-  5. The resulting files will be in the ```build``` directory.
+     for apt-based systems, `sudo apt install cmake libsdl2-dev`
+  4. `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
+     `cmake --build build`
+  5. The resulting files will be in the `build` directory.
 
 For Windows,
   1. Install Visual Studio Community Edition from Microsoft.
      https://visualstudio.microsoft.com/vs/community/
   2. Install CMake https://cmake.org/cmake/download
   3. Clone our git repository either using the command-line or a GUI tool:  
-      ```git clone git://github.com/ioquake/ioq3.git```
+      `git clone git://github.com/ioquake/ioq3.git`
   4. Compile using Visual Studio by selecting our CMakeLists.txt and clicking Build.
   5. Or using the command-line:  
-     ```cmake -S . -B build -G "Visual Studio 17 2022"```
-     ```cmake --build build --config Release```
+     `cmake -S . -B build -G "Visual Studio 17 2022"`
+     `cmake --build build --config Release`
 
 For macOS,
   1. Install XCode.
   2. CMake via homebrew https://brew.sh or your package manager of choice.
-  3. ```git clone git://github.com/ioquake/ioq3.git```
-  4. ```cd ioq3```
-  5. ```cmake -S . -B build -DCMAKE_BUILD_TYPE=Release```
-  6. ```cmake --build build```
-  7. Copy the resulting ```ioquake3.app``` in ```/build/```
-     to your ```/Applications/ioquake3``` folder.
+  3. `git clone git://github.com/ioquake/ioq3.git`
+  4. `cd ioq3`
+  5. `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
+  6. `cmake --build build`
+  7. Copy the resulting `ioquake3.app` in `/build/`
+     to your `/Applications/ioquake3` folder.
 
 For Emscripten,
   1. Follow the installation instructions for the Emscripten SDK including
      setting up the environment with emsdk_env. https://emscripten.org/
-  2. ```git clone git://github.com/ioquake/ioq3.git```
-  3. ```cd ioq3```
-  4. ```emcmake -S . -B build -DCMAKE_BUILD_TYPE=Release```
-  5. ```cmake --build build```
+  2. `git clone git://github.com/ioquake/ioq3.git`
+  3. `cd ioq3`
+  4. `emcmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
+  5. `cmake --build build`
   3. Copy or symlink your baseq3 pk3 files into the `build/Release/baseq3`
      directory so they can be loaded at run-time. Only game files listed in
      `client-config.json` will be loaded.
@@ -134,7 +134,7 @@ For Emscripten,
 Installation, for *nix
   1. Set the CMAKE_INSTALL_PREFIX to your prefered installation directory.
      By default it will be set to /opt/quake3/.
-  2. ```cmake --install build```.
+  2. `cmake --install build`.
 
 The following CMake variables may be set, using `-D` on the command line.
 
