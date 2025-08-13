@@ -9,10 +9,12 @@
                    |                                       |
                    `--------- https://ioquake3.org --------'
 
-The intent of this project is to provide a baseline Quake 3 which may be used
-for further development and baseq3 fun.
+The intent of this project is to provide a baseline engine which may be used
+for further development and to play _Quake 3: Arena,_ _Team Arena,_ and mods.
+
 Some of the major features currently implemented are:
 
+  * CMake meta-build system
   * SDL 2 backend
   * OpenAL sound API support (multiple speaker support and better sound
     quality)
@@ -74,30 +76,44 @@ https://discourse.ioquake.org
 </p>
 
 # Compilation and installation
+**Note that for all of these platforms, if you want to play _Quake 3: Arena_ or 
+the expansion pack, _Team Arena_, you'll still need to buy a copy of the game.**
+The _Quake 3_ game source code is freely available under the GPLv2, not the game data.
+
+You can make your own mod that either requires the original game data or a new game  
+that does not. Please read the **Creating standalone games** section for more information
+on the latter.
 
 For *nix
-  1. Change to the directory containing this readme.
-  2. Run 'make'.
+  1. ```git clone git://github.com/ioquake/ioq3.git```
+  2. ```cd ioq3```
+  3. Install dependencies according to your operating system's instructions.  
+     for apt-based systems, ```sudo apt-get install cmake libsdl2-dev ninja-build```
+  4. Run these commands:  
+     ```cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release```
+     ```cmake --build build```
+  5. The resulting files will be in the ```build``` directory.
 
 For Windows,
-  1. Please refer to the excellent instructions here:
-     https://ioquake3.org/help/building-ioquake3/
+  1. Install Visual Studio Community Edition from Microsoft  
+     https://visualstudio.microsoft.com/vs/community/
+  2. Install CMake https://cmake.org/cmake/download
+  3. Clone our git repository either using the command-line or a GUI tool:  
+      ```git clone git://github.com/ioquake/ioq3.git```
+  4. Compile using Visual Studio by selecting our CMakeLists.txt and clicking Build.
+  5. Or using the command-line:  
+     ```cmake -S . -B build -G "Visual Studio 17 2022"```
+     ```make --build build --config Release```
 
-For macOS, building a Universal Binary (macOS 10.5 to 10.8, x86_64, x86, ppc)
-  1. Install MacOSX SDK packages from XCode.  For maximum compatibility,
-     install MacOSX10.5.sdk and MacOSX10.6.sdk.
-  2. Change to the directory containing this README file.
-  3. Run './make-macosx-ub.sh'
-  4. Copy the resulting ioquake3.app in /build/release-darwin-universal
-     to your /Applications/ioquake3 folder.
-
-For macOS, building a Universal Binary 2 (macOS 10.9+, arm64, x86_64)
-  1. Install MacOSX SDK packages from XCode.  Building for arm64 requires
-     MacOSX11.sdk or later.
-  2. Change to the directory containing this README file.
-  3. Run './make-macosx-ub2.sh'
-  4. Copy the resulting ioquake3.app in /build/release-darwin-universal2
-     to your /Applications/ioquake3 folder.
+For macOS,
+  1. Install XCode
+  2. CMake via homebrew https://brew.sh or your package manager of choice.
+  3. ```git clone git://github.com/ioquake/ioq3.git```
+  4. ```cd ioq3```
+  5. ```cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release```
+  6. ```cmake --build build```
+  7. Copy the resulting ```ioquake3.app``` in ```/build/```
+     to your ```/Applications/ioquake3``` folder.
 
 For Web, building with Emscripten
   1. Follow the installation instructions for the Emscripten SDK including
@@ -415,7 +431,7 @@ set using command line arguments:
 
 ## pk3dir
 
-ioquake3 has a useful new feature for mappers. Paths in a game directory with
+_ioquake3_ has a useful new feature for mappers. Paths in a game directory with
 the extension ".pk3dir" are treated like pk3 files. This means you can keep
 all files specific to your map in one directory tree and easily zip this
 folder for distribution.
@@ -457,10 +473,10 @@ Have you finished the daunting task of removing all dependencies on the Q3
 game data? You probably now want to give your users the opportunity to play
 the game without owning a copy of Q3, which consequently means removing cd-key
 and authentication server checks. In addition to being a straightforward Q3
-client, ioquake3 also purports to be a reliable and stable code base on which
+client, _ioquake3_ also purports to be a reliable and stable code base on which
 to base your game project.
 
-However, before you start compiling your own version of ioquake3, you have to
+However, before you start compiling your own version of _ioquake3_, you have to
 ask yourself: Have we changed or will we need to change anything of importance
 in the engine?
 
@@ -496,13 +512,13 @@ Example line:
 
 If you really changed parts that would make vanilla ioquake3 incompatible with
 your mod, we have included another way to conveniently build a stand-alone
-binary. Just run make with the option BUILD_STANDALONE=1. Don't forget to edit
-the PRODUCT_NAME and subsequent #defines in qcommon/q_shared.h with
+binary. Edit /cmake/identity.cmake and run cmake with the option BUILD_STANDALONE=1.
+Don't forget to edit the PRODUCT_NAME and subsequent #defines in qcommon/q_shared.h with
 information appropriate for your project.
 
 ## Standalone game licensing
 
-While a lot of work has been put into ioquake3 that you can benefit from free
+While a lot of work has been put into _ioquake3_ that you can benefit from free
 of charge, it does not mean that you have no obligations to fulfill. Please be
 aware that as soon as you start distributing your game with an engine based on
 our sources we expect you to fully comply with the requirements as stated in
@@ -576,7 +592,7 @@ Maintainers
   * Thilo Schulz <arny@ats.s.bawue.de>
   * Tim Angus <tim@ngus.net>
   * Tony J. White <tjw@tjw.org>
-  * Jack Slater <jack@ioquake.org>
+  * Jack "Mr. Nuclear Monster" Slater <jack@ioquake.org>
   * Zack Middleton <zturtleman@gmail.com>
 
 Significant contributions from
@@ -588,5 +604,6 @@ Significant contributions from
   * Vincent S. Cojot <vincent at cojot dot name>
   * optical <alex@rigbo.se>
   * Aaron Gyes <floam@aaron.gy>
+  * surrealchemist
 
 
