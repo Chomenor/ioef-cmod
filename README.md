@@ -106,7 +106,7 @@ For Windows,
 
 For macOS,
   1. Install XCode.
-  2. CMake via homebrew https://brew.sh or your package manager of choice.
+  2. Install CMake via homebrew https://brew.sh or your package manager of choice.
   3. `git clone git://github.com/ioquake/ioq3.git`
   4. `cd ioq3`
   5. `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
