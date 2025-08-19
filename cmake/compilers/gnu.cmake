@@ -16,7 +16,10 @@ add_compile_options(-Wall -Wimplicit
     -Wstrict-aliasing=2 -Wmissing-format-attribute
     -Wdisabled-optimization -Werror-implicit-function-declaration)
 
-add_compile_options(-Wno-strict-aliasing
-    -Wno-format-zero-length -Wno-format-nonliteral)
+add_compile_options(-Wno-format-zero-length -Wno-format-nonliteral)
+
+# There are lots of instances of union based aliasing in the code
+# that rely on the compiler not optimising them away, so disable it
+add_compile_options(-fno-strict-aliasing)
 
 set(CMAKE_INSTALL_PREFIX /opt/quake3)
