@@ -136,7 +136,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 
-//============================================================== MAC OS X ===
+//================================================================ MAC OS ===
 
 #if defined(__APPLE__) || defined(__APPLE_CC__)
 
@@ -303,7 +303,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #endif
 
-//================================================================== EMSCRIPTEN ===
+//============================================================ EMSCRIPTEN ===
 
 #ifdef __EMSCRIPTEN__
 
