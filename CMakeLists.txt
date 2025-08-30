@@ -62,6 +62,11 @@ add_compile_definitions(PRODUCT_VERSION="${PRODUCT_VERSION}")
 # For CI to read from
 file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/version.txt CONTENT ${PRODUCT_VERSION})
 
+if(DEFINED ENV{SOURCE_DATE_EPOCH})
+    string(TIMESTAMP PRODUCT_DATE "%b %d %Y" UTC)
+    add_compile_definitions(PRODUCT_DATE="${PRODUCT_DATE}")
+endif()
+
 set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/code)
 
 include(compilers/all)
