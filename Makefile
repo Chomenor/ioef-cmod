@@ -1528,7 +1528,7 @@ ifneq ($(I_ACKNOWLEDGE_THE_MAKEFILE_IS_DEPRECATED),1)
 	@echo "  For more information please read the following "
 	@echo "  ioquake3 news post:"
 	@echo ""
-	@echo "    https://ioquake3.org/news/"
+	@echo "https://ioquake3.org/ioquake3/breaking-changes-ioquake3-switching-to-cmake-makefile-deprecated/"
 	@echo ""
 	@echo "    If you are a developer who uses ioquake3 for your project, please read and"
 	@echo "    comment on this GitHub issue:"
