@@ -46,7 +46,8 @@ while true; do
                         -DUSE_VOIP="$USE_VOIP" \
                         $CMAKE_OPTS
                         cmake --build build 
-                        cmake copyfiles
+                        # This needs a replacement for the CMake era
+                        # cmake copyfiles
                         exit
                         ;;
                 [Nn]*)
