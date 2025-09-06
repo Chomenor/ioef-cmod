@@ -855,7 +855,6 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 	int dlighted;
 	vec4_t clip, eye;
 	int i;
-	unsigned int pointOr = 0;
 	unsigned int pointAnd = (unsigned int)~0;
 
 	R_RotateForViewer();
@@ -885,7 +884,6 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 			}
 		}
 		pointAnd &= pointFlags;
-		pointOr |= pointFlags;
 	}
 
 	// trivially reject
