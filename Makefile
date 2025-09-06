@@ -1512,7 +1512,7 @@ else
   print_wrapped=$(print_list)
 endif
 
-REQUIRE_DEPRECATION_ACK=0
+REQUIRE_DEPRECATION_ACK=1
 
 # Create the build directories, check libraries and print out
 # an informational message, then start building
