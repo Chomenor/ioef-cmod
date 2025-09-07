@@ -108,7 +108,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef __GNUC__
 #define Q_UNUSED_VAR __attribute__((unused))
 #define Q_NO_RETURN __attribute__((noreturn))
+
+#ifdef __MINGW32__
+// For some reason MinGW wants both gnu_printf and ms_printf
+#define Q_PRINTF_FUNC(fmt, va) \
+	__attribute__((format(gnu_printf, fmt, va))) \
+	__attribute__((format(ms_printf, fmt, va)))
+#else
 #define Q_PRINTF_FUNC(fmt, va) __attribute__((format(printf, fmt, va)))
+#endif
+
 #define Q_SCANF_FUNC(fmt, va) __attribute__((format(scanf, fmt, va)))
 #define Q_ALIGN(x) __attribute__((aligned(x)))
 #else
@@ -168,7 +177,7 @@ typedef int intptr_t;
 #ifdef _WIN32
   // vsnprintf is ISO/IEC 9899:1999
   // abstracting this to make it portable
-  int Q_vsnprintf(char *str, size_t size, const char *format, va_list ap);
+  int Q_vsnprintf(char *str, size_t size, const char *format, va_list ap) Q_PRINTF_FUNC(3, 0);
 #else
   #define Q_vsnprintf vsnprintf
 #endif
