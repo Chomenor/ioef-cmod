@@ -103,12 +103,12 @@ foreach(LIBRARY IN LISTS CLIENT_DEPLOY_LIBRARIES)
         COMMAND ${CMAKE_COMMAND} -E copy
             ${LIBRARY}
             $<TARGET_FILE_DIR:${CLIENT_BINARY}>)
+
+    install(FILES ${LIBRARY} DESTINATION
+        # install() requires a relative path hence:
+        $<PATH:RELATIVE_PATH,$<TARGET_FILE_DIR:${CLIENT_BINARY}>,${CMAKE_BINARY_DIR}/$<CONFIG>>)
 endforeach()
 
 if(POST_CLIENT_CONFIGURE_FUNCTION)
     cmake_language(CALL ${POST_CLIENT_CONFIGURE_FUNCTION})
 endif()
-
-install(TARGETS ${CLIENT_BINARY}
-    RUNTIME DESTINATION .
-    BUNDLE DESTINATION .)
