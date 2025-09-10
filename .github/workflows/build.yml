@@ -84,6 +84,8 @@ jobs:
         cmake --build build --config Release
         $version = Get-Content build/version.txt -Raw
         Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$version"
+        cpack --config build/CPackConfig.cmake -B build/installer --verbose
+        Move-Item -Path "build/installer/*.exe" -Destination "build/Release"
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
@@ -103,6 +105,8 @@ jobs:
         cmake --build build
         $version = Get-Content build/version.txt -Raw
         Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$version"
+        cpack --config build/CPackConfig.cmake -B build/installer --verbose
+        Move-Item -Path "build/installer/*.exe" -Destination "build/Release"
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
