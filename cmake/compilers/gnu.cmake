@@ -25,7 +25,3 @@ add_compile_options(-fno-strict-aliasing)
 # This is necessary to hide all symbols unless explicitly exported
 # via the Q_EXPORT macro
 add_compile_options(-fvisibility=hidden)
-
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX /opt/quake3)
-endif()
