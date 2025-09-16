@@ -122,6 +122,14 @@ jobs:
     runs-on: macos-13
     steps:
     - uses: actions/checkout@v4
+    - name: Import Code Signing Certificate
+      if: github.ref_name == 'main'
+      run: |
+        misc/ci-macos-import-codesign-cert.sh
+        echo "APPLE_CERTIFICATE_ID=${{ secrets.APPLE_CERTIFICATE_ID }}" >> $GITHUB_ENV
+      env:
+        APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
