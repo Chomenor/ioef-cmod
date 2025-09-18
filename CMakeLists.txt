@@ -81,4 +81,5 @@ include(client)
 include(basegame)
 include(missionpack)
 
+include(post_configure)
 include(installer)

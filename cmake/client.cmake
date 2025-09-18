@@ -108,7 +108,3 @@ foreach(LIBRARY IN LISTS CLIENT_DEPLOY_LIBRARIES)
         # install() requires a relative path hence:
         $<PATH:RELATIVE_PATH,$<TARGET_FILE_DIR:${CLIENT_BINARY}>,${CMAKE_BINARY_DIR}/$<CONFIG>>)
 endforeach()
-
-if(POST_CLIENT_CONFIGURE_FUNCTION)
-    cmake_language(CALL ${POST_CLIENT_CONFIGURE_FUNCTION})
-endif()
