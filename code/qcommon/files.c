@@ -3615,7 +3615,7 @@ static void FS_CheckPak0( void )
 		}
 	}
 
-#ifdef __linux__
+#if defined(__linux__)
 	{
 		const char *p;
 
@@ -3623,6 +3623,11 @@ static void FS_CheckPak0( void )
 		if( ( p = getenv( "FLATPAK_ID" ) ) != NULL && *p != '\0' )
 			installHome = qtrue;
 	}
+#elif defined(__APPLE__)
+	// If we're running from an .app, it makes more sense to recommend
+	// using fs_homepath as fs_basepath is likely not suitable
+	if( strstr( fs_apppath->string, "Contents/MacOS" ) )
+		installHome = qtrue;
 #endif
 
 	if(installHome)
