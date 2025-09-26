@@ -17,5 +17,5 @@ set(MACOS_BUNDLE_ID org.ioquake.${CLIENT_NAME})
 
 set(COPYRIGHT "QUAKE III ARENA Copyright © 1999-2000 id Software, Inc. All rights reserved.")
 
-set(CONTACT_EMAIL "email@ioquake3.org")
+set(CONTACT_EMAIL "info@ioquake.org")
 set(PROTOCOL_HANDLER_SCHEME quake3)
