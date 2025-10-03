@@ -620,7 +620,7 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 					}
 				}
 				if (chosen == -1) {
-					Com_Printf("dropping sound\n");
+					Com_DPrintf("dropping sound\n");
 					return;
 				}
 			}
