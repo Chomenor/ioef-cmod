@@ -51,14 +51,23 @@ if(NOT PRODUCT_VERSION)
 
     if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
         execute_process(
-            COMMAND git show -s --pretty=format:%h
+            COMMAND git describe --tags --exact-match
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            OUTPUT_VARIABLE GIT_REV
+            OUTPUT_VARIABLE GIT_TAG
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET)
 
-        if(GIT_REV)
-            set(PRODUCT_VERSION "${PRODUCT_VERSION}_g${GIT_REV}")
+        if(NOT GIT_TAG STREQUAL "${PRODUCT_VERSION}")
+            execute_process(
+                COMMAND git show -s --pretty=format:%h
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                OUTPUT_VARIABLE GIT_REV
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+
+            if(GIT_REV)
+                set(PRODUCT_VERSION "${PRODUCT_VERSION}_g${GIT_REV}")
+            endif()
         endif()
     endif()
 endif()
