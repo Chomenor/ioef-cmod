@@ -2,6 +2,21 @@ name: Build
 on: [push, pull_request]
 
 jobs:
+  version:
+    name: Extract Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.result }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake Configure
+      id: extract-version
+      run: |
+        cmake -S . -B build -G Ninja -DBUILD_CLIENT=NO
+        VERSION=$(cat build/version.txt)
+        echo "VERSION: ${VERSION}"
+        echo "result=${VERSION}" >> $GITHUB_OUTPUT
+
   linux-legacy:
     name: Linux (Legacy Makefile)
     runs-on: ubuntu-22.04
@@ -56,6 +71,7 @@ jobs:
   linux:
     name: Linux
     runs-on: ubuntu-22.04
+    needs: version
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependencies
@@ -66,32 +82,30 @@ jobs:
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
         cmake --build build
-        echo "VERSION=$(cat build/version.txt)" >> $GITHUB_ENV
         cpack --config build/CPackConfig.cmake -B build/installer --verbose
         mv build/installer/*.deb build/Release
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.event.repository.name }}-linux-${{ env.VERSION }}
+        name: ${{ github.event.repository.name }}-linux-${{ needs.version.outputs.version }}
         path: |
           build/Release/**/*
   windows-msvc:
     name: Windows MSVC
     runs-on: windows-2022
+    needs: version
     steps:
     - uses: actions/checkout@v4
     - name: Compile
       run: |
         cmake -S . -B build -G "Visual Studio 17 2022"
         cmake --build build --config Release
-        $version = Get-Content build/version.txt -Raw
-        Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$version"
         cpack --config build/CPackConfig.cmake -B build/installer --verbose
         Move-Item -Path "build/installer/*.exe" -Destination "build/Release"
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.event.repository.name }}-windows-msvc-${{ env.VERSION }}
+        name: ${{ github.event.repository.name }}-windows-msvc-${{ needs.version.outputs.version }}
         path: |
           build/Release/**/*.dll
           build/Release/**/*.exe
@@ -99,20 +113,19 @@ jobs:
   windows-mingw:
     name: Windows MinGW
     runs-on: windows-2022
+    needs: version
     steps:
     - uses: actions/checkout@v4
     - name: Compile
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
         cmake --build build
-        $version = Get-Content build/version.txt -Raw
-        Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$version"
         cpack --config build/CPackConfig.cmake -B build/installer --verbose
         Move-Item -Path "build/installer/*.exe" -Destination "build/Release"
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.event.repository.name }}-windows-mingw-${{ env.VERSION }}
+        name: ${{ github.event.repository.name }}-windows-mingw-${{ needs.version.outputs.version }}
         path: |
           build/Release/**/*.dll
           build/Release/**/*.exe
@@ -120,6 +133,7 @@ jobs:
   macos:
     name: macOS
     runs-on: macos-13
+    needs: version
     steps:
     - uses: actions/checkout@v4
     - name: Import Code Signing Certificate
@@ -134,7 +148,6 @@ jobs:
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
         cmake --build build
-        echo "VERSION=$(cat build/version.txt)" >> $GITHUB_ENV
         cpack --config build/CPackConfig.cmake -B build/installer --verbose
         mv build/installer/*.dmg build/Release
     - name: Notarize
@@ -148,12 +161,13 @@ jobs:
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.event.repository.name }}-macOS-${{ env.VERSION }}
+        name: ${{ github.event.repository.name }}-macOS-${{ needs.version.outputs.version }}
         path: |
           build/Release/**/*
   emscripten:
     name: Emscripten
     runs-on: ubuntu-22.04
+    needs: version
     steps:
     - uses: actions/checkout@v4
     - name: Install emsdk
@@ -164,11 +178,10 @@ jobs:
       run: |
         emcmake cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
         cmake --build build
-        echo "VERSION=$(cat build/version.txt)" >> $GITHUB_ENV
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.event.repository.name }}-emscripten-${{ env.VERSION }}
+        name: ${{ github.event.repository.name }}-emscripten-${{ needs.version.outputs.version }}
         path: |
           build/Release/**/*
   linux-external-libraries:
