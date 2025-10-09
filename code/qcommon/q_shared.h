@@ -39,6 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define CINEMATICS_INTRO		"intro.roq"
 //  #define LEGACY_PROTOCOL	// You probably don't need this for your standalone game
 //  #define PROTOCOL_HANDLER		"foobar"
+  #define CONFIG_PREFIX			"fooconfig"
 #else
   #define PRODUCT_NAME				"ioq3"
   #define BASEGAME					"baseq3"
@@ -52,6 +53,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define CINEMATICS_INTRO		"intro.RoQ"
   #define LEGACY_PROTOCOL
   #define PROTOCOL_HANDLER		"quake3"
+  #define CONFIG_PREFIX			"q3config"
 #endif
 
 // Heartbeat for dpmaster protocol. You shouldn't change this unless you know what you're doing
