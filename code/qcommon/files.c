@@ -3638,6 +3638,10 @@ static void FS_CheckPak0( void )
 	if(!com_standalone->integer && (foundPak & ((1<<NUM_ID_PAKS)-1)) != ((1<<NUM_ID_PAKS)-1))
 	{
 		char errorText[MAX_STRING_CHARS] = "";
+		char gamePath[MAX_OSPATH];
+
+		Com_sprintf(gamePath, sizeof(gamePath), "%s%c%s%c",
+			installPath, PATH_SEP, BASEGAME, PATH_SEP);
 
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 data files are missing. Please copy");
@@ -3646,7 +3650,7 @@ static void FS_CheckPak0( void )
 
 		Q_strcat(errorText, sizeof(errorText),
 				va(" from the \"%s\" directory in your Quake 3 install or CD-ROM to:\n\n"
-				"%s%c%s%c\n\n", BASEGAME, installPath, PATH_SEP, BASEGAME, PATH_SEP));
+				"%s\n\n", BASEGAME, gamePath));
 
 		Q_strcat(errorText, sizeof(errorText),
 				"Quake 3 must be purchased to legitimately obtain pak0. "
@@ -3668,6 +3672,7 @@ static void FS_CheckPak0( void )
 						"in the \"%s\" directory is present and readable", BASEGAME));
 		}
 
+		Sys_OpenFolderInFileManager(gamePath, qtrue);
 		Com_Error(ERR_FATAL, "%s", errorText);
 	}
 
