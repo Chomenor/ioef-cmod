@@ -2146,7 +2146,9 @@ Returns a uniqued list of files that match the given criteria
 from all search paths
 ===============
 */
-char **FS_ListFilteredFiles( const char *path, const char *extension, char *filter, int *numfiles, qboolean allowNonPureFilesOnDisk ) {
+char **FS_ListFilteredFiles( const char *path, const char *extension,
+	char *filter, int *numfiles, qboolean stripPath,
+	qboolean allowNonPureFilesOnDisk ) {
 	int				nfiles;
 	char			**listCopy;
 	char			*list[MAX_FOUND_FILES];
@@ -2154,7 +2156,7 @@ char **FS_ListFilteredFiles( const char *path, const char *extension, char *filt
 	int				i;
 	int				pathLength;
 	int				extensionLength;
-	int				length, pathDepth, temp;
+	int				length, pathDepth, pathSkip;
 	pack_t			*pak;
 	fileInPack_t	*buildBuffer;
 	char			zpath[MAX_ZPATH];
@@ -2201,13 +2203,23 @@ char **FS_ListFilteredFiles( const char *path, const char *extension, char *filt
 
 				// check for directory match
 				name = buildBuffer[i].name;
-				//
+
+				if (stripPath) {
+					pathSkip = pathLength;
+					if (pathLength) {
+						pathSkip++; // include the '/'
+					}
+				} else {
+					pathSkip = 0;
+				}
+
 				if (filter) {
 					// case insensitive
 					if (!Com_FilterPath( filter, name, qfalse ))
 						continue;
+
 					// unique the match
-					nfiles = FS_AddFileToList( name, list, nfiles );
+					nfiles = FS_AddFileToList( name + pathSkip, list, nfiles );
 				}
 				else {
 
@@ -2226,13 +2238,9 @@ char **FS_ListFilteredFiles( const char *path, const char *extension, char *filt
 					if ( Q_stricmp( name + length - extensionLength, extension ) ) {
 						continue;
 					}
-					// unique the match
 
-					temp = pathLength;
-					if (pathLength) {
-						temp++; // include the '/'
-					}
-					nfiles = FS_AddFileToList( name + temp, list, nfiles );
+					// unique the match
+					nfiles = FS_AddFileToList( name + pathSkip, list, nfiles );
 				}
 			}
 		} else if (search->dir) { // scan for files in the filesystem
@@ -2279,7 +2287,7 @@ FS_ListFiles
 =================
 */
 char **FS_ListFiles( const char *path, const char *extension, int *numfiles ) {
-	return FS_ListFilteredFiles( path, extension, NULL, numfiles, qfalse );
+	return FS_ListFilteredFiles( path, extension, NULL, numfiles, qtrue, qfalse );
 }
 
 /*
@@ -2686,7 +2694,7 @@ void FS_NewDir_f( void ) {
 
 	Com_Printf( "---------------\n" );
 
-	dirnames = FS_ListFilteredFiles( "", "", filter, &ndirs, qfalse );
+	dirnames = FS_ListFilteredFiles( "", "", filter, &ndirs, qfalse, qfalse );
 
 	FS_SortFileList(dirnames, ndirs);
 
@@ -4239,14 +4247,15 @@ void	FS_Flush( fileHandle_t f ) {
 	fflush(fsh[f].handleFiles.file.o);
 }
 
-void	FS_FilenameCompletion( const char *dir, const char *ext,
+void	FS_FilenameCompletion( const char *dir, const char *ext, char *filter,
 		qboolean stripExt, void(*callback)(const char *s), qboolean allowNonPureFilesOnDisk ) {
 	char	**filenames;
 	int		nfiles;
 	int		i;
 	char	filename[ MAX_STRING_CHARS ];
 
-	filenames = FS_ListFilteredFiles( dir, ext, NULL, &nfiles, allowNonPureFilesOnDisk );
+	filenames = FS_ListFilteredFiles( dir, ext, filter,
+		&nfiles, qtrue, allowNonPureFilesOnDisk );
 
 	FS_SortFileList( filenames, nfiles );
 
