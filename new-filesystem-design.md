@@ -176,7 +176,9 @@ The source directory names and paths are stored in the "fs.sourcedirs" array whi
 
 You can tell which source directory a file came from by checking its "source_dir_id" field, which represents the index to the fs.sourcedirs array.
 
-The write directory is always fs.sourcedirs[0], unless the filesystem is in read-only mode. Before doing write operations check the fs.read_only value and abort if it is true, or use the FS_GeneratePathWritedir function which includes the check automatically.
+When _xdg_home is set in fs_dirs, it automatically creates several source directories, one for each type. The type is stored in the xdgType field (XDG_DATA, XDG_STATE, XDG_CONFIG, or XDG_CACHE). Regular source directories not loaded through _xdg_home have the type XDG_ANY.
+
+Most write functions take an xdg type parameter and will write to the highest precedence writable directory that has either a matching xdg type or XDG_ANY. For example a write operation with XDG_DATA can write to the xdg data directory, or to a writable non-xdg directory, but cannot write to the xdg state directory.
 
 ## Mod Directory Handling
 

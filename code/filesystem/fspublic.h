@@ -90,6 +90,22 @@ typedef enum {
 	FS_CONFIGTYPE_SETTINGS,
 } fs_config_type_t;
 
+// XDG Home Locations
+typedef enum {
+	XDG_ANY,
+	XDG_DATA,
+	XDG_CONFIG,
+	XDG_STATE,
+	XDG_CACHE,
+} xdg_home_type_t;
+
+// XDG Wrapper Macros
+#define FS_BaseDir_FOpenFileWrite_HomeData( filename ) FS_BaseDir_FOpenFileWrite( XDG_DATA, filename )
+#define FS_BaseDir_FOpenFileWrite_HomeState( filename ) FS_BaseDir_FOpenFileWrite( XDG_STATE, filename )
+#define FS_FOpenFileWrite_HomeConfig( filename ) FS_FOpenFileWrite( XDG_CONFIG, filename )
+#define FS_FOpenFileWrite_HomeData( filename ) FS_FOpenFileWrite( XDG_DATA, filename )
+#define FS_FOpenFileWrite_HomeState( filename ) FS_FOpenFileWrite( XDG_STATE, filename )
+
 #define DEF_PUBLIC( f ) f;
 #define DEF_LOCAL( f )
 
@@ -147,18 +163,20 @@ DEF_PUBLIC( int FS_GetFileList( const char *path, const char *extension, char *l
 // File IO (fs_fileio.c)
 /* ******************************************************************************** */
 
-// Path Generation Functions
+// Path Handling Functions
+DEF_LOCAL( const char *FS_XdgTypeToString( xdg_home_type_t xdgType ) )
 DEF_LOCAL( unsigned int FS_GeneratePathSourcedir( int source_dir_id, const char *path1, const char *path2,
 		int path1_flags, int path2_flags, char *target, unsigned int target_size ) )
 DEF_PUBLIC( unsigned int FS_GeneratePath( const char *path1, const char *path2, const char *path3,
 		int path1_flags, int path2_flags, int path3_flags, char *target, unsigned int target_size ) )
-DEF_PUBLIC( unsigned int FS_GeneratePathWritedir( const char *path1, const char *path2,
+DEF_LOCAL( qboolean FS_IsWritedirAvailable( xdg_home_type_t xdgType ) )
+DEF_PUBLIC( unsigned int FS_GeneratePathWritedir( xdg_home_type_t xdgType, const char *path1, const char *path2,
 		int path1_flags, int path2_flags, char *target, unsigned int target_size ) )
 
 // Misc functions
-DEF_PUBLIC( void FS_HomeRemove( const char *homePath ) )
+DEF_PUBLIC( void FS_Remove_HomeData( const char *homePath ) )
 DEF_LOCAL( qboolean FS_FileInPathExists( const char *testpath ) )
-DEF_PUBLIC( qboolean FS_FileExists( const char *file ) )
+DEF_PUBLIC( qboolean FS_FileExists_HomeData( const char *file ) )
 
 // File read cache
 DEF_PUBLIC( void FS_ReadCache_Initialize( void ) )
@@ -199,14 +217,14 @@ DEF_LOCAL( void FS_ReadbackTracker_Reset( void ) )
 
 // FS_FOpenFile functions
 DEF_PUBLIC( long FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean uniqueFILE ) )
-DEF_PUBLIC( fileHandle_t FS_FOpenFileWrite( const char *filename ) )
-DEF_PUBLIC( fileHandle_t FS_FOpenFileAppend( const char *filename ) )
+DEF_PUBLIC( fileHandle_t FS_FOpenFileWrite( xdg_home_type_t xdgType, const char *filename ) )
+DEF_PUBLIC( fileHandle_t FS_FOpenFileAppend( xdg_home_type_t xdgType, const char *filename ) )
 DEF_PUBLIC( int FS_FOpenFileByModeOwner( const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner ) )
 DEF_PUBLIC( int FS_FOpenFileByMode( const char *qpath, fileHandle_t *f, fsMode_t mode ) )
 
 // Misc handle operations
-DEF_PUBLIC( long FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp ) )
-DEF_PUBLIC( fileHandle_t FS_SV_FOpenFileWrite( const char *filename ) )
+DEF_PUBLIC( long FS_BaseDir_FOpenFileRead( const char *filename, fileHandle_t *fp ) )
+DEF_PUBLIC( fileHandle_t FS_BaseDir_FOpenFileWrite( xdg_home_type_t xdgType, const char *filename ) )
 DEF_PUBLIC( void FS_FCloseFile( fileHandle_t f ) )
 DEF_PUBLIC( int FS_Read( void *buffer, int len, fileHandle_t f ) )
 DEF_PUBLIC( int FS_Read2( void *buffer, int len, fileHandle_t f ) )
@@ -262,7 +280,7 @@ DEF_PUBLIC( fileHandle_t FS_OpenDownloadPak( const char *path, unsigned int *siz
 // Indented debug prints
 DEF_LOCAL( void FS_DebugIndentStart( void ) )
 DEF_LOCAL( void FS_DebugIndentStop( void ) )
-DEF_LOCAL( void QDECL FS_DPrintf( const char *fmt, ... ) __attribute__( ( format( printf, 1, 2 ) ) ) )
+DEF_LOCAL( void QDECL FS_DPrintf( const char *fmt, ... ) Q_PRINTF_FUNC( 1, 2 ) )
 
 // Hash Table
 DEF_LOCAL( void FS_Hashtable_Initialize( fs_hashtable_t *hashtable, int bucket_count ) )
@@ -311,10 +329,10 @@ DEF_PUBLIC( void FS_ExecuteConfigFile( const char *name, fs_config_type_t config
 DEF_PUBLIC( void *FS_LoadGameDLL( const fsc_file_t *dll_file, void *entryPoint,
 		intptr_t( QDECL *systemcalls )( intptr_t, ... ) ) )
 DEF_PUBLIC( void FS_GetModDescription( const char *modDir, char *description, int descriptionLen ) )
-DEF_PUBLIC( void FS_FilenameCompletion( const char *dir, const char *ext, qboolean stripExt,
+DEF_PUBLIC( void FS_FilenameCompletion( const char *dir, const char *ext, char *filter, qboolean stripExt,
 		void ( *callback )( const char *s ), qboolean allowNonPureFilesOnDisk ) )
 DEF_PUBLIC( qboolean FS_FilenameCompare( const char *s1, const char *s2 ) )
-DEF_PUBLIC( void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) __attribute__( ( format( printf, 2, 3 ) ) ) )
+DEF_PUBLIC( void QDECL FS_Printf( fileHandle_t f, const char *fmt, ... ) Q_PRINTF_FUNC( 2, 3 ) )
 DEF_LOCAL( void FS_CommaSeparatedList( const char **strings, int count, fsc_stream_t *output ) )
 DEF_LOCAL( qboolean FS_idPak( const char *pak, const char *base, int numPaks ) )
 DEF_LOCAL( void FS_SanitizeModDir( const char *source, char *target ) )

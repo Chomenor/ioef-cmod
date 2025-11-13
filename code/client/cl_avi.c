@@ -79,9 +79,9 @@ static int  bufIndex;
 SafeFS_Write
 ===============
 */
-static ID_INLINE void SafeFS_Write( const void *buffer, int len, fileHandle_t f )
+static ID_INLINE void SafeFS_Write( const void *buf, int len, fileHandle_t f )
 {
-  if( FS_Write( buffer, len, f ) < len )
+  if( FS_Write( buf, len, f ) < len )
     Com_Error( ERR_DROP, "Failed to write avi file" );
 }
 
@@ -335,10 +335,10 @@ qboolean CL_OpenAVIForWriting( const char *fileName )
     return qfalse;
   }
 
-  if( ( afd.f = FS_FOpenFileWrite( fileName ) ) <= 0 )
+  if( ( afd.f = FS_FOpenFileWrite_HomeData( fileName ) ) <= 0 )
     return qfalse;
 
-  if( ( afd.idxF = FS_FOpenFileWrite(
+  if( ( afd.idxF = FS_FOpenFileWrite_HomeData(
           va( "%s" INDEX_FILE_EXTENSION, fileName ) ) ) <= 0 )
   {
     FS_FCloseFile( afd.f );
@@ -357,11 +357,12 @@ qboolean CL_OpenAVIForWriting( const char *fileName )
   else
     afd.motionJpeg = qfalse;
 
-  // Buffers only need to store RGB pixels.
+  // Capture buffer stores RGB pixels but OpenGL ES reads RGBA and converts to RGB in-place.
+  // Encode buffer only needs to store RGB pixels.
   // Allocate a bit more space for the capture buffer to account for possible
   // padding at the end of pixel lines, and padding for alignment
   #define MAX_PACK_LEN 16
-  afd.cBuffer = Z_Malloc((afd.width * 3 + MAX_PACK_LEN - 1) * afd.height + MAX_PACK_LEN - 1);
+  afd.cBuffer = Z_Malloc((afd.width * 4 + MAX_PACK_LEN - 1) * afd.height + MAX_PACK_LEN - 1);
   // raw avi files have pixel lines start on 4-byte boundaries
   afd.eBuffer = Z_Malloc(PAD(afd.width * 3, AVI_LINE_PADDING) * afd.height);
 
@@ -615,7 +616,8 @@ qboolean CL_CloseAVI( void )
   indexSize = 0;
   {
     char path[FS_MAX_PATH];
-    if ( FS_GeneratePathWritedir( FS_GetCurrentGameDir(), idxFileName, 0, FS_ALLOW_DIRECTORIES, path, sizeof( path ) ) ) {
+    if ( FS_GeneratePathWritedir( XDG_DATA, FS_GetCurrentGameDir(), idxFileName, 0,
+          FS_ALLOW_DIRECTORIES, path, sizeof( path ) ) ) {
       afd.idxF = FS_DirectReadHandle_Open( 0, path, (unsigned int *)&indexSize );
     }
   }
@@ -645,7 +647,7 @@ qboolean CL_CloseAVI( void )
   FS_FCloseFile( afd.idxF );
 
   // Remove temp index file
-  FS_HomeRemove( idxFileName );
+  FS_Remove_HomeData( idxFileName );
 
   // Write the real header
   FS_Seek( afd.f, 0, FS_SEEK_SET );

@@ -328,7 +328,6 @@ static qboolean FS_InitWritableDirectory( const char *directory ) {
 typedef struct {
 	fs_source_directory_t s;
 	int fs_dirs_position;	// lower means higher priority
-	qboolean write_dir;
 } temp_source_directory_t;
 
 /*
@@ -344,9 +343,9 @@ static int FS_CompareTempSourceDirs( const temp_source_directory_t *dir1, const 
 		return -1;
 	if ( dir2->s.active && !dir1->s.active )
 		return 1;
-	if ( dir1->write_dir && !dir2->write_dir )
+	if ( dir1->s.writable && !dir2->s.writable )
 		return -1;
-	if ( dir2->write_dir && !dir1->write_dir )
+	if ( dir2->s.writable && !dir1->s.writable )
 		return 1;
 	if ( dir1->fs_dirs_position < dir2->fs_dirs_position )
 		return -1;
@@ -371,10 +370,14 @@ Loads source directory paths from cvars into fs_sourcedirs.
 */
 static void FS_InitSourceDirs( void ) {
 	int i;
-	qboolean have_write_dir = qfalse;
 	char *fs_dirs_ptr;
 	temp_source_directory_t temp_dirs[FS_MAX_SOURCEDIRS];
-	const char *homepath = Sys_DefaultHomePath();
+	const char *homepath = Sys_DefaultNonXdgHomepath();
+	qboolean haveFullWriteSupport = qfalse;
+#ifdef FS_XDG_HOME_SUPPORT
+	qboolean xdgLoaded = qfalse;
+	int xdgWritableCount = 0;
+#endif
 
 	// Initialize default path cvars
 	Cvar_Get( "fs_homepath", homepath ? homepath : "", CVAR_INIT | CVAR_PROTECTED );
@@ -408,12 +411,6 @@ static void FS_InitSourceDirs( void ) {
 			}
 		}
 
-		// Determine path from cvar
-		path = Cvar_VariableString( token );
-		if ( !*path ) {
-			continue;
-		}
-
 		// Look for duplicate entry or next empty slot
 		for ( i = 0; i < FS_MAX_SOURCEDIRS; ++i ) {
 			if ( !temp_dirs[i].s.active ) {
@@ -432,8 +429,84 @@ static void FS_InitSourceDirs( void ) {
 			continue;
 		}
 
+		if ( !Q_stricmp( token, "_xdg_home" ) ) {
+#ifdef FS_XDG_HOME_SUPPORT
+			int j;
+
+			static const struct {
+				xdg_home_type_t xdgType;
+				const char *cvar_name;
+			} xdg_sources[] = {
+				// First entries listed here will have higher search precedence
+				{ XDG_CONFIG, "fs_homeconfigpath" },
+				{ XDG_DATA, "fs_homedatapath" },
+				{ XDG_STATE, "fs_homestatepath" },
+				{ XDG_CACHE, "fs_homecachepath" },
+			};
+
+			if ( xdgLoaded ) {
+				continue;
+			}
+
+			for ( j = 0; j < ARRAY_LEN( xdg_sources ); ++j ) {
+				const char *typestr = FS_XdgTypeToString( xdg_sources[j].xdgType );
+				cvar_t *cvar = Cvar_Get( xdg_sources[j].cvar_name, Sys_DefaultXdgHomepath(xdg_sources[j].xdgType),
+					CVAR_INIT | CVAR_PROTECTED );
+				write_dir = qfalse;
+
+				if ( !cvar->string[0] ) {
+					Com_Printf( "WARNING: Got empty path for xdg-%s directory.\n", typestr );
+					continue;
+				}
+
+				if ( i >= FS_MAX_SOURCEDIRS ) {
+					Com_Printf( "WARNING: FS_MAX_SOURCEDIRS exceeded parsing fs_dirs\n" );
+					continue;
+				}
+
+				if ( write_flag && !haveFullWriteSupport ) {
+					Com_Printf( "Checking if xdg-%s is writable...\n", typestr );
+					if ( FS_InitWritableDirectory( cvar->string ) ) {
+						Com_Printf( "Confirmed writable.\n" );
+						write_dir = qtrue;
+						++xdgWritableCount;
+					} else {
+						Com_Printf( "Not writable due to failed write test.\n" );
+					}
+				}
+
+				temp_dirs[i] = (temp_source_directory_t){
+					{ CopyString( va( "xdg-%s", typestr ) ),
+					  CopyString( cvar->string ),
+					  qtrue,
+					  write_dir,
+					  xdg_sources[j].xdgType },
+					i,
+				};
+				i++;
+			}
+
+			// If all xdg directories are writable, no need to look for any further write locations
+			if ( xdgWritableCount == ARRAY_LEN( xdg_sources ) ) {
+				haveFullWriteSupport = qtrue;
+			}
+
+			xdgLoaded = qtrue;
+#else
+			Com_Printf( "WARNING: Source directory _xdg_home not supported on this platform.\n" );
+#endif
+
+			continue;
+		}
+
+		// Determine path from cvar
+		path = Cvar_VariableString( token );
+		if ( !*path ) {
+			continue;
+		}
+
 		// If write flag is set and no write directory yet, test writability
-		if ( write_flag && !have_write_dir ) {
+		if ( write_flag && !haveFullWriteSupport ) {
 			Com_Printf( "Checking if %s is writable...\n", token );
 #ifdef __APPLE__
 			if ( Q_stristr( va( "%s/", path ), "/Applications/" ) ) {
@@ -444,19 +517,19 @@ static void FS_InitSourceDirs( void ) {
 			if ( FS_InitWritableDirectory( path ) ) {
 				Com_Printf( "Confirmed writable.\n" );
 				write_dir = qtrue;
-				have_write_dir = qtrue;
+				haveFullWriteSupport = qtrue;
 			} else {
 				Com_Printf( "Not writable due to failed write test.\n" );
 			}
 		}
 
 		// Create entry in available slot
-		temp_dirs[i] = ( temp_source_directory_t ){
+		temp_dirs[i] = (temp_source_directory_t){
 			{ CopyString( token ),
 			  CopyString( path ),
-			  qtrue },
+			  qtrue,
+			  write_dir },
 			i,
-			write_dir
 		};
 	}
 
@@ -464,19 +537,23 @@ static void FS_InitSourceDirs( void ) {
 	qsort( temp_dirs, ARRAY_LEN( temp_dirs ), sizeof( *temp_dirs ), FS_CompareTempSourceDirsQsort );
 
 	// Check for read-only mode
-	if ( temp_dirs[0].write_dir ) {
-		fs.read_only = qfalse;
-		Com_Printf( "Write directory: %s (%s)\n", temp_dirs[0].s.name, temp_dirs[0].s.path );
-	} else {
-		fs.read_only = qtrue;
-		Com_Printf( "WARNING: No write directory selected. Filesystem in read-only mode.\n" );
+	if ( !haveFullWriteSupport ) {
+#ifdef FS_XDG_HOME_SUPPORT
+		if ( xdgWritableCount > 0 ) {
+			Com_Printf( "WARNING: Some XDG paths are not writable. Some file types may not be written.\n" );
+		} else
+#endif
+		{
+			Com_Printf( "WARNING: No write directory selected. Filesystem in read-only mode.\n" );
+		}
 	}
 
 	// Transfer entries from temp_dirs to fs.sourcedirs
 	for ( i = 0; i < FS_MAX_SOURCEDIRS; ++i ) {
 		fs.sourcedirs[i] = temp_dirs[i].s;
 		if ( fs.sourcedirs[i].active ) {
-			Com_Printf( "Source directory %i: %s (%s)\n", i + 1, fs.sourcedirs[i].name, fs.sourcedirs[i].path );
+			Com_Printf( "Source directory %i%s: %s (%s)\n", i + 1, fs.sourcedirs[i].writable ? " (write)" : "",
+				fs.sourcedirs[i].name, fs.sourcedirs[i].path );
 		}
 	}
 }
@@ -568,6 +645,13 @@ void FS_Refresh( qboolean quiet ) {
 		if ( !fs.sourcedirs[i].active ) {
 			continue;
 		}
+#ifdef FS_XDG_HOME_SUPPORT
+		// no need to run index on cache directory, since currently it
+		// is only acessed via direct paths
+		if ( fs.sourcedirs[i].xdgType == XDG_CACHE ) {
+			continue;
+		}
+#endif
 		if ( !quiet ) {
 			Com_Printf( "Indexing %s...\n", fs.sourcedirs[i].name );
 		}
@@ -637,7 +721,7 @@ Writes path of index cache file to buffer, or empty string on error.
 =================
 */
 static void FS_GetIndexCachePath( char *buffer, unsigned int size ) {
-	FS_GeneratePathSourcedir( 0, "fscache.dat", NULL, 0, 0, buffer, size );
+	FS_GeneratePathWritedir( XDG_CACHE, "fscache.dat", NULL, 0, 0, buffer, size );
 }
 
 /*
@@ -738,8 +822,10 @@ void FS_Startup( void ) {
 
 	FSC_RegisterErrorHandler( FS_CoreErrorHandler );
 
-#ifdef __APPLE__
+#if defined( __APPLE__ )
 	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath fs_apppath", CVAR_INIT | CVAR_PROTECTED );
+#elif defined( FS_XDG_HOME_SUPPORT )
+	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*_xdg_home fs_homepath fs_basepath fs_steampath fs_gogpath", CVAR_INIT | CVAR_PROTECTED );
 #else
 	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath", CVAR_INIT | CVAR_PROTECTED );
 #endif
@@ -778,7 +864,7 @@ void FS_Startup( void ) {
 	FS_UpdateModDirExt( qfalse );
 
 	Com_Printf( "\n" );
-	if ( FS_TrackedRefresh() && fs.cvar.fs_index_cache->integer && !fs.read_only ) {
+	if ( FS_TrackedRefresh() && fs.cvar.fs_index_cache->integer && FS_IsWritedirAvailable( XDG_CACHE ) ) {
 		Com_Printf( "Writing fscache.dat due to updated files...\n" );
 		FS_WriteIndexCache();
 	}

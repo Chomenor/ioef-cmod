@@ -113,7 +113,6 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 	int		i, j, k, dist;
 	vec3_t	normal;
 	vec3_t	sum;
-	int		count = 0;
 	vec3_t	base;
 	vec3_t	delta;
 	int		x, y;
@@ -153,7 +152,6 @@ static	int	neighbors[8][2] = {
 
 	for ( i = 0 ; i < width ; i++ ) {
 		for ( j = 0 ; j < height ; j++ ) {
-			count = 0;
 			dv = &ctrl[j][i];
 			VectorCopy( dv->xyz, base );
 			for ( k = 0 ; k < 8 ; k++ ) {
@@ -202,7 +200,6 @@ static	int	neighbors[8][2] = {
 					continue;
 				}
 				VectorAdd( normal, sum, sum );
-				count++;
 			}
 			//if ( count == 0 ) {
 			//	printf("bad normal\n");
@@ -388,10 +385,10 @@ void R_CreateSurfaceGridMesh(srfBspSurface_t *grid, int width, int height,
 	grid->numVerts = (width * height);
 	grid->verts = ri.Malloc(grid->numVerts * sizeof(srfVert_t));
 #else
-	grid->widthLodError = ri.Hunk_Alloc( width * 4 );
+	grid->widthLodError = ri.Hunk_Alloc( width * 4, h_low );
 	Com_Memcpy( grid->widthLodError, errorTable[0], width * 4 );
 
-	grid->heightLodError = ri.Hunk_Alloc( height * 4 );
+	grid->heightLodError = ri.Hunk_Alloc( height * 4, h_low );
 	Com_Memcpy( grid->heightLodError, errorTable[1], height * 4 );
 
 	grid->numIndexes = numIndexes;
@@ -482,7 +479,7 @@ void R_SubdividePatchToGrid( srfBspSurface_t *grid, int width, int height,
 			for ( i = 0 ; i < height ; i++ ) {
 				vec3_t		midxyz;
 				vec3_t		midxyz2;
-				vec3_t		dir;
+				vec3_t		dirVector;
 				vec3_t		projected;
 				float		d;
 
@@ -497,11 +494,11 @@ void R_SubdividePatchToGrid( srfBspSurface_t *grid, int width, int height,
 				// texture warping, but it gives a lot less polygons than
 				// dist-from-midpoint
 				VectorSubtract( midxyz, ctrl[i][j].xyz, midxyz );
-				VectorSubtract( ctrl[i][j+2].xyz, ctrl[i][j].xyz, dir );
-				VectorNormalize( dir );
+				VectorSubtract( ctrl[i][j+2].xyz, ctrl[i][j].xyz, dirVector );
+				VectorNormalize( dirVector );
 
-				d = DotProduct( midxyz, dir );
-				VectorScale( dir, d, projected );
+				d = DotProduct( midxyz, dirVector );
+				VectorScale( dirVector, d, projected );
 				VectorSubtract( midxyz, projected, midxyz2);
 				len = VectorLengthSquared( midxyz2 );			// we will do the sqrt later
 				if ( len > maxLen ) {

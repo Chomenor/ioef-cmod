@@ -40,7 +40,14 @@ R_DrawElements
 
 void R_DrawElements( int numIndexes, int firstIndex )
 {
-	qglDrawElements(GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, BUFFER_OFFSET(firstIndex * sizeof(glIndex_t)));
+	if (tess.useCacheVao)
+	{
+		VaoCache_DrawElements(numIndexes, firstIndex);
+	}
+	else
+	{
+		qglDrawElements(GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, BUFFER_OFFSET(firstIndex * sizeof(glIndex_t)));
+	}
 }
 
 
@@ -134,7 +141,140 @@ Draws vertex normals for debugging
 ================
 */
 static void DrawNormals (shaderCommands_t *input) {
-	//FIXME: implement this
+	if (!input) return;
+
+	const int vertexCount = input->numVertexes;
+	if (vertexCount <= 0) return;
+	if (!input->shader || input->shader->isSky) return;   // do not draw over sky/clouds
+	if (input->shader->numDeforms > 0) return;  // skip vertex-deformed surfaces
+
+	// Skip animated entities that are interpolating; otherwise normals will appear to "swim".
+	if (backEnd.currentEntity != &tr.worldEntity) {
+		const trRefEntity_t* refEnt = backEnd.currentEntity;
+		if (refEnt && refEnt->e.backlerp > 0) return;
+	}
+
+	const float       lineLength = 6.0f;
+
+	// xyz is vec4_t (x,y,z,1)
+	const float*      positionsXYZW   = (const float*)input->xyz;
+	const int16_t*    packedNormals   = (const int16_t*)input->normal;
+	const float*      floatNormals    = (const float*)input->normal;
+
+	const vao_t*      boundVao        = glState.currentVao;
+	qboolean          usePacked       = qfalse;
+
+	if (boundVao) {
+		const vaoAttrib_t* a = &boundVao->attribs[ATTR_INDEX_NORMAL];
+		usePacked = (a->type == GL_SHORT && a->normalized);
+	}
+	else {
+		const float sx = packedNormals[0] * (1.0f / 32767.0f);
+		const float sy = packedNormals[1] * (1.0f / 32767.0f);
+		const float sz = packedNormals[2] * (1.0f / 32767.0f);
+
+		const float lp = sx * sx + sy * sy + sz * sz;
+		const float lf = floatNormals[0] * floatNormals[0]
+			+ floatNormals[1] * floatNormals[1]
+			+ floatNormals[2] * floatNormals[2];
+
+		usePacked = fabsf(lp - 1.0f) <= fabsf(lf - 1.0f);
+	}
+
+	const GLsizeiptr floatsPerVertex = 6;
+	const GLsizeiptr maxFloatCount = floatsPerVertex * (GLsizeiptr)vertexCount;
+	const GLsizeiptr maxByteCount = (GLsizeiptr)sizeof(float) * maxFloatCount;
+
+	float* lineVertices = (float*)ri.Hunk_AllocateTempMemory((int)maxByteCount);
+	float* writePtr = lineVertices;
+
+	// Build the line list
+	for (int i = 0; i < vertexCount; ++i, positionsXYZW += 4) {
+		vec3_t n;
+
+		if (usePacked) {
+			R_VaoUnpackNormal(n, (int16_t*)packedNormals);
+			packedNormals += 4;
+		}
+		else {
+			n[0] = floatNormals[0];
+			n[1] = floatNormals[1];
+			n[2] = floatNormals[2];
+			floatNormals += 4;
+		}
+
+		// endpoints in object/world space
+		const float startX = positionsXYZW[0];
+		const float startY = positionsXYZW[1];
+		const float startZ = positionsXYZW[2];
+
+		const float endX = startX + n[0] * lineLength;
+		const float endY = startY + n[1] * lineLength;
+		const float endZ = startZ + n[2] * lineLength;
+
+
+		// emit line
+		*writePtr++ = startX; *writePtr++ = startY; *writePtr++ = startZ;
+		*writePtr++ = endX;   *writePtr++ = endY;   *writePtr++ = endZ;
+	}
+
+	const GLsizei numVerts = (GLsizei)((writePtr - lineVertices) / 3);
+	if (numVerts == 0) {
+		ri.Hunk_FreeTempMemory(lineVertices);
+		return;
+	}
+
+	// save bindings
+	GLint prevProg = 0, prevVao = 0, prevArrayBuf = 0;
+	qglGetIntegerv(GL_CURRENT_PROGRAM, &prevProg);
+	qglGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
+	qglGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf);
+
+	GL_BindToTMU(tr.whiteImage, TB_COLORMAP);
+	GL_State(GLS_POLYMODE_LINE);
+	GLboolean prevDepthMask;
+	qglGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
+	qglDepthMask(GL_FALSE);
+
+
+	R_BindNullVao();
+
+	// temp VAO/VBO
+	GLuint vao = 0, vbo = 0;
+	qglGenVertexArrays(1, &vao);
+	qglBindVertexArray(vao);
+
+	qglGenBuffers(1, &vbo);
+	qglBindBuffer(GL_ARRAY_BUFFER, vbo);
+	qglBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * numVerts, lineVertices, GL_STREAM_DRAW);
+
+	shaderProgram_t* program = &tr.textureColorShader;
+	GLSL_BindProgram(program);
+	GLSL_SetUniformMat4(program, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+
+	vec4_t white;
+	VectorSet4(white, 1, 1, 1, 1);
+	GLSL_SetUniformVec4(program, UNIFORM_COLOR, white);
+
+	// position at location 0 in this backend
+	qglEnableVertexAttribArray(ATTR_INDEX_POSITION);
+	qglVertexAttribPointer(ATTR_INDEX_POSITION, 3, GL_FLOAT, GL_FALSE, 0, (const void*)0);
+
+	qglDrawArrays(GL_LINES, 0, numVerts);
+
+	qglDisableVertexAttribArray(ATTR_INDEX_POSITION);
+
+	// restore
+	qglDepthMask(prevDepthMask);
+	qglBindBuffer(GL_ARRAY_BUFFER, prevArrayBuf);
+	qglBindVertexArray(prevVao);
+	qglDeleteBuffers(1, &vbo);
+	qglDeleteVertexArrays(1, &vao);
+
+	if (prevProg) qglUseProgram((GLuint)prevProg);
+	else          qglUseProgram(0);
+
+	ri.Hunk_FreeTempMemory(lineVertices);
 }
 
 /*
@@ -181,33 +321,30 @@ extern float EvalWaveForm( const waveForm_t *wf );
 extern float EvalWaveFormClamped( const waveForm_t *wf );
 
 
-static void ComputeTexMods( shaderStage_t *pStage, int bundleNum, float *outMatrix, float *outOffTurb)
+static void ComputeTexMods( shaderStage_t *pStage, int bundleNum, vec4_t outMatrix[8])
 {
 	int tm;
-	float matrix[6], currentmatrix[6];
+	float matrix[6];
+	float tmpmatrix[6];
+	float currentmatrix[6];
+	float turb[2];
 	textureBundle_t *bundle = &pStage->bundle[bundleNum];
-
-	matrix[0] = 1.0f; matrix[2] = 0.0f; matrix[4] = 0.0f;
-	matrix[1] = 0.0f; matrix[3] = 1.0f; matrix[5] = 0.0f;
+	qboolean hasTurb = qfalse;
 
 	currentmatrix[0] = 1.0f; currentmatrix[2] = 0.0f; currentmatrix[4] = 0.0f;
 	currentmatrix[1] = 0.0f; currentmatrix[3] = 1.0f; currentmatrix[5] = 0.0f;
-
-	outMatrix[0] = 1.0f; outMatrix[2] = 0.0f;
-	outMatrix[1] = 0.0f; outMatrix[3] = 1.0f;
-
-	outOffTurb[0] = 0.0f; outOffTurb[1] = 0.0f; outOffTurb[2] = 0.0f; outOffTurb[3] = 0.0f;
 
 	for ( tm = 0; tm < bundle->numTexMods ; tm++ ) {
 		switch ( bundle->texMods[tm].type )
 		{
 			
 		case TMOD_NONE:
-			tm = TR_MAX_TEXMODS;		// break out of for loop
+			matrix[0] = 1.0f; matrix[2] = 0.0f; matrix[4] = 0.0f;
+			matrix[1] = 0.0f; matrix[3] = 1.0f; matrix[5] = 0.0f;
 			break;
 
 		case TMOD_TURBULENT:
-			RB_CalcTurbulentFactors(&bundle->texMods[tm].wave, &outOffTurb[2], &outOffTurb[3]);
+			RB_CalcTurbulentFactors(&bundle->texMods[tm].wave, &turb[0], &turb[1]);
 			break;
 
 		case TMOD_ENTITY_TRANSLATE:
@@ -246,34 +383,67 @@ static void ComputeTexMods( shaderStage_t *pStage, int bundleNum, float *outMatr
 
 		switch ( bundle->texMods[tm].type )
 		{	
-		case TMOD_NONE:
 		case TMOD_TURBULENT:
-		default:
+			outMatrix[tm*2+0][0] = 1; outMatrix[tm*2+0][1] = 0; outMatrix[tm*2+0][2] = 0;
+			outMatrix[tm*2+1][0] = 0; outMatrix[tm*2+1][1] = 1; outMatrix[tm*2+1][2] = 0;
+
+			outMatrix[tm*2+0][3] = turb[0];
+			outMatrix[tm*2+1][3] = turb[1];
+
+			hasTurb = qtrue;
 			break;
 
+		case TMOD_NONE:
 		case TMOD_ENTITY_TRANSLATE:
 		case TMOD_SCROLL:
 		case TMOD_SCALE:
 		case TMOD_STRETCH:
 		case TMOD_TRANSFORM:
 		case TMOD_ROTATE:
-			outMatrix[0] = matrix[0] * currentmatrix[0] + matrix[2] * currentmatrix[1];
-			outMatrix[1] = matrix[1] * currentmatrix[0] + matrix[3] * currentmatrix[1];
+		default:
+			outMatrix[tm*2+0][0] = matrix[0]; outMatrix[tm*2+0][1] = matrix[2]; outMatrix[tm*2+0][2] = matrix[4];
+			outMatrix[tm*2+1][0] = matrix[1]; outMatrix[tm*2+1][1] = matrix[3]; outMatrix[tm*2+1][2] = matrix[5];
 
-			outMatrix[2] = matrix[0] * currentmatrix[2] + matrix[2] * currentmatrix[3];
-			outMatrix[3] = matrix[1] * currentmatrix[2] + matrix[3] * currentmatrix[3];
+			outMatrix[tm*2+0][3] = 0;
+			outMatrix[tm*2+1][3] = 0;
 
-			outOffTurb[0] = matrix[0] * currentmatrix[4] + matrix[2] * currentmatrix[5] + matrix[4];
-			outOffTurb[1] = matrix[1] * currentmatrix[4] + matrix[3] * currentmatrix[5] + matrix[5];
+			tmpmatrix[0] = matrix[0] * currentmatrix[0] + matrix[2] * currentmatrix[1];
+			tmpmatrix[1] = matrix[1] * currentmatrix[0] + matrix[3] * currentmatrix[1];
 
-			currentmatrix[0] = outMatrix[0];
-			currentmatrix[1] = outMatrix[1];
-			currentmatrix[2] = outMatrix[2];
-			currentmatrix[3] = outMatrix[3];
-			currentmatrix[4] = outOffTurb[0];
-			currentmatrix[5] = outOffTurb[1];
+			tmpmatrix[2] = matrix[0] * currentmatrix[2] + matrix[2] * currentmatrix[3];
+			tmpmatrix[3] = matrix[1] * currentmatrix[2] + matrix[3] * currentmatrix[3];
+
+			tmpmatrix[4] = matrix[0] * currentmatrix[4] + matrix[2] * currentmatrix[5] + matrix[4];
+			tmpmatrix[5] = matrix[1] * currentmatrix[4] + matrix[3] * currentmatrix[5] + matrix[5];
+
+			currentmatrix[0] = tmpmatrix[0];
+			currentmatrix[1] = tmpmatrix[1];
+			currentmatrix[2] = tmpmatrix[2];
+			currentmatrix[3] = tmpmatrix[3];
+			currentmatrix[4] = tmpmatrix[4];
+			currentmatrix[5] = tmpmatrix[5];
 			break;
 		}
+	}
+
+	// if turb isn't used, only one matrix is needed
+	if ( !hasTurb ) {
+		tm = 0;
+
+		outMatrix[tm*2+0][0] = currentmatrix[0]; outMatrix[tm*2+0][1] = currentmatrix[2]; outMatrix[tm*2+0][2] = currentmatrix[4];
+		outMatrix[tm*2+1][0] = currentmatrix[1]; outMatrix[tm*2+1][1] = currentmatrix[3]; outMatrix[tm*2+1][2] = currentmatrix[5];
+
+		outMatrix[tm*2+0][3] = 0;
+		outMatrix[tm*2+1][3] = 0;
+		tm++;
+	}
+
+	for ( ; tm < TR_MAX_TEXMODS ; tm++ ) {
+		outMatrix[tm*2+0][0] = 1; outMatrix[tm*2+0][1] = 0; outMatrix[tm*2+0][2] = 0;
+		outMatrix[tm*2+1][0] = 0; outMatrix[tm*2+1][1] = 1; outMatrix[tm*2+1][2] = 0;
+
+		outMatrix[tm*2+0][3] = 0;
+		outMatrix[tm*2+1][3] = 0;
 	}
 }
 
@@ -665,8 +835,7 @@ static void ForwardDlight( void ) {
 		dlight_t	*dl;
 		shaderProgram_t *sp;
 		vec4_t vector;
-		vec4_t texMatrix;
-		vec4_t texOffTurb;
+		vec4_t texMatrix[8];
 
 		if ( !( tess.dlightBits & ( 1 << l ) ) ) {
 			continue;	// this surface definitely doesn't have any of this light
@@ -792,9 +961,15 @@ static void ForwardDlight( void ) {
 		if (r_dlightMode->integer >= 2)
 			GL_BindToTMU(tr.shadowCubemaps[l], TB_SHADOWMAP);
 
-		ComputeTexMods( pStage, TB_DIFFUSEMAP, texMatrix, texOffTurb );
-		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX, texMatrix);
-		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXOFFTURB, texOffTurb);
+		ComputeTexMods( pStage, TB_DIFFUSEMAP, texMatrix );
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX0, texMatrix[0]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX1, texMatrix[1]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX2, texMatrix[2]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX3, texMatrix[3]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX4, texMatrix[4]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX5, texMatrix[5]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX6, texMatrix[6]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX7, texMatrix[7]);
 
 		GLSL_SetUniformInt(sp, UNIFORM_TCGEN0, pStage->bundle[0].tcGen);
 
@@ -996,8 +1171,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 	{
 		shaderStage_t *pStage = input->xstages[stage];
 		shaderProgram_t *sp;
-		vec4_t texMatrix;
-		vec4_t texOffTurb;
+		vec4_t texMatrix[8];
 
 		if ( !pStage )
 		{
@@ -1184,19 +1358,31 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 
 		if (r_lightmap->integer)
 		{
-			vec4_t v;
-			VectorSet4(v, 1.0f, 0.0f, 0.0f, 1.0f);
-			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX, v);
-			VectorSet4(v, 0.0f, 0.0f, 0.0f, 0.0f);
-			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXOFFTURB, v);
+			vec4_t st[2];
+			VectorSet4(st[0], 1.0f, 0.0f, 0.0f, 0.0f);
+			VectorSet4(st[1], 0.0f, 1.0f, 0.0f, 0.0f);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX0, st[0]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX1, st[1]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX2, st[0]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX3, st[1]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX4, st[0]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX5, st[1]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX6, st[0]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX7, st[1]);
 
 			GLSL_SetUniformInt(sp, UNIFORM_TCGEN0, TCGEN_LIGHTMAP);
 		}
 		else
 		{
-			ComputeTexMods(pStage, TB_DIFFUSEMAP, texMatrix, texOffTurb);
-			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX, texMatrix);
-			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXOFFTURB, texOffTurb);
+			ComputeTexMods(pStage, TB_DIFFUSEMAP, texMatrix);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX0, texMatrix[0]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX1, texMatrix[1]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX2, texMatrix[2]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX3, texMatrix[3]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX4, texMatrix[4]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX5, texMatrix[5]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX6, texMatrix[6]);
+			GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX7, texMatrix[7]);
 
 			GLSL_SetUniformInt(sp, UNIFORM_TCGEN0, pStage->bundle[0].tcGen);
 			if (pStage->bundle[0].tcGen == TCGEN_VECTOR)
@@ -1674,6 +1860,8 @@ void RB_EndSurface( void ) {
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
 	tess.firstIndex = 0;
+	tess.useCacheVao = qfalse;
+	tess.useInternalVao = qfalse;
 
 	GLimp_LogComment( "----------\n" );
 }

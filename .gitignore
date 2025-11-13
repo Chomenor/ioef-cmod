@@ -3,6 +3,8 @@ Makefile.local
 *.swp
 *tags
 *~
+/.vscode/
+/baseq3
 
 # OS X
 ####################
@@ -40,3 +42,4 @@ profile
 *.sdf
 *.opensdf
 *.suo
+/.vs

@@ -49,6 +49,14 @@ static vec3_t sky_clip[6] =
 static float	sky_mins[2][6], sky_maxs[2][6];
 static float	sky_min, sky_max;
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+// AddSkyPolygon and ClipSkyPolygon both technically do
+// unbounded access of their vecs parameter, though in
+// practice the size of what they're passed makes it safe
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
 /*
 ================
 AddSkyPolygon
@@ -237,6 +245,10 @@ static void ClipSkyPolygon (int nump, vec3_t vecs, int stage)
 	ClipSkyPolygon (newc[0], newv[0][0], stage+1);
 	ClipSkyPolygon (newc[1], newv[1][0], stage+1);
 }
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 /*
 ==============
@@ -435,7 +447,7 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 */
 	{
 		shaderProgram_t *sp = &tr.lightallShader[0];
-		vec4_t vector;
+		vec4_t st[2];
 
 		GLSL_BindProgram(sp);
 		
@@ -453,11 +465,16 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 		color[3] = 0.0f;
 		GLSL_SetUniformVec4(sp, UNIFORM_VERTCOLOR, color);
 
-		VectorSet4(vector, 1.0, 0.0, 0.0, 1.0);
-		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX, vector);
-
-		VectorSet4(vector, 0.0, 0.0, 0.0, 0.0);
-		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXOFFTURB, vector);
+		VectorSet4(st[0], 1.0f, 0.0f, 0.0f, 0.0f);
+		VectorSet4(st[1], 0.0f, 1.0f, 0.0f, 0.0f);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX0, st[0]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX1, st[1]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX2, st[0]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX3, st[1]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX4, st[0]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX5, st[1]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX6, st[0]);
+		GLSL_SetUniformVec4(sp, UNIFORM_DIFFUSETEXMATRIX7, st[1]);
 
 		GLSL_SetUniformInt(sp, UNIFORM_ALPHATEST, 0);
 	}

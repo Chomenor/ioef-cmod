@@ -230,8 +230,8 @@ static qboolean FS_IsValidDownload( download_entry_t *entry, unsigned int rechec
 	unsigned int hash = recheck_hash ? recheck_hash : entry->hash;
 	const fsc_file_direct_t *different_moddir_match = NULL;
 
-	if ( fs.read_only ) {
-		Com_Printf( "WARNING: Ignoring download %s because filesystem is in read-only state.\n",
+	if ( !FS_IsWritedirAvailable( XDG_DATA ) ) {
+		Com_Printf( "WARNING: Ignoring download %s because no writable directory is available.\n",
 				entry->local_name );
 		return qfalse;
 	}
@@ -473,12 +473,12 @@ void FS_FinalizeDownload( void ) {
 		return;
 	}
 
-	if ( !FS_GeneratePathWritedir( "download.temp", NULL, 0, 0, tempfile_path, sizeof( tempfile_path ) ) ) {
+	if ( !FS_GeneratePathWritedir( XDG_DATA, "download.temp", NULL, 0, 0, tempfile_path, sizeof( tempfile_path ) ) ) {
 		Com_Printf( "ERROR: Failed to get tempfile path for download\n" );
 		return;
 	}
 
-	if ( !FS_GeneratePathWritedir( current_download->local_name, NULL, FS_ALLOW_PK3 | FS_ALLOW_DIRECTORIES | FS_CREATE_DIRECTORIES_FOR_FILE,
+	if ( !FS_GeneratePathWritedir( XDG_DATA, current_download->local_name, NULL, FS_ALLOW_PK3 | FS_ALLOW_DIRECTORIES | FS_CREATE_DIRECTORIES_FOR_FILE,
 				0, target_path, sizeof( target_path ) ) ) {
 		Com_Printf( "ERROR: Failed to get target path for download\n" );
 		return;
@@ -508,7 +508,7 @@ void FS_FinalizeDownload( void ) {
 				current_download->filename, actual_hash );
 		Com_Printf( "WARNING: Downloaded pk3 %s conflicts with existing file. Using name %s instead.\n",
 				current_download->local_name, new_name );
-		if ( !FS_GeneratePathWritedir( new_name, NULL, FS_ALLOW_DIRECTORIES | FS_ALLOW_PK3, 0, target_path, sizeof( target_path ) ) ) {
+		if ( !FS_GeneratePathWritedir( XDG_DATA, new_name, NULL, FS_ALLOW_DIRECTORIES | FS_ALLOW_PK3, 0, target_path, sizeof( target_path ) ) ) {
 			Com_Printf( "ERROR: Failed to get nonconflicted target path for download\n" );
 			return;
 		}

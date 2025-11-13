@@ -208,7 +208,6 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 	int			i, j, numLightmaps, textureInternalFormat = 0;
 	int			numLightmapsPerPage = 16;
 	float maxIntensity = 0;
-	double sumIntensity = 0;
 
 	len = l->filelen;
 	if ( !len ) {
@@ -276,7 +275,7 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 		tr.deluxemaps = ri.Hunk_Alloc( tr.numLightmaps * sizeof(image_t *), h_low );
 
 	textureInternalFormat = GL_RGBA8;
-	if (r_hdr->integer)
+	if (r_hdr->integer && !qglesMajorVersion)
 	{
 		// Check for the first hdr lightmap, if it exists, use GL_RGBA16 for textures.
 		char filename[MAX_QPATH];
@@ -442,8 +441,6 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 						image[j*4+1] = out[1] * 255;
 						image[j*4+2] = out[2] * 255;
 						image[j*4+3] = 255;
-
-						sumIntensity += intensity;
 					}
 					else
 					{
@@ -497,6 +494,7 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 }
 
 
+// If FatPackU() or FatPackV() changes, update FixFatLightmapTexCoords()
 static float FatPackU(float input, int lightmapnum)
 {
 	if (lightmapnum < 0)
@@ -616,7 +614,7 @@ static shader_t *ShaderForShaderNum( int shaderNum, int lightmapNum ) {
 		lightmapNum = LIGHTMAP_WHITEIMAGE;
 	}
 
-	shader = R_FindShader( dsh->shader, lightmapNum, qtrue );
+	shader = R_FindShaderEx( dsh->shader, FatLightmap( lightmapNum ), qtrue, lightmapNum );
 
 	// if the shader had errors, just use default shader
 	if ( shader->defaultShader ) {
@@ -705,7 +703,7 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 	surf->fogIndex = LittleLong( ds->fogNum ) + 1;
 
 	// get shader value
-	surf->shader = ShaderForShaderNum( ds->shaderNum, FatLightmap(realLightmapNum) );
+	surf->shader = ShaderForShaderNum( ds->shaderNum, realLightmapNum );
 	if ( r_singleShader->integer && !surf->shader->isSky ) {
 		surf->shader = tr.defaultShader;
 	}
@@ -812,7 +810,7 @@ static void ParseMesh ( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors,
 	surf->fogIndex = LittleLong( ds->fogNum ) + 1;
 
 	// get shader value
-	surf->shader = ShaderForShaderNum( ds->shaderNum, FatLightmap(realLightmapNum) );
+	surf->shader = ShaderForShaderNum( ds->shaderNum, realLightmapNum );
 	if ( r_singleShader->integer && !surf->shader->isSky ) {
 		surf->shader = tr.defaultShader;
 	}
@@ -2794,7 +2792,7 @@ void RE_LoadWorldMap( const char *name ) {
 		world_t	*w;
 		uint8_t *primaryLightGrid, *data;
 		int lightGridSize;
-		int i;
+		int j;
 
 		w = &s_worldData;
 
@@ -2804,7 +2802,7 @@ void RE_LoadWorldMap( const char *name ) {
 		memset(primaryLightGrid, 0, lightGridSize * sizeof(*primaryLightGrid));
 
 		data = w->lightGridData;
-		for (i = 0; i < lightGridSize; i++, data += 8)
+		for (j = 0; j < lightGridSize; j++, data += 8)
 		{
 			int lat, lng;
 			vec3_t gridLightDir, gridLightCol;
@@ -2834,39 +2832,39 @@ void RE_LoadWorldMap( const char *name ) {
 			// FIXME: magic number for determining if light direction is close enough to sunlight
 			if (DotProduct(gridLightDir, tr.sunDirection) > 0.75f)
 			{
-				primaryLightGrid[i] = 1;
+				primaryLightGrid[j] = 1;
 			}
 			else
 			{
-				primaryLightGrid[i] = 255;
+				primaryLightGrid[j] = 255;
 			}
 		}
 
 		if (0)
 		{
-			int i;
-			byte *buffer = ri.Malloc(w->lightGridBounds[0] * w->lightGridBounds[1] * 3 + 18);
+			int k;
+			byte *buf = ri.Malloc(w->lightGridBounds[0] * w->lightGridBounds[1] * 3 + 18);
 			byte *out;
 			uint8_t *in;
 			char fileName[MAX_QPATH];
 			
-			Com_Memset (buffer, 0, 18);
-			buffer[2] = 2;		// uncompressed type
-			buffer[12] = w->lightGridBounds[0] & 255;
-			buffer[13] = w->lightGridBounds[0] >> 8;
-			buffer[14] = w->lightGridBounds[1] & 255;
-			buffer[15] = w->lightGridBounds[1] >> 8;
-			buffer[16] = 24;	// pixel size
+			Com_Memset (buf, 0, 18);
+			buf[2] = 2;		// uncompressed type
+			buf[12] = w->lightGridBounds[0] & 255;
+			buf[13] = w->lightGridBounds[0] >> 8;
+			buf[14] = w->lightGridBounds[1] & 255;
+			buf[15] = w->lightGridBounds[1] >> 8;
+			buf[16] = 24;	// pixel size
 
 			in = primaryLightGrid;
-			for (i = 0; i < w->lightGridBounds[2]; i++)
+			for (k = 0; k < w->lightGridBounds[2]; k++)
 			{
-				int j;
+				int l;
 
-				sprintf(fileName, "primarylg%d.tga", i);
+				sprintf(fileName, "primarylg%d.tga", l);
 
-				out = buffer + 18;
-				for (j = 0; j < w->lightGridBounds[0] * w->lightGridBounds[1]; j++)
+				out = buf + 18;
+				for (l = 0; l < w->lightGridBounds[0] * w->lightGridBounds[1]; l++)
 				{
 					if (*in == 1)
 					{
@@ -2889,15 +2887,15 @@ void RE_LoadWorldMap( const char *name ) {
 					in++;
 				}
 
-				ri.FS_WriteFile(fileName, buffer, w->lightGridBounds[0] * w->lightGridBounds[1] * 3 + 18);
+				ri.FS_WriteFile(fileName, buf, w->lightGridBounds[0] * w->lightGridBounds[1] * 3 + 18);
 			}
 
-			ri.Free(buffer);
+			ri.Free(buf);
 		}
 
-		for (i = 0; i < w->numWorldSurfaces; i++)
+		for (j = 0; j < w->numWorldSurfaces; j++)
 		{
-			msurface_t *surf = w->surfaces + i;
+			msurface_t *surf = w->surfaces + j;
 			cullinfo_t *ci = &surf->cullinfo;
 
 			if(ci->type & CULLINFO_PLANE)

@@ -20,6 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+// Use EnumProcesses() with Windows XP compatibility
+#define PSAPI_VERSION 1
+
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "sys_local.h"
@@ -42,18 +45,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef KEY_WOW64_32KEY
 #define KEY_WOW64_32KEY 0x0200
 #endif
-
-// Used to determine where to store user-specific files
-static char homePath[ MAX_OSPATH ] = { 0 };
-
-// Used to store the Steam Quake 3 installation path
-static char steamPath[ MAX_OSPATH ] = { 0 };
-
-// Used to store the GOG Quake 3 installation path
-static char gogPath[ MAX_OSPATH ] = { 0 };
-
-// Used to store the Microsoft Store Quake 3 installation path
-static char microsoftStorePath[MAX_OSPATH] = { 0 };
 
 #ifndef DEDICATED
 static UINT timerResolution = 0;
@@ -97,33 +88,18 @@ void Sys_SetFloatEnv(void)
 Sys_DefaultHomePath
 ================
 */
-char *Sys_DefaultHomePath( void )
+static char *Sys_DefaultHomePath( void )
 {
-	TCHAR szPath[MAX_PATH];
-	FARPROC qSHGetFolderPath;
-	HMODULE shfolder = LoadLibrary("shfolder.dll");
-
-	if(shfolder == NULL)
-	{
-		Com_Printf("Unable to load SHFolder.dll\n");
-		return NULL;
-	}
+	static char homePath[ MAX_OSPATH ] = { 0 };
 
 	if(!*homePath && com_homepath)
 	{
-		qSHGetFolderPath = GetProcAddress(shfolder, "SHGetFolderPathA");
-		if(qSHGetFolderPath == NULL)
-		{
-			Com_Printf("Unable to find SHGetFolderPath in SHFolder.dll\n");
-			FreeLibrary(shfolder);
-			return NULL;
-		}
+		TCHAR szPath[MAX_PATH];
 
-		if( !SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_APPDATA,
+		if( !SUCCEEDED( SHGetFolderPathA( NULL, CSIDL_APPDATA,
 						NULL, 0, szPath ) ) )
 		{
 			Com_Printf("Unable to detect CSIDL_APPDATA\n");
-			FreeLibrary(shfolder);
 			return NULL;
 		}
 		
@@ -132,12 +108,19 @@ char *Sys_DefaultHomePath( void )
 		if(com_homepath->string[0])
 			Q_strcat(homePath, sizeof(homePath), com_homepath->string);
 		else
-			Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_WIN);
+			Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME);
 	}
 
-	FreeLibrary(shfolder);
 	return homePath;
 }
+
+#ifdef NEW_FILESYSTEM
+char *Sys_DefaultNonXdgHomepath(void) { return Sys_DefaultHomePath(); }
+#else
+char *Sys_DefaultHomeConfigPath(void) { return Sys_DefaultHomePath(); }
+char *Sys_DefaultHomeDataPath(void)   { return Sys_DefaultHomePath(); }
+char *Sys_DefaultHomeStatePath(void)  { return Sys_DefaultHomePath(); }
+#endif
 
 /*
 ================
@@ -146,14 +129,20 @@ Sys_SteamPath
 */
 char *Sys_SteamPath( void )
 {
-#if defined(STEAMPATH_NAME) || defined(STEAMPATH_APPID)
+#ifndef STANDALONE
+
+#define STEAMPATH_NAME "Quake 3 Arena"
+#define STEAMPATH_APPID "2200"
+
+	static char steamPath[ MAX_OSPATH ] = { 0 };
+
 	HKEY steamRegKey;
 	DWORD pathLen = MAX_OSPATH;
 	qboolean finishPath = qfalse;
 
-#ifdef STEAMPATH_APPID
 	// Assuming Steam is a 32-bit app
-	if (!steamPath[0] && !RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App " STEAMPATH_APPID, 0, KEY_QUERY_VALUE | KEY_WOW64_32KEY, &steamRegKey))
+	if (!steamPath[0] && !RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App "
+		STEAMPATH_APPID, 0, KEY_QUERY_VALUE | KEY_WOW64_32KEY, &steamRegKey))
 	{
 		pathLen = MAX_OSPATH;
 		if (RegQueryValueEx(steamRegKey, "InstallLocation", NULL, NULL, (LPBYTE)steamPath, &pathLen))
@@ -161,9 +150,7 @@ char *Sys_SteamPath( void )
 
 		RegCloseKey(steamRegKey);
 	}
-#endif
 
-#ifdef STEAMPATH_NAME
 	if (!steamPath[0] && !RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Valve\\Steam", 0, KEY_QUERY_VALUE, &steamRegKey))
 	{
 		pathLen = MAX_OSPATH;
@@ -176,7 +163,6 @@ char *Sys_SteamPath( void )
 
 		RegCloseKey(steamRegKey);
 	}
-#endif
 
 	if (steamPath[0])
 	{
@@ -188,9 +174,11 @@ char *Sys_SteamPath( void )
 		if (finishPath)
 			Q_strcat(steamPath, MAX_OSPATH, "\\SteamApps\\common\\" STEAMPATH_NAME );
 	}
-#endif
 
 	return steamPath;
+#else
+	return "";
+#endif
 }
 
 /*
@@ -200,7 +188,12 @@ Sys_GogPath
 */
 char *Sys_GogPath( void )
 {
-#ifdef GOGPATH_ID
+#ifndef STANDALONE
+
+#define GOGPATH_ID "1441704920"
+
+	static char gogPath[ MAX_OSPATH ] = { 0 };
+
 	HKEY gogRegKey;
 	DWORD pathLen = MAX_OSPATH;
 
@@ -220,9 +213,11 @@ char *Sys_GogPath( void )
 
 		gogPath[pathLen] = '\0';
 	}
-#endif
 
 	return gogPath;
+#else
+	return "";
+#endif
 }
 
 /*
@@ -232,42 +227,31 @@ Sys_MicrosoftStorePath
 */
 char* Sys_MicrosoftStorePath(void)
 {
-#ifdef MSSTORE_PATH
+#ifndef STANDALONE
+
+#define MSSTORE_PATH "Quake 3"
+
+	static char microsoftStorePath[MAX_OSPATH] = { 0 };
+
 	if (!microsoftStorePath[0]) 
 	{
 		TCHAR szPath[MAX_PATH];
-		FARPROC qSHGetFolderPath;
-		HMODULE shfolder = LoadLibrary("shfolder.dll");
 
-		if(shfolder == NULL)
-		{
-			Com_Printf("Unable to load SHFolder.dll\n");
-			return microsoftStorePath;
-		}
-
-		qSHGetFolderPath = GetProcAddress(shfolder, "SHGetFolderPathA");
-		if(qSHGetFolderPath == NULL)
-		{
-			Com_Printf("Unable to find SHGetFolderPath in SHFolder.dll\n");
-			FreeLibrary(shfolder);
-			return microsoftStorePath;
-		}
-
-		if( !SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_PROGRAM_FILES,
+		if( !SUCCEEDED( SHGetFolderPathA( NULL, CSIDL_PROGRAM_FILES,
 						NULL, 0, szPath ) ) )
 		{
 			Com_Printf("Unable to detect CSIDL_PROGRAM_FILES\n");
-			FreeLibrary(shfolder);
 			return microsoftStorePath;
 		}
-
-		FreeLibrary(shfolder);
 
 		// default: C:\Program Files\ModifiableWindowsApps\Quake 3\EN
 		Com_sprintf(microsoftStorePath, sizeof(microsoftStorePath), "%s%cModifiableWindowsApps%c%s%cEN", szPath, PATH_SEP, PATH_SEP, MSSTORE_PATH, PATH_SEP);
 	}
-#endif
+
 	return microsoftStorePath;
+#else
+	return "";
+#endif
 }
 
 /*
@@ -458,6 +442,25 @@ char *Sys_Cwd( void ) {
 }
 
 /*
+==============
+Sys_BinaryPathRelative
+==============
+*/
+char *Sys_BinaryPathRelative(const char *relative)
+{
+	static char resolved[MAX_OSPATH];
+	char combined[MAX_OSPATH];
+
+	snprintf(combined, sizeof(combined), "%s\\%s", Sys_BinaryPath(), relative);
+
+	DWORD len = GetFullPathNameA(combined, MAX_OSPATH, resolved, NULL);
+	if (len == 0 || len >= MAX_OSPATH)
+		return NULL;
+
+	return resolved;
+}
+
+/*
 ==============================================================
 
 DIRECTORY SCANNING
@@ -480,6 +483,10 @@ void Sys_ListFilteredFiles( const char *basedir, char *subdirs, char *filter, ch
 	struct _finddata_t findinfo;
 
 	if ( *numfiles >= MAX_FOUND_FILES - 1 ) {
+		return;
+	}
+
+	if ( basedir[0] == '\0' ) {
 		return;
 	}
 
@@ -582,6 +589,11 @@ char **Sys_ListFiles( const char *directory, const char *extension, char *filter
 		listCopy[i] = NULL;
 
 		return listCopy;
+	}
+
+	if ( directory[0] == '\0' ) {
+		*numfiles = 0;
+		return NULL;
 	}
 
 	if ( !extension) {
@@ -715,6 +727,8 @@ Display an error message
 */
 void Sys_ErrorDialog( const char *error )
 {
+	Sys_Print( va( "%s\n", error ) );
+
 	if( Sys_Dialog( DT_YES_NO, va( "%s. Copy console log to clipboard?", error ),
 			"Error" ) == DR_YES )
 	{
@@ -892,7 +906,7 @@ qboolean Sys_PIDIsRunning( int pid )
 	// Search for the pid
 	for( i = 0; i < numProcesses; i++ )
 	{
-		if( processes[ i ] == pid )
+		if( (int)processes[ i ] == pid )
 			return qtrue;
 	}
 
@@ -908,4 +922,14 @@ Check if filename should be allowed to be loaded as a DLL.
 */
 qboolean Sys_DllExtension( const char *name ) {
 	return COM_CompareExtension( name, DLL_EXT );
+}
+
+/*
+==============
+Sys_OpenFolderInPlatformFileManager
+==============
+*/
+qboolean Sys_OpenFolderInPlatformFileManager( const char *path )
+{
+	return ShellExecute( NULL, "explore", path, NULL, NULL, SW_SHOWDEFAULT ) > (HINSTANCE)32;
 }

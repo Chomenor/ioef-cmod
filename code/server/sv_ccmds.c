@@ -649,11 +649,6 @@ static void SV_RehashBans_f(void)
 	char *textbuf, *curpos, *maskpos, *newlinepos, *endpos;
 	char filepath[MAX_QPATH];
 	
-	// make sure server is running
-	if ( !com_sv_running->integer ) {
-		return;
-	}
-	
 	serverBansCount = 0;
 	
 	if(!sv_banFile->string || !*sv_banFile->string)
@@ -661,7 +656,7 @@ static void SV_RehashBans_f(void)
 
 	Com_sprintf(filepath, sizeof(filepath), "%s/%s", FS_GetCurrentGameDir(), sv_banFile->string);
 
-	if((filelen = FS_SV_FOpenFileRead(filepath, &readfrom)) >= 0)
+	if((filelen = FS_BaseDir_FOpenFileRead(filepath, &readfrom)) >= 0)
 	{
 		if(filelen < 2)
 		{
@@ -740,7 +735,7 @@ static void SV_WriteBans(void)
 	
 	Com_sprintf(filepath, sizeof(filepath), "%s/%s", FS_GetCurrentGameDir(), sv_banFile->string);
 
-	if((writeto = FS_SV_FOpenFileWrite(filepath)))
+	if((writeto = FS_BaseDir_FOpenFileWrite_HomeState(filepath)))
 	{
 		char writebuf[128];
 		serverBan_t *curban;
@@ -1481,7 +1476,7 @@ SV_CompleteMapName
 */
 static void SV_CompleteMapName( char *args, int argNum ) {
 	if( argNum == 2 ) {
-		Field_CompleteFilename( "maps", "bsp", qtrue, qfalse );
+		Field_CompleteFilename( "maps", "bsp", NULL, qtrue, qfalse );
 	}
 }
 

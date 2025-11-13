@@ -736,9 +736,7 @@ static char **FS_FileList_GenerateList( const char *path, int *numfiles_out, fil
 		}
 
 		// Determine prefix length
-		if ( !flw.filter ) {
-			flw.crop_length = strlen( (const char *)STACKPTR( start_directory->qp_dir_ptr ) );
-		}
+		flw.crop_length = strlen( (const char *)STACKPTR( start_directory->qp_dir_ptr ) );
 
 		// Populate file set
 		FS_FileList_TempFileSetPopulate( start_directory, &temp_file_set, &flw );

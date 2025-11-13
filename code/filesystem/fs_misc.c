@@ -981,7 +981,7 @@ FS_GetModDescription
 void FS_GetModDescription( const char *modDir, char *description, int descriptionLen ) {
 	const char *descPath = va( "%s/description.txt", modDir );
 	fileHandle_t descHandle;
-	int descLen = FS_SV_FOpenFileRead( descPath, &descHandle );
+	int descLen = FS_BaseDir_FOpenFileRead( descPath, &descHandle );
 	if ( descLen > 0 && descHandle ) {
 		descLen = FS_Read( description, descriptionLen - 1, descHandle );
 		description[descLen] = '\0';
@@ -1000,7 +1000,7 @@ void FS_GetModDescription( const char *modDir, char *description, int descriptio
 FS_FilenameCompletion
 =================
 */
-void FS_FilenameCompletion( const char *dir, const char *ext, qboolean stripExt,
+void FS_FilenameCompletion( const char *dir, const char *ext, char *filter, qboolean stripExt,
 		void ( *callback )( const char *s ), qboolean allowNonPureFilesOnDisk ) {
 	char **filenames;
 	int nfiles;
@@ -1009,7 +1009,7 @@ void FS_FilenameCompletion( const char *dir, const char *ext, qboolean stripExt,
 
 	// Currently using the less restrictive LISTFLAG_IGNORE_PURE_LIST when allowNonPureFilesOnDisk is
 	// false, since that's what's used for map completion, and we want to ignore the pure list there
-	filenames = FS_ListFilteredFiles_Flags( dir, ext, NULL, &nfiles,
+	filenames = FS_ListFilteredFiles_Flags( dir, ext, filter, &nfiles,
 		allowNonPureFilesOnDisk ? LISTFLAG_PURE_ALLOW_DIRECT_SOURCE : LISTFLAG_IGNORE_PURE_LIST );
 
 	for ( i = 0; i < nfiles; i++ ) {
