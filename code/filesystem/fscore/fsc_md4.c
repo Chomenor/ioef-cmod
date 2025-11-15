@@ -40,7 +40,7 @@ typedef struct mdfour {
 
 /* NOTE: This code makes no attempt to be fast!
 
-   It assumes that a int is at least 32 bits long
+   It assumes that an int is at least 32 bits long
 */
 
 static mdfour_t *m;
@@ -108,8 +108,11 @@ static void copy64(uint32_t *M, byte *in)
 	int i;
 
 	for (i=0;i<16;i++)
-		M[i] = (in[i*4+3]<<24) | (in[i*4+2]<<16) |
-			(in[i*4+1]<<8) | (in[i*4+0]<<0);
+		M[i] =
+			((uint32_t)in[i*4+3] << 24) |
+			((uint32_t)in[i*4+2] << 16) |
+			((uint32_t)in[i*4+1] <<	 8) |
+			((uint32_t)in[i*4+0] <<	 0) ;
 }
 
 static void copy4(byte *out,uint32_t x)
@@ -179,12 +182,10 @@ static void mdfour_update(mdfour_t *md, byte *in, int n)
 
 static void mdfour_result(mdfour_t *md, byte *out)
 {
-	m = md;
-
-	copy4(out, m->A);
-	copy4(out+4, m->B);
-	copy4(out+8, m->C);
-	copy4(out+12, m->D);
+	copy4(out, md->A);
+	copy4(out+4, md->B);
+	copy4(out+8, md->C);
+	copy4(out+12, md->D);
 }
 
 static void mdfour(byte *out, byte *in, int n)

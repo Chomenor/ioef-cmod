@@ -23,8 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __TR_PUBLIC_H
 
 #ifdef NEW_FILESYSTEM
+#ifndef FS_HAVE_CORE_TYPEDEFS
+#define FS_HAVE_CORE_TYPEDEFS
 typedef struct fsc_file_s fsc_file_t;
 typedef struct fsc_shader_s fsc_shader_t;
+#endif
+
 // Lookup flags shared with filesystem. Must match values in fspublic.h!
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups.
 #define LOOKUPFLAG_ENABLE_MTR 2		// Enable mtr shader files.

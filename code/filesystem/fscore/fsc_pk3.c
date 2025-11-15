@@ -518,7 +518,7 @@ PK3 Handle Operations
 ###############################################################################################
 */
 
-typedef struct fsc_pk3handle_s {
+struct fsc_pk3handle_s {
 	fsc_filehandle_t *input_handle;
 	int compression_method;
 	unsigned int input_remaining;	// Remaining to be read from input handle
@@ -527,7 +527,7 @@ typedef struct fsc_pk3handle_s {
 	unsigned int input_buffer_size;
 	char *input_buffer;
 	z_stream zlib_stream;
-} fsc_pk3handle_t;
+};
 
 /*
 =================

@@ -30,6 +30,29 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static HINTERNET hInternet = NULL;
 static HINTERNET hUrl = NULL;
 
+#ifdef NEW_FILESYSTEM
+/*
+=================
+CL_HTTP_ErrorSkip
+=================
+*/
+static void CL_HTTP_ErrorSkip( const char *msg ) {
+	Com_Printf( "Download Error: %s\n", msg );
+	if ( hUrl ) {
+		InternetCloseHandle( hUrl );
+		hUrl = NULL;
+	}
+	clc.httpFailed = qtrue;
+}
+
+#define HTTP_ERROR_SKIP( cond, returnType, ... ) \
+	if ( cond ) {                                \
+		CL_HTTP_ErrorSkip( va( __VA_ARGS__ ) );  \
+		return returnType;                       \
+	}
+
+#define DropIf( cond, ... ) HTTP_ERROR_SKIP( cond, , __VA_ARGS__ )
+#else
 static Q_PRINTF_FUNC(2, 3) void DropIf(qboolean condition, const char *fmt, ...)
 {
     char buffer[1024];
@@ -44,6 +67,7 @@ static Q_PRINTF_FUNC(2, 3) void DropIf(qboolean condition, const char *fmt, ...)
 
     Com_Error(ERR_DROP, "Download Error: %s URL: %s", buffer, clc.downloadURL);
 }
+#endif
 
 /*
 =================
@@ -89,29 +113,6 @@ void CL_HTTP_Shutdown(void)
         hInternet = NULL;
     }
 }
-
-#ifdef NEW_FILESYSTEM
-/*
-=================
-CL_HTTP_ErrorSkip
-=================
-*/
-static void CL_HTTP_ErrorSkip( const char *msg ) {
-	Com_Printf( "Download Error: %s\n", msg );
-	if ( hUrl ) {
-		InternetCloseHandle( hUrl );
-		hUrl = NULL;
-	}
-	clc.httpFailed = qtrue;
-}
-
-#define HTTP_ERROR_SKIP( cond, returnType, ... ) \
-    if ( cond ) { \
-        CL_HTTP_ErrorSkip( va( __VA_ARGS__ ) ); \
-        return returnType; \
-    }
-#define DropIf( cond, ... ) HTTP_ERROR_SKIP( cond, , __VA_ARGS__ )
-#endif
 
 /*
 =================

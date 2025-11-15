@@ -225,7 +225,7 @@ typedef struct {
 } fsc_stats_t;
 
 #define FSC_CUSTOM_SOURCETYPE_COUNT 2
-typedef struct fsc_filesystem_s {
+struct fsc_filesystem_s {
 	// Support
 	fsc_stack_t general_stack;
 	fsc_hashtable_t string_repository;
@@ -253,7 +253,7 @@ typedef struct fsc_filesystem_s {
 	fsc_stats_t total_stats;
 	fsc_stats_t active_stats;
 	fsc_stats_t new_stats;
-} fsc_filesystem_t;
+};
 
 typedef struct fsc_shader_s {
 	// Hash table compliance
@@ -410,6 +410,9 @@ fsc_boolean FSC_SanityLimitHash( unsigned int hash, fsc_sanity_limit_t *sanity_l
 
 void FSC_ReportError( fsc_error_level_t level, fsc_error_category_t category, const char *msg, void *element );
 void FSC_RegisterErrorHandler( fsc_error_handler_t handler );
+#ifdef __GNUC__
+__attribute__((noreturn))
+#endif
 void FSC_FatalErrorTagged( const char *msg, const char *caller, const char *expression );
 
 // ***** Misc *****
@@ -437,6 +440,9 @@ void FSC_CalculateSHA256( const char *data, unsigned int size, unsigned char *ou
 // OS Library Interface (fsc_os.c)
 /* ******************************************************************************** */
 
+#ifdef __GNUC__
+__attribute__((noreturn))
+#endif
 void FSC_ErrorAbort( const char *msg );
 fsc_ospath_t *FSC_StringToOSPath( const char *path ); // WARNING: Result must be freed by caller using FSC_Free!!!
 char *FSC_OSPathToString( const fsc_ospath_t *os_path ); // WARNING: Result must be freed by caller using FSC_Free!!!

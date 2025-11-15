@@ -33,7 +33,9 @@ Headers & Definitions
 
 #ifdef _WIN32
 // Windows defines
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <windows.h>
 #ifdef UNICODE
 #define WIN_WIDECHAR
@@ -273,8 +275,8 @@ fsc_boolean FSC_MkdirRaw( fsc_ospath_t *os_path ) {
 	if ( mkdir( (const char *)os_path, 0750 ) ) {
 		return errno != EEXIST;
 	}
-#endif
 	return fsc_false;
+#endif
 }
 
 /*
@@ -479,7 +481,7 @@ void FSC_StrncpyLower( char *dst, const char *src, unsigned int size ) {
 	FSC_ASSERT( size > 0 );
 
 	while ( --size && *src ) {
-		*( dst++ ) = tolower( *( src++ ) );
+		*( dst++ ) = (char)tolower( *( src++ ) );
 	}
 	*dst = '\0';
 }

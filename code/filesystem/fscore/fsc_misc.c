@@ -754,6 +754,8 @@ void FSC_FatalErrorTagged( const char *msg, const char *caller, const char *expr
 	FSC_StreamAppendString( &stream, expression );
 	FSC_StreamAppendString( &stream, ")" );
 	FSC_ReportError( FSC_ERRORLEVEL_FATAL, FSC_ERROR_GENERAL, buffer, FSC_NULL );
+	// Shouldn't be reached
+	FSC_ErrorAbort( "FSC_FatalErrorTagged" );
 }
 
 /*

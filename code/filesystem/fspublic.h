@@ -27,8 +27,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifndef FSLOCAL
 
+#ifndef FS_HAVE_CORE_TYPEDEFS
+#define FS_HAVE_CORE_TYPEDEFS
 typedef struct fsc_file_s fsc_file_t;
 typedef struct fsc_shader_s fsc_shader_t;
+#endif
 
 #ifdef DEDICATED
 #	define Q3CONFIG_CFG "q3config_server.cfg"

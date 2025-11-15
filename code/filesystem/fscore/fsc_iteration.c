@@ -70,7 +70,7 @@ static void FSC_StripTrailingDirectory( const char *qp_dir, char *target ) {
 	}
 
 	// Copy path up to and including the ending slash
-	length = end_slash ? end_slash - qp_dir + 1 : 0;
+	length = end_slash ? (int)( end_slash - qp_dir ) + 1 : 0;
 	FSC_ASSERT( length < FSC_MAX_QPATH );
 	FSC_Memcpy( target, qp_dir, length );
 	target[length] = '\0';
