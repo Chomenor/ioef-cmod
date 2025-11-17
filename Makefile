@@ -1308,8 +1308,6 @@ ifeq ($(ARCH),mips)
 else
 ifeq ($(ARCH),sparc)
   CLIENT_CFLAGS += -DFPM_SPARC
-else
-  CLIENT_CFLAGS += -DFPM_DEFAULT
 endif
 endif
 endif

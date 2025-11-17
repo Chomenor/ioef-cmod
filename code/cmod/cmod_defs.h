@@ -6,9 +6,7 @@
 #define ELITEFORCE
 
 // [COMMON] Mp3 Support
-#if !defined( __EMSCRIPTEN__ )
 #define USE_CODEC_MP3
-#endif
 
 // [FEATURE] New filesystem with various improvements
 #if !defined( __EMSCRIPTEN__ )
@@ -505,4 +503,11 @@
 #if defined(CMOD_QVM_SELECTION)
 // Support for loading values from modcfg configstrings from remote server
 #define CMOD_CLIENT_MODCFG_HANDLING
+#endif
+
+#if defined(USE_CODEC_MP3)
+#if !defined( FPM_64BIT ) && !defined( FPM_INTEL ) && !defined( FPM_ARM ) && !defined( FPM_MIPS ) \
+		&& !defined( FPM_SPARC ) && !defined ( FPM_PPC ) && !defined( FPM_DEFAULT )
+#define FPM_64BIT
+#endif
 #endif

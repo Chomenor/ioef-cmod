@@ -24,11 +24,7 @@
 extern "C" {
 # endif
 
-#if !defined( FPM_64BIT ) && !defined( FPM_INTEL ) && !defined( FPM_ARM ) && !defined( FPM_MIPS ) \
-		&& !defined( FPM_SPARC ) && !defined ( FPM_PPC ) && !defined( FPM_DEFAULT )
-#pragma message( "mad.h: Valid FPM definition not found, defaulting to FPM_64BIT" )
-#define FPM_64BIT
-#endif
+
 
 # define SIZEOF_INT 4
 # define SIZEOF_LONG 4
