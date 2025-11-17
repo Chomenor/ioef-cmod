@@ -708,12 +708,12 @@ void Con_DrawNotify (void)
 #ifdef ELITEFORCE
 		if (chat_team)
 		{
-			SCR_DrawSmallString (8, v, "say_team:", 1.0f );
+			SCR_DrawSmallString (SMALLCHAR_WIDTH, v, "say_team:", 1.0f );
 			skip = 11;
 		}
 		else
 		{
-			SCR_DrawSmallString (8, v, "say:", 1.0f );
+			SCR_DrawSmallString (SMALLCHAR_WIDTH, v, "say:", 1.0f );
 			skip = 6;
 		}
 
