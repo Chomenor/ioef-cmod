@@ -98,9 +98,15 @@ static void AspectCorrect_UpdateValues( void ) {
 
 	{
 		vmCvar_t temp;
+#ifdef CMOD_SETTINGS
 		Cvar_Register( &temp, "cg_fov", CG_FOV_DEFAULT, 0, qtrue );
 		asc.fovCvarHandle = temp.handle;
 		Cvar_Register( &temp, "cg_gunZ", "0", 0, qtrue );
+#else
+		Cvar_Register( &temp, "cg_fov", CG_FOV_DEFAULT, 0 );
+		asc.fovCvarHandle = temp.handle;
+		Cvar_Register( &temp, "cg_gunZ", "0", 0 );
+#endif
 		asc.gunZCvarHandle = temp.handle;
 	}
 }
