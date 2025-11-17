@@ -83,7 +83,7 @@ static fileHandle_t get_log_handle(log_t *log) {
 	char path[64];
 	if(log->date_mode == 2) Com_sprintf(path, sizeof(path), "logs/%s/%s.txt", log->name, current_date);
 	else Com_sprintf(path, sizeof(path), "logs/%s.txt", log->name);
-	return FS_SV_FOpenFileAppend(path); }
+	return FS_Basedir_FOpenFileAppend(XDG_DATA, path); }
 
 static void update_log_handle(log_t *log) {
 	// Updates the log handle if necessary

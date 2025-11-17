@@ -37,6 +37,28 @@ Path Handling Functions
 
 /*
 =================
+FS_XdgTypeToString
+=================
+*/
+const char *FS_XdgTypeToString( xdg_home_type_t xdgType ) {
+	switch ( xdgType ) {
+		case XDG_ANY:
+			return "any";
+		case XDG_DATA:
+			return "data";
+		case XDG_CONFIG:
+			return "config";
+		case XDG_STATE:
+			return "state";
+		case XDG_CACHE:
+			return "cache";
+		default:
+			return "unknown";
+	}
+}
+
+/*
+=================
 FS_MkdirInRange
 
 Base and position should be pointers to the same string buffer, where base represents the
@@ -276,19 +298,52 @@ unsigned int FS_GeneratePathSourcedir( int source_dir_id, const char *path1, con
 
 /*
 =================
+FS_FindWritedir
+
+Returns source directory index if a valid write directory is found, -1 otherwise.
+=================
+*/
+static int FS_FindWritedir( xdg_home_type_t xdgType ) {
+	int i;
+	for ( i = 0; i < FS_MAX_SOURCEDIRS; ++i ) {
+		if ( !fs.sourcedirs[i].active || !fs.sourcedirs[i].writable ) {
+			continue;
+		}
+#ifdef FS_XDG_HOME_SUPPORT
+		if ( xdgType != XDG_ANY && fs.sourcedirs[i].xdgType != XDG_ANY && xdgType != fs.sourcedirs[i].xdgType ) {
+			continue;
+		}
+#endif
+		return i;
+	}
+	return -1;
+}
+
+/*
+=================
+FS_IsWritedirAvailable
+=================
+*/
+qboolean FS_IsWritedirAvailable( xdg_home_type_t xdgType ) {
+	return FS_FindWritedir( xdgType ) >= 0;
+}
+
+/*
+=================
 FS_GeneratePathWritedir
 
 Generates path prefixed by the current filesystem write directory.
 =================
 */
-unsigned int FS_GeneratePathWritedir( const char *path1, const char *path2,
+unsigned int FS_GeneratePathWritedir( xdg_home_type_t xdgType, const char *path1, const char *path2,
 		int path1_flags, int path2_flags, char *target, unsigned int target_size ) {
+	int writedir = FS_FindWritedir( xdgType );
 	FSC_ASSERT( target );
-	if ( fs.read_only ) {
+	if ( writedir < 0 ) {
 		*target = '\0';
 		return 0;
 	}
-	return FS_GeneratePathSourcedir( 0, path1, path2, path1_flags, path2_flags, target, target_size );
+	return FS_GeneratePathSourcedir( writedir, path1, path2, path1_flags, path2_flags, target, target_size );
 }
 
 /*
@@ -301,14 +356,14 @@ Misc functions
 
 /*
 =================
-FS_HomeRemove
+FS_Remove_HomeData
 =================
 */
-void FS_HomeRemove( const char *homePath ) {
+void FS_Remove_HomeData( const char *homePath ) {
 	char path[FS_MAX_PATH];
-	if ( !FS_GeneratePathWritedir( FS_GetCurrentGameDir(), homePath, 0, FS_ALLOW_DIRECTORIES,
+	if ( !FS_GeneratePathWritedir( XDG_DATA, FS_GetCurrentGameDir(), homePath, 0, FS_ALLOW_DIRECTORIES,
 			path, sizeof( path ) ) ) {
-		Com_Printf( "WARNING: FS_HomeRemove on %s failed due to invalid path\n", homePath );
+		Com_Printf( "WARNING: FS_Remove_HomeData on %s failed due to invalid path\n", homePath );
 		return;
 	}
 
@@ -331,12 +386,12 @@ qboolean FS_FileInPathExists( const char *testpath ) {
 
 /*
 =================
-FS_FileExists
+FS_FileExists_HomeData
 =================
 */
-qboolean FS_FileExists( const char *file ) {
+qboolean FS_FileExists_HomeData( const char *file ) {
 	char path[FS_MAX_PATH];
-	if ( !FS_GeneratePathSourcedir( 0, FS_GetCurrentGameDir(), file, 0, FS_ALLOW_DIRECTORIES,
+	if ( !FS_GeneratePathWritedir( XDG_DATA, FS_GetCurrentGameDir(), file, 0, FS_ALLOW_DIRECTORIES,
 			path, sizeof( path ) ) ) {
 		return qfalse;
 	}
@@ -1850,7 +1905,7 @@ fileHandle_t FS_FCreateOpenPipeFile( const char *filename ) {
 	fs_handle_t *handle;
 	fs_pipe_handle_state_t *state;
 
-	if ( FS_GeneratePathWritedir( FS_GetCurrentGameDir(), filename,
+	if ( FS_GeneratePathWritedir( XDG_DATA, FS_GetCurrentGameDir(), filename,
 			0, FS_ALLOW_DIRECTORIES | FS_CREATE_DIRECTORIES_FOR_FILE, path, sizeof( path ) ) ) {
 		fifo = Sys_Mkfifo( path );
 	}
@@ -2029,7 +2084,7 @@ fileHandle_t FS_OpenSettingsFileWrite( const char *filename ) {
 		mod_dir = com_basegame->string;
 	}
 
-	if ( !FS_GeneratePathWritedir( mod_dir, filename, FS_CREATE_DIRECTORIES, FS_ALLOW_SPECIAL_CFG,
+	if ( !FS_GeneratePathWritedir( XDG_CONFIG, mod_dir, filename, FS_CREATE_DIRECTORIES, FS_ALLOW_SPECIAL_CFG,
 								   path, sizeof( path ) ) ) {
 		return 0;
 	}
@@ -2044,7 +2099,7 @@ FS_OpenGlobalSettingsFileWrite
 */
 fileHandle_t FS_OpenGlobalSettingsFileWrite( const char *filename ) {
 	char path[FS_MAX_PATH];
-	if ( !FS_GeneratePathWritedir( filename, NULL, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof( path ) ) ) {
+	if ( !FS_GeneratePathWritedir( XDG_CONFIG, filename, NULL, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof( path ) ) ) {
 		return 0;
 	}
 	return FS_WriteHandle_Open( path, qfalse, qfalse );
@@ -2211,10 +2266,11 @@ FS_FOpenFile_WriteHandleOpen
 Includes directory creation and sanity checks. Returns handle on success, null on error.
 =================
 */
-static fileHandle_t FS_FOpenFile_WriteHandleOpen( const char *mod_dir, const char *path, qboolean append, qboolean sync, int flags ) {
+static fileHandle_t FS_FOpenFile_WriteHandleOpen( xdg_home_type_t xdgType, const char *mod_dir, const char *path,
+		qboolean append, qboolean sync, int flags ) {
 	char full_path[FS_MAX_PATH];
 
-	if ( !FS_GeneratePathWritedir( mod_dir, path, FS_CREATE_DIRECTORIES,
+	if ( !FS_GeneratePathWritedir( xdgType, mod_dir, path, FS_CREATE_DIRECTORIES,
 			FS_ALLOW_DIRECTORIES | FS_CREATE_DIRECTORIES_FOR_FILE | flags, full_path, sizeof( full_path ) ) ) {
 		if ( fs.cvar.fs_debug_fileio->integer ) {
 			FS_DPrintf( "WARNING: Failed to generate write path for %s/%s\n", mod_dir, path );
@@ -2252,7 +2308,8 @@ FS_FOpenFileByModeGeneral
 Can be called with a null filehandle pointer in read mode for a size/existance check.
 =================
 */
-static int FS_FOpenFileByModeGeneral( const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner ) {
+static int FS_FOpenFileByModeGeneral( const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner,
+		xdg_home_type_t xdgType ) {
 	int size = 0;
 	fileHandle_t handle = FS_INVALID_HANDLE;
 
@@ -2299,11 +2356,11 @@ static int FS_FOpenFileByModeGeneral( const char *qpath, fileHandle_t *f, fsMode
 			size = FS_FOpenFile_ReadHandleOpen( qpath, f ? &handle : NULL, 0, qfalse );
 		}
 	} else if ( mode == FS_WRITE ) {
-		handle = FS_FOpenFile_WriteHandleOpen( FS_WriteModDir(), qpath, qfalse, qfalse, 0 );
+		handle = FS_FOpenFile_WriteHandleOpen( xdgType, FS_WriteModDir(), qpath, qfalse, qfalse, 0 );
 	} else if ( mode == FS_APPEND_SYNC ) {
-		handle = FS_FOpenFile_WriteHandleOpen( FS_WriteModDir(), qpath, qtrue, qtrue, 0 );
+		handle = FS_FOpenFile_WriteHandleOpen( xdgType, FS_WriteModDir(), qpath, qtrue, qtrue, 0 );
 	} else if ( mode == FS_APPEND ) {
-		handle = FS_FOpenFile_WriteHandleOpen( FS_WriteModDir(), qpath, qtrue, qfalse, 0 );
+		handle = FS_FOpenFile_WriteHandleOpen( xdgType, FS_WriteModDir(), qpath, qtrue, qfalse, 0 );
 	} else {
 		Com_Error( ERR_DROP, "FS_FOpenFileByMode: bad mode" );
 	}
@@ -2343,7 +2400,8 @@ static const char *FS_ModeString( fsMode_t mode ) {
 FS_FOpenFileByModeLogged
 =================
 */
-static int FS_FOpenFileByModeLogged( const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner, const char *calling_function ) {
+static int FS_FOpenFileByModeLogged( const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner,
+		xdg_home_type_t xdgType, const char *calling_function ) {
 	int result;
 
 	if ( fs.cvar.fs_debug_fileio->integer ) {
@@ -2357,9 +2415,12 @@ static int FS_FOpenFileByModeLogged( const char *qpath, fileHandle_t *f, fsMode_
 			FS_DPrintf( "mode: %s\n", FS_ModeString( mode ) );
 		}
 		FS_DPrintf( "owner: %s\n", FS_Handle_OwnerString( owner ) );
+		if ( mode != FS_READ ) {
+			FS_DPrintf( "xdgType: %s\n", FS_XdgTypeToString( xdgType ) );
+		}
 	}
 
-	result = FS_FOpenFileByModeGeneral( qpath, f, mode, owner );
+	result = FS_FOpenFileByModeGeneral( qpath, f, mode, owner, xdgType );
 
 	if ( fs.cvar.fs_debug_fileio->integer ) {
 		FS_DPrintf( "result: return value %i (handle %i)\n", result, f ? *f : 0 );
@@ -2376,7 +2437,7 @@ FS_FOpenFileRead
 */
 long FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean uniqueFILE ) {
 	FSC_ASSERT( filename );
-	return FS_FOpenFileByModeLogged( filename, file, FS_READ, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileRead" );
+	return FS_FOpenFileByModeLogged( filename, file, FS_READ, FS_HANDLEOWNER_SYSTEM, XDG_ANY, "FS_FOpenFileRead" );
 }
 
 /*
@@ -2384,10 +2445,10 @@ long FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean unique
 FS_FOpenFileWrite
 =================
 */
-fileHandle_t FS_FOpenFileWrite( const char *filename ) {
+fileHandle_t FS_FOpenFileWrite( xdg_home_type_t xdgType, const char *filename ) {
 	fileHandle_t handle = FS_INVALID_HANDLE;
 	FSC_ASSERT( filename );
-	FS_FOpenFileByModeLogged( filename, &handle, FS_WRITE, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileWrite" );
+	FS_FOpenFileByModeLogged( filename, &handle, FS_WRITE, FS_HANDLEOWNER_SYSTEM, xdgType, "FS_FOpenFileWrite" );
 	return handle;
 }
 
@@ -2396,10 +2457,10 @@ fileHandle_t FS_FOpenFileWrite( const char *filename ) {
 FS_FOpenFileAppend
 =================
 */
-fileHandle_t FS_FOpenFileAppend( const char *filename ) {
+fileHandle_t FS_FOpenFileAppend( xdg_home_type_t xdgType, const char *filename ) {
 	fileHandle_t handle = FS_INVALID_HANDLE;
 	FSC_ASSERT( filename );
-	FS_FOpenFileByModeLogged( filename, &handle, FS_APPEND, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileAppend" );
+	FS_FOpenFileByModeLogged( filename, &handle, FS_APPEND, FS_HANDLEOWNER_SYSTEM, xdgType, "FS_FOpenFileAppend" );
 	return handle;
 }
 
@@ -2409,7 +2470,7 @@ FS_FOpenFileByModeOwner
 =================
 */
 int FS_FOpenFileByModeOwner( const char *qpath, fileHandle_t *f, fsMode_t mode, fs_handle_owner_t owner ) {
-	return FS_FOpenFileByModeLogged( qpath, f, mode, owner, "FS_FOpenFileByModeOwner" );
+	return FS_FOpenFileByModeLogged( qpath, f, mode, owner, XDG_DATA, "FS_FOpenFileByModeOwner" );
 }
 
 /*
@@ -2419,7 +2480,7 @@ FS_FOpenFileByMode
 */
 int FS_FOpenFileByMode( const char *qpath, fileHandle_t *f, fsMode_t mode ) {
 	FSC_ASSERT( qpath );
-	return FS_FOpenFileByModeLogged( qpath, f, mode, FS_HANDLEOWNER_SYSTEM, "FS_FOpenFileByMode" );
+	return FS_FOpenFileByModeLogged( qpath, f, mode, FS_HANDLEOWNER_SYSTEM, XDG_DATA, "FS_FOpenFileByMode" );
 }
 
 /*
@@ -2432,10 +2493,10 @@ Misc handle operations
 
 /*
 =================
-FS_SV_FOpenFileRead
+FS_BaseDir_FOpenFileRead
 =================
 */
-long FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp ) {
+long FS_BaseDir_FOpenFileRead( const char *filename, fileHandle_t *fp ) {
 	int i;
 	char path[FS_MAX_PATH];
 	int size = -1;
@@ -2471,23 +2532,23 @@ long FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp ) {
 
 /*
 =================
-FS_SV_FOpenFileWrite
+FS_BaseDir_FOpenFileWrite
 =================
 */
-fileHandle_t FS_SV_FOpenFileWrite( const char *filename ) {
+fileHandle_t FS_BaseDir_FOpenFileWrite( xdg_home_type_t xdgType, const char *filename ) {
 	FSC_ASSERT( filename );
-	return FS_FOpenFile_WriteHandleOpen( NULL, filename, qfalse, qfalse, 0 );
+	return FS_FOpenFile_WriteHandleOpen( xdgType, NULL, filename, qfalse, qfalse, 0 );
 }
 
 #ifdef CMOD_LOGGING_SYSTEM
 /*
 =================
-FS_SV_FOpenFileAppend
+FS_Basedir_FOpenFileAppend
 =================
 */
-fileHandle_t FS_SV_FOpenFileAppend( const char *filename ) {
+fileHandle_t FS_Basedir_FOpenFileAppend( xdg_home_type_t xdgType, const char *filename ) {
 	FSC_ASSERT( filename );
-	return FS_FOpenFile_WriteHandleOpen( NULL, filename, qtrue, qfalse, 0 );
+	return FS_FOpenFile_WriteHandleOpen( xdgType, NULL, filename, qtrue, qfalse, 0 );
 }
 #endif
 
@@ -2576,19 +2637,19 @@ void FS_ForceFlush( fileHandle_t f ) {
 #ifdef CMOD_RECORD
 /*
 =================
-FS_SV_Rename
+FS_BaseDir_Rename_HomeData
 =================
 */
-void FS_SV_Rename( const char *from, const char *to, qboolean safe ) {
+void FS_BaseDir_Rename_HomeData( const char *from, const char *to, qboolean safe ) {
 	char source_path[FS_MAX_PATH];
 	char target_path[FS_MAX_PATH];
 	FSC_ASSERT( from );
 	FSC_ASSERT( to );
 
-	if ( !FS_GeneratePathWritedir( from, NULL, FS_ALLOW_DIRECTORIES, 0, source_path, sizeof( source_path ) ) ) {
+	if ( !FS_GeneratePathWritedir( XDG_DATA, from, NULL, FS_ALLOW_DIRECTORIES, 0, source_path, sizeof( source_path ) ) ) {
 		return;
 	}
-	if ( !FS_GeneratePathWritedir( to, NULL, FS_ALLOW_DIRECTORIES | FS_CREATE_DIRECTORIES_FOR_FILE, 0,
+	if ( !FS_GeneratePathWritedir( XDG_DATA, to, NULL, FS_ALLOW_DIRECTORIES | FS_CREATE_DIRECTORIES_FOR_FILE, 0,
 			target_path, sizeof( target_path ) ) ) {
 		return;
 	}
@@ -2663,7 +2724,7 @@ void FS_WriteFile( const char *qpath, const void *buffer, int size ) {
 		Com_Error( ERR_FATAL, "FS_WriteFile: NULL parameter" );
 	}
 
-	f = FS_FOpenFileWrite( qpath );
+	f = FS_FOpenFileWrite( XDG_DATA, qpath );
 	if ( !f ) {
 		Com_Printf( "Failed to open %s\n", qpath );
 		return;

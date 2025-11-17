@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "fscore/fscore.h"
+#define FS_HAVE_CORE_TYPEDEFS
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
@@ -68,12 +69,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define FS_SERVERCFG_ENABLED
 #endif
 
+#if !defined(_WIN32) && !defined(__APPLE__)
+#define FS_XDG_HOME_SUPPORT
+#endif
+
 #define FS_MAX_SOURCEDIRS 16
 
 typedef struct {
 	const char *name;
 	const char *path;
 	qboolean active;
+	qboolean writable;
+#ifdef FS_XDG_HOME_SUPPORT
+	xdg_home_type_t xdgType;
+#endif
 } fs_source_directory_t;
 
 typedef struct fs_hashtable_entry_s {
@@ -153,7 +162,6 @@ typedef struct {
 	fs_cvars_t cvar;
 
 	fs_source_directory_t sourcedirs[FS_MAX_SOURCEDIRS];
-	qboolean read_only;
 
 	char current_mod_dir[FSC_MAX_MODDIR];
 	const fsc_file_direct_t *current_map_pk3;

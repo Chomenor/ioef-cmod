@@ -73,7 +73,7 @@ typedef enum {
 
 void cmod_logging_initialize(void);
 void cmod_logging_frame(void);
-void QDECL cmLog(cmod_log_id_t log_id, int flags, const char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
+void QDECL cmLog(cmod_log_id_t log_id, int flags, const char *fmt, ...) Q_PRINTF_FUNC(3, 4);
 #endif
 
 #ifdef CMOD_MAP_AUTO_ADJUST

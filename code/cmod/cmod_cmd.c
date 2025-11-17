@@ -372,7 +372,7 @@ void Cmd_List_f (void)
 
 void Cmd_CompleteCfgName( char *args, int argNum ) {
 	if( argNum == 2 ) {
-		Field_CompleteFilename( "", "cfg", qfalse, qtrue );
+		Field_CompleteFilename( "", "cfg", NULL, qfalse, qtrue );
 	}
 }
 

@@ -25,9 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifdef CMOD_CM_ALIGN_FIX
 // Workaround for some wacky bsps that don't use 4-byte aligned structures
+#ifdef __GNUC__
 #undef LittleLong
 static __attribute__ ((noinline)) unsigned int LittleLong(unsigned int x) {
 	return x; }
+#endif
 #endif
 
 #ifdef BSPC

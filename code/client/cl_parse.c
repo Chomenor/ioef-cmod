@@ -666,7 +666,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 	// open the file if not opened yet
 	if (!clc.download)
 	{
-		clc.download = FS_SV_FOpenFileWrite( clc.downloadTempName );
+		clc.download = FS_BaseDir_FOpenFileWrite_HomeData( clc.downloadTempName );
 
 		if (!clc.download) {
 			Com_Printf( "Could not create %s\n", clc.downloadTempName );
@@ -696,7 +696,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 #ifdef NEW_FILESYSTEM
 			FS_FinalizeDownload();
 #else
-			FS_SV_Rename ( clc.downloadTempName, clc.downloadName, qfalse );
+			FS_BaseDir_Rename_HomeData ( clc.downloadTempName, clc.downloadName, qfalse );
 #endif
 		}
 

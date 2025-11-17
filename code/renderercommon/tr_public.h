@@ -23,8 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __TR_PUBLIC_H
 
 #ifdef NEW_FILESYSTEM
+#ifndef FS_HAVE_CORE_TYPEDEFS
+#define FS_HAVE_CORE_TYPEDEFS
 typedef struct fsc_file_s fsc_file_t;
 typedef struct fsc_shader_s fsc_shader_t;
+#endif
+
 // Lookup flags shared with filesystem. Must match values in fspublic.h!
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups.
 #define LOOKUPFLAG_ENABLE_MTR 2		// Enable mtr shader files.
@@ -117,10 +121,10 @@ typedef struct {
 //
 typedef struct {
 	// print message on the local console
-	void	(QDECL *Printf)( int printLevel, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+	void	(QDECL *Printf)( int printLevel, const char *fmt, ...) Q_PRINTF_FUNC(2, 3);
 
 	// abort the game
-	void	(QDECL *Error)( int errorLevel, const char *fmt, ...) __attribute__ ((noreturn, format (printf, 2, 3)));
+	void	(QDECL *Error)( int errorLevel, const char *fmt, ...) Q_NO_RETURN Q_PRINTF_FUNC(2, 3);
 
 	// milliseconds should only be used for profiling, never
 	// for anything game related.  Get time from the refdef

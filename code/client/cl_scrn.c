@@ -168,7 +168,7 @@ void SCR_DrawSmallChar( int x, int y, int ch ) {
 		return;
 	}
 
-	if ( y < -SMALLCHAR_HEIGHT ) {
+	if ( y < -g_smallchar_height ) {
 		return;
 	}
 
@@ -180,12 +180,12 @@ void SCR_DrawSmallChar( int x, int y, int ch ) {
 	size = 0.0625;
 
 #ifdef ELITEFORCE
-	re.DrawStretchPic( x, y, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT,
+	re.DrawStretchPic( x, y, g_smallchar_width, g_smallchar_height,
 					   fcol, frow, 
 					   fcol + 0.03125, frow + size, 
 					   cls.charSetShader );
 #else
-	re.DrawStretchPic( x, y, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT,
+	re.DrawStretchPic( x, y, g_smallchar_width, g_smallchar_height,
 					   fcol, frow, 
 					   fcol + size, frow + size, 
 					   cls.charSetShader );
@@ -305,7 +305,7 @@ void SCR_DrawSmallStringExt( int x, int y, const char *string, float *setColor, 
 			}
 		}
 		SCR_DrawSmallChar( xx, y, *s );
-		xx += SMALLCHAR_WIDTH;
+		xx += g_smallchar_width;
 		s++;
 	}
 	re.SetColor( NULL );

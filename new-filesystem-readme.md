@@ -62,7 +62,13 @@ A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 co
 
 # Source Directory Options
 
-A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files. The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are still controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
+A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files.
+
+Windows / Mac:
+The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
+
+Linux:
+The default is "*_xdg_home fs_homepath fs_basepath fs_steampath fs_gogpath". "_xdg_home" is a special keyword that places files according to the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/). With the default fs_dirs value, xdg home is used for writing, indicated by an asterisk, the legacy homepath (fs_homepath) is used a secondary read location, and the install location (fs_basepath) is used as a third read location.
 
 Notes:
 - You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.

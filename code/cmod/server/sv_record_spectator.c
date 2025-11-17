@@ -74,7 +74,7 @@ static void spectator_add_server_command(client_t *cl, const char *cmd) {
 	Q_strncpyz(cl->reliableCommands[index], cmd, sizeof(cl->reliableCommands[index])); }
 
 static void QDECL spectator_add_server_command_fmt(client_t *cl, const char *fmt, ...)
-		__attribute__ ((format (printf, 2, 3)));
+		Q_PRINTF_FUNC(2, 3);
 
 static void QDECL spectator_add_server_command_fmt(client_t *cl, const char *fmt, ...) {
 	va_list argptr;

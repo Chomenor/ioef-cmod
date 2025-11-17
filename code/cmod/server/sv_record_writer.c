@@ -209,7 +209,7 @@ static void close_record_writer(void) {
 	FS_FCloseFile(rws->recordfile);
 
 	// Attempt to move the temp file to final destination
-	FS_SV_Rename("records/current.rec", va("records/%s/%s.rec", rws->target_directory, rws->target_filename), qfalse);
+	FS_BaseDir_Rename_HomeData("records/current.rec", va("records/%s/%s.rec", rws->target_directory, rws->target_filename), qfalse);
 
 	deallocate_record_writer(); }
 
@@ -226,7 +226,7 @@ static void initialize_record_writer(int max_clients, qboolean auto_started) {
 	Sys_Mkdir(va("%s/records", Cvar_VariableString("fs_homepath")));
 
 	// Rename any existing output file that might have been left over from a crash
-	FS_SV_Rename("records/current.rec", va("records/orphan_%u.rec", rand()), qfalse);
+	FS_BaseDir_Rename_HomeData("records/current.rec", va("records/orphan_%u.rec", rand()), qfalse);
 
 	// Determine move location (target_directory and target_filename) for when recording is complete
 	{	time_t rawtime;
@@ -243,7 +243,7 @@ static void initialize_record_writer(int max_clients, qboolean auto_started) {
 		rws->target_filename = CopyString(va("%02i-%02i-%02i", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec)); }
 
 	// Open the temp output file
-	rws->recordfile = FS_SV_FOpenFileWrite("records/current.rec");
+	rws->recordfile = FS_BaseDir_FOpenFileWrite_HomeData("records/current.rec");
 	if(!rws->recordfile) {
 		record_printf(RP_ALL, "initialize_record_writer: failed to open output file\n");
 		deallocate_record_writer();

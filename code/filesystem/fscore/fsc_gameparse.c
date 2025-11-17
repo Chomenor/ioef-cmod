@@ -148,7 +148,7 @@ char *FSC_ParseExt( char *com_token, char **data_p, fsc_boolean allowLineBreaks 
 			}
 			if (len < FSC_MAX_TOKEN_CHARS - 1)
 			{
-				com_token[len] = c;
+				com_token[len] = (char)c;
 				len++;
 			}
 		}
@@ -159,7 +159,7 @@ char *FSC_ParseExt( char *com_token, char **data_p, fsc_boolean allowLineBreaks 
 	{
 		if (len < FSC_MAX_TOKEN_CHARS - 1)
 		{
-			com_token[len] = c;
+			com_token[len] = (char)c;
 			len++;
 		}
 		data++;

@@ -182,7 +182,7 @@ void playerstate_set_follow_mode(playerState_t *ps);
 
 // ***** Message Printing *****
 
-void QDECL record_printf(record_print_mode_t mode, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+void QDECL record_printf(record_print_mode_t mode, const char *fmt, ...) Q_PRINTF_FUNC(2, 3);
 
 // ***** Record State *****
 

@@ -381,7 +381,7 @@ static int FS_GetPureChecksumForFile( const fsc_file_t *file, int checksum_feed 
 FS_AddReferencedPurePk3
 =================
 */
-static void FS_AddReferencedPurePk3( fsc_stream_t *stream, fs_hashtable_t *reference_tracker ) {
+static void FS_AddReferencedPurePk3( fsc_stream_t *stream ) {
 	int i;
 	int count = 0;
 	fsc_file_direct_t **reference_list = FS_ReferencedPakList( &count );
@@ -415,7 +415,7 @@ static void FS_AddReferencedPurePk3( fsc_stream_t *stream, fs_hashtable_t *refer
 FS_BuildPureValidationString
 =================
 */
-static void FS_BuildPureValidationString( char *output, unsigned int output_size, fs_hashtable_t *reference_tracker ) {
+static void FS_BuildPureValidationString( char *output, unsigned int output_size ) {
 	fsc_stream_t stream = FSC_InitStream( output, output_size );
 	char buffer[50];
 	int cgame_checksum = FS_GetPureChecksumForFile( FS_GeneralLookup( "vm/cgame.qvm", LOOKUPFLAG_IGNORE_CURRENT_MAP, qfalse ), fs.checksum_feed );
@@ -425,7 +425,7 @@ static void FS_BuildPureValidationString( char *output, unsigned int output_size
 	FSC_StreamAppendString( &stream, buffer );
 
 	if ( fs.cvar.fs_full_pure_validation->integer && fs.connected_server_sv_pure != 2 ) {
-		FS_AddReferencedPurePk3( &stream, reference_tracker );
+		FS_AddReferencedPurePk3( &stream );
 	} else {
 		Com_sprintf( buffer, sizeof( buffer ), " %i %i ", cgame_checksum, fs.checksum_feed ^ cgame_checksum ^ 1 );
 		FSC_StreamAppendString( &stream, buffer );
@@ -443,7 +443,7 @@ The string has a specific order, "cgame ui @ ref1 ref2 ref3 ..."
 */
 const char *FS_ReferencedPakPureChecksums( void ) {
 	static char buffer[1000];
-	FS_BuildPureValidationString( buffer, sizeof( buffer ), &reference_tracker );
+	FS_BuildPureValidationString( buffer, sizeof( buffer ) );
 	return buffer;
 }
 

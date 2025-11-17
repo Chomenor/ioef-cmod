@@ -452,18 +452,21 @@ static void cmd_servercmd(void) {
 
 /* *** Time functions *** */
 
+#ifdef _WIN32
 #include <sys/timeb.h>
+#else
+#include <time.h>
+#endif
 
-static uint64_t trigger_curtime_ms(void) {
-	// https://stackoverflow.com/a/44616416
-#if defined(_WIN32) || defined(_WIN64)
+uint64_t trigger_curtime_ms( void ) {
+#ifdef _WIN32
 	struct _timeb timebuffer;
 	_ftime(&timebuffer);
 	return (uint64_t)(((timebuffer.time * 1000) + timebuffer.millitm));
 #else
-	struct timeb timebuffer;
-	ftime(&timebuffer);
-	return (uint64_t)(((timebuffer.time * 1000) + timebuffer.millitm));
+	struct timespec ts;
+	clock_gettime( CLOCK_MONOTONIC, &ts );
+	return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 #endif
 }
 

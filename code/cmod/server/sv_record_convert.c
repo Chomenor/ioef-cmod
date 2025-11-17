@@ -52,7 +52,7 @@ static qboolean initialize_demo_writer(record_demo_writer_t *rdw, const char *pa
 	// In the event of qtrue, stream needs to be freed by close_demo_writer
 	Com_Memset(rdw, 0, sizeof(*rdw));
 
-	rdw->demofile = FS_FOpenFileWrite(path);
+	rdw->demofile = FS_FOpenFileWrite_HomeData(path);
 	if(!rdw->demofile) {
 		record_printf(RP_ALL, "initialize_demo_writer: failed to open file\n");
 		return qfalse; }
@@ -179,7 +179,7 @@ static qboolean initialize_record_stream_reader(record_stream_reader_t *rsr, con
 
 	Com_Memset(rsr, 0, sizeof(*rsr));
 
-	FS_SV_FOpenFileRead(path, &fp);
+	FS_BaseDir_FOpenFileRead(path, &fp);
 	if(!fp) {
 		record_printf(RP_ALL, "initialize_record_stream_reader: failed to open source file\n");
 		return qfalse; }

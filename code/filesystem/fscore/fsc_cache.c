@@ -538,8 +538,7 @@ fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t 
 	fsc_filehandle_t *fp;
 	fscache_header_t header;
 	fsc_stream_t stream;
-	char versionBuffer[256];
-	FSC_ASSERT( sizeof( versionBuffer ) >= VERSION_STRING_LENGTH );
+	char versionBuffer[VERSION_STRING_LENGTH + 256];
 
 	// Open the input file
 	fp = FSC_FOpenRaw( os_path, "rb" );

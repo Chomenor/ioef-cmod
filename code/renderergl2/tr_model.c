@@ -47,7 +47,7 @@ qhandle_t R_RegisterMD3(const char *name, model_t *mod)
 	char filename[MAX_QPATH], namebuf[MAX_QPATH+20];
 	char *fext, defex[] = "md3";
 #ifdef NEW_FILESYSTEM
-	const fsc_file_t	*base_lod;
+	const fsc_file_t	*base_lod = NULL;
 	const fsc_file_t	*current_lod;
 #endif
 
