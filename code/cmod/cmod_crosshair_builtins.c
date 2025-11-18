@@ -21049,13 +21049,13 @@ typedef struct {
 	crosshair_def_t *def;
 } crosshair_file_t;
 
-static fsc_boolean crosshair_is_active(const fsc_file_t *file, const fsc_filesystem_t *fs) {
+static fsc_boolean crosshair_is_active(const fsc_file_t *file, const fsc_filesystem_t *fsc) {
 	return fsc_true; }
 
-static const char *crosshair_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fs) {
+static const char *crosshair_mod_dir(const fsc_file_t *file, const fsc_filesystem_t *fsc) {
 	return "baseEF"; }
 
-static unsigned int crosshair_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs) {
+static unsigned int crosshair_extract_data(const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fsc) {
 	FSC_Memcpy(buffer, ((crosshair_file_t *)file)->def->data, file->filesize);
 	return file->filesize; }
 

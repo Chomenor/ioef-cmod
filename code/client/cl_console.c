@@ -815,7 +815,7 @@ void Con_DrawSolidConsole( float frac ) {
 		color[0] = 0;
 		color[1] = 0;
 		color[2] = 0;
-		color[3] = 0.85;
+		color[3] = 0.85f;
 		re.SetColor(color);
 #endif
 		SCR_DrawPic( 0, 0, SCREEN_WIDTH, y, cls.consoleShader );

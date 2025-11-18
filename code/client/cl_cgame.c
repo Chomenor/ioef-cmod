@@ -426,7 +426,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 #ifdef CMOD_VM_EXTENSIONS
 	{
 		intptr_t retval = 0;
-		if ( VMExt_HandleVMSyscall( args, VM_CGAME, cgvm, VM_ArgPtr, &retval ) ) {
+		if ( VMExt_HandleVMSyscall( args, VM_CGAME, cgvm, &retval ) ) {
 			return retval;
 		}
 	}

@@ -192,7 +192,7 @@ int S_MP3_Scanfile(snd_stream_t *stream)
 			{
 				// Check whether something changed that shouldn't.
 
-				if(stream->info.rate != madheader.samplerate ||
+				if(stream->info.rate != (int)madheader.samplerate ||
 				   stream->info.channels != MAD_NCHANNELS(&madheader))
 					return -1;
 			}
@@ -466,7 +466,7 @@ int S_MP3_Decode(snd_stream_t *stream)
 
 	// perform a few checks to see whether something changed that shouldn't.
 
-	if(stream->info.rate != pcm->samplerate ||
+	if(stream->info.rate != (int)pcm->samplerate ||
 	   stream->info.channels != pcm->channels)
 	{
 		return -1;

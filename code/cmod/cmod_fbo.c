@@ -151,7 +151,7 @@ static void fbo_gls_init(void) {
 
 static void free_render_texture(GLuint texture) {
 	qglDeleteTextures(1, &texture);
-	if(glState.currenttextures[glState.currenttmu] == texture) {
+	if(glState.currenttextures[glState.currenttmu] == (int)texture) {
 		glState.currenttextures[glState.currenttmu] = 0; } }
 
 void framebuffer_shutdown(void) {
@@ -179,8 +179,8 @@ void framebuffer_shutdown(void) {
 #define RENDER_TEXTURE_ID 24
 
 static void bind_render_texture(GLuint texture) {
-	if ( glState.currenttextures[glState.currenttmu] != texture ) {
-		glState.currenttextures[glState.currenttmu] = texture;
+	if ( glState.currenttextures[glState.currenttmu] != (int)texture ) {
+		glState.currenttextures[glState.currenttmu] = (int)texture;
 		qglBindTexture(GL_TEXTURE_2D, texture); } }
 
 static void attach_render_texture_to_fbo(GLenum fbo, GLuint texture) {

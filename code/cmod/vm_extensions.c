@@ -262,8 +262,7 @@ Handles VM system calls for GetValue or other extended functions.
 Returns qtrue to abort standard syscall handling, qfalse otherwise.
 ==================
 */
-qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm,
-		void *( *VM_ArgPtr )( intptr_t intValue ), intptr_t *retval ) {
+qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm, intptr_t *retval ) {
 	int function_id;
 	*retval = 0;
 

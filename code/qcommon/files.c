@@ -197,7 +197,6 @@ static const unsigned int pak_checksums[] = {
 	908855077u,
 	977125798u
 };
-#endif
 
 static const unsigned int missionpak_checksums[] =
 {
@@ -206,6 +205,7 @@ static const unsigned int missionpak_checksums[] =
 	2662638993u,
 	1438664554u
 };
+#endif
 #endif
 
 // if this is defined, the executable positively won't work with any paks other
