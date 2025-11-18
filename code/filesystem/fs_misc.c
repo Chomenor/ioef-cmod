@@ -297,9 +297,9 @@ These are used to rank pk3s according to the definitions in fslocal.h.
 
 #define SEARCH_PAK_DEFS( paks ) { \
 	int i; \
-	unsigned int hashes[] = paks; \
+	int hashes[] = paks; \
 	for ( i = 0; i < ARRAY_LEN( hashes ); ++i ) { \
-		if ( hash == hashes[i] ) \
+		if ( hash == (unsigned int)hashes[i] ) \
 			return i + 1; \
 	} \
 }
