@@ -81,15 +81,15 @@ function(set_forced_include_global HEADER_PATH)
 
     # Set forced include globally based on compiler
     if(MSVC)
-        add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/FI"${HEADER_PATH}">)
+        add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/FI${HEADER_PATH}>)
         message(STATUS "Added global forced include: ${HEADER_PATH} (MSVC)")
     elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
-        add_compile_options("SHELL:-include ${HEADER_PATH}")
+        add_compile_options("SHELL:-include \"${HEADER_PATH}\"")
         message(STATUS "Added global forced include: ${HEADER_PATH} (GCC/Clang)")
     else()
         message(WARNING "Forced include may not be supported for compiler: ${CMAKE_CXX_COMPILER_ID}")
         # Try the GCC/Clang approach as fallback
-        add_compile_options("SHELL:-include ${HEADER_PATH}")
+        add_compile_options("SHELL:-include \"${HEADER_PATH}\"")
     endif()
 endfunction()
 
