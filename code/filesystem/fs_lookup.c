@@ -974,16 +974,18 @@ Add lookup flags to stream for debug print purposes.
 =================
 */
 static void FS_LookupFlagsToStream( int flags, fsc_stream_t *stream ) {
-	const char *flag_strings[9] = { NULL };
+	const char *flag_strings[11] = { NULL };
 	flag_strings[0] = ( flags & LOOKUPFLAG_ENABLE_DDS ) ? "enable_dds" : NULL;
-	flag_strings[1] = ( flags & LOOKUPFLAG_IGNORE_PURE_LIST ) ? "ignore_pure_list" : NULL;
-	flag_strings[2] = ( flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE ) ? "pure_allow_direct_source" : NULL;
-	flag_strings[3] = ( flags & LOOKUPFLAG_IGNORE_CURRENT_MAP ) ? "ignore_current_map" : NULL;
-	flag_strings[4] = ( flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY ) ? "direct_source_only" : NULL;
-	flag_strings[5] = ( flags & LOOKUPFLAG_PK3_SOURCE_ONLY ) ? "pk3_source_only" : NULL;
-	flag_strings[6] = ( flags & LOOKUPFLAG_SETTINGS_FILE ) ? "settings_file" : NULL;
-	flag_strings[7] = ( flags & LOOKUPFLAG_NO_DOWNLOAD_FOLDER ) ? "no_download_folder" : NULL;
-	flag_strings[8] = ( flags & LOOKUPFLAG_IGNORE_SERVERCFG ) ? "ignore_servercfg" : NULL;
+	flag_strings[1] = ( flags & LOOKUPFLAG_PREFER_DDS ) ? "prefer_dds" : NULL;
+	flag_strings[2] = ( flags & LOOKUPFLAG_ENABLE_MTR ) ? "enable_mtr" : NULL;
+	flag_strings[3] = ( flags & LOOKUPFLAG_IGNORE_PURE_LIST ) ? "ignore_pure_list" : NULL;
+	flag_strings[4] = ( flags & LOOKUPFLAG_PURE_ALLOW_DIRECT_SOURCE ) ? "pure_allow_direct_source" : NULL;
+	flag_strings[5] = ( flags & LOOKUPFLAG_IGNORE_CURRENT_MAP ) ? "ignore_current_map" : NULL;
+	flag_strings[6] = ( flags & LOOKUPFLAG_DIRECT_SOURCE_ONLY ) ? "direct_source_only" : NULL;
+	flag_strings[7] = ( flags & LOOKUPFLAG_PK3_SOURCE_ONLY ) ? "pk3_source_only" : NULL;
+	flag_strings[8] = ( flags & LOOKUPFLAG_SETTINGS_FILE ) ? "settings_file" : NULL;
+	flag_strings[9] = ( flags & LOOKUPFLAG_NO_DOWNLOAD_FOLDER ) ? "no_download_folder" : NULL;
+	flag_strings[10] = ( flags & LOOKUPFLAG_IGNORE_SERVERCFG ) ? "ignore_servercfg" : NULL;
 	FS_CommaSeparatedList( flag_strings, ARRAY_LEN( flag_strings ), stream );
 }
 
@@ -1262,7 +1264,9 @@ static void FS_ShaderOrImageLookup( const char *name, qboolean image_only, int l
 		query_result_t *output, qboolean debug ) {
 	lookup_query_t query;
 	fsc_qpath_buffer_t qpath_split;
-	const char *exts[] = { ".dds", ".png", ".tga", ".jpg", ".jpeg", ".pcx", ".bmp" };
+	static const char *exts[] = { ".png", ".tga", ".jpg", ".jpeg", ".pcx", ".bmp" };
+	static const char *exts_enable_dds[] = { ".png", ".tga", ".jpg", ".jpeg", ".pcx", ".bmp", ".dds" };
+	static const char *exts_prefer_dds[] = { ".dds", ".png", ".tga", ".jpg", ".jpeg", ".pcx", ".bmp" };
 
 	Com_Memset( &query, 0, sizeof( query ) );
 	query.lookup_flags = lookup_flags;
@@ -1279,8 +1283,18 @@ static void FS_ShaderOrImageLookup( const char *name, qboolean image_only, int l
 	FSC_SplitQpath( name, &qpath_split, fsc_true );
 	query.qp_dir = qpath_split.dir;
 	query.qp_name = qpath_split.name;
-	query.qp_exts = ( lookup_flags & LOOKUPFLAG_ENABLE_DDS ) ? exts : exts + 1;
-	query.extension_count = ( lookup_flags & LOOKUPFLAG_ENABLE_DDS ) ? ARRAY_LEN( exts ) : ARRAY_LEN( exts ) - 1;
+	if ( lookup_flags & LOOKUPFLAG_ENABLE_DDS ) {
+		if ( lookup_flags & LOOKUPFLAG_PREFER_DDS ) {
+			query.qp_exts = exts_prefer_dds;
+			query.extension_count = ARRAY_LEN( exts_prefer_dds );
+		} else {
+			query.qp_exts = exts_enable_dds;
+			query.extension_count = ARRAY_LEN( exts_enable_dds );
+		}
+	} else {
+		query.qp_exts = exts;
+		query.extension_count = ARRAY_LEN( exts );
+	}
 
 	if ( debug ) {
 		FS_DebugLookup( &query, 1, qfalse );

@@ -601,7 +601,7 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 
 	self->s.loopSound = 0;
 
-	self->r.maxs[2] = -8;
+	self->r.maxs[2] = DEAD_HEIGHT;
 
 	// don't allow respawn until the death anim is done
 	// g_forcerespawn may force spawning at some later time
@@ -753,8 +753,7 @@ int G_InvulnerabilityEffect( gentity_t *targ, vec3_t dir, vec3_t point, vec3_t i
 	}
 	VectorCopy(dir, vec);
 	VectorInverse(vec);
-	// sphere model radius = 42 units
-	n = RaySphereIntersections( targ->client->ps.origin, 42, point, vec, intersections);
+	n = RaySphereIntersections( targ->client->ps.origin, INVUL_RADIUS, point, vec, intersections);
 	if (n > 0) {
 		impact = G_TempEntity( targ->client->ps.origin, EV_INVUL_IMPACT );
 		VectorSubtract(intersections[0], targ->client->ps.origin, vec);
