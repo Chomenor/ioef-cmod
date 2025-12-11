@@ -6,56 +6,58 @@ The cMod project is divided into two parts, the engine and game modules. Both ar
 
 The following methods can be used to build the engine (main game executable). Generally the build process is the same as for [ioquake3](https://ioquake3.org/help/building-ioquake3/).
 
-### Building for Windows (Linux Cross Compile)
+### Building for Windows (Visual Studio)
 
-This method creates Windows builds using a Linux system or VM. These commands have been tested to work on Ubuntu 22. The package installation may be different in other environments, but otherwise the process should be similar.
+1) Install Visual Studio Community from [https://visualstudio.microsoft.com/downloads/](https://visualstudio.microsoft.com/downloads/).
+2) Clone the cMod repository using `git clone https://github.com/Chomenor/ioef-cmod.git`, or download the contents in some other way if git isn't available.
+3) Launch Visual Studio, select "Open a folder", and select the cloned repository location.
+4) In the "Solution Explorer" view, right click the top level folder element, and select "Switch to CMake Targets View"
+5) You should now be able to locate and right click the target object (e.g. client or dedicated server) and select to build it.
+
+Alternatively:
+
+1) Install Visual Studio and clone the repository as above.
+2) Open a console and set the current directory to the cloned repository. If you don't have standalone CMake installed, using the "Developer Command Prompt" available from the start menu may provide access to the version included in Visual Studio.
+3) Run configure command, e.g. `cmake -S . -B build -G "Visual Studio 18 2026"`
+4) Run build command, e.g. `cmake --build build --config Release` or open the build\cMod.sln project in Visual Studio.
+
+### Building for Windows (MinGW)
+
+1) Download msys2 from [https://www.msys2.org/](https://www.msys2.org/) and run the installer.
+2) Launch the MINGW64 console (not the default MSYS one prompted by the installer). Can be found in the start menu.
+3) Run the following commands:
 
 ```
-sudo apt install git build-essential gcc-mingw-w64
+pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja git
 git clone https://github.com/Chomenor/ioef-cmod.git
 cd ioef-cmod
-make PLATFORM=mingw32 ARCH=x86_64
-```
-
-### Building for Windows (Cygwin)
-
-This method can be used to build directly on Windows.
-
-1) Download Cygwin from [https://cygwin.com/install.html](https://cygwin.com/install.html) and run the installer.
-2) Select the following packages during installation: ```git```, ```make```, ```mingw64-i686-gcc-core```, ```mingw64-x86_64-gcc-core```
-3) Open the Cygwin64 Terminal and run the following commands:
-
-```
-git clone https://github.com/Chomenor/ioef-cmod.git
-cd ioef-cmod
-make PLATFORM=mingw32 ARCH=x86_64
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 ```
 
 ### Building for Linux
 
-The following commands can be used to build on Ubuntu 22. Package installation may vary on other environments.
+The following commands have been tested on Ubuntu 24. Package installation may vary on other environments.
 
 ```
-sudo apt install git build-essential libsdl2-dev
+sudo apt install git build-essential libsdl2-dev cmake
 git clone https://github.com/Chomenor/ioef-cmod.git
 cd ioef-cmod
-make ARCH=x86_64
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 ```
 
 ### Building for Mac
 
-You will need Xcode Command Line Tools installed. Typically you will be automatically prompted to install this if it is not already installed. Start by cloning the repository:
+1) Have XCode and CMake installed. Consult other guides if needed.
+2) Run the following commands:
 
 ```
 git clone https://github.com/Chomenor/ioef-cmod.git
 cd ioef-cmod
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 ```
-
-Then run one of these commands, depending on platform (only 64-bit x86 and arm architectures are currently supported).
-
-- x86_64: ```./make-macosx.sh x86_64```
-- arm64: ```./make-macosx.sh arm64```
-- universal (x86_64 + arm64): ```./make-macosx-ub2.sh```
 
 ### Feature Selection
 
