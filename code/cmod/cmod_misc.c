@@ -476,36 +476,25 @@ static void Stef_ImportSettings_GetSource( SettingsImportSource_t *target ) {
 
 #ifdef _WIN32
 	// Check user directory (based on Sys_DefaultHomePath)
-	{
-		HMODULE shfolder = LoadLibrary( "shfolder.dll" );
+	TCHAR szPath[MAX_PATH];
 
-		if ( shfolder ) {
-			TCHAR szPath[MAX_PATH];
-			FARPROC qSHGetFolderPath = GetProcAddress( shfolder, "SHGetFolderPathA" );
+	if ( SUCCEEDED( SHGetFolderPathA( NULL, CSIDL_APPDATA, NULL, 0, szPath ) ) ) {
+		if ( FS_GeneratePath( szPath, "Lilium Voyager/baseEF/hmconfig.cfg",
+				NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+			Stef_ImportSettings_AddSource( path, qfalse, target );
+		}
 
-			if ( qSHGetFolderPath ) {
-				if ( SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_APPDATA, NULL, 0, szPath ) ) ) {
-					if ( FS_GeneratePath( szPath, "Lilium Voyager/baseEF/hmconfig.cfg",
-							NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
-						Stef_ImportSettings_AddSource( path, qfalse, target );
-					}
+		if ( FS_GeneratePath( szPath, "Tulip Voyager/baseEF/hmconfig.cfg",
+				NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+			Stef_ImportSettings_AddSource( path, qfalse, target );
+		}
+	}
 
-					if ( FS_GeneratePath( szPath, "Tulip Voyager/baseEF/hmconfig.cfg",
-							NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
-						Stef_ImportSettings_AddSource( path, qfalse, target );
-					}
-				}
-
-				if ( SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_LOCAL_APPDATA, NULL, 0, szPath ) ) ) {
-					if ( FS_GeneratePath( szPath,
-							"VirtualStore/Program Files (x86)/Raven/Star Trek Voyager Elite Force/BaseEF/hmconfig.cfg",
-							NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
-						Stef_ImportSettings_AddSource( path, qfalse, target );
-					}
-				}
-			}
-
-			FreeLibrary( shfolder );
+	if ( SUCCEEDED( SHGetFolderPathA( NULL, CSIDL_LOCAL_APPDATA, NULL, 0, szPath ) ) ) {
+		if ( FS_GeneratePath( szPath,
+				"VirtualStore/Program Files (x86)/Raven/Star Trek Voyager Elite Force/BaseEF/hmconfig.cfg",
+				NULL, FS_NO_SANITIZE, FS_NO_SANITIZE, 0, path, sizeof( path ) ) ) {
+			Stef_ImportSettings_AddSource( path, qfalse, target );
 		}
 	}
 #endif
