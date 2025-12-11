@@ -31,6 +31,7 @@ typedef struct fsc_shader_s fsc_shader_t;
 
 // Lookup flags shared with filesystem. Must match values in fspublic.h!
 #define LOOKUPFLAG_ENABLE_DDS 1		// Enable dds format for image lookups.
+#define LOOKUPFLAG_PREFER_DDS 1024	// Prefer dds format.
 #define LOOKUPFLAG_ENABLE_MTR 2		// Enable mtr shader files.
 #endif
 

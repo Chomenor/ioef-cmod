@@ -711,6 +711,8 @@ typedef enum
 
 	UNIFORM_BONEMATRIX,
 
+	UNIFORM_GREYSCALE,
+
 	UNIFORM_COUNT
 } uniform_t;
 
@@ -1501,6 +1503,7 @@ typedef struct {
 	FBO_t *last2DFBO;
 	qboolean    colorMask[4];
 	qboolean    depthFill;
+	float       greyscale;
 } backEndState_t;
 
 /*
@@ -1625,6 +1628,7 @@ typedef struct {
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
+	shaderProgram_t greyscaleShader;
 
 
 	// -----------------------------------------
@@ -2416,7 +2420,7 @@ RENDERER BACK END COMMAND QUEUE
 =============================================================
 */
 
-#define	MAX_RENDER_COMMANDS	0x40000
+#define	MAX_RENDER_COMMANDS	0x80000
 
 typedef struct {
 	byte	cmds[MAX_RENDER_COMMANDS];
