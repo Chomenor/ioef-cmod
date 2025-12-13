@@ -26,6 +26,10 @@ if(BUILD_ELITEFORCE)
 
     set(BASEGAME baseEF)
 
+    set(WINDOWS_ICON_PATH ${CMAKE_SOURCE_DIR}/misc/windows/stvoyHM.ico)
+
+    set(MACOS_ICON_PATH ${CMAKE_SOURCE_DIR}/misc/macos/stvoyHM.icns)
+
     set(PROTOCOL_HANDLER_SCHEME stvef)
 
     # Currently CMakeLists.txt seems to need this
