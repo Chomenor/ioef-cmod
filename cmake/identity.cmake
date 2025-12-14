@@ -29,7 +29,11 @@ if(BUILD_ELITEFORCE)
     set(WINDOWS_ICON_PATH ${CMAKE_SOURCE_DIR}/misc/windows/stvoyHM.ico)
 
     set(MACOS_ICON_PATH ${CMAKE_SOURCE_DIR}/misc/macos/stvoyHM.icns)
+    set(MACOS_BUNDLE_ID org.stvef.cmod)
 
+    set(COPYRIGHT "This app contains code under copyright from Quake III Arena (id Software), ioquake3 (and contributors), and Star Trek Voyager Elite Force (Raven Software).")
+
+    set(CONTACT_EMAIL "chomenor@gmail.com")
     set(PROTOCOL_HANDLER_SCHEME stvef)
 
     # Currently CMakeLists.txt seems to need this

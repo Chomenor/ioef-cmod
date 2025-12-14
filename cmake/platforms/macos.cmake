@@ -51,6 +51,10 @@ function(finish_macos_app)
         set(MACOS_APP_PLIST_URL_TYPES "")
     endif()
 
+    if(BUILD_ELITEFORCE)
+        set(MACOS_APP_SHORT_VERSION_STRING "${CMAKE_PROJECT_VERSION}.0")
+    endif()
+
     configure_file(${CMAKE_SOURCE_DIR}/cmake/Info.plist.in
         ${CMAKE_BINARY_DIR}/Info.plist @ONLY)
 

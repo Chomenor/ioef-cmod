@@ -90,7 +90,23 @@ if(NOT PRODUCT_VERSION)
     endif()
 endif()
 
-add_compile_definitions(PRODUCT_VERSION="${PRODUCT_VERSION}")
+if(BUILD_ELITEFORCE)
+    # Keep the old version format with date in some places for now
+    execute_process(
+        COMMAND git show -s --pretty=format:%h-%ad --date=short
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_DATE_REV
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+
+    if(GIT_DATE_REV)
+        add_compile_definitions(PRODUCT_VERSION="${CMAKE_PROJECT_VERSION}_GIT_${GIT_DATE_REV}")
+    else()
+        add_compile_definitions(PRODUCT_VERSION="${CMAKE_PROJECT_VERSION}")
+    endif()
+else()
+    add_compile_definitions(PRODUCT_VERSION="${PRODUCT_VERSION}")
+endif()
 
 # For CI to read from
 file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/version.txt CONTENT ${PRODUCT_VERSION})
