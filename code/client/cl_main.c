@@ -4104,10 +4104,12 @@ void CL_Init( void ) {
 	cl_voipProtocol = Cvar_Get ("cl_voipProtocol", cl_voip->integer ? "opus" : "", CVAR_USERINFO | CVAR_ROM);
 #endif
 
+#ifndef CMOD_DEFER_HTTP
 #ifdef USE_HTTP
 	if(!CL_HTTP_Init()) {
 		Com_Printf("WARNING: couldn't initialize HTTP download support\n");
 	}
+#endif
 #endif
 
 	// cgame might not be initialized before menu is used

@@ -249,6 +249,10 @@
 // functionality attached.
 #define CMOD_DISABLE_MOTD
 
+// [TWEAK] Defer loading HTTP library until needed for download, like earlier ioq3 versions.
+// Saves ~10ms startup time.
+#define CMOD_DEFER_HTTP
+
 #endif	// !DEDICATED
 
 /* ******************************************************************************** */

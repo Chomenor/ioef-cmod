@@ -160,6 +160,11 @@ CL_HTTP_Available
 */
 qboolean CL_HTTP_Available(void)
 {
+#ifdef CMOD_DEFER_HTTP
+	if ( cURLLib == NULL && !CL_HTTP_Init() ) {
+		Com_Printf( "WARNING: couldn't initialize HTTP download support\n" );
+	}
+#endif
 	return cURLLib != NULL;
 }
 

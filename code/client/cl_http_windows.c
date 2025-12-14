@@ -97,6 +97,11 @@ CL_HTTP_Available
 */
 qboolean CL_HTTP_Available()
 {
+#ifdef CMOD_DEFER_HTTP
+	if ( hInternet == NULL && !CL_HTTP_Init() ) {
+		Com_Printf( "WARNING: couldn't initialize HTTP download support\n" );
+	}
+#endif
     return hInternet != NULL;
 }
 
