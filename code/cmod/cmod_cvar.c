@@ -1800,6 +1800,7 @@ typedef enum {
 	CVARTYPE_SOUND,
 	CVARTYPE_NETWORK,
 	CVARTYPE_MENU,
+	CVARTYPE_SERVER,
 	CVARTYPE_LAST
 } cvar_category_t;
 
@@ -1844,7 +1845,6 @@ const special_cvar_t specials[] = {
 	{ "fs_download_mode", "1", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "sv_killserver", "", CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "cmod_crosshair_enable", "1", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_hostname", NULL, CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "cl_serverStatusResendTime", "500", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "cg_aspectCorrectGunPos", "-1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_ARCHIVE },
 	{ "ui_aspectCorrect", "-1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_ARCHIVE },
@@ -1858,12 +1858,16 @@ const special_cvar_t specials[] = {
 
 	// Server settings
 	{ "nextmap", NULL, CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_pure", "0", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_SERVERINFO },
-	{ "sv_minRate", "25000", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_fps", "30", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_voip", "0", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "sv_maxclients", "32", CVARTYPE_NONE, FLAGS_NORMAL },
-	{ "g_teamForceBalance", "0", CVARTYPE_NONE, FLAGS_NORMAL },
+	{ "sv_pure", "0", CVARTYPE_SERVER, FLAGS_NORMAL | CVAR_SERVERINFO },
+	{ "sv_minRate", "25000", CVARTYPE_SERVER, FLAGS_NORMAL },
+	{ "sv_fps", "30", CVARTYPE_SERVER, FLAGS_NORMAL },
+	{ "sv_voip", "0", CVARTYPE_SERVER, FLAGS_NORMAL },
+	{ "sv_maxclients", "32", CVARTYPE_SERVER, FLAGS_NORMAL },
+	{ "g_teamForceBalance", "0", CVARTYPE_SERVER, FLAGS_NORMAL },
+	{ "g_holoIntro", "1", CVARTYPE_SERVER, FLAGS_PERSISTENT },
+	{ "sv_hostname", "noname", CVARTYPE_SERVER, FLAGS_PERSISTENT },
+	{ "g_motd", "", CVARTYPE_SERVER, FLAGS_PERSISTENT },
+	{ "g_spSkill", "2", CVARTYPE_SERVER, FLAGS_PERSISTENT | CVAR_DEFER_TO_VM_DEFAULT },
 
 	// Preferences
 	{ "name", "RedShirt", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT | CVAR_IMPORT_ALLOWED },
@@ -2144,6 +2148,7 @@ void Cvar_WriteVariables( fileHandle_t f ) {
 	Cvar_WriteCvarsByCategory( &stream, CVARTYPE_GRAPHICS, SYSTEM_NEWLINE "// Graphics settings" SYSTEM_NEWLINE );
 	Cvar_WriteCvarsByCategory( &stream, CVARTYPE_SOUND, SYSTEM_NEWLINE "// Sound settings" SYSTEM_NEWLINE );
 	Cvar_WriteCvarsByCategory( &stream, CVARTYPE_NETWORK, SYSTEM_NEWLINE "// Network settings" SYSTEM_NEWLINE );
+	Cvar_WriteCvarsByCategory( &stream, CVARTYPE_SERVER, SYSTEM_NEWLINE "// Local match" SYSTEM_NEWLINE );
 	Cvar_WriteCvarsByCategory( &stream, CVARTYPE_NONE, SYSTEM_NEWLINE "// Other settings" SYSTEM_NEWLINE );
 	Cvar_WriteCvarsByCategory( &stream, CVARTYPE_MENU, SYSTEM_NEWLINE "// Menu settings" SYSTEM_NEWLINE );
 
