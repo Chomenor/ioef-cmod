@@ -1320,7 +1320,11 @@ void		R_Modellist_f (void);
 #define	MAX_SKINS				1024
 
 
+#ifdef CMOD_INCREASE_LIMITS
+#define	MAX_DRAWSURFS			0x40000
+#else
 #define	MAX_DRAWSURFS			0x10000
+#endif
 #define	DRAWSURF_MASK			(MAX_DRAWSURFS-1)
 
 /*

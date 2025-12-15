@@ -28,7 +28,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 // surface geometry should not exceed these limits
+#ifdef CMOD_INCREASE_LIMITS
+#define SHADER_MAX_VERTEXES 2000
+#else
 #define	SHADER_MAX_VERTEXES	1000
+#endif
 #define	SHADER_MAX_INDEXES	(6*SHADER_MAX_VERTEXES)
 
 

@@ -242,6 +242,9 @@
 // a download in certain situations.
 #define CMOD_DL_LASTMSG_FIX
 
+// [TWEAK] Increase some map/graphics limits for better compatibility.
+#define CMOD_INCREASE_LIMITS
+
 // [TWEAK] Restore console scroll position to end when reopening. Enabled by "con_autoReturn" cvar.
 #define CMOD_CONSOLE_AUTO_RETURN
 
