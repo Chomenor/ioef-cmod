@@ -246,9 +246,9 @@ static GLuint glsl_create_gamma_program(void) {
 	GLuint vertex_shader = 0;
 	GLuint fragment_shader = 0;
 	GLuint gamma_program = 0;
-	const char vertex_data[] = "#version 130\n"
-		"in vec3 vertexPosition_modelspace;\n"
-		"out vec2 UV;\n"
+	const char vertex_data[] = "#version 120\n"
+		"attribute vec3 vertexPosition_modelspace;\n"
+		"varying vec2 UV;\n"
 		"void main(){\n"
 		"   gl_Position = vec4(vertexPosition_modelspace,1);\n"
 		"   UV = (vertexPosition_modelspace.xy+vec2(1,1))/2.0;\n"
@@ -262,15 +262,15 @@ static GLuint glsl_create_gamma_program(void) {
 	if ( r_autoOverBrightFactorMax->value > 0.0f && r_autoOverBrightFactorMax->value < overBrightFactor )
 		overBrightFactor = r_autoOverBrightFactorMax->value;
 #endif
-	Com_sprintf(fragment_data, sizeof(fragment_data), "#version 130\n"
-		"in vec2 UV;\n"
-		"out vec3 color;\n"
+	Com_sprintf(fragment_data, sizeof(fragment_data), "#version 120\n"
+		"varying vec2 UV;\n"
 		"uniform sampler2D renderedTexture;\n"
 		"uniform float gamma;\n"
 		"void main()\n"
 		"{\n"
-		"   color = texture( renderedTexture, UV  ).xyz;\n"
+		"   vec3 color = texture2D( renderedTexture, UV  ).xyz;\n"
 		"   color.rgb = pow(color.rgb, vec3(gamma)) * %f;\n"
+		"   gl_FragColor = vec4(color, 1.0);\n"
 		"}\n", overBrightFactor);
 
 	// Compile shaders
