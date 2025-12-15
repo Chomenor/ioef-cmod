@@ -213,6 +213,9 @@ static GLuint glsl_create_compiled_shader(const GLchar *buffer, int size, GLenum
 	qglCompileShader(shader);
 	qglGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 	if(!compiled) {
+		char errorBuffer[4096];
+		qglGetShaderInfoLog(shader, sizeof(errorBuffer), NULL, errorBuffer);
+		Com_Printf("glsl_create_compiled_shader: compilation error - %s\n", errorBuffer);
 		qglDeleteShader(shader);
 		return 0; }
 	return shader; }
