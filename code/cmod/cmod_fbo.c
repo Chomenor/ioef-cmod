@@ -323,6 +323,10 @@ static void framebuffer_init2(void) {
 	// stereo rendering currently not supported
 	if(glConfig.stereoEnabled || r_anaglyphMode->integer) return;
 
+	if(!QGL_VERSION_ATLEAST(3, 0) && !SDL_GL_ExtensionSupported("GL_ARB_framebuffer_object")) {
+		Com_Printf("fbo_init failed due to missing GL_ARB_framebuffer_object\n");
+		return; }
+
 	fbo_gls_init();
 
 	qglGetIntegerv(GL_MAX_RENDERBUFFER_SIZE_EXT, &maxRenderbufferSize);
