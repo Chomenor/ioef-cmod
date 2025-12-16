@@ -1060,6 +1060,9 @@ static void IN_ProcessEvents( void )
 	SDL_Event e;
 	keyNum_t key = 0;
 	static keyNum_t lastKeyDown = 0;
+#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+	static qboolean ignoreTextConsoleKey = qfalse;
+#endif
 
 	if( !SDL_WasInit( SDL_INIT_VIDEO ) )
 			return;
@@ -1081,6 +1084,11 @@ static void IN_ProcessEvents( void )
 					Com_QueueEvent( in_eventTime, SE_CHAR, CTRL(key), 0, 0, NULL );
 
 				lastKeyDown = key;
+#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+				if ( key == K_CONSOLE ) {
+					ignoreTextConsoleKey = qtrue;
+				}
+#endif
 				break;
 
 			case SDL_KEYUP:
@@ -1145,6 +1153,16 @@ static void IN_ProcessEvents( void )
 						{
 							if( IN_IsConsoleKey( 0, utf32 ) )
 							{
+#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+								if ( ignoreTextConsoleKey ) {
+#ifdef CMOD_CONSOLE_KEY_DEBUG
+									if ( in_keyboardDebug->integer ) {
+										Com_Printf( "  Skip due to ignoreTextConsoleKey\n" );
+									}
+#endif
+									continue;
+								}
+#endif
 								Com_QueueEvent( in_eventTime, SE_KEY, K_CONSOLE, qtrue, 0, NULL );
 								Com_QueueEvent( in_eventTime, SE_KEY, K_CONSOLE, qfalse, 0, NULL );
 							}
@@ -1153,6 +1171,9 @@ static void IN_ProcessEvents( void )
 						}
 					}
 				}
+#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+				ignoreTextConsoleKey = qfalse;
+#endif
 				break;
 
 			case SDL_MOUSEMOTION:
