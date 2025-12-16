@@ -238,6 +238,9 @@
 // [BUGFIX] Attempt to improve detection of console opening key on non-US keyboard layouts.
 #define CMOD_CONSOLE_KEY_FIXES
 
+// [TWEAK] Enables some tweaks and additional debug prints when in_keyboardDebug is enabled.
+#define CMOD_CONSOLE_KEY_DEBUG
+
 // [BUGFIX] Fix an issue in the client which can cause it to disconnect after completing
 // a download in certain situations.
 #define CMOD_DL_LASTMSG_FIX

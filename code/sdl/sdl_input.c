@@ -37,7 +37,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define KMOD_SCROLL KMOD_RESERVED
 #endif
 
+#ifndef CMOD_CONSOLE_KEY_DEBUG
 static cvar_t *in_keyboardDebug     = NULL;
+#endif
 
 static SDL_GameController *gamepad = NULL;
 static SDL_Joystick *stick = NULL;
@@ -68,10 +70,14 @@ IN_PrintKey
 */
 static void IN_PrintKey( const SDL_Keysym *keysym, keyNum_t key, qboolean down )
 {
+#ifdef CMOD_CONSOLE_KEY_DEBUG
+	Com_Printf( "%i %s ", Sys_Milliseconds(), down ? "+" : "-" );
+#else
 	if( down )
 		Com_Printf( "+ " );
 	else
 		Com_Printf( "  " );
+#endif
 
 	Com_Printf( "Scancode: 0x%02x(%s) Sym: 0x%02x(%s)",
 			keysym->scancode, SDL_GetScancodeName( keysym->scancode ),
@@ -1085,7 +1091,9 @@ static void IN_ProcessEvents( void )
 				break;
 
 			case SDL_TEXTINPUT:
+#ifndef CMOD_CONSOLE_KEY_DEBUG
 				if( lastKeyDown != K_CONSOLE )
+#endif
 				{
 					char *c = e.text.text;
 
@@ -1120,8 +1128,17 @@ static void IN_ProcessEvents( void )
 							c++;
 						}
 
-#ifdef CMOD_CONSOLE_KEY_FIXES
-						if(in_keyboardDebug->integer) Com_Printf("  Text: 0x%02x(%s)\n", utf32, Key_KeynumToString(utf32));
+#ifdef CMOD_CONSOLE_KEY_DEBUG
+						if ( in_keyboardDebug->integer ) {
+							Com_Printf( "%i Text: 0x%02x (%s)\n", Sys_Milliseconds(), utf32, Key_KeynumToString( utf32 ) );
+						}
+
+						if ( lastKeyDown == K_CONSOLE ) {
+							if ( in_keyboardDebug->integer ) {
+								Com_Printf( "  Skip due to lastKeyDown == K_CONSOLE\n" );
+							}
+							continue;
+						}
 #endif
 
 						if( utf32 != 0 )
@@ -1327,9 +1344,7 @@ void IN_Init( void *windowData )
 
 	Com_DPrintf( "\n------- Input Initialization -------\n" );
 
-#ifdef CMOD_CMOD_CONSOLE_KEY_TWEAKS
-	in_keyboardDebug = Cvar_Get( "in_keyboardDebug", "0", 0 );
-#else
+#ifndef CMOD_CONSOLE_KEY_DEBUG
 	in_keyboardDebug = Cvar_Get( "in_keyboardDebug", "0", CVAR_ARCHIVE );
 #endif
 

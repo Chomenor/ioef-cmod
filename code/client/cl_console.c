@@ -89,6 +89,12 @@ void Con_ToggleConsole_f (void) {
 		return;
 	}
 
+#ifdef CMOD_CONSOLE_KEY_DEBUG
+	if ( in_keyboardDebug->integer ) {
+		Com_Printf( "%i Con_ToggleConsole_f reached\n", Sys_Milliseconds() );
+	}
+#endif
+
 	if ( con_autoclear->integer ) {
 		Field_Clear( &g_consoleField );
 	}

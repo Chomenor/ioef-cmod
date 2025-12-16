@@ -1387,6 +1387,11 @@ void CL_KeyDownEvent( int key, unsigned time )
 	// console key is hardcoded, so the user can never unbind it
 	if( key == K_CONSOLE || ( keys[K_SHIFT].down && key == K_ESCAPE ) )
 	{
+#ifdef CMOD_CONSOLE_KEY_DEBUG
+		if ( in_keyboardDebug->integer ) {
+			Com_Printf( "%i Toggle console due to console key\n", Sys_Milliseconds() );
+		}
+#endif
 		Con_ToggleConsole_f ();
 		Key_ClearStates ();
 		return;

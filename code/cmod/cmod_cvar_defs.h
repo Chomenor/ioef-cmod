@@ -119,3 +119,7 @@ CVAR_DEF(cl_menuSensitivity, "-1", CVAR_ARCHIVE)
 // Maximum allowed length of player model string.
 CVAR_DEF( sv_maxModelLength, "48", 0 )
 #endif
+
+#ifdef CMOD_CONSOLE_KEY_DEBUG
+CVAR_DEF( in_keyboardDebug, "0", 0 )
+#endif
