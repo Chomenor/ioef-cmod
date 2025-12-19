@@ -70,9 +70,15 @@ VM_Init
 ==============
 */
 void VM_Init( void ) {
+#ifdef CMOD_DISABLE_MAC_COMPILED_VM
+	Cvar_Get( "vm_cgame", "1", 0 );
+	Cvar_Get( "vm_game", "1", 0 );
+	Cvar_Get( "vm_ui", "1", 0 );
+#else
 	Cvar_Get( "vm_cgame", "2", CVAR_ARCHIVE );	// !@# SHIP WITH SET TO 2
 	Cvar_Get( "vm_game", "2", CVAR_ARCHIVE );	// !@# SHIP WITH SET TO 2
 	Cvar_Get( "vm_ui", "2", CVAR_ARCHIVE );		// !@# SHIP WITH SET TO 2
+#endif
 
 	Cmd_AddCommand ("vmprofile", VM_VmProfile_f );
 	Cmd_AddCommand ("vminfo", VM_VmInfo_f );

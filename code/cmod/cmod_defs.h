@@ -425,6 +425,12 @@
 //   process name, for example)
 #define CMOD_ARGV_PATCH
 
+// [BUGFIX] Disable compiled VM on Mac for now, due to some errors encountered on x86
+// (Compiled VM currently isn't supported on ARM anyway)
+#if defined(__APPLE__)
+#define CMOD_DISABLE_MAC_COMPILED_VM
+#endif
+
 // [COMMON] New logging system
 // Currently used for server-side logging, but capable of supporting client-side
 // logging as well for debugging purposes
