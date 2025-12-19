@@ -93,18 +93,24 @@ struct {
 	{723156790, {1.0f, 0.0f, 0, 1.0f}},		// danger_christmas - darken
 	{1599589538, {1.0f, 0.0f, 0, 1.0f}},	// snowcity - darken
 	{1736560496, {1.0f, 0.0f, 0, 1.1f}},	// ctf_gen_xmas - darken
-	{1701618430, {1.0f, 0.0f, 0, 1.0f}},	// dm_ic - darken
-	{1818880400, {1.0f, 0.0f, 0, 1.0f}},	// ctf_ic - darken
-	{2108385997, {1.0f, 0.0f, 1, 1.3f}},	// ef_abbey2 - darken
-	{-1695979, {1.0f, 0.0f, 0, 1.2f}},		// ef_algiers - darken
-	{-424018281, {1.0f, 0.0f, 0, 1.2f}},	// ef_algiersroofs - darken
-	{1533134454, {1.0f, 0.0f, 1, 1.3f}},	// ef_austria - darken
-	{-2096164947, {1.0f, 0.0f, 1, 1.3f}},	// ef_kingdom - darken
-	{1671051894, {1.0f, 0.0f, 1, 1.3f}},	// rtcw_ice - darken
+	{-1446728862, {1.0f, 0.0f, 0, 1.0f}},	// alamo_xmas - darken
+	{1205784165, {1.0f, 0.0f, 0, 1.2f}},	// ctf_voy1_xmas - darken
+	{-1886202170, {1.0f, 0.0f, 0, 1.2f}},	// hm_cam_xmas - darken
+	{1701618430, {1.0f, 0.0f, 0, 1.0f}},	// dm_ic (old version) - darken
+	{1818880400, {1.0f, 0.0f, 0, 1.0f}},	// ctf_ic (old version) - darken
+	{2108385997, {0.75f, 0.0f, 1}},			// ef_abbey2 - darken
+	{-1695979, {0.5f, 0.0f, 0, 1.2f}},		// ef_algiers - darken
+	{-424018281, {0.9f, 0.0f, 0}},			// ef_algiersroofs - darken
+	{1533134454, {0.9f, 0.0f, 1, 1.3f}},	// ef_austria - darken
+	{-2096164947, {0.9f, 0.0f, 1, 1.3f}},	// ef_kingdom - darken
+	{1671051894, {0.9f, 0.0f, 1, 1.3f}},	// rtcw_ice - darken
+	{-1373847418, {0.65f, 0.0f, 1}},		// ef_jor5 - darken
 	{-162049488, {2.0f, 0.0f, 1, 1.0f}},	// perramses - darken
 	{900526117, {2.0f, 0.0f, 1, 1.0f}},		// glwarfare - darken
 	{433214492, {2.0f, 0.0f, 1, 1.0f}},		// goldmoon - darken
 	{-1597710217, {2.0f, 0.0f, 1, 1.0f}},	// landsoflore - darken
+	{-482853512, {2.0f, 0.0f, 1, 1.0f}},	// life-frag1 - darken
+	{-1590487211, {2.0f, 0.0f, 1, 1.0f}},	// sonicboil - darken
 	{-1026364727, {1.0f, 0.2f, 0, 1.2f}},	// sd6 - adjust
 	{-1374186326, {2.0f, 0.1f, 1}},		// ut_subway - brighten
 	{610817057, {1.0f, 0.2f, 0}},		// ctf_twilight - brighten
@@ -121,6 +127,8 @@ struct {
 	{-1935206618, {2.0f, 0.0f, 0}},		// ctf_rg2_e - brighten
 	{-485373179, {2.0f, 0.0f, 0}},		// ctf_rg2_h - brighten
 	{-1267516348, QUAKE3_STANDARD},		// leaks2 (ef version) - brighten
+	{1497862741, QUAKE3_STANDARD},		// bal3dm3 (ef version) - brighten
+	{564640074, QUAKE3_STANDARD},		// monsoon (ef version) - brighten
 	{998811160, {1.0f, 0.0f, 0, 0.0f, 0.2f}},	// et_battery - increase obf
 	{-1725880467, {1.0f, 0.0f, 0, 0.0f, 0.2f}},	// et_batn - increase obf
 };
