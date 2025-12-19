@@ -4,13 +4,13 @@
 
 If possible, cMod will store files such as settings and downloads in the same location it is installed, like the original version of Elite Force.
 
-If cMod is installed somewhere where standard applications do not have write permissions, such as Program Files on Windows, it will store files in a folder under the user directory instead. On Windows this will typically be located at ```%appdata%\STVEF```, on Linux at ```~/.stvef```, and on Mac at ```~/Library/Application Support/STVEF```.
+If cMod is installed somewhere where standard applications do not have write permissions, such as Program Files on Windows, it will store files in a folder under the user directory instead. On Windows this will typically be located at `%appdata%\STVEF`, on Mac at `~/Library/Application Support/STVEF`, and on Linux according to the [XDG Spec](https://specifications.freedesktop.org/basedir/latest/) (e.g. `~/.config/stvef`, `~/.local/share/stvef`, `~/.local/state/stvef`).
 
 ## Settings Handling
 
 Settings are stored in a file called "cmod.cfg" directly in the EF working directory. This is separate from the settings files used by other versions of EF, such as hmconfig.cfg. The cmod.cfg file is designed to be human-editable, so feel free to open it and make changes.
 
-*Autoexec Restriction:* By default, cMod restricts loading some settings from the autoexec.cfg file. This is to protect against autoexec.cfg files that are prepackaged in EF distributions and may be incompatible with cMod. If you encounter issues, set ```cmod_restrict_autoexec``` to 0 (in the console or cmod.cfg, not in the autoexec.cfg itself).
+*Autoexec Restriction:* By default, cMod restricts loading some settings from the autoexec.cfg file. This is to protect against autoexec.cfg files that are prepackaged in EF distributions and may be incompatible with cMod. If you encounter issues, set `cmod_restrict_autoexec` to 0 (in the console or cmod.cfg, not in the autoexec.cfg itself).
 
 ## Mod Handling
 
@@ -20,7 +20,7 @@ Typical maps and models still work normally out of baseEF, and mods in other dir
 
 ## Brightness
 
-The brightness settings can be accessed through the menu via ```Configure -> Video -> Brightness```. Four template settings are available. I recommend trying them to find the one you like best. If you want to customize the visuals even more, you can fine tune the other slider settings afterwards.
+The brightness settings can be accessed through the menu via `Configure -> Video -> Brightness`. Four template settings are available. I recommend trying them to find the one you like best. If you want to customize the visuals even more, you can fine tune the other slider settings afterwards.
 
 - Plain - Default setting. Safe values that work well with almost all maps.
 - Full Contrast - Original EF defaults. Good visually, but can make parts of some maps too bright.
@@ -51,6 +51,12 @@ cMod supports customizing the color of the sky in fastsky mode (when r_fastsky i
 - `000000` - black (original ioEF default)
 - `ffffff` - white
 
+## Custom Crosshair Color
+
+The crosshair color can also be customized using the cg_crosshairColor cvar. The default value `ffffff ffff00 ff0000` makes the crosshair white with full health, yellow with medium health, and red with low health.
+
+Any combination of three space-separated hex values can be used. A single value is also supported for a constant color that doesn't change with health.
+
 ## Aspect Ratio Correction
 
 The following settings are supported to help with widescreen and aspect ratio related issues.
@@ -70,9 +76,9 @@ In the original game, the console and chat font are displayed at a fixed size, u
 
 ## URI Handler
 
-To enable launching the game and joining servers directly from web-based server browsers such as [efservers.com](https://efservers.com/) on Windows, open the in-game console and run the command ```uri register```.
+To enable launching the game and joining servers directly from web-based server browsers such as [efservers.com](https://efservers.com/) on Windows, open the in-game console and run the command `uri register`.
 
-The handler can also be unregistered using the command ```uri remove```.
+The handler can also be unregistered using the command `uri remove`.
 
 ## Download Folder Support
 
@@ -87,12 +93,12 @@ A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 co
 # FAQ
 
 **Q:** Mouse movement is different from other clients.  
-**A:** By default, cMod uses raw mouse input mode, which bypasses OS acceleration settings and is generally considered more accurate for FPS games. If you prefer the mouse input to be the same as older versions of EF, try disabling the ```RAW MOUSE``` option in the Mouse menu.
+**A:** By default, cMod uses raw mouse input mode, which bypasses OS acceleration settings and is generally considered more accurate for FPS games. If you prefer the mouse input to be the same as older versions of EF, try disabling the `RAW MOUSE` option in the Mouse menu.
 
 Also make sure your sensitivity setting matches your old client. Use the `/sensitivity` console command to check the value in your old client, and `/sensitivity {value}` to set the same value in cMod.
 
 **Q:** Problems opening console.  
-**A:** There are known issues with the normal console key on some keyboard layouts. Try using the alternative combination, ```Shift + ESC``` to open the console.
+**A:** There are known issues with the normal console key on some keyboard layouts. Try using the alternative combination, `Shift + ESC` to open the console.
 
 **Q:** Settings "r_overBrightBits" and "r_mapOverBrightBits" not working.  
 **A:** cMod uses r_overBrightFactor and r_mapLightingFactor instead, with the following mapping:

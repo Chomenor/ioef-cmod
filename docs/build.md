@@ -4,7 +4,7 @@ The cMod project is divided into two parts, the engine and game modules. Both ar
 
 ## Engine
 
-The following methods can be used to build the engine (main game executable). Generally the build process is the same as for [ioquake3](https://ioquake3.org/help/building-ioquake3/).
+The following methods can be used to build the engine (main game executable). Generally the build process is the same as for [ioquake3](https://github.com/ioquake/ioq3/blob/main/README.md#compilation-and-installation).
 
 ### Building for Windows (Visual Studio)
 
@@ -61,7 +61,7 @@ cmake --build build -j$(nproc)
 
 ### Feature Selection
 
-All changes in cMod compared to the base ioquake3 source code are listed in the [cmod_defs.h](https://github.com/Chomenor/ioef-cmod/blob/master/code/cmod/cmod_defs.h) file. Specific features can be disabled by commenting out the corresponding ```#define``` statement.
+All changes in cMod compared to the base ioquake3 source code are listed in the [cmod_defs.h](https://github.com/Chomenor/ioef-cmod/blob/master/code/cmod/cmod_defs.h) file. Specific features can be disabled by commenting out the corresponding `#define` statement.
 
 ## Game Modules
 
@@ -72,8 +72,8 @@ The game modules are included in the cMod releases via the pakcmod pk3 file. If 
 Currently the build process for the game modules is for Windows only. This is a holdover from the fact that the original Raven game SDK was based on a Windows toolchain.
 
 1) Download the contents of the [cmod-game-code](https://github.com/Chomenor/cmod-game-code) repository.
-2) Run the ```build/qvm_build/build_all.bat``` script. The ```build/qvm_build/output/vm``` folder should now contain 3 files: ```cgame.qvm```, ```qagame.qvm```, and ```ui.qvm```.
-3) Add the ```vm``` folder to a zip file, and rename it to a pk3 extention, such as ```mod.pk3```. Note that vm folder must be included in the pk3, so the path inside the pk3 will be like ```vm/cgame.qvm```.
+2) Run the `build/qvm_build/build_all.bat` script. The `build/qvm_build/output/vm` folder should now contain 3 files: `cgame.qvm`, `qagame.qvm`, and `ui.qvm`.
+3) Add the `vm` folder to a zip file, and rename it to a pk3 extention, such as `mod.pk3`. Note that vm folder must be included in the pk3, so the path inside the pk3 will be like `vm/cgame.qvm`.
 
 ### Loading Modules (Standard Method)
 
@@ -81,7 +81,7 @@ This method can be used to load the modules on any Elite Force engine.
 
 1) Create a folder in your EF installation, next to baseEF. It could have any name, "testmod" for example.
 2) Copy the "mod.pk3" file from the previous step into this folder.
-3) Start the game, click the ```MODS``` button, and select the mod from the list.
+3) Start the game, click the `MODS` button, and select the mod from the list.
 
 ### Loading Modules (Engine Selection)
 
@@ -90,6 +90,6 @@ In the cMod releases, the game module pk3 is located in baseEF and loaded specia
 To enable this using a custom-built game module pk3, follow these steps:
 
 1) Copy the module pk3 file into baseEF.
-2) Start the game and run the ```/path``` command from the console. Locate the name of the module pk3 in the output, and note the integer hash value beneath it.
-3) Edit the [fslocal.h](https://github.com/Chomenor/ioef-cmod/blob/master/code/filesystem/fslocal.h) file. Locate the ```CMOD_PAKS``` definition, and add the new hash value to the *bottom* of this list.
+2) Start the game and run the `/path` command from the console. Locate the name of the module pk3 in the output, and note the integer hash value beneath it.
+3) Edit the [fslocal.h](https://github.com/Chomenor/ioef-cmod/blob/master/code/filesystem/fslocal.h) file. Locate the `CMOD_PAKS` definition, and add the new hash value to the *bottom* of this list.
 4) Recompile the engine.
