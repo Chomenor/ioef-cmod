@@ -22,7 +22,7 @@ set(PROTOCOL_HANDLER_SCHEME quake3)
 
 if(BUILD_ELITEFORCE)
     set(PROJECT_NAME cMod)
-    set(PROJECT_VERSION 1.29)
+    set(PROJECT_VERSION 1.30)
 
     set(BASEGAME baseEF)
 
