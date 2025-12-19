@@ -89,6 +89,22 @@ void Con_ToggleConsole_f (void) {
 		return;
 	}
 
+#ifdef CMOD_CONSOLE_KEY_SANITY_CHECKS
+	// Don't allow multiple toggles in the same frame
+	{
+		static int lastToggleTime = 0;
+		if ( com_frameTime == lastToggleTime ) {
+#ifdef CMOD_CONSOLE_KEY_DEBUG
+			if ( in_keyboardDebug->integer ) {
+				Com_Printf( "%i Con_ToggleConsole_f skip due to duplicate com_frameTime\n", Sys_Milliseconds() );
+			}
+#endif
+			return;
+		}
+		lastToggleTime = com_frameTime;
+	}
+#endif
+
 #ifdef CMOD_CONSOLE_KEY_DEBUG
 	if ( in_keyboardDebug->integer ) {
 		Com_Printf( "%i Con_ToggleConsole_f reached\n", Sys_Milliseconds() );

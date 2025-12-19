@@ -238,9 +238,9 @@
 // [BUGFIX] Attempt to improve detection of console opening key on non-US keyboard layouts.
 #define CMOD_CONSOLE_KEY_FIXES
 
-// [BUGFIX] Extra sanity check to potentially fix some reported issues with spurious console opening.
+// [BUGFIX] Extra checks to potentially fix some reported issues involving console opening/closing.
 // Not sure if this is actually useful, but it shouldn't hurt.
-#define CMOD_CONSOLE_KEY_TEXT_CHECK
+#define CMOD_CONSOLE_KEY_SANITY_CHECKS
 
 // [TWEAK] Enables some tweaks and additional debug prints when in_keyboardDebug is enabled.
 #define CMOD_CONSOLE_KEY_DEBUG

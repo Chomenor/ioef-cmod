@@ -1060,7 +1060,7 @@ static void IN_ProcessEvents( void )
 	SDL_Event e;
 	keyNum_t key = 0;
 	static keyNum_t lastKeyDown = 0;
-#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+#ifdef CMOD_CONSOLE_KEY_SANITY_CHECKS
 	static qboolean ignoreTextConsoleKey = qfalse;
 #endif
 
@@ -1084,7 +1084,7 @@ static void IN_ProcessEvents( void )
 					Com_QueueEvent( in_eventTime, SE_CHAR, CTRL(key), 0, 0, NULL );
 
 				lastKeyDown = key;
-#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+#ifdef CMOD_CONSOLE_KEY_SANITY_CHECKS
 				if ( key == K_CONSOLE ) {
 					ignoreTextConsoleKey = qtrue;
 				}
@@ -1153,8 +1153,9 @@ static void IN_ProcessEvents( void )
 						{
 							if( IN_IsConsoleKey( 0, utf32 ) )
 							{
-#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+#ifdef CMOD_CONSOLE_KEY_SANITY_CHECKS
 								if ( ignoreTextConsoleKey ) {
+									// Ignore potential redundant delayed text event
 #ifdef CMOD_CONSOLE_KEY_DEBUG
 									if ( in_keyboardDebug->integer ) {
 										Com_Printf( "  Skip due to ignoreTextConsoleKey\n" );
@@ -1171,7 +1172,7 @@ static void IN_ProcessEvents( void )
 						}
 					}
 				}
-#ifdef CMOD_CONSOLE_KEY_TEXT_CHECK
+#ifdef CMOD_CONSOLE_KEY_SANITY_CHECKS
 				ignoreTextConsoleKey = qfalse;
 #endif
 				break;
