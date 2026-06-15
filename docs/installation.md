@@ -8,13 +8,13 @@ Download the [cMod release](https://github.com/Chomenor/ioef-cmod/releases), ext
 
 A simple installation method is to use the installer from The Last Outpost. This includes a working version of cMod and all necessary files. However, the installer is for Windows only, and the version of cMod included may not always be the latest.
 
-The installer can be downloaded from [this link](https://last-outpost.net/dl/file?id=1).
+The installer can be downloaded from [holomat.ch](https://holomat.ch).
 
 ## Method 3 - TLO Standalone Version (Mac, Windows, Linux)
 
 This method creates a "portable" installation for any supported operating system.
 
-- Download the [TLO Linux release](https://last-outpost.net/dl/file?id=9) and extract it to somewhere on your system.
+- Download the [TLO Linux release](https://holomat.ch) and extract it to somewhere on your system.
 - Download the [cMod release](https://github.com/Chomenor/ioef-cmod/releases) corresponding to your operating system. Extract it to the same location.
 - Run the included application.
 
@@ -31,7 +31,7 @@ You can also extract cMod directly to the install directory (Method 1) but this 
 ## Method 5 - Clean Install
 
 - Download the [cMod release](https://github.com/Chomenor/ioef-cmod/releases) corresponding to your operating system. Extract it to an empty folder anywhere on your system.
-- Within that folder there should be a subfolder called "baseEF". Copy the files "pak0.pk3", "pak1.pk3", "pak2.pk3" and "pak3.pk3" to this folder. If you don't have these paks available, you may be able to obtain them from the TLO [Linux release](https://last-outpost.net/dl/file?id=9).
+- Within that folder there should be a subfolder called "baseEF". Copy the files "pak0.pk3", "pak1.pk3", "pak2.pk3" and "pak3.pk3" to this folder. If you don't have these paks available, you may be able to obtain them from the TLO [Linux release](https://holomat.ch).
 - Run the included application.
 
 A minimal install for Windows should look something like this:
