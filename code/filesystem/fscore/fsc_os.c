@@ -33,7 +33,7 @@ Headers & Definitions
 
 #ifdef _WIN32
 // Use wide character API for unicode path support
-//#define FSC_WIN_WIDECHAR
+#define FSC_WIN_WIDECHAR
 
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
