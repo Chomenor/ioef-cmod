@@ -825,11 +825,11 @@ void FS_Startup( void ) {
 	FSC_RegisterErrorHandler( FS_CoreErrorHandler );
 
 #if defined( __APPLE__ )
-	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath fs_apppath", CVAR_INIT | CVAR_PROTECTED );
+	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_basepath *fs_homepath fs_steampath fs_gogpath fs_apppath", CVAR_INIT | CVAR_PROTECTED );
 #elif defined( FS_XDG_HOME_SUPPORT )
-	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*_xdg_home fs_homepath fs_basepath fs_steampath fs_gogpath", CVAR_INIT | CVAR_PROTECTED );
+	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_basepath *_xdg_home fs_homepath fs_steampath fs_gogpath", CVAR_INIT | CVAR_PROTECTED );
 #else
-	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_homepath fs_basepath fs_steampath fs_gogpath", CVAR_INIT | CVAR_PROTECTED );
+	fs.cvar.fs_dirs = Cvar_Get( "fs_dirs", "*fs_basepath *fs_homepath fs_steampath fs_gogpath", CVAR_INIT | CVAR_PROTECTED );
 #endif
 #ifdef DEDICATED
 	fs.cvar.fs_game = Cvar_Get( "fs_game", "", CVAR_LATCH | CVAR_SYSTEMINFO );
