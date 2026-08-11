@@ -306,20 +306,17 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	const char *qp_ext = (const char *)STACKPTR( file->qp_ext_ptr );
 	unsigned int hash = FSC_StringHash( qp_name, qp_dir );
 
-	// Check sanity limit
+	// Record sanity limit usage. If the pk3 trips the limit, this file is still registered,
+	// but later subfiles of this pk3, and some content such as shaders, will be skipped.
 	if ( sanity_limit ) {
-		if ( FSC_SanityLimitContent( FSC_Strlen( qp_dir ) + FSC_Strlen( qp_name ) + FSC_Strlen( qp_ext ) + 64,
-				&sanity_limit->content_index_memory, sanity_limit ) ) {
-			return;
-		}
-		if ( FSC_SanityLimitHash( hash, sanity_limit ) ) {
-			return;
-		}
+		FSC_SanityLimitContent( FSC_Strlen( qp_dir ) + FSC_Strlen( qp_name ) + FSC_Strlen( qp_ext ) + 64,
+				&sanity_limit->content_index_memory, sanity_limit );
+		FSC_SanityLimitHash( hash, sanity_limit );
 	}
 
 	// Register file for main lookup and directory iteration
 	FSC_HashtableInsert( file_ptr, hash, &fs->files );
-	FSC_IterationRegisterFile( file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack );
+	FSC_IterationRegisterFile( file_ptr, &fs->directories, &fs->string_repository, &fs->general_stack, sanity_limit );
 
 	// Index shaders and update shader counter on base file
 	if ( !FSC_Stricmp( qp_dir, "scripts/" ) && ( !FSC_Stricmp( qp_ext, ".shader" )
@@ -346,7 +343,7 @@ void FSC_RegisterFile( fsc_stackptr_t file_ptr, fsc_sanity_limit_t *sanity_limit
 	// Cache small arena and bot file contents
 	if ( file->filesize > 0 && file->filesize < 16384 && !FSC_Stricmp( qp_dir, "scripts/" ) &&
 		 ( !FSC_Stricmp( qp_ext, ".arena" ) || !FSC_Stricmp( qp_ext, ".bot" ) ) &&
-		 ( !sanity_limit || !FSC_SanityLimitContent( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
+		 ( !sanity_limit || !FSC_SanityLimitOptional( file->filesize + 256, &sanity_limit->content_cache_memory, sanity_limit ) ) ) {
 		char *source_data = FSC_ExtractFileAllocated( file, fs );
 		if ( source_data ) {
 			fsc_stackptr_t target_ptr = FSC_StackAllocate( &fs->general_stack, file->filesize );
@@ -391,6 +388,7 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 	fsc_boolean new_file = fsc_false;			// File was not present in last refresh, but may have been in the index
 
 	FSC_ASSERT( os_path );
+	FSC_ASSERT( mod_dir );
 	FSC_ASSERT( qp_dir );
 	FSC_ASSERT( qp_name );
 	FSC_ASSERT( qp_ext );
@@ -408,7 +406,7 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 			continue;
 		if ( FSC_Strcmp( (char *)STACKPTR( file->f.qp_ext_ptr ), qp_ext ) )
 			continue;
-		if ( !FSC_NullStringCompare( (char *)STACKPTRN( file->qp_mod_ptr ), mod_dir ) )
+		if ( FSC_Strcmp( (char *)STACKPTR( file->qp_mod_ptr ), mod_dir ) )
 			continue;
 		if ( !FSC_NullStringCompare( (char *)STACKPTRN( file->pk3dir_ptr ), pk3dir_name ) )
 			continue;
@@ -454,7 +452,7 @@ void FSC_LoadFile( int source_dir_id, const fsc_ospath_t *os_path, const char *m
 		file->f.qp_dir_ptr = FSC_StringRepositoryGetString( qp_dir, &fs->string_repository );
 		file->f.qp_name_ptr = FSC_StringRepositoryGetString( qp_name, &fs->string_repository );
 		file->f.qp_ext_ptr = FSC_StringRepositoryGetString( qp_ext, &fs->string_repository );
-		file->qp_mod_ptr = mod_dir ? FSC_StringRepositoryGetString( mod_dir, &fs->string_repository ) : FSC_SPNULL;
+		file->qp_mod_ptr = FSC_StringRepositoryGetString( mod_dir, &fs->string_repository );
 		file->pk3dir_ptr = pk3dir_name ? FSC_StringRepositoryGetString( pk3dir_name, &fs->string_repository ) : FSC_SPNULL;
 		file->f.filesize = filesize;
 		file->os_timestamp = os_timestamp;

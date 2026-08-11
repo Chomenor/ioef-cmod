@@ -195,7 +195,7 @@ static fsc_stackptr_t FSC_CacheConvertFile( fsc_stackptr_t source_file_ptr, expo
 	FSC_CacheFileMapInsert( source_file_ptr, export_file_ptr, xw );
 	FSC_HashtableInsert( export_file_ptr, FSC_StringHash( (const char *)STACKPTR_SRC( source_file->qp_name_ptr ),
 			(const char *)STACKPTR_SRC( source_file->qp_dir_ptr ) ), &xw->export_files );
-	FSC_IterationRegisterFile( export_file_ptr, &xw->export_directories, &xw->export_string_repository, &xw->export_stack );
+	FSC_IterationRegisterFile( export_file_ptr, &xw->export_directories, &xw->export_string_repository, &xw->export_stack, FSC_NULL );
 
 	return export_file_ptr;
 }
@@ -438,8 +438,9 @@ static fsc_boolean FSC_CacheExportStream( fsc_filesystem_t *source_fs, fsc_strea
 	if ( error_state || stream->position != stream->size ) {
 		FSC_Free( stream->data );
 		stream->data = FSC_NULL;
+		return fsc_true;
 	}
-	return error_state;
+	return fsc_false;
 }
 
 /*
@@ -484,6 +485,7 @@ fsc_boolean FSC_CacheExportFileRawPath( fsc_filesystem_t *source_fs, fsc_ospath_
 	fscache_header_t header;
 	fsc_stream_t stream;
 	fsc_filehandle_t *fp;
+	fsc_boolean error_state = fsc_false;
 
 	if ( FSC_CacheExportStream( source_fs, &stream ) ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "error generating cache file data", FSC_NULL );
@@ -501,16 +503,17 @@ fsc_boolean FSC_CacheExportFileRawPath( fsc_filesystem_t *source_fs, fsc_ospath_
 	// Write header and version string
 	header.versionSize = VERSION_STRING_LENGTH;
 	header.dataSize = stream.position;
-	FSC_FWrite( &header, sizeof( header ), fp );
-	FSC_FWrite( FSC_CACHE_VERSION, VERSION_STRING_LENGTH, fp );
-
-	// Write the data
-	FSC_FWrite( stream.data, header.dataSize, fp );
+	if ( FSC_FWrite( &header, sizeof( header ), fp ) != sizeof( header ) ||
+			FSC_FWrite( FSC_CACHE_VERSION, VERSION_STRING_LENGTH, fp ) != VERSION_STRING_LENGTH ||
+			FSC_FWrite( stream.data, header.dataSize, fp ) != header.dataSize ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "error writing cache file data", FSC_NULL );
+		error_state = fsc_true;
+	}
 
 	// Close file and free data
 	FSC_FClose( fp );
 	FSC_Free( stream.data );
-	return fsc_false;
+	return error_state;
 }
 
 /*
@@ -538,7 +541,12 @@ fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t 
 	fsc_filehandle_t *fp;
 	fscache_header_t header;
 	fsc_stream_t stream;
+	fsc_boolean error_state = fsc_true;
+	unsigned int data_position;
+	unsigned int file_size;
 	char versionBuffer[VERSION_STRING_LENGTH + 256];
+
+	stream.data = FSC_NULL;
 
 	// Open the input file
 	fp = FSC_FOpenRaw( os_path, "rb" );
@@ -550,8 +558,7 @@ fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t 
 	// Read header
 	if ( FSC_FRead( &header, sizeof( header ), fp ) != sizeof( header ) ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "failed to read cache file header", FSC_NULL );
-		FSC_FClose( fp );
-		return fsc_true;
+		goto cleanup;
 	}
 
 	// Read and verify version string
@@ -559,29 +566,47 @@ fsc_boolean FSC_CacheImportFileRawPath( fsc_ospath_t *os_path, fsc_filesystem_t 
 			FSC_FRead( &versionBuffer, VERSION_STRING_LENGTH, fp ) != VERSION_STRING_LENGTH ||
 			FSC_Memcmp( versionBuffer, FSC_CACHE_VERSION, VERSION_STRING_LENGTH ) ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "cache file has wrong version", FSC_NULL );
-		FSC_FClose( fp );
-		return fsc_true;
+		goto cleanup;
 	}
 
-	// Read data and close file
+	data_position = FSC_FTell( fp );
+	if ( FSC_FSeek( fp, 0, FSC_SEEK_END ) ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "failed to seek cache file", FSC_NULL );
+		goto cleanup;
+	}
+	file_size = FSC_FTell( fp );
+	if ( data_position == 4294967295u || file_size == 4294967295u ||
+			file_size < data_position || !header.dataSize ||
+			header.dataSize > file_size - data_position ||
+			FSC_FSeek( fp, (int)data_position, FSC_SEEK_SET ) ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "cache file has invalid data size", FSC_NULL );
+		goto cleanup;
+	}
+
+	// Read data
 	stream.data = (char *)FSC_Malloc( header.dataSize );
 	if ( FSC_FRead( stream.data, header.dataSize, fp ) != header.dataSize ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "error reading cache file data", FSC_NULL );
-		return fsc_true;
+		goto cleanup;
 	}
-	FSC_FClose( fp );
 
 	// Load data into filesystem
 	stream.position = 0;
 	stream.size = header.dataSize;
+	stream.overflowed = fsc_false;
 	if ( FSC_CacheImportStream( &stream, target_fs ) ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_GENERAL, "error loading cache data", FSC_NULL );
-		return fsc_true;
+		goto cleanup;
 	}
 
-	// Free the data
-	FSC_Free( stream.data );
-	return fsc_false;
+	error_state = fsc_false;
+
+	cleanup:
+	FSC_FClose( fp );
+	if ( stream.data ) {
+		FSC_Free( stream.data );
+	}
+	return error_state;
 }
 
 /*

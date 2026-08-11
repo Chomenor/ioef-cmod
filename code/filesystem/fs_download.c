@@ -179,11 +179,11 @@ FS_DownloadCandidateAlreadyExists
 Returns qtrue if download entry matches an existing file in filesystem.
 =================
 */
-static qboolean FS_DownloadCandidateAlreadyExists( download_entry_t *entry, const fsc_file_direct_t **different_moddir_match_out ) {
-	fsc_pk3_iterator_t it = FSC_Pk3IteratorOpen( &fs.index, entry->hash );
+static qboolean FS_DownloadCandidateAlreadyExists( unsigned int hash, const char *mod_dir, const fsc_file_direct_t **different_moddir_match_out ) {
+	fsc_pk3_iterator_t it = FSC_Pk3IteratorOpen( &fs.index, hash );
 	while ( FSC_Pk3IteratorAdvance( &it ) ) {
 		if ( fs.cvar.fs_redownload_across_mods->integer &&
-				Q_stricmp( FSC_GetModDir( (fsc_file_t *)it.pk3, &fs.index ), entry->mod_dir ) ) {
+				Q_stricmp( FSC_GetModDir( (fsc_file_t *)it.pk3, &fs.index ), mod_dir ) ) {
 			// If "fs_redownload_across_mods" is set, ignore match from different mod dir,
 			// but record it so FS_IsValidDownload can display a warning later
 			if ( different_moddir_match_out ) {
@@ -242,7 +242,7 @@ static qboolean FS_IsValidDownload( download_entry_t *entry, unsigned int rechec
 		return qfalse;
 	}
 
-	if ( FS_DownloadCandidateAlreadyExists( entry, &different_moddir_match ) ) {
+	if ( FS_DownloadCandidateAlreadyExists( hash, entry->mod_dir, &different_moddir_match ) ) {
 		if ( recheck_hash ) {
 			Com_Printf( "WARNING: Downloaded pk3 %s has unexpected hash which already exists in index."
 					" Download not saved.\n", entry->local_name );
@@ -347,7 +347,7 @@ void FS_PrintDownloadList( void ) {
 	download_entry_t *entry = next_download;
 	qboolean have_entry = qfalse;
 	while ( entry ) {
-		if ( !FS_DownloadCandidateAlreadyExists( entry, NULL ) ) {
+		if ( !FS_DownloadCandidateAlreadyExists( entry->hash, entry->mod_dir, NULL ) ) {
 			if ( !have_entry ) {
 				Com_Printf( "Need paks: %s", entry->remote_name );
 				have_entry = qtrue;

@@ -1389,6 +1389,7 @@ const fsc_file_t *FS_SoundLookup( const char *name, int lookup_flags, qboolean d
 	}
 
 	Com_Memset( &query, 0, sizeof( query ) );
+	query.lookup_flags = lookup_flags;
 	FSC_SplitQpath( name, &qpath_split, fsc_true );
 	query.qp_dir = qpath_split.dir;
 	query.qp_name = qpath_split.name;

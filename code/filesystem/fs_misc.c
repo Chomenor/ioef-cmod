@@ -569,7 +569,7 @@ static qboolean FS_InactiveModFileDisabled( const fsc_file_t *file, int level, q
 	// For setting 1, also allow files from core paks or on pure list
 	if ( level == 1 ) {
 		const fsc_file_direct_t *base_file = FSC_GetBaseFile( file, &fs.index );
-		if ( base_file ) {
+		if ( base_file && base_file->pk3_hash ) {
 			if ( FS_Pk3List_Lookup( &fs.connected_server_pure_list, base_file->pk3_hash ) ) {
 				return qfalse;
 			}
@@ -791,7 +791,7 @@ void FS_WriteSortValue( unsigned int value, fsc_stream_t *output ) {
 		value = ( value << 16 ) | ( value >> 16 );
 	}
 	if ( output->position + 3 < output->size ) {
-		*( (unsigned int *)( output->data + output->position ) ) = value;
+		FSC_Memcpy( output->data + output->position, &value, sizeof( value ) );
 		output->position += 4;
 	}
 }

@@ -41,7 +41,7 @@ static int FSC_IndexShaderFileData( fsc_filesystem_t *fs, fsc_stackptr_t source_
 	char token[FSC_MAX_TOKEN_CHARS];
 
 	char shader_name[FSC_MAX_SHADER_NAME];
-	unsigned int shader_start_position;
+	unsigned int shader_start_position = 0;
 
 	unsigned int hash;
 	fsc_stackptr_t new_shader_ptr;
@@ -52,9 +52,11 @@ static int FSC_IndexShaderFileData( fsc_filesystem_t *fs, fsc_stackptr_t source_
 
 		while ( 1 ) {
 			// Load next token
-			shader_start_position = (unsigned int)( current_position - data );
-			FSC_ParseExt( token, &current_position, fsc_true );
-			if ( !*token ) {
+			if ( current_position ) {
+				shader_start_position = (unsigned int)( current_position - data );
+				FSC_ParseExt( token, &current_position, fsc_true );
+			}
+			if ( !current_position || !*token ) {
 				// We reached the end of the shader file.
 				if ( prefix_tokens ) {
 					FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_SHADERFILE, "shader file has extra tokens at end", source_file );
@@ -107,7 +109,7 @@ static int FSC_IndexShaderFileData( fsc_filesystem_t *fs, fsc_stackptr_t source_
 		new_shader = (fsc_shader_t *)STACKPTR( new_shader_ptr );
 
 		// Copy data to new shader
-		new_shader->shader_name_ptr = FSC_StringRepositoryGetString( shader_name, &fs->string_repository );
+		new_shader->shader_name_ptr = FSC_StringRepositoryGetStringLimited( shader_name, &fs->string_repository, sanity_limit );
 		new_shader->source_file_ptr = source_file_ptr;
 		new_shader->start_position = shader_start_position;
 		new_shader->end_position = (unsigned int)( current_position - data );

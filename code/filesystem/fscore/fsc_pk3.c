@@ -46,54 +46,30 @@ PK3 File Indexing
 
 typedef struct {
 	char *data;
-	int cd_length;
+	unsigned int cd_length;
 	unsigned int zip_offset;
-	int entry_count;
+	unsigned int entry_count;
 } central_directory_t;
 
 /*
 =================
-FSC_IsLittleEndianSystem
-
-Returns true on little endian system, false on big endian system.
+FSC_ReadLittleEndianShort
 =================
 */
-static fsc_boolean FSC_IsLittleEndianSystem( void ) {
-	static volatile int test = 1;
-	if ( *(char *)&test )
-		return fsc_true;
-	return fsc_false;
+static unsigned short FSC_ReadLittleEndianShort( const char *data ) {
+	const unsigned char *bytes = (const unsigned char *)data;
+	return (unsigned short)( bytes[0] | ( bytes[1] << 8 ) );
 }
 
 /*
 =================
-FSC_ConvertLittleEndianInt
-
-Converts an int from a little endian source to match the system format.
+FSC_ReadLittleEndianInt
 =================
 */
-static unsigned int FSC_ConvertLittleEndianInt( unsigned int value ) {
-	if ( FSC_IsLittleEndianSystem() ) {
-		return value;
-	}
-
-	value = ( ( value << 8 ) & 0xFF00FF00 ) | ( ( value >> 8 ) & 0xFF00FF );
-	return ( value << 16 ) | ( value >> 16 );
-}
-
-/*
-=================
-FSC_ConvertLittleEndianShort
-
-Converts a short from a little endian source to match the system format.
-=================
-*/
-static unsigned short FSC_ConvertLittleEndianShort( unsigned short value ) {
-	if ( FSC_IsLittleEndianSystem() ) {
-		return value;
-	}
-
-	return ( value << 8 ) | ( value >> 8 );
+static unsigned int FSC_ReadLittleEndianInt( const char *data ) {
+	const unsigned char *bytes = (const unsigned char *)data;
+	return (unsigned int)bytes[0] | ( (unsigned int)bytes[1] << 8 ) |
+		( (unsigned int)bytes[2] << 16 ) | ( (unsigned int)bytes[3] << 24 );
 }
 
 /*
@@ -129,8 +105,8 @@ Loads pk3 central directory to output structure. Returns true on error, false on
 static fsc_boolean FSC_ReadPk3CentralDirectoryFP( fsc_filehandle_t *fp, unsigned int file_length, central_directory_t *output ) {
 	int pass;
 	char buffer[66000];
-	int buffer_read_size = 0;	// Offset from end of file/buffer of data that has been successfully read to buffer
-	int eocd_position = 0;		// Offset from end of file/buffer of the EOCD record
+	unsigned int buffer_read_size = 0;	// Offset from end of file/buffer of data that has been successfully read to buffer
+	unsigned int eocd_position = 0;		// Offset from end of file/buffer of the EOCD record
 	unsigned int cd_position;	// Offset from beginning of file of central directory
 
 	// End Of Central Directory Record (EOCD) can start anywhere in the last 65KB or so of the zip file,
@@ -139,9 +115,9 @@ static fsc_boolean FSC_ReadPk3CentralDirectoryFP( fsc_filehandle_t *fp, unsigned
 
 	for ( pass = 0; pass < 2; ++pass ) {
 		// Get buffer_read_target, which is the offset from end of file/buffer that we are tring to read to buffer
-		int i;
-		int buffer_read_target = pass == 0 ? 4096 : sizeof( buffer );
-		if ( (unsigned int)buffer_read_target > file_length ) {
+		unsigned int i;
+		unsigned int buffer_read_target = pass == 0 ? 4096 : sizeof( buffer );
+		if ( buffer_read_target > file_length ) {
 			buffer_read_target = file_length;
 		}
 		if ( buffer_read_target <= buffer_read_size ) {
@@ -149,14 +125,20 @@ static fsc_boolean FSC_ReadPk3CentralDirectoryFP( fsc_filehandle_t *fp, unsigned
 		}
 
 		// Read the data
-		FSC_Pk3SeekSet( fp, file_length - buffer_read_target );
-		FSC_FRead( buffer + sizeof( buffer ) - buffer_read_target, buffer_read_target - buffer_read_size, fp );
+		if ( FSC_Pk3SeekSet( fp, file_length - buffer_read_target ) ||
+				FSC_FRead( buffer + sizeof( buffer ) - buffer_read_target, buffer_read_target - buffer_read_size, fp ) !=
+				buffer_read_target - buffer_read_size ) {
+			return fsc_true;
+		}
 
 		// Search for magic number
 		// EOCD cannot start less than 22 bytes from end of file, because it is 22 bytes long
 		for ( i = 22; i < buffer_read_target; ++i ) {
 			char *string = buffer + sizeof( buffer ) - i;
-			if ( string[0] == 0x50 && string[1] == 0x4b && string[2] == 0x05 && string[3] == 0x06 ) {
+			if ( string[0] == 0x50 && string[1] == 0x4b && string[2] == 0x05 && string[3] == 0x06
+					// skip for consistency with original filesystem
+					// && FSC_ReadLittleEndianShort( string + 20 ) == i - 22
+					) {
 				eocd_position = i;
 				break;
 			}
@@ -172,19 +154,19 @@ static fsc_boolean FSC_ReadPk3CentralDirectoryFP( fsc_filehandle_t *fp, unsigned
 		return fsc_true;
 	}
 
-	#define EOCD_SHORT( offset ) FSC_ConvertLittleEndianShort( *(unsigned short *)( buffer + sizeof( buffer ) - eocd_position + offset ) )
-	#define EOCD_INT( offset ) FSC_ConvertLittleEndianInt( *(unsigned int *)( buffer + sizeof( buffer ) - eocd_position + offset ) )
+	#define EOCD_SHORT( offset ) FSC_ReadLittleEndianShort( buffer + sizeof( buffer ) - eocd_position + offset )
+	#define EOCD_INT( offset ) FSC_ReadLittleEndianInt( buffer + sizeof( buffer ) - eocd_position + offset )
 
 	output->entry_count = EOCD_SHORT( 8 );
 	output->cd_length = EOCD_INT( 12 );
 
 	// No reason for central directory to be over 100 MB
-	if ( output->cd_length < 0 || output->cd_length > 100 << 20 ) {
+	if ( output->cd_length <= 0 || output->cd_length > 100 << 20 ) {
 		return fsc_true;
 	}
 
 	// Must be space for central directory between the beginning of the file and the EOCD start
-	if ( (unsigned int)output->cd_length > file_length - eocd_position ) {
+	if ( output->cd_length > file_length - eocd_position ) {
 		return fsc_true;
 	}
 
@@ -193,7 +175,7 @@ static fsc_boolean FSC_ReadPk3CentralDirectoryFP( fsc_filehandle_t *fp, unsigned
 		// "this file's disk number" and "disk number containing central directory" should both be 0
 		return fsc_true;
 	}
-	if ( EOCD_SHORT( 8 ) != EOCD_SHORT( 8 ) ) {
+	if ( EOCD_SHORT( 8 ) != EOCD_SHORT( 10 ) ) {
 		// "cd entries on this disk" and "cd entries total" should be equal
 		return fsc_true;
 	}
@@ -205,7 +187,7 @@ static fsc_boolean FSC_ReadPk3CentralDirectoryFP( fsc_filehandle_t *fp, unsigned
 	{
 		unsigned int cd_position_reported = EOCD_INT( 16 );
 		if ( cd_position_reported > cd_position ) {
-			// cd_position is already the maximum valid position
+			// negative offsets are currently not supported, consistent with other Q3 filesystem implementations
 			return fsc_true;
 		}
 		output->zip_offset = cd_position - cd_position_reported;
@@ -221,13 +203,17 @@ static fsc_boolean FSC_ReadPk3CentralDirectoryFP( fsc_filehandle_t *fp, unsigned
 		if ( cd_position < buffer_file_position ) {
 			// Since central directory starts before buffer, read unbuffered part of central directory into output
 			unbuffered_read_length = buffer_file_position - cd_position;
-			if ( unbuffered_read_length > (unsigned int)output->cd_length )
+			if ( unbuffered_read_length > output->cd_length )
 				unbuffered_read_length = output->cd_length;
-			FSC_Pk3SeekSet( fp, cd_position );
-			FSC_FRead( output->data, unbuffered_read_length, fp );
+			if ( FSC_Pk3SeekSet( fp, cd_position ) ||
+					FSC_FRead( output->data, unbuffered_read_length, fp ) != unbuffered_read_length ) {
+				FSC_Free( output->data );
+				output->data = FSC_NULL;
+				return fsc_true;
+			}
 		}
 
-		if ( unbuffered_read_length < (unsigned int)output->cd_length ) {
+		if ( unbuffered_read_length < output->cd_length ) {
 			// Read remaining data from buffer into output
 			char *buffer_data = buffer + sizeof( buffer ) - buffer_read_size;
 			if ( cd_position > buffer_file_position )
@@ -305,14 +291,18 @@ FSC_RegisterPk3Subfile
 Registers a file contained in a pk3 into the filesystem.
 =================
 */
-static void FSC_RegisterPk3Subfile( fsc_filesystem_t *fs, char *filename, int filename_length, fsc_stackptr_t sourcefile_ptr,
+static void FSC_RegisterPk3Subfile( fsc_filesystem_t *fs, char *filename, unsigned int filename_length, fsc_stackptr_t sourcefile_ptr,
 			unsigned int header_position, unsigned int compressed_size, unsigned int uncompressed_size,
 			short compression_method, fsc_sanity_limit_t *sanity_limit ) {
 	fsc_file_direct_t *sourcefile = (fsc_file_direct_t *)STACKPTR( sourcefile_ptr );
-	fsc_stackptr_t file_ptr = FSC_StackAllocate( &fs->general_stack, sizeof( fsc_file_frompk3_t ) );
-	fsc_file_frompk3_t *file = (fsc_file_frompk3_t *)STACKPTR( file_ptr );
+	fsc_stackptr_t file_ptr;
+	fsc_file_frompk3_t *file;
 	char buffer[FSC_MAX_QPATH];
 	fsc_qpath_buffer_t qpath_split;
+
+	if ( sanity_limit && sanity_limit->blocked ) {
+		return;
+	}
 
 	// Copy filename into null-terminated buffer for process_qpath
 	// Also convert to lowercase to match behavior of original filesystem...
@@ -323,10 +313,13 @@ static void FSC_RegisterPk3Subfile( fsc_filesystem_t *fs, char *filename, int fi
 	// Process qpath
 	FSC_SplitQpath( buffer, &qpath_split, fsc_false );
 
+	file_ptr = FSC_StackAllocate( &fs->general_stack, sizeof( fsc_file_frompk3_t ) );
+	file = (fsc_file_frompk3_t *)STACKPTR( file_ptr );
+
 	// Write qpaths to file structure
-	file->f.qp_dir_ptr = FSC_StringRepositoryGetString( qpath_split.dir, &fs->string_repository );
-	file->f.qp_name_ptr = FSC_StringRepositoryGetString( qpath_split.name, &fs->string_repository );
-	file->f.qp_ext_ptr = FSC_StringRepositoryGetString( qpath_split.ext, &fs->string_repository );
+	file->f.qp_dir_ptr = FSC_StringRepositoryGetStringLimited( qpath_split.dir, &fs->string_repository, sanity_limit );
+	file->f.qp_name_ptr = FSC_StringRepositoryGetStringLimited( qpath_split.name, &fs->string_repository, sanity_limit );
+	file->f.qp_ext_ptr = FSC_StringRepositoryGetStringLimited( qpath_split.ext, &fs->string_repository, sanity_limit );
 
 	// Load the rest of the fields
 	file->f.sourcetype = FSC_SOURCETYPE_PK3;
@@ -354,18 +347,19 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 		void ( *receive_hash_data )( void *context, char *data, int size ), void *receive_hash_data_context ) {
 	fsc_file_direct_t *sourcefile = fs ? (fsc_file_direct_t *)STACKPTRN( sourcefile_ptr ) : FSC_NULL;
 	central_directory_t cd;
-	int entry_position = 0;		// Position of current entry relative to central directory data
-	int entry_counter;			// Number of current entry
+	unsigned int entry_position = 0;		// Position of current entry relative to central directory data
+	unsigned int entry_counter;			// Number of current entry
 
-	int filename_length;
-	int entry_length;
+	unsigned int filename_length;
+	unsigned int entry_length;
 	unsigned int uncompressed_size;
 	unsigned int compressed_size;
+	unsigned int header_position_raw;
 	unsigned int header_position;
 
 	int *crcs_for_hash;
 	int crcs_for_hash_buffer[1024];
-	int crcs_for_hash_count = 0;
+	unsigned int crcs_for_hash_count = 0;
 
 	fsc_sanity_limit_t sanity_limit;
 	FSC_Memset( &sanity_limit, 0, sizeof( sanity_limit ) );
@@ -410,15 +404,14 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 			goto freemem;
 		}
 
-		#define CD_ENTRY_SHORT( offset ) FSC_ConvertLittleEndianShort( *(unsigned short *)( cd.data + entry_position + offset ) )
-		#define CD_ENTRY_INT( offset ) FSC_ConvertLittleEndianInt( *(unsigned int *)( cd.data + entry_position + offset ) )
-		#define CD_ENTRY_INT_LE( offset ) ( *(unsigned int *)( cd.data + entry_position + offset ) )
+		#define CD_ENTRY_SHORT( offset ) FSC_ReadLittleEndianShort( cd.data + entry_position + offset )
+		#define CD_ENTRY_INT( offset ) FSC_ReadLittleEndianInt( cd.data + entry_position + offset )
 
 		// Get filename_length and entry_length
-		filename_length = (int)CD_ENTRY_SHORT( 28 );
+		filename_length = CD_ENTRY_SHORT( 28 );
 		{
-			int extrafield_length = (int)CD_ENTRY_SHORT( 30 );
-			int comment_length = (int)CD_ENTRY_SHORT( 32 );
+			unsigned int extrafield_length = CD_ENTRY_SHORT( 30 );
+			unsigned int comment_length = CD_ENTRY_SHORT( 32 );
 			entry_length = 46 + filename_length + extrafield_length + comment_length;
 			if ( entry_position + entry_length > cd.cd_length ) {
 				FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "invalid file cd entry position 2", sourcefile );
@@ -431,7 +424,12 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 		uncompressed_size = CD_ENTRY_INT( 24 );
 
 		// Get local header_position (which is indicated by CD header, but needs to be modified by zip offset)
-		header_position = CD_ENTRY_INT( 42 ) + cd.zip_offset;
+		header_position_raw = CD_ENTRY_INT( 42 );
+		if ( header_position_raw > 0xffffffffu - cd.zip_offset ) {
+			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "invalid file local entry position 0", sourcefile );
+			goto freemem;
+		}
+		header_position = header_position_raw + cd.zip_offset;
 
 		// Sanity checks
 		if ( header_position + compressed_size < header_position ) {
@@ -442,16 +440,15 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 			FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_PK3FILE, "invalid file local entry position 2", sourcefile );
 			goto freemem;
 		}
-
 		if ( uncompressed_size ) {
-			crcs_for_hash[crcs_for_hash_count++] = CD_ENTRY_INT_LE( 16 );
+			FSC_Memcpy( &crcs_for_hash[crcs_for_hash_count++], cd.data + entry_position + 16, 4 );
 		}
 
-		if ( !(void *)receive_hash_data && !( sourcefile->f.flags & FSC_FILEFLAG_REFONLY_PK3 ) &&
+		if ( !(void *)receive_hash_data && !( sourcefile->f.flags & FSC_FILEFLAG_REFONLY_PK3 ) && !sanity_limit.blocked &&
 				!( !uncompressed_size && *( cd.data + entry_position + 46 + filename_length - 1 ) == '/' ) ) {
 			// Not in hash mode and not a directory entry - load the file
 			FSC_RegisterPk3Subfile( fs, cd.data + entry_position + 46, filename_length, sourcefile_ptr,
-				header_position, compressed_size, CD_ENTRY_INT( 24 ), CD_ENTRY_SHORT( 10 ), &sanity_limit );
+				header_position, compressed_size, uncompressed_size, CD_ENTRY_SHORT( 10 ), &sanity_limit );
 		}
 
 		entry_position += entry_length;
@@ -461,6 +458,11 @@ void FSC_LoadPk3( fsc_ospath_t *os_path, fsc_filesystem_t *fs, fsc_stackptr_t so
 		receive_hash_data( receive_hash_data_context, (char *)crcs_for_hash, crcs_for_hash_count * 4 );
 		goto freemem;
 	}
+
+	// Note: It's possible in error cases for subfiles to be registered, but pk3 hash to be left at
+	// 0 and lookup registration skipped. However this doesn't seem to cause too much of a problem,
+	// and it shouldn't be possible for downloaded pk3s anyway due to the pre-save checks, so I'm
+	// not worrying about it for now.
 
 	sourcefile->pk3_hash = FSC_BlockChecksum( crcs_for_hash, crcs_for_hash_count * 4 );
 
@@ -536,10 +538,13 @@ FSC_Pk3HandleLoad
 Initializes a provided pk3 handle. Returns true on error, false otherwise.
 =================
 */
-static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs ) {
+static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t *file, unsigned int input_buffer_size, const fsc_filesystem_t *fs ) {
 	const fsc_file_direct_t *source_pk3 = (const fsc_file_direct_t *)STACKPTR( file->source_pk3 );
 	char localheader[30];
 	unsigned int data_position;
+	unsigned int local_name_length;
+	unsigned int local_extra_length;
+	unsigned int local_header_size;
 
 	// Open the file
 	handle->input_handle = FSC_FOpenRaw( (const fsc_ospath_t *)STACKPTR( source_pk3->os_path_ptr ), "rb" );
@@ -549,7 +554,10 @@ static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t 
 	}
 
 	// Read the local header to get data position
-	FSC_Pk3SeekSet( handle->input_handle, file->header_position );
+	if ( FSC_Pk3SeekSet( handle->input_handle, file->header_position ) ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to seek to local header", FSC_NULL );
+		return fsc_true;
+	}
 	if ( FSC_FRead( localheader, 30, handle->input_handle ) != 30 ) {
 		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to read local header", FSC_NULL );
 		return fsc_true;
@@ -559,11 +567,23 @@ static int FSC_Pk3HandleLoad( fsc_pk3handle_t *handle, const fsc_file_frompk3_t 
 		return fsc_true;
 	}
 
-	#define LH_SHORT( offset ) FSC_ConvertLittleEndianShort( *(unsigned short *)( localheader + offset ) )
-	data_position = file->header_position + LH_SHORT( 26 ) + LH_SHORT( 28 ) + 30;
+	#define LH_SHORT( offset ) FSC_ReadLittleEndianShort( localheader + offset )
+	local_name_length = LH_SHORT( 26 );
+	local_extra_length = LH_SHORT( 28 );
+	local_header_size = local_name_length + local_extra_length + 30;
+	if ( file->header_position > source_pk3->f.filesize ||
+			local_header_size > source_pk3->f.filesize - file->header_position ||
+			file->compressed_size > source_pk3->f.filesize - file->header_position - local_header_size ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - invalid local header bounds", FSC_NULL );
+		return fsc_true;
+	}
+	data_position = file->header_position + local_header_size;
 
 	// Seek to data start position
-	FSC_Pk3SeekSet( handle->input_handle, data_position );
+	if ( FSC_Pk3SeekSet( handle->input_handle, data_position ) ) {
+		FSC_ReportError( FSC_ERRORLEVEL_WARNING, FSC_ERROR_EXTRACT, "pk3_handle_open - failed to seek to file data", FSC_NULL );
+		return fsc_true;
+	}
 
 	// Configure the handle
 	handle->input_remaining = file->compressed_size;
@@ -591,7 +611,7 @@ FSC_Pk3HandleOpen
 Returns handle on success, null on error.
 =================
 */
-fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs ) {
+fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, unsigned int input_buffer_size, const fsc_filesystem_t *fs ) {
 	fsc_pk3handle_t *handle = (fsc_pk3handle_t *)FSC_Calloc( sizeof( *handle ) );
 
 	if ( FSC_Pk3HandleLoad( handle, file, input_buffer_size, fs ) ) {
@@ -645,7 +665,7 @@ unsigned int FSC_Pk3HandleRead( fsc_pk3handle_t *handle, char *buffer, unsigned 
 					// Ran out of input
 					break;
 				}
-				if ( FSC_FRead( handle->input_buffer, (int)feed_amount, handle->input_handle ) != feed_amount ) {
+				if ( FSC_FRead( handle->input_buffer, feed_amount, handle->input_handle ) != feed_amount ) {
 					break;
 				}
 				handle->zlib_stream.avail_in += feed_amount;
@@ -661,7 +681,13 @@ unsigned int FSC_Pk3HandleRead( fsc_pk3handle_t *handle, char *buffer, unsigned 
 		return length - handle->zlib_stream.avail_out;
 
 	} else {
-		return FSC_FRead( buffer, length, handle->input_handle );
+		unsigned int read_amount;
+		if ( length > handle->input_remaining ) {
+			length = handle->input_remaining;
+		}
+		read_amount = FSC_FRead( buffer, length, handle->input_handle );
+		handle->input_remaining -= read_amount;
+		return read_amount;
 	}
 }
 
@@ -699,7 +725,13 @@ FSC_Pk3_ExtractData
 static unsigned int FSC_Pk3_ExtractData( const fsc_file_t *file, char *buffer, const fsc_filesystem_t *fs ) {
 	unsigned int result = 0;
 	const fsc_file_frompk3_t *typedFile = (fsc_file_frompk3_t *)file;
-	fsc_pk3handle_t *handle = FSC_Pk3HandleOpen( typedFile, typedFile->compressed_size, fs );
+	fsc_pk3handle_t *handle;
+
+	// compressed size sanity check
+	if ( typedFile->compressed_size > 65536 && typedFile->compressed_size / 4 > typedFile->f.filesize ) {
+		return 0;
+	}
+	handle = FSC_Pk3HandleOpen( typedFile, 65536, fs );
 	if ( !handle ) {
 		return 0;
 	}

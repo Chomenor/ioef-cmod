@@ -99,6 +99,9 @@ String processing functions
 ###############################################################################################
 */
 
+#define TOLOWER( c ) tolower( (unsigned char)( c ) )
+#define TOUPPER( c ) toupper( (unsigned char)( c ) )
+
 /*
 =================
 FS_FileList_PatternMatch
@@ -111,19 +114,20 @@ static qboolean FS_FileList_PatternMatch( const char *string, const char *patter
 	while ( 1 ) {
 		if ( *pattern == '*' || initial_wildcard ) {
 			// Skip asterisks; auto match if no pattern remaining
-			char lwr, upr;
+			int lwr, upr;
 			while ( *pattern == '*' )
 				++pattern;
 			if ( !*pattern )
 				return qtrue;
 
 			// Get 'lwr' and 'upr' versions of next char in pattern for fast comparison
-			lwr = tolower( *pattern );
-			upr = toupper( *pattern );
+			lwr = TOLOWER( *pattern );
+			upr = TOUPPER( *pattern );
 
 			// Read string looking for match with remaining pattern
 			while ( *string ) {
-				if ( *string == lwr || *string == upr || *pattern == '?' ) {
+				int string_char = (unsigned char)*string;
+				if ( string_char == lwr || string_char == upr || *pattern == '?' ) {
 					if ( FS_FileList_PatternMatch( string + 1, pattern + 1, qfalse ) )
 						return qtrue;
 				}
@@ -144,7 +148,7 @@ static qboolean FS_FileList_PatternMatch( const char *string, const char *patter
 			return qfalse;
 
 		// Check for character discrepancy
-		if ( *pattern != *string && *pattern != '?' && tolower( *pattern ) != tolower( *string ) )
+		if ( *pattern != *string && *pattern != '?' && TOLOWER( *pattern ) != TOLOWER( *string ) )
 			return qfalse;
 
 		// Advance strings
@@ -967,8 +971,11 @@ int FS_GetFileList( const char *path, const char *extension, char *listbuf, int 
 	int nTotal = 0;
 	int nLen;
 	char **pFiles = NULL;
-	FSC_ASSERT( listbuf );
 
+	if ( !listbuf || bufsize <= 0 ) {
+		Com_Printf( "^3WARNING: FS_GetFileList with invalid parameters\n" );
+		return 0;
+	}
 	*listbuf = '\0';
 
 	if ( !Q_stricmp( path, "$modlist" ) ) {

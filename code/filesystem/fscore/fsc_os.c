@@ -32,25 +32,47 @@ Headers & Definitions
 */
 
 #ifdef _WIN32
-// Windows defines
+// Use wide character API for unicode path support
+//#define FSC_WIN_WIDECHAR
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
-#include <windows.h>
-#ifdef UNICODE
-#define WIN_WIDECHAR
 #endif
-#else
-// Non-windows defines
+
+// Common defines
+#include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+// Windows defines
+#include <windows.h>
+#else
+// Non-Windows defines
 #include <errno.h>
 #include <dirent.h>
-#include <ctype.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <strings.h>
 #endif
-// Common defines
-#include <stdio.h>
+
+// Windows wide character support
+#ifdef FSC_WIN_WIDECHAR
+#include <wchar.h>
+#define FSC_WCSELECT_CHAR wchar_t
+#define FSC_WCSELECT_TEXT( text ) L##text
+#define FSC_WCSELECT_FUNC( name ) name##W
+typedef WIN32_FIND_DATAW FSC_WIN32_FIND_DATA;
+#else
+#define FSC_WCSELECT_CHAR char
+#define FSC_WCSELECT_TEXT( text ) text
+#ifdef _WIN32
+#define FSC_WCSELECT_FUNC( name ) name##A
+typedef WIN32_FIND_DATAA FSC_WIN32_FIND_DATA;
+#endif
+#endif
 
 /*
 ###############################################################################################
@@ -81,14 +103,6 @@ OS Path Handling
 ###############################################################################################
 */
 
-#ifdef WIN_WIDECHAR
-#define FSC_CHAR wchar_t
-#define FSC_UCHAR unsigned short
-#else
-#define FSC_CHAR char
-#define FSC_UCHAR unsigned char
-#endif
-
 /*
 =================
 FSC_StringToOSPath
@@ -99,11 +113,11 @@ Converts UTF-8 string to OS path format. Result must be freed by caller via FSC_
 fsc_ospath_t *FSC_StringToOSPath( const char *path ) {
 	FSC_ASSERT( path );
 	{
-		FSC_CHAR *buffer;
-#ifdef WIN_WIDECHAR
+		FSC_WCSELECT_CHAR *buffer;
+#ifdef FSC_WIN_WIDECHAR
 		int length = MultiByteToWideChar( CP_UTF8, 0, path, -1, 0, 0 );
 		FSC_ASSERT( length );
-		buffer = (FSC_CHAR *)FSC_Malloc( length * sizeof( wchar_t ) );
+		buffer = (FSC_WCSELECT_CHAR *)FSC_Malloc( length * sizeof( wchar_t ) );
 		MultiByteToWideChar( CP_UTF8, 0, path, -1, buffer, length );
 #else
 		// Consider stripping non-ASCII chars for non-unicode Windows builds
@@ -126,7 +140,7 @@ char *FSC_OSPathToString( const fsc_ospath_t *os_path ) {
 	FSC_ASSERT( os_path );
 	{
 		char *buffer;
-#ifdef WIN_WIDECHAR
+#ifdef FSC_WIN_WIDECHAR
 		int length = WideCharToMultiByte( CP_UTF8, 0, (LPCWSTR)os_path, -1, 0, 0, 0, 0 );
 		FSC_ASSERT( length );
 		buffer = (char *)FSC_Malloc( length );
@@ -149,7 +163,7 @@ Returns size in bytes of an OS path object.
 */
 int FSC_OSPathSize( const fsc_ospath_t *os_path ) {
 	FSC_ASSERT( os_path );
-#ifdef WIN_WIDECHAR
+#ifdef FSC_WIN_WIDECHAR
 	return 2 * wcslen( (const wchar_t *)os_path ) + 2;
 #else
 	return strlen( (const char *)os_path ) + 1;
@@ -165,7 +179,7 @@ Returns 0 if paths are equal.
 */
 int FSC_OSPathCompare( const fsc_ospath_t *path1, const fsc_ospath_t *path2 ) {
 	FSC_ASSERT( path1 && path2 );
-#ifdef WIN_WIDECHAR
+#ifdef FSC_WIN_WIDECHAR
 	return wcscmp( (const wchar_t *)path1, (const wchar_t *)path2 );
 #else
 	return strcmp( (const char *)path1, (const char *)path2 );
@@ -190,7 +204,7 @@ Renames file in OS path format. Returns true on error, false on success.
 fsc_boolean FSC_RenameFileRaw( fsc_ospath_t *source_os_path, fsc_ospath_t *target_os_path ) {
 	FSC_ASSERT( source_os_path && target_os_path );
 #ifdef _WIN32
-	if ( !MoveFile( (LPCTSTR)source_os_path, (LPCTSTR)target_os_path ) )
+	if ( !FSC_WCSELECT_FUNC( MoveFile )( (const FSC_WCSELECT_CHAR *)source_os_path, (const FSC_WCSELECT_CHAR *)target_os_path ) )
 		return fsc_true;
 #else
 	if ( rename( (const char *)source_os_path, (const char *)target_os_path ) )
@@ -228,12 +242,11 @@ Deletes file in OS path format. Returns true on error, false on success.
 fsc_boolean FSC_DeleteFileRaw( fsc_ospath_t *os_path ) {
 	FSC_ASSERT( os_path );
 #ifdef _WIN32
-	// Can we just use remove instead?
-	if ( !DeleteFile( (LPCTSTR)os_path ) ) {
+	if ( !FSC_WCSELECT_FUNC( DeleteFile )( (const FSC_WCSELECT_CHAR *)os_path ) ) {
 		return fsc_true;
 	}
 #else
-	if ( !remove( (const char *)os_path ) ) {
+	if ( remove( (const char *)os_path ) ) {
 		return fsc_true;
 	}
 #endif
@@ -261,13 +274,15 @@ fsc_boolean FSC_DeleteFile( const char *path ) {
 =================
 FSC_MkdirRaw
 
-Creates empty directory in OS path format. Returns true on error, false on success or if directory already exists.
+Creates empty directory in OS path format. Returns true on error, false on success or if
+directory already exists.
 =================
 */
 fsc_boolean FSC_MkdirRaw( fsc_ospath_t *os_path ) {
+	// Maybe should check if element that already exists is actually a directory?
 	FSC_ASSERT( os_path );
 #ifdef _WIN32
-	if ( CreateDirectory( (LPCTSTR)os_path, 0 ) ) {
+	if ( FSC_WCSELECT_FUNC( CreateDirectory )( (const FSC_WCSELECT_CHAR *)os_path, 0 ) ) {
 		return fsc_false;
 	}
 	return GetLastError() != ERROR_ALREADY_EXISTS ? fsc_true : fsc_false;
@@ -305,7 +320,7 @@ fsc_filehandle_t *FSC_FOpenRaw( const fsc_ospath_t *os_path, const char *mode ) 
 	FSC_ASSERT( os_path );
 	FSC_ASSERT( mode );
 	{
-#ifdef WIN_WIDECHAR
+#ifdef FSC_WIN_WIDECHAR
 		int i;
 		wchar_t mode_wide[10];
 		for ( i = 0; i < 9; ++i ) {
@@ -354,10 +369,20 @@ void FSC_FClose( fsc_filehandle_t *fp ) {
 FSC_FRead
 =================
 */
-unsigned int FSC_FRead( void *dest, int size, fsc_filehandle_t *fp ) {
+unsigned int FSC_FRead( void *dest, unsigned int size, fsc_filehandle_t *fp ) {
+	char *buf = (char *)dest;
+	unsigned int total = 0;
 	FSC_ASSERT( dest );
 	FSC_ASSERT( fp );
-	return fread( dest, 1, size, (FILE *)fp );
+	// Support looping in case the underlying filesystem does partial reads
+	while ( total < size ) {
+		unsigned int bytes_read = fread( buf + total, 1, size - total, (FILE *)fp );
+		if ( !bytes_read ) {
+			break;
+		}
+		total += bytes_read;
+	}
+	return total;
 }
 
 /*
@@ -365,10 +390,20 @@ unsigned int FSC_FRead( void *dest, int size, fsc_filehandle_t *fp ) {
 FSC_FWrite
 =================
 */
-unsigned int FSC_FWrite( const void *src, int size, fsc_filehandle_t *fp ) {
+unsigned int FSC_FWrite( const void *src, unsigned int size, fsc_filehandle_t *fp ) {
+	const char *buf = (const char *)src;
+	unsigned int total = 0;
 	FSC_ASSERT( src );
 	FSC_ASSERT( fp );
-	return fwrite( src, 1, size, (FILE *)fp );
+	// Support looping in case the underlying filesystem does partial writes
+	while ( total < size ) {
+		unsigned int written = fwrite( buf + total, 1, size - total, (FILE *)fp );
+		if ( !written ) {
+			break;
+		}
+		total += written;
+	}
+	return total;
 }
 
 /*
@@ -481,7 +516,7 @@ void FSC_StrncpyLower( char *dst, const char *src, unsigned int size ) {
 	FSC_ASSERT( size > 0 );
 
 	while ( --size && *src ) {
-		*( dst++ ) = (char)tolower( *( src++ ) );
+		*( dst++ ) = (char)tolower( (unsigned char)*( src++ ) );
 	}
 	*dst = '\0';
 }
@@ -562,10 +597,10 @@ Directory Iteration
 ###############################################################################################
 */
 
-#define SEARCH_PATH_LIMIT 260
+#define SEARCH_PATH_LIMIT 512
 
 typedef struct {
-	FSC_CHAR path[SEARCH_PATH_LIMIT];
+	FSC_WCSELECT_CHAR path[SEARCH_PATH_LIMIT];
 	int path_position;
 	int base_length;
 
@@ -582,7 +617,7 @@ FSC_IterateAppendPath
 Adds string at the end of working path. Returns true on success, false on overflow.
 =================
 */
-static fsc_boolean FSC_IterateAppendPath( iterate_work_t *iw, const FSC_CHAR *path ) {
+static fsc_boolean FSC_IterateAppendPath( iterate_work_t *iw, const FSC_WCSELECT_CHAR *path ) {
 	while ( iw->path_position < SEARCH_PATH_LIMIT ) {
 		iw->path[iw->path_position] = *path;
 		if ( !*( path++ ) ) {
@@ -615,41 +650,63 @@ static void FSC_IterateResetPosition( iterate_work_t *iw, int position ) {
 FSC_IterateDirectoryRecursive
 =================
 */
-static void FSC_IterateDirectoryRecursive( iterate_work_t *iw, fsc_boolean junction_allowed ) {
+static void FSC_IterateDirectoryRecursive( iterate_work_t *iw, int max_symlink_hops ) {
 #ifdef _WIN32
 	int old_position = iw->path_position;
-	WIN32_FIND_DATA FindFileData;
+	FSC_WIN32_FIND_DATA FindFileData;
 	HANDLE hFind;
 
-	if ( !FSC_IterateAppendPath( iw, TEXT( "\\*" ) ) ) {
+	if ( !FSC_IterateAppendPath( iw, FSC_WCSELECT_TEXT( "\\*" ) ) ) {
 		return;
 	}
-	hFind = FindFirstFile( iw->path, &FindFileData );
+	hFind = FSC_WCSELECT_FUNC( FindFirstFile )( iw->path, &FindFileData );
 	//hFind = FindFirstFileEx(search, FindExInfoBasic, &FindFileData, FindExSearchNameMatch, 0, FIND_FIRST_EX_LARGE_FETCH);
 	if ( hFind == INVALID_HANDLE_VALUE ) {
 		return;
 	}
 
 	do {
+		fsc_boolean is_link = ( FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ) ? fsc_true : fsc_false;
+
 		// Prepare path
 		FSC_IterateResetPosition( iw, old_position );
-		FSC_IterateAppendPath( iw, TEXT( "\\" ) );
+		FSC_IterateAppendPath( iw, FSC_WCSELECT_TEXT( "\\" ) );
 		if ( !FSC_IterateAppendPath( iw, FindFileData.cFileName ) ) {
 			continue;
 		}
 
 		if ( FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) {
 			// Have directory - check validity
-			if ( ( FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ) && !junction_allowed ) {
+			if ( is_link && max_symlink_hops <= 0 ) {
 				continue;
 			}
 			if ( FindFileData.cFileName[0] == '.' && ( !FindFileData.cFileName[1] ||
 					( FindFileData.cFileName[1] == '.' && !FindFileData.cFileName[2] ) ) ) {
 				continue;
 			}
-
-			FSC_IterateDirectoryRecursive( iw, junction_allowed );
+			FSC_IterateDirectoryRecursive( iw, is_link ? max_symlink_hops - 1 : max_symlink_hops );
 		} else {
+			if ( is_link ) {
+				// Get correct size and timestamp for the symlink target
+				HANDLE handle;
+				BY_HANDLE_FILE_INFORMATION file_info;
+
+				handle = FSC_WCSELECT_FUNC( CreateFile )( iw->path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+						NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+				if ( handle == INVALID_HANDLE_VALUE ) {
+					continue;
+				}
+				if ( !GetFileInformationByHandle( handle, &file_info ) ) {
+					CloseHandle( handle );
+					continue;
+				}
+
+				CloseHandle( handle );
+				FindFileData.ftLastWriteTime = file_info.ftLastWriteTime;
+				FindFileData.nFileSizeHigh = file_info.nFileSizeHigh;
+				FindFileData.nFileSizeLow = file_info.nFileSizeLow;
+			}
+
 			// Skip files greater than 4GB; they are not currently supported
 			if ( FindFileData.nFileSizeHigh ) {
 				continue;
@@ -663,7 +720,7 @@ static void FSC_IterateDirectoryRecursive( iterate_work_t *iw, fsc_boolean junct
 			iw->operation( &iw->file_data, iw->iterate_context );
 			FSC_Free( iw->file_data.qpath_with_mod_dir );
 		}
-	} while ( FindNextFile( hFind, &FindFileData ) );
+	} while ( FSC_WCSELECT_FUNC( FindNextFile )( hFind, &FindFileData ) );
 
 	FindClose( hFind );
 #else
@@ -676,6 +733,7 @@ static void FSC_IterateDirectoryRecursive( iterate_work_t *iw, fsc_boolean junct
 	while ( 1 ) {
 		struct dirent *entry;
 		struct stat st;
+		fsc_boolean is_link = fsc_false;
 
 		// Get next entry
 		entry = readdir( dir );
@@ -689,20 +747,29 @@ static void FSC_IterateDirectoryRecursive( iterate_work_t *iw, fsc_boolean junct
 		if ( !FSC_IterateAppendPath( iw, entry->d_name ) ) {
 			continue;
 		}
-		if ( stat( iw->path, &st ) == -1 ) {
+
+		if ( lstat( iw->path, &st ) == -1 ) {
 			continue;
+		}
+		if ( S_ISLNK( st.st_mode ) ) {
+			is_link = fsc_true;
+			if ( stat( iw->path, &st ) == -1 ) {
+				continue;
+			}
 		}
 
 		if ( S_ISDIR( st.st_mode ) ) {
 			// Have directory - check validity
+			if ( is_link && max_symlink_hops <= 0 ) {
+				continue;
+			}
 			if ( entry->d_name[0] == '.' && ( !entry->d_name[1] || ( entry->d_name[1] == '.' && !entry->d_name[2] ) ) ) {
 				continue;
 			}
-
-			FSC_IterateDirectoryRecursive( iw, junction_allowed );
-		} else {
+			FSC_IterateDirectoryRecursive( iw, is_link ? max_symlink_hops - 1 : max_symlink_hops );
+		} else if ( S_ISREG( st.st_mode ) ) {
 			// Skip files greater than 4GB; they are not currently supported
-			if ( st.st_size > 4294967295u ) {
+			if ( st.st_size < 0 || st.st_size > 4294967295u ) {
 				continue;
 			}
 
@@ -734,10 +801,10 @@ void FSC_IterateDirectory( fsc_ospath_t *search_os_path,
 	iw.operation = operation;
 	iw.iterate_context = iterate_context;
 
-	FSC_IterateAppendPath( &iw, (const FSC_CHAR *)search_os_path );
+	FSC_IterateAppendPath( &iw, (const FSC_WCSELECT_CHAR *)search_os_path );
 	iw.base_length = iw.path_position;
 
-	FSC_IterateDirectoryRecursive( &iw, fsc_false );
+	FSC_IterateDirectoryRecursive( &iw, 2 );
 }
 
 #endif	// NEW_FILESYSTEM

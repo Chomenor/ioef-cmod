@@ -349,7 +349,9 @@ static int FS_CompareTempSourceDirs( const temp_source_directory_t *dir1, const 
 		return 1;
 	if ( dir1->fs_dirs_position < dir2->fs_dirs_position )
 		return -1;
-	return 1;
+	if ( dir1->fs_dirs_position > dir2->fs_dirs_position )
+		return 1;
+	return 0;
 }
 
 /*
