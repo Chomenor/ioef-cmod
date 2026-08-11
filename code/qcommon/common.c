@@ -2516,6 +2516,8 @@ void Com_ReadCDKey( const char *filename ) {
 	FS_Read( buffer, 16, f );
 	FS_FCloseFile( f );
 
+	Q_strlwr(buffer);
+
 	if (CL_CDKeyValidate(buffer, NULL)) {
 		Q_strncpyz( cl_cdkey, buffer, 17 );
 	} else {
@@ -2585,6 +2587,8 @@ static void Com_WriteCDKey( const char *filename, const char *ikey ) {
 		Com_Printf ("Couldn't write CD key to %s.\n", fbuffer );
 		goto out;
 	}
+
+	Q_strlwr(key);
 
 	FS_Write( key, 16, f );
 
