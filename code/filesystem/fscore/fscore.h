@@ -322,14 +322,19 @@ typedef struct {
 #define FSC_SANITY_MAX_PER_HASH_BUCKET 128
 
 typedef struct {
-	// These counters are decremented as data is pulled from a pk3. If they drop below 0,
-	// further data from that category will be dropped.
-	unsigned int content_cache_memory;
+	// Skip further pk3 loading to prevent possible abuse.
+	fsc_boolean blocked;
+
+	// These counters are decremented as data is pulled from a pk3. When exhausted,
+	// "blocked" will be set to true.
 	unsigned int content_index_memory;
 	unsigned int data_read;
 
-	// Block pk3s containing too many files/shaders with the same hash.
+	// Limit to avoid hash table abuse by overloading the same bucket
 	unsigned char hash_buckets[FSC_SANITY_HASH_BUCKETS];
+
+	// Limit for the arena/bot file contents cache
+	unsigned int content_cache_memory;
 
 	// For error reporting
 	fsc_boolean warned;
@@ -404,6 +409,7 @@ unsigned int FSC_SplitLeadingDirectory( const char *input, char *buffer, unsigne
 // ***** Sanity Limits *****
 
 fsc_boolean FSC_SanityLimitContent( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit );
+fsc_boolean FSC_SanityLimitOptional( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit );
 fsc_boolean FSC_SanityLimitHash( unsigned int hash, fsc_sanity_limit_t *sanity_limit );
 
 // ***** Error Handling *****
@@ -420,6 +426,8 @@ void FSC_FatalErrorTagged( const char *msg, const char *caller, const char *expr
 unsigned int FSC_StringHash( const char *input1, const char *input2 );
 unsigned int FSC_MemoryUseEstimate( fsc_filesystem_t *fs );
 fsc_stackptr_t FSC_StringRepositoryGetString( const char *input, fsc_hashtable_t *string_repository );
+fsc_stackptr_t FSC_StringRepositoryGetStringLimited( const char *input, fsc_hashtable_t *string_repository,
+		fsc_sanity_limit_t *sanity_limit );
 
 /* ******************************************************************************** */
 // Game Parsing Support (fsc_gameparse.c)
@@ -433,7 +441,7 @@ int FSC_SkipBracedSection( char **program, int depth );
 // Hash Calculation (fsc_md4.c / fsc_sha256.c)
 /* ******************************************************************************** */
 
-unsigned int FSC_BlockChecksum( const void *buffer, int length );
+unsigned int FSC_BlockChecksum( const void *buffer, unsigned int length );
 void FSC_CalculateSHA256( const char *data, unsigned int size, unsigned char *output );
 
 /* ******************************************************************************** */
@@ -461,8 +469,8 @@ fsc_boolean FSC_Mkdir( const char *directory );
 fsc_filehandle_t *FSC_FOpenRaw( const fsc_ospath_t *os_path, const char *mode );
 fsc_filehandle_t *FSC_FOpen( const char *path, const char *mode );
 void FSC_FClose( fsc_filehandle_t *fp );
-unsigned int FSC_FRead( void *dest, int size, fsc_filehandle_t *fp );
-unsigned int FSC_FWrite( const void *src, int size, fsc_filehandle_t *fp );
+unsigned int FSC_FRead( void *dest, unsigned int size, fsc_filehandle_t *fp );
+unsigned int FSC_FWrite( const void *src, unsigned int size, fsc_filehandle_t *fp );
 void FSC_FFlush( fsc_filehandle_t *fp );
 int FSC_FSeek( fsc_filehandle_t *fp, int offset, fsc_seek_type_t type );
 unsigned int FSC_FTell( fsc_filehandle_t *fp );
@@ -491,7 +499,7 @@ unsigned int FSC_GetPk3Hash( const char *path );
 void FSC_RegisterPk3HashLookup( fsc_stackptr_t pk3_file_ptr, fsc_hashtable_t *pk3_hash_lookup, fsc_stack_t *stack );
 
 typedef struct fsc_pk3handle_s fsc_pk3handle_t;
-fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, int input_buffer_size, const fsc_filesystem_t *fs );
+fsc_pk3handle_t *FSC_Pk3HandleOpen( const fsc_file_frompk3_t *file, unsigned int input_buffer_size, const fsc_filesystem_t *fs );
 void FSC_Pk3HandleClose( fsc_pk3handle_t *handle );
 unsigned int FSC_Pk3HandleRead( fsc_pk3handle_t *handle, char *buffer, unsigned int length );
 extern fsc_sourcetype_t pk3_sourcetype;
@@ -514,7 +522,8 @@ fsc_boolean FSC_IsCrosshairActive( fsc_filesystem_t *fs, const fsc_crosshair_t *
 // Iteration (fsc_iteration.c)
 /* ******************************************************************************** */
 
-void FSC_IterationRegisterFile( fsc_stackptr_t file_ptr, fsc_hashtable_t *directories, fsc_hashtable_t *string_repository, fsc_stack_t *stack );
+void FSC_IterationRegisterFile( fsc_stackptr_t file_ptr, fsc_hashtable_t *directories, fsc_hashtable_t *string_repository,
+		fsc_stack_t *stack, fsc_sanity_limit_t *sanity_limit );
 
 fsc_file_iterator_t FSC_FileIteratorOpen( fsc_filesystem_t *fs, const char *dir, const char *name );
 fsc_file_iterator_t FSC_FileIteratorOpenAll( fsc_filesystem_t *fs );

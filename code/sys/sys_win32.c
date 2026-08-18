@@ -94,6 +94,26 @@ static char *Sys_DefaultHomePath( void )
 
 	if(!*homePath && com_homepath)
 	{
+#ifdef NEW_FILESYSTEM
+		WCHAR szPath[MAX_PATH];
+		char utf8Path[MAX_OSPATH];
+
+		if( !SUCCEEDED( SHGetFolderPathW( NULL, CSIDL_APPDATA,
+						NULL, 0, szPath ) ) )
+		{
+			Com_Printf("Unable to detect CSIDL_APPDATA\n");
+			return NULL;
+		}
+
+		if( !WideCharToMultiByte( CP_UTF8, 0, szPath, -1, utf8Path,
+						sizeof( utf8Path ), NULL, NULL ) )
+		{
+			Com_Printf("Unable to convert CSIDL_APPDATA to UTF-8\n");
+			return NULL;
+		}
+
+		Com_sprintf(homePath, sizeof(homePath), "%s%c", utf8Path, PATH_SEP);
+#else
 		TCHAR szPath[MAX_PATH];
 
 		if( !SUCCEEDED( SHGetFolderPathA( NULL, CSIDL_APPDATA,
@@ -104,6 +124,7 @@ static char *Sys_DefaultHomePath( void )
 		}
 		
 		Com_sprintf(homePath, sizeof(homePath), "%s%c", szPath, PATH_SEP);
+#endif
 
 		if(com_homepath->string[0])
 			Q_strcat(homePath, sizeof(homePath), com_homepath->string);
@@ -948,4 +969,14 @@ Sys_OpenFolderInPlatformFileManager
 qboolean Sys_OpenFolderInPlatformFileManager( const char *path )
 {
 	return ShellExecute( NULL, "explore", path, NULL, NULL, SW_SHOWDEFAULT ) > (HINSTANCE)32;
+}
+
+/*
+=================
+Sys_SetMaxFileLimit
+=================
+*/
+qboolean Sys_SetMaxFileLimit( void )
+{
+	return qtrue;
 }

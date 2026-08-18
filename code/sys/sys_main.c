@@ -887,6 +887,7 @@ int main( int argc, char **argv )
 #endif
 
 	Sys_PlatformInit( );
+	Sys_SetMaxFileLimit( );
 
 	// Set the initial time base
 	Sys_Milliseconds( );

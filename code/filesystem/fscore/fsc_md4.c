@@ -133,7 +133,7 @@ static void mdfour_begin(struct mdfour *md)
 }
 
 
-static void mdfour_tail(byte *in, int n)
+static void mdfour_tail(byte *in, unsigned int n)
 {
 	byte buf[128];
 	uint32_t M[16];
@@ -160,7 +160,7 @@ static void mdfour_tail(byte *in, int n)
 	}
 }
 
-static void mdfour_update(mdfour_t *md, byte *in, int n)
+static void mdfour_update(mdfour_t *md, byte *in, unsigned int n)
 {
 	uint32_t M[16];
 
@@ -188,7 +188,7 @@ static void mdfour_result(mdfour_t *md, byte *out)
 	copy4(out+12, md->D);
 }
 
-static void mdfour(byte *out, byte *in, int n)
+static void mdfour(byte *out, byte *in, unsigned int n)
 {
 	mdfour_t md;
 	mdfour_begin(&md);
@@ -198,7 +198,7 @@ static void mdfour(byte *out, byte *in, int n)
 
 //===================================================================
 
-unsigned int FSC_BlockChecksum( const void *buffer, int length )
+unsigned int FSC_BlockChecksum( const void *buffer, unsigned int length )
 {
 	int				digest[4];
 	unsigned	val;

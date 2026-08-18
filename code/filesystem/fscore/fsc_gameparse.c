@@ -35,7 +35,8 @@ void FSC_SkipRestOfLine ( char **data ) {
 	int		c;
 
 	p = *data;
-	while ( (c = *p++) != 0 ) {
+	while ( (c = *p) != 0 ) {
+		p++;
 		if ( c == '\n' ) {
 			break;
 		}
@@ -139,10 +140,14 @@ char *FSC_ParseExt( char *com_token, char **data_p, fsc_boolean allowLineBreaks 
 		data++;
 		while (1)
 		{
-			c = *data++;
+			c = *data;
 			if (c=='\"' || !c)
 			{
 				com_token[len] = 0;
+				if ( c == '\"' )
+				{
+					data++;
+				}
 				*data_p = ( char * ) data;
 				return com_token;
 			}
@@ -151,6 +156,7 @@ char *FSC_ParseExt( char *com_token, char **data_p, fsc_boolean allowLineBreaks 
 				com_token[len] = (char)c;
 				len++;
 			}
+			data++;
 		}
 	}
 

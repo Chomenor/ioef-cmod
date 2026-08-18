@@ -98,7 +98,7 @@ static const char *FS_ValidFilenameCharTable( void ) {
 	static qboolean have_table = qfalse;
 	if ( !have_table ) {
 		int i;
-		char valid_chars[] = " ~!@#$%^&_-+=()[]{}';,.";
+		char valid_chars[] = " !@#$%^&_-+=()[]{}';,.";
 		for ( i = 0; i < 256; ++i )
 			table[i] = '_';
 		for ( i = 'a'; i <= 'z'; ++i )
@@ -116,6 +116,29 @@ static const char *FS_ValidFilenameCharTable( void ) {
 
 /*
 =================
+FS_WindowsDeviceName
+=================
+*/
+static qboolean FS_WindowsDeviceName( const char *name ) {
+	int len = 0;
+	while ( name[len] && name[len] != '.' )
+		++len;
+
+	if ( len == 3 && ( !Q_stricmpn( name, "CON", len ) || !Q_stricmpn( name, "PRN", len ) ||
+			!Q_stricmpn( name, "AUX", len ) || !Q_stricmpn( name, "NUL", len ) ) )
+		return qtrue;
+	if ( len == 4 && ( !Q_stricmpn( name, "COM", 3 ) || !Q_stricmpn( name, "LPT", 3 ) ) &&
+			name[3] >= '1' && name[3] <= '9' )
+		return qtrue;
+	if ( len == 6 && !Q_stricmpn( name, "CONIN$", len ) )
+		return qtrue;
+	if ( len == 7 && !Q_stricmpn( name, "CONOUT$", len ) )
+		return qtrue;
+	return qfalse;
+}
+
+/*
+=================
 FS_GeneratePathFilename
 
 Sanitize name of single file or directory and write to stream.
@@ -129,6 +152,8 @@ static qboolean FS_GeneratePathFilename( fsc_stream_t *stream, const char *name,
 
 	// Perform character filtering
 	FSC_StreamAppendStringSubstituted( &path_stream, name, FS_ValidFilenameCharTable() );
+	if ( path_stream.overflowed )
+		return qfalse;
 	path_length = FSC_Strlen( sanitized_path ); // Should equal path_stream.position, but recalculate to be safe
 	if ( !path_length )
 		return qfalse;
@@ -145,6 +170,8 @@ static qboolean FS_GeneratePathFilename( fsc_stream_t *stream, const char *name,
 		return qfalse;
 
 	// Check for disallowed extensions
+	if ( FS_WindowsDeviceName( sanitized_path ) )
+		return qfalse;
 	if ( path_length >= 4 && !Q_stricmp( sanitized_path + path_length - 4, ".qvm" ) )
 		return qfalse;
 	if ( path_length >= 4 && !Q_stricmp( sanitized_path + path_length - 4, ".exe" ) )
@@ -628,7 +655,7 @@ void FS_ReadCache_Initialize( void ) {
 	}
 
 	cache_size = cache_megs << 20;
-	base_entry = (cache_entry_t *)FSC_Malloc( cache_size );
+	base_entry = (cache_entry_t *)CACHE_ALIGN( FSC_Malloc( cache_size + 15 ) );
 	head_entry = NULL;
 }
 
@@ -875,6 +902,7 @@ char *FS_ReadData( const fsc_file_t *file, const char *path, unsigned int *size_
 	if ( fsc_file_handle ) {
 		unsigned int read_size = FSC_FRead( data, size + 1, fsc_file_handle );
 		FSC_FClose( fsc_file_handle );
+		fsc_file_handle = NULL;
 		if ( read_size != size ) {
 			goto error;
 		}
@@ -897,6 +925,9 @@ char *FS_ReadData( const fsc_file_t *file, const char *path, unsigned int *size_
 error:
 	if ( fs.cvar.fs_debug_fileio->integer ) {
 		FS_DPrintf( "  result: failed to load file\n" );
+	}
+	if ( fsc_file_handle ) {
+		FSC_FClose( fsc_file_handle );
 	}
 	if ( cache_entry ) {
 		cache_entry->file = NULL;
@@ -947,7 +978,7 @@ char *FS_ReadShader( const fsc_shader_t *shader ) {
 	}
 
 	size = shader->end_position - shader->start_position;
-	if ( size > 10000 ) {
+	if ( size > 65536 ) {
 		if ( fs.cvar.fs_debug_fileio->integer ) {
 			FS_DPrintf( "result: failed due to invalid size\n" );
 			FS_DebugIndentStop();
@@ -2037,6 +2068,7 @@ char *FS_Journal_ReadData( void ) {
 	if ( !length ) {
 		return NULL;
 	}
+	FSC_ASSERT( length < 2000000000u );
 
 	// Obtain buffer from cache or malloc
 	{
@@ -2572,6 +2604,10 @@ FS_Read
 */
 int FS_Read( void *buffer, int len, fileHandle_t f ) {
 	FSC_ASSERT( buffer );
+	if ( len < 0 ) {
+		Com_Printf( "FS_Read with negative len %i\n", len );
+		return 0;
+	}
 	return FS_Handle_Read( f, (char *)buffer, len );
 }
 
@@ -2590,11 +2626,21 @@ int FS_Read2( void *buffer, int len, fileHandle_t f ) {
 /*
 =================
 FS_Write
+
+Returns len on success, 0 on error.
 =================
 */
 int FS_Write( const void *buffer, int len, fileHandle_t h ) {
+	unsigned int written;
 	FSC_ASSERT( buffer );
-	FS_Handle_Write( h, (const char *)buffer, len );
+	if ( !h || len < 0 ) {
+		return 0;
+	}
+	written = FS_Handle_Write( h, (const char *)buffer, (unsigned int)len );
+	if ( written != (unsigned int)len ) {
+		Com_Printf( "FS_Write: incomplete write\n" );
+		return 0;
+	}
 	return len;
 }
 
@@ -2695,6 +2741,9 @@ long FS_ReadFile( const char *qpath, void **buffer ) {
 	}
 
 	*buffer = FS_ReadData( file, NULL, &len, "FS_ReadFile" );
+	if ( !*buffer ) {
+		return -1;
+	}
 	return (long)len;
 }
 

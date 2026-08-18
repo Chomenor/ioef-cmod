@@ -171,7 +171,7 @@ static void FSC_StackAddBucket( fsc_stack_t *stack ) {
 			new_size = STACK_MAX_BUCKETS;
 
 		new_allocation = (fsc_stack_bucket_t **)FSC_Malloc( new_size * sizeof( fsc_stack_bucket_t * ) );
-		FSC_Memcpy( new_allocation, stack->buckets, ( stack->buckets_position + 1 ) * sizeof( fsc_stack_bucket_t * ) );
+		FSC_Memcpy( new_allocation, stack->buckets, stack->buckets_position * sizeof( fsc_stack_bucket_t * ) );
 		FSC_Free( stack->buckets );
 		stack->buckets = new_allocation;
 		stack->buckets_size = new_size;
@@ -361,7 +361,7 @@ fsc_boolean FSC_StackImport( fsc_stack_t *stack, fsc_stream_t *stream ) {
 		if ( FSC_StreamReadData( stream, &stack->buckets[i]->position, 4 ) ) {
 			goto error;
 		}
-		if ( stack->buckets[i]->position >= STACK_BUCKET_SIZE ) {
+		if ( stack->buckets[i]->position > STACK_BUCKET_DATA_SIZE ) {
 			goto error;
 		}
 		if ( FSC_StreamReadData( stream, (char *)stack->buckets[i] + sizeof( fsc_stack_bucket_t ),
@@ -650,7 +650,7 @@ Sanity Limits
 FSC_SanityLimitContent
 
 Applies some limits to prevent potential vulnerabilities due to overloaded pk3 files.
-Returns true if limit hit, otherwise decrements limit counter and returns false.
+Returns true if this pk3 has been blocked, otherwise decrements limit counter and returns false.
 =================
 */
 fsc_boolean FSC_SanityLimitContent( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit ) {
@@ -664,6 +664,27 @@ fsc_boolean FSC_SanityLimitContent( unsigned int size, unsigned int *limit_value
 			sanity_limit->warned = fsc_true;
 		}
 
+		sanity_limit->blocked = fsc_true;
+		return fsc_true;
+	}
+
+	*limit_value -= size;
+	return sanity_limit->blocked;
+}
+
+/*
+=================
+FSC_SanityLimitOptional
+
+Applies a limit for optional pk3 content caching. Returns true if this content should be skipped.
+Unlike FSC_SanityLimitContent, exhausting this limit does not block the pk3.
+=================
+*/
+fsc_boolean FSC_SanityLimitOptional( unsigned int size, unsigned int *limit_value, fsc_sanity_limit_t *sanity_limit ) {
+	FSC_ASSERT( sanity_limit );
+	FSC_ASSERT( limit_value );
+
+	if ( sanity_limit->blocked || *limit_value < size ) {
 		return fsc_true;
 	}
 
@@ -676,7 +697,7 @@ fsc_boolean FSC_SanityLimitContent( unsigned int size, unsigned int *limit_value
 FSC_SanityLimitHash
 
 Apply limit to prevent exploits involving tons of files or shaders with the same hash.
-Returns true if limit hit, otherwise decrements limit counter and returns false.
+Returns true if this pk3 has been blocked, otherwise increments hash counter and returns false.
 =================
 */
 fsc_boolean FSC_SanityLimitHash( unsigned int hash, fsc_sanity_limit_t *sanity_limit ) {
@@ -691,11 +712,12 @@ fsc_boolean FSC_SanityLimitHash( unsigned int hash, fsc_sanity_limit_t *sanity_l
 			sanity_limit->warned = fsc_true;
 		}
 
+		sanity_limit->blocked = fsc_true;
 		return fsc_true;
 	}
 
 	*bucket += 1;
-	return fsc_false;
+	return sanity_limit->blocked;
 }
 
 /*
@@ -814,12 +836,14 @@ unsigned int FSC_MemoryUseEstimate( fsc_filesystem_t *fs ) {
 
 /*
 =================
-FSC_StringRepositoryGetString
+FSC_StringRepositoryGetStringLimited
 
 Allocates string in stack in deduplicated fashion so the same string is stored only once.
+If sanity_limit is set, newly allocated strings charge the hash limit.
 =================
 */
-fsc_stackptr_t FSC_StringRepositoryGetString( const char *input, fsc_hashtable_t *string_repository ) {
+fsc_stackptr_t FSC_StringRepositoryGetStringLimited( const char *input, fsc_hashtable_t *string_repository,
+		fsc_sanity_limit_t *sanity_limit ) {
 	unsigned int hash = FSC_StringHash( input, FSC_NULL );
 	fsc_stack_t *stack = string_repository->stack;
 	fsc_hashtable_iterator_t hti;
@@ -838,6 +862,9 @@ fsc_stackptr_t FSC_StringRepositoryGetString( const char *input, fsc_hashtable_t
 	if ( !entry_ptr ) {
 		// Allocate new entry
 		int length = FSC_Strlen( input ) + 1; // Include null terminator
+		if ( sanity_limit ) {
+			FSC_SanityLimitHash( hash, sanity_limit );
+		}
 		entry_ptr = FSC_StackAllocate( stack, sizeof( fsc_hashtable_entry_t ) + length );
 		entry = (fsc_hashtable_entry_t *)STACKPTR_LCL( entry_ptr );
 		FSC_Memcpy( (char *)entry + sizeof( *entry ), input, length );
@@ -846,6 +873,15 @@ fsc_stackptr_t FSC_StringRepositoryGetString( const char *input, fsc_hashtable_t
 
 	// Return string
 	return entry_ptr + sizeof( fsc_hashtable_entry_t );
+}
+
+/*
+=================
+FSC_StringRepositoryGetString
+=================
+*/
+fsc_stackptr_t FSC_StringRepositoryGetString( const char *input, fsc_hashtable_t *string_repository ) {
+	return FSC_StringRepositoryGetStringLimited( input, string_repository, FSC_NULL );
 }
 
 #endif	// NEW_FILESYSTEM

@@ -29,6 +29,27 @@ The build process should be the same as regular ioquake3. Refer to the ioquake3 
 
 There are some changes to the renderer dlls in the new filesystem. If you mix a renderer dll and main application that have different filesystem versions, the game should still run, but this isn't recommended or well tested.
 
+# Source Directory
+
+By default, files such as settings and downloads will be stored in the same location the game is installed, like the original version of Quake 3.
+
+If the game is installed somewhere where standard applications do not have write permissions, such as Program Files on Windows, it will store files in a folder under the user directory instead. On Windows this will typically be located at %appdata%\Quake3, on Mac at ~/Library/Application Support/Quake3, and on Linux according to the XDG Spec (e.g. ~/.config/Quake3, ~/.local/share/Quake3, ~/.local/state/Quake3).
+
+## Source Directory Settings
+
+A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files.
+
+Windows / Mac:
+The default is "*fs_basepath *fs_homepath fs_steampath fs_gogpath". The basepath (install location) is the default write directory, indicated by the first asterisk. The homepath is a read location and also the fallback write directory if the basepath is not writable, indicated by the second asterisk. The other directories without asterisks are read-only sources. The specific paths are controlled by the "fs_basepath", "fs_homepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
+
+Linux:
+The default is "*fs_basepath *_xdg_home fs_homepath fs_steampath fs_gogpath". The basepath (install location) is the default write directory, indicated by the first asterisk. If the basepath is not writable, "_xdg_home" is used instead, which is a special keyword that places files according to the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/). The legacy homepath (fs_homepath), steam path, and gog path are used as additional read-only sources.
+
+Notes:
+- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.
+- The write directory selected will always be treated as the highest precedence read directory.
+- If no directory passes a write test, or no write directory was set (no asterisks), the game will run in read-only mode.
+
 # Precedence System
 
 This filesystem uses improved logic to resolve conflicts between pk3s (i.e. when multiple pk3s contain conflicting resources). It follows a logical pattern that is roughly (mod paks > core game paks > current map pak > other paks), whereas the original filesystem uses a more archaic system where the base precedence for image-like content is approximately (shaders > tga images > jpg images) regardless of the filename/directory of the pk3s.
@@ -59,26 +80,6 @@ The "fs_download_mode" setting can be used to customize pk3 download handling on
 - 3: Same as 2, but blocks all qvm files from the downloads folder regardless of hash.
 
 A setting of 1 can help organize downloaded pk3s and reduce the chance of pk3 conflicts. A setting of 2 or 3 can help increase security when downloading from untrusted servers, at the expense of possible mod compatibility issues.
-
-# Source Directory Options
-
-A new cvar is introduced called "fs_dirs", which can be set from the command line to adjust which source directories the game uses to load/save files.
-
-Windows / Mac:
-The default is "*fs_homepath fs_basepath fs_steampath fs_gogpath". This means that homepath is the write directory, indicated by the asterisk, and the other locations are used for reading. The specific paths are controlled by the "fs_homepath", "fs_basepath", "fs_steampath", and "fs_gogpath" cvars, respectively.
-
-Linux:
-The default is "*_xdg_home fs_homepath fs_basepath fs_steampath fs_gogpath". "_xdg_home" is a special keyword that places files according to the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/). With the default fs_dirs value, xdg home is used for writing, indicated by an asterisk, the legacy homepath (fs_homepath) is used a secondary read location, and the install location (fs_basepath) is used as a third read location.
-
-Notes:
-- You can specify arbitrary cvars to use as source directories, instead of the default ones like fs_basepath and fs_homepath, but the specified cvars must be set on the command line along with fs_dirs in order to take effect.
-- You can set an asterisk on multiple directories. The additional directories will be used as backup write directories if the first one fails a write test.
-- The write directory selected will always be treated as the highest precedence read directory.
-- If no directory passes a write test, or no write directory was set (no asterisks), the game will run in read-only mode.
-
-Examples:
-- +set fs_dirs fs_homepath fs_basepath: Read-only mode with homepath taking precedence over basepath in the event that both directories contain files with the same name.
-- +set fs_dirs *fs_basepath *fs_homepath: Try to use fs_basepath as the write directory, but fall back to fs_homepath if basepath is not writable. Both basepath and homepath will be readable, with whichever directory is used as the write directory taking precedence.
 
 # Inactive Mod Support
 

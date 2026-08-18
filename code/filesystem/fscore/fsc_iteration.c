@@ -85,7 +85,7 @@ Input path must be either empty to represent root directory, or include a traili
 =================
 */
 static fsc_stackptr_t FSC_DirectoryForPath( const char *qp_dir, fsc_hashtable_t *directories,
-		fsc_hashtable_t *string_repository, fsc_stack_t *stack ) {
+		fsc_hashtable_t *string_repository, fsc_stack_t *stack, fsc_sanity_limit_t *sanity_limit ) {
 	unsigned int qp_dir_hash = FSC_StringHash( qp_dir, FSC_NULL );
 	fsc_hashtable_iterator_t hti;
 	fsc_stackptr_t directory_ptr;
@@ -103,8 +103,15 @@ static fsc_stackptr_t FSC_DirectoryForPath( const char *qp_dir, fsc_hashtable_t 
 	// It isn't, so create a new directory
 	directory_ptr = FSC_StackAllocate( stack, sizeof( fsc_directory_t ) );
 	directory = (fsc_directory_t *)STACKPTR_LCL( directory_ptr );
-	directory->qp_dir_ptr = FSC_StringRepositoryGetString( qp_dir, string_repository );
+	directory->qp_dir_ptr = FSC_StringRepositoryGetStringLimited( qp_dir, string_repository, sanity_limit );
 	FSC_HashtableInsert( directory_ptr, qp_dir_hash, directories );
+
+	// Record sanity limit usage
+	if ( sanity_limit ) {
+		FSC_SanityLimitContent( sizeof( fsc_directory_t ) + FSC_Strlen( qp_dir ),
+			&sanity_limit->content_index_memory, sanity_limit );
+		FSC_SanityLimitHash( qp_dir_hash, sanity_limit );
+	}
 
 	// Link new directory to parent directory (unless already at root directory)
 	if ( *qp_dir ) {
@@ -114,7 +121,7 @@ static fsc_stackptr_t FSC_DirectoryForPath( const char *qp_dir, fsc_hashtable_t 
 
 		// Get the parent directory
 		FSC_StripTrailingDirectory( qp_dir, parent_qp_dir );
-		parent_dir_ptr = FSC_DirectoryForPath( parent_qp_dir, directories, string_repository, stack );
+		parent_dir_ptr = FSC_DirectoryForPath( parent_qp_dir, directories, string_repository, stack, sanity_limit );
 		parent_dir = (fsc_directory_t *)STACKPTR_LCL( parent_dir_ptr );
 
 		// Add current directory to parent's sub_directory linked list
@@ -133,12 +140,12 @@ Adds a file to be visible to iteration system. Should only be called once per fi
 =================
 */
 void FSC_IterationRegisterFile( fsc_stackptr_t file_ptr, fsc_hashtable_t *directories,
-		fsc_hashtable_t *string_repository, fsc_stack_t *stack ) {
+		fsc_hashtable_t *string_repository, fsc_stack_t *stack, fsc_sanity_limit_t *sanity_limit ) {
 	fsc_file_t *file = (fsc_file_t *)STACKPTR_LCL( file_ptr );
 
 	// Get directory
 	fsc_stackptr_t directory_ptr = FSC_DirectoryForPath( (const char *)STACKPTR_LCL( file->qp_dir_ptr ),
-		directories, string_repository, stack );
+		directories, string_repository, stack, sanity_limit );
 	fsc_directory_t *directory = (fsc_directory_t *)STACKPTR_LCL( directory_ptr );
 
 	// Add file to directory linked list
