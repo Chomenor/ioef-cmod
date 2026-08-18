@@ -1902,11 +1902,18 @@ static void Stef_MultiMasterQuery_StartThread( const char *hostname, const char 
 		// launch the thread
 		Stef_MultiMasterQuery_InitLock();
 #ifdef _WIN32
-		CreateThread( NULL, 0, Stef_MultiMasterQuery_ResolveThread, (LPVOID)thread, 0, NULL );
+		{
+			HANDLE threadHandle = CreateThread( NULL, 0, Stef_MultiMasterQuery_ResolveThread, (LPVOID)thread, 0, NULL );
+			if ( threadHandle ) {
+				CloseHandle( threadHandle );
+			}
+		}
 #else
 		{
 			pthread_t thread_id;
-			pthread_create( &thread_id, NULL, Stef_MultiMasterQuery_ResolveThread, (void *)thread );
+			if ( !pthread_create( &thread_id, NULL, Stef_MultiMasterQuery_ResolveThread, (void *)thread ) ) {
+				pthread_detach( thread_id );
+			}
 		}
 #endif
 		break;
