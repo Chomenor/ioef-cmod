@@ -123,8 +123,8 @@
 // [BUGFIX] Hacky workaround for opengl2 renderer error seen on map 'ctf_storm'
 #define CMOD_GL2_MAX_FACE_POINTS_FIX
 
-// [BUGFIX] Properly unintialize certain handles on renderer shutdown to prevent potential issues
-// when using statically compiled renderer
+// [BUGFIX] Properly free certain handles on renderer shutdown to prevent memory/resource leaks
+// on vid_restart or potential crash with statically compiled renderer
 #define CMOD_GLIMP_SHUTDOWN_FIX
 
 // [BUGFIX] Increase max number of characters displayed in chat mode to match original EF default

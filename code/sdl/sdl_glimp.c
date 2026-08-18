@@ -48,6 +48,10 @@ typedef enum
 SDL_Window *SDL_window = NULL;
 static SDL_GLContext SDL_glContext = NULL;
 
+#ifdef CMOD_GLIMP_SHUTDOWN_FIX
+static void GLimp_ClearProcAddresses( void );
+#endif
+
 cvar_t *r_allowSoftwareGL; // Don't abort out if a hardware visual can't be obtained
 cvar_t *r_allowResize; // make window resizable
 cvar_t *r_centerWindow;
@@ -94,11 +98,22 @@ void GLimp_Shutdown( void )
 {
 	ri.IN_Shutdown();
 
-	SDL_QuitSubSystem( SDL_INIT_VIDEO );
 #ifdef CMOD_GLIMP_SHUTDOWN_FIX
-	SDL_window = 0;
-	SDL_glContext = 0;
+	if( SDL_glContext != NULL )
+	{
+		GLimp_ClearProcAddresses();
+		SDL_GL_DeleteContext( SDL_glContext );
+		SDL_glContext = NULL;
+	}
+
+	if( SDL_window != NULL )
+	{
+		SDL_DestroyWindow( SDL_window );
+		SDL_window = NULL;
+	}
 #endif
+
+	SDL_QuitSubSystem( SDL_INIT_VIDEO );
 }
 
 /*
