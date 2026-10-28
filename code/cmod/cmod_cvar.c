@@ -1181,10 +1181,17 @@ char *Cvar_VariableString( const char *var_name ) {
 /*
 =================
 Cvar_VariableStringBuffer
+
+This function is used for QVM traps, so don't return values for CVAR_PRIVATE cvars.
 =================
 */
 void Cvar_VariableStringBuffer( const char *var_name, char *buffer, int bufsize ) {
-	Q_strncpyz( buffer, Cvar_VariableString( var_name ), bufsize );
+	localCvar_t *cvar = Cvar_FindOrCreate( var_name, qfalse );
+	const char *value = "";
+	if ( cvar && !( cvar->s.flags & CVAR_PRIVATE ) ) {
+		value = cvar->s.string;
+	}
+	Q_strncpyz( buffer, value, bufsize );
 }
 
 /*
@@ -1227,7 +1234,7 @@ char *Cvar_InfoString( int bit ) {
 	info[0] = '\0';
 
 	for ( cvar = cvar_first; cvar; cvar = cvar->next ) {
-		if ( cvar->s.name && ( cvar->s.flags & bit ) ) {
+		if ( cvar->s.name && ( cvar->s.flags & bit ) && !( cvar->s.flags & CVAR_PRIVATE ) ) {
 			Info_SetValueForKey( info, cvar->s.name, cvar->s.string );
 		}
 	}
@@ -1247,7 +1254,7 @@ char *Cvar_InfoString_Big( int bit ) {
 	info[0] = '\0';
 
 	for ( cvar = cvar_first; cvar; cvar = cvar->next ) {
-		if ( cvar->s.name && ( cvar->s.flags & bit ) ) {
+		if ( cvar->s.name && ( cvar->s.flags & bit ) && !( cvar->s.flags & CVAR_PRIVATE ) ) {
 			Info_SetValueForKey_Big( info, cvar->s.name, cvar->s.string );
 		}
 	}
@@ -1335,7 +1342,11 @@ void Cvar_Update( vmCvar_t *vmCvar ) {
 	}
 
 	vmCvar->modificationCount = cvar->s.modificationCount;
-	Q_strncpyz( vmCvar->string, cvar->s.string, MAX_CVAR_VALUE_STRING );
+	if ( cvar->s.flags & CVAR_PRIVATE ) {
+		Q_strncpyz( vmCvar->string, "", MAX_CVAR_VALUE_STRING );
+	} else {
+		Q_strncpyz( vmCvar->string, cvar->s.string, MAX_CVAR_VALUE_STRING );
+	}
 	vmCvar->value = cvar->s.value;
 	vmCvar->integer = cvar->s.integer;
 }
@@ -1439,6 +1450,9 @@ void Cvar_Vstr( cmd_mode_t mode ) {
 		return;
 	}
 
+	if ( cvar->s.flags & CVAR_PRIVATE ) {
+		return;
+	}
 	if ( !( cvar->s.flags & CVAR_TRUSTED_CREATED ) ) {
 		mode |= CMD_PROTECTED;
 	} else if ( !Q_stricmp( cvar->s.name, "fs_game" ) ) {
@@ -1733,6 +1747,7 @@ static void Cvar_FlagsToStream(int flags, cvar_stream_t *stream) {
 #ifdef CMOD_SAFE_AUTOEXEC
 	RUN_FLAG( CVAR_RESTRICTED_AUTOEXEC_CREATED );
 #endif
+	RUN_FLAG( CVAR_PRIVATE );
 	if ( !have_flag ) {
 		ADD_TEXT2( "<None>" );
 	}
@@ -1854,7 +1869,12 @@ const special_cvar_t specials[] = {
 	{ "cg_viewsize", NULL, CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "fraglimit", NULL, CVARTYPE_NONE, FLAGS_NORMAL | CVAR_DEFER_TO_VM_DEFAULT },
 	{ "g_gametype", NULL, CVARTYPE_NONE, FLAGS_NORMAL | CVAR_DEFER_TO_VM_DEFAULT },
-	{ "rconPassword", "", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_IMPORT_ALLOWED },
+	{ "rconPassword", "", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_PRIVATE | CVAR_IMPORT_ALLOWED },
+	{ "rconPassword", "", CVARTYPE_NONE, CVAR_PRIVATE | CVAR_IMPORT_ALLOWED },
+	{ "fs_homepath", NULL, CVARTYPE_NONE, CVAR_PRIVATE },
+	{ "fs_basepath", NULL, CVARTYPE_NONE, CVAR_PRIVATE },
+	{ "fs_gogpath", NULL, CVARTYPE_NONE, CVAR_PRIVATE },
+	{ "username", NULL, CVARTYPE_NONE, CVAR_PRIVATE },
 
 	// Server settings
 	{ "nextmap", NULL, CVARTYPE_NONE, FLAGS_NORMAL },

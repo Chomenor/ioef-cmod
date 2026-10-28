@@ -951,6 +951,8 @@ default values.
 #ifdef CMOD_SAFE_AUTOEXEC
 #define CVAR_RESTRICTED_AUTOEXEC_CREATED (1<<24)	// current value is set by the autoexec safe import procedure
 #endif
+#define CVAR_PRIVATE (1<<25)					// restrict servers and qvms from reading this value
+												// NOTE: currently only restricts string value, not numeric
 #endif
 // These flags are only returned by the Cvar_Flags() function
 #define CVAR_MODIFIED		0x40000000	// Cvar was modified
