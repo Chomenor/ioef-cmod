@@ -995,6 +995,16 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_GETCLIPBOARDDATA:
+#ifdef CMOD_RESTRICT_CLIPBOARD
+		if ( !VMPermissions_CheckTrusted( VM_UI ) ) {
+			char *data = VMA(1);
+			int length = args[2];
+			if ( length > 0 ) {
+				data[0] = '\0';
+			}
+			return 0;
+		}
+#endif
 		CL_GetClipboardData( VMA(1), args[2] );
 		return 0;
 

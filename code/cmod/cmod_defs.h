@@ -59,6 +59,11 @@
 #define CMOD_WRITE_PROTECTION
 #endif
 
+// [FEATURE] Restrict untrusted VMs from reading from the clipboard.
+#if defined( CMOD_VM_PERMISSIONS )
+#define CMOD_RESTRICT_CLIPBOARD
+#endif
+
 /* ******************************************************************************** */
 // Graphics
 /* ******************************************************************************** */
