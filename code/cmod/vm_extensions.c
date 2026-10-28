@@ -130,6 +130,10 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			// Indicate that "globalservers" command with parameter 0 fetches all masters.
 			{ "ui_support_globalservers_multi_fetch", "1" },
 
+#ifdef CMOD_SAFE_MASTER_QUERY
+			{ "ui_globalservers_safe_query_index", "-1" },
+#endif
+
 #ifdef CMOD_RESOLUTION_HANDLING
 			// Indicates that the r_mode cvar only applies to windowed mode, not fullscreen.
 			{ "ui_using_windowed_r_mode", "1" },

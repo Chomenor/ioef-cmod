@@ -4681,14 +4681,22 @@ void CL_GlobalServers_f( void ) {
 	int			count, i, masterNum;
 	char		command[1024], *masteraddress;
 	
+#ifdef CMOD_SAFE_MASTER_QUERY
+	if ((count = Cmd_Argc()) < 3 || (masterNum = atoi(Cmd_Argv(1))) < -1 || masterNum > MAX_MASTER_SERVERS)
+#else
 	if ((count = Cmd_Argc()) < 3 || (masterNum = atoi(Cmd_Argv(1))) < 0 || masterNum > MAX_MASTER_SERVERS)
+#endif
 	{
 		Com_Printf("usage: globalservers <master# 0-%d> <protocol> [keywords]\n", MAX_MASTER_SERVERS);
 		return;	
 	}
 
 #ifdef CMOD_MULTI_MASTER_QUERY
+#ifdef CMOD_SAFE_MASTER_QUERY
+	if ( masterNum == -1 || cl_masterMultiQuery->integer ) {
+#else
 	if ( cl_masterMultiQuery->integer ) {
+#endif
 		cls.numglobalservers = -1;
 		cls.pingUpdateSource = AS_GLOBAL;
 

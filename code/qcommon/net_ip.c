@@ -2042,6 +2042,19 @@ Queries master server(s) using arguments from "globalservers" command.
 */
 void Stef_MultiMasterQuery_RunQuery( void ) {
 	int master = atoi( Cmd_Argv( 1 ) );
+#ifdef CMOD_SAFE_MASTER_QUERY
+	if ( master == -1 ) {
+		// query safe masters
+		int i;
+		for ( i = 1; i <= 3; ++i ) {
+			const char *masteraddress = Cvar_VariableString( va( "sv_safeMaster%i", i ) );
+			if ( *masteraddress ) {
+				Stef_MultiMasterQuery_QueryMaster( masteraddress );
+			}
+		}
+		return;
+	}
+#endif
 	if ( master == 0 ) {
 		// query all masters
 		int i;

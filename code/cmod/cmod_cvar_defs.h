@@ -107,6 +107,12 @@ CVAR_DEF(con_autoReturn, "1", CVAR_ARCHIVE)
 CVAR_DEF(cl_masterMultiQuery, "3", CVAR_ARCHIVE)
 #endif
 
+#ifdef CMOD_SAFE_MASTER_QUERY
+CVAR_DEF(sv_safeMaster1, "master.stvef.org", CVAR_ARCHIVE)
+CVAR_DEF(sv_safeMaster2, "master.stef1.daggolin.de", CVAR_ARCHIVE)
+CVAR_DEF(sv_safeMaster3, "", CVAR_ARCHIVE)
+#endif
+
 #ifdef CMOD_UI_MOUSE_SENSITIVITY
 // Positive value sets a specific UI mouse sensitivity (5 = original sensitivity).
 // Value of -1 (default) uses value of main "sensitivity" cvar if it is below 5, but

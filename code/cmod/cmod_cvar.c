@@ -1965,7 +1965,12 @@ const special_cvar_t specials[] = {
 	// UI Menu Settings
 	{ "ui_initialsetup", "0", CVARTYPE_MENU, FLAGS_PERSISTENT | CVAR_IMPORT_ALLOWED },
 	{ "ui_browserGameType", "0", CVARTYPE_MENU, FLAGS_PERSISTENT },
+#ifdef CMOD_SAFE_MASTER_QUERY
+	{ "ui_browserMaster", "1*", CVARTYPE_MENU, FLAGS_PERSISTENT },
+	{ "ui_browserMasterButtons", "0", CVARTYPE_MENU, FLAGS_PERSISTENT },
+#else
 	{ "ui_browserMaster", "1", CVARTYPE_MENU, FLAGS_PERSISTENT },
+#endif
 	{ "ui_browserIpProtocol", "0", CVARTYPE_MENU, FLAGS_PERSISTENT },
 	{ "ui_browserShowEmpty", "1", CVARTYPE_MENU, FLAGS_PERSISTENT },
 	{ "ui_browserShowFull", "1", CVARTYPE_MENU, FLAGS_PERSISTENT },

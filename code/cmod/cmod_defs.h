@@ -212,6 +212,12 @@
 // automatically query for both ipv4 and ipv6 servers when possible.
 #define CMOD_MULTI_MASTER_QUERY
 
+// [FEATURE] Support for UI button to query sv_safeMaster1 - sv_safeMaster3 cvars, which
+// specify master servers which support moderation (can remove abusive servers).
+#if defined(CMOD_MULTI_MASTER_QUERY)
+#define CMOD_SAFE_MASTER_QUERY
+#endif
+
 // [FEATURE] New crosshair system to allow selecting any installed crosshair, rather
 // than just a small fixed group, when combined with QVM support.
 #if defined(NEW_FILESYSTEM)	// required
