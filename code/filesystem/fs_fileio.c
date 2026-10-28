@@ -1060,22 +1060,28 @@ fs_handle_t fs_handles[MAX_HANDLES];
 
 /*
 =================
+FS_Handle_FindFree
+=================
+*/
+static int FS_Handle_FindFree( void ) {
+	int index;
+	for ( index = 0; index < MAX_HANDLES; ++index ) {
+		if ( fs_handles[index].type == FS_HANDLE_NONE ) {
+			return index;
+		}
+	}
+	Com_Error( ERR_FATAL, "FS_Handle_FindFree failed to find free handle" );
+	return -1;
+}
+
+/*
+=================
 FS_Handle_Init
 =================
 */
 static fs_handle_t *FS_Handle_Init( fs_handle_type_t type, fs_handle_owner_t owner, const char *debug_path, int state_size ) {
-	int index;
+	int index = FS_Handle_FindFree();
 	FSC_ASSERT( type > FS_HANDLE_NONE );
-
-	// Locate free handle
-	for ( index = 0; index < MAX_HANDLES; ++index ) {
-		if ( fs_handles[index].type == FS_HANDLE_NONE ) {
-			break;
-		}
-	}
-	if ( index >= MAX_HANDLES ) {
-		Com_Error( ERR_FATAL, "FS_Handle_Init failed to find free handle" );
-	}
 
 	// Configure
 	Com_Memset( &fs_handles[index], 0, sizeof( fs_handles[index] ) );
@@ -1803,6 +1809,9 @@ static fileHandle_t FS_WriteHandle_Open( const char *path, qboolean append, qboo
 		FS_DPrintf( "********** opening write handle **********\n" );
 		FS_DPrintf( "  path: %s\n", path );
 	}
+
+	// Verify free handle exists before overwriting the file
+	FS_Handle_FindFree();
 
 	// Attempt to open the file
 	if ( append ) {
