@@ -1143,6 +1143,11 @@ void FS_SanitizeModDir( const char *source, char *target ) {
 	if ( !FS_GeneratePath( buffer, NULL, NULL, 0, 0, 0, target, FSC_MAX_MODDIR ) ) {
 		*target = '\0';
 	}
+
+	// Don't allow creating directories that collide with files that might need be created later
+	if ( !Q_stricmp( target, "writetest.dat" ) ) {
+		*target = '\0';
+	}
 }
 
 /*
