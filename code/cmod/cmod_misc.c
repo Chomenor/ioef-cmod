@@ -268,8 +268,12 @@ Returns qtrue if VM file is trusted.
 =================
 */
 qboolean VMPermissions_CheckTrustedVMFile( const fsc_file_t *file, const char *debug_name ) {
+	if ( !file ) {
+		return qfalse;
+	}
+
 	// Download folder pk3s are checked by hash
-	if ( file && FSC_FromDownloadPk3( file, &fs.index ) ) {
+	if ( FSC_FromDownloadPk3( file, &fs.index ) ) {
 		if ( FS_CheckTrustedVMFile( file ) ) {
 			if ( debug_name ) {
 				Com_Printf( "Downloaded module '%s' trusted due to known mod hash.\n", debug_name );

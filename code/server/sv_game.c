@@ -346,7 +346,9 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return 0;
 	case G_SEND_CONSOLE_COMMAND:
 #ifdef CMOD_COMMAND_INTERPRETER
-		Cbuf_ExecuteTextByMode( args[1], VMA(2), VMPermissions_CheckTrusted( VM_GAME ) ? 0 : CMD_PROTECTED );
+		Cbuf_ExecuteTextByMode( args[1], VMA(2),
+			Cbuf_IsSpecialVMCommand( VMA(2) ) && VMPermissions_CheckTrusted( VM_GAME ) ?
+			CMD_NORMAL : CMD_PROTECTED );
 #else
 		Cbuf_ExecuteText( args[1], VMA(2) );
 #endif

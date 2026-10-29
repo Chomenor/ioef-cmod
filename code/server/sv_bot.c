@@ -38,6 +38,23 @@ int bot_maxdebugpolys;
 extern botlib_export_t	*botlib_export;
 int	bot_enable;
 
+#ifdef CMOD_WRITE_PROTECTION
+static int BotImport_FS_FOpenFile( const char *qpath, fileHandle_t *file, fsMode_t mode ) {
+	if ( mode != FS_READ && !VMPermissions_CheckTrusted( VM_GAME ) ) {
+		if ( file ) {
+			*file = 0;
+		}
+		return 0;
+	}
+
+#ifdef NEW_FILESYSTEM
+	return FS_FOpenFileByModeOwner( qpath, file, mode, FS_HANDLEOWNER_QAGAME );
+#else
+	return FS_FOpenFileByMode( qpath, file, mode );
+#endif
+}
+#endif
+
 
 /*
 ==================
@@ -542,7 +559,11 @@ void SV_BotInitBotLib(void) {
 	botlib_import.HunkAlloc = BotImport_HunkAlloc;
 
 	// file system access
+#ifdef CMOD_WRITE_PROTECTION
+	botlib_import.FS_FOpenFile = BotImport_FS_FOpenFile;
+#else
 	botlib_import.FS_FOpenFile = FS_FOpenFileByMode;
+#endif
 	botlib_import.FS_Read = FS_Read;
 	botlib_import.FS_Write = FS_Write;
 	botlib_import.FS_FCloseFile = FS_FCloseFile;

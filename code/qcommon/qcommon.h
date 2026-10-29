@@ -458,6 +458,7 @@ typedef int cmd_mode_t;
 
 void Cbuf_ExecuteTextByMode(int exec_when, const char *text, cmd_mode_t mode);
 void Cbuf_AddTextByMode(const char *text, cmd_mode_t mode);
+qboolean Cbuf_IsSpecialVMCommand( const char *cmd );
 #endif
 
 void Cbuf_Init (void);

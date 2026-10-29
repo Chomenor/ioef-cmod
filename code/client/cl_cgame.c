@@ -297,9 +297,17 @@ rescan:
 		// allow server to indicate why they were disconnected
 #ifdef ELITEFORCE
 #ifdef CMOD_ERROR_POPUP_FIXES
+#ifdef CMOD_COMMAND_INTERPRETER
+		Cbuf_AddTextByMode(va("err_dialog \"%s\"\n", Cmd_Argv(1)), CMD_PROTECTED);
+#else
 		Cbuf_AddText(va("err_dialog \"%s\"\n", Cmd_Argv(1)));
+#endif
+#else
+#ifdef CMOD_COMMAND_INTERPRETER
+		Cbuf_AddTextByMode(va("err_dialog \"%s\"", Cmd_Argv(1)), CMD_PROTECTED);
 #else
 		Cbuf_AddText(va("err_dialog \"%s\"", Cmd_Argv(1)));
+#endif
 #endif
 #endif
 		if ( argc >= 2 )
@@ -365,6 +373,17 @@ rescan:
 		// close the console
 		Con_Close();
 		// take a special screenshot next frame
+#ifdef CMOD_WRITE_PROTECTION
+		// Don't allow malicious commands to create tons of levelshots
+		{
+			static int count = 0;
+			if ( count > 10 ) {
+				Com_Printf( "Press F11 to save the levelshot.\n" );
+				return qtrue;
+			}
+			++count;
+		}
+#endif
 		Cbuf_AddText( "wait ; wait ; wait ; wait ; screenshot levelshot\n" );
 		return qtrue;
 	}
@@ -522,7 +541,9 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 #endif
 	case CG_SENDCONSOLECOMMAND:
 #ifdef CMOD_COMMAND_INTERPRETER
-		Cbuf_AddTextByMode( VMA(1), VMPermissions_CheckTrusted( VM_CGAME ) ? 0 : CMD_PROTECTED );
+		Cbuf_AddTextByMode( VMA(1),
+			Cbuf_IsSpecialVMCommand( VMA(1) ) && VMPermissions_CheckTrusted( VM_CGAME ) ?
+			CMD_NORMAL : CMD_PROTECTED );
 #else
 		Cbuf_AddText( VMA(1) );
 #endif

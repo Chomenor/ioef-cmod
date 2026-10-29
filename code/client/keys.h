@@ -55,7 +55,7 @@ extern	int			chat_playerNum;
 void Key_WriteBindings( fileHandle_t f );
 #ifdef CMOD_BIND_PROTECTION
 void Key_EndSession( void );
-void Key_SetBinding( int keynum, const char *binding, qboolean trusted );
+void Key_SetBinding( int keynum, const char *binding, qboolean trusted, qboolean fromVM );
 #else
 void Key_SetBinding( int keynum, const char *binding );
 #endif

@@ -902,7 +902,7 @@ void FS_ExecuteConfigFile( const char *name, fs_config_type_t config_type, cbufE
 		if ( !quiet )
 			Com_Printf( "execing global %s\n", name );
 		if ( FS_GeneratePathSourcedir( 0, name, NULL, FS_ALLOW_SPECIAL_CFG, 0, path, sizeof( path ) ) ) {
-			data = FS_ReadData( NULL, path, NULL, "FS_ExecuteConfigFile" );
+			data = FS_ReadData( NULL, path, &size, "FS_ExecuteConfigFile" );
 		}
 		if ( !data ) {
 			Com_Printf( "loading %s failed\n", name );
@@ -1200,6 +1200,11 @@ void FS_SanitizeModDir( const char *source, char *target ) {
 	if ( !Q_stricmp( target, "writetest.dat" ) ) {
 		*target = '\0';
 	}
+#ifdef CMOD_SETTINGS
+	if ( !Q_stricmp( target, "cmod.cfg" ) ) {
+		*target = '\0';
+	}
+#endif
 }
 
 /*

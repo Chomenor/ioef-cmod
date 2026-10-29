@@ -349,7 +349,11 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		FS_PureServerSetLoadedPaks("", "");
 		com_errorEntered = qfalse;
 #ifdef CMOD_ERROR_POPUP_FIXES
+#ifdef CMOD_COMMAND_INTERPRETER
+		Cbuf_AddTextByMode(va("err_dialog \"%s\"\n", com_errorMessage), CMD_PROTECTED);
+#else
 		Cbuf_AddText(va("err_dialog \"%s\"\n", com_errorMessage));
+#endif
 #endif
 #ifdef CMOD_LONGJMP_FIX
 		Q_longjmp (abortframe, 1);

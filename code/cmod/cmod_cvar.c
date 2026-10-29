@@ -90,7 +90,7 @@ typedef struct localCvar_s {
 	// Hashtable
 	struct localCvar_s *hash_next;
 	struct localCvar_s *hash_prev;
-	int hash;
+	unsigned int hash;
 } localCvar_t;
 
 typedef struct {
@@ -121,16 +121,16 @@ Misc support functions
 Cvar_HashValue
 =================
 */
-static int Cvar_HashValue( const char *name ) {
-	int i;
-	int hash;
-	char letter;
+static unsigned int Cvar_HashValue( const char *name ) {
+	unsigned int i;
+	unsigned int hash;
+	unsigned int letter;
 
 	hash = 0;
 	i = 0;
 	while ( name[i] != '\0' ) {
-		letter = tolower( name[i] );
-		hash += (long)( letter ) * ( i + 119 );
+		letter = tolower( (unsigned char)name[i] );
+		hash += letter * ( i + 119 );
 		i++;
 	}
 
@@ -172,9 +172,9 @@ Memory management
 ###############################################################################################
 */
 
-static const char cvar_mstatic[][2] = { {0,0}, {'0',0}, {'1',0} };
+char *cvar_mstatic[3] = { "", "0", "1" };
 
-#define IS_STATIC_STRING( str ) ( !str || ( (char *)( str ) >= *cvar_mstatic && (char *)( str ) < *cvar_mstatic + sizeof( cvar_mstatic ) ) )
+#define IS_STATIC_STRING( str ) ( !str || str == cvar_mstatic[0] || str == cvar_mstatic[1] || str == cvar_mstatic[2] )
 
 /*
 =================
@@ -219,11 +219,11 @@ static void Cvar_Copystring( const char *source, char **target ) {
 	if ( source )	{
 		int len = strlen( source );
 		if ( len == 0 ) {
-			*target = (char *)cvar_mstatic[0];
+			*target = cvar_mstatic[0];
 		} else if ( len == 1 && source[0] == '0' ) {
-			*target = (char *)cvar_mstatic[1];
+			*target = cvar_mstatic[1];
 		} else if ( len == 1 && source[0] == '1' ) {
-			*target = (char *)cvar_mstatic[2];
+			*target = cvar_mstatic[2];
 		} else {
 			*target = Cvar_Malloc( len + 1 );
 			memcpy( *target, source, len );
@@ -303,25 +303,33 @@ Cvar_CheckRange2
 static void Cvar_CheckRange2( localCvar_t *cvar, char **string, qboolean warn ) {
 	qboolean changed = qfalse;
 	float valuef;
+	int valuei;
 
 	if ( !cvar->validate ) {
 		return;
 	}
 	valuef = atof( *string );
+	valuei = atoi( *string );
 
-	if ( !Q_isanumber( *string ) ) {
+	if ( !Q_isanumber( *string ) || Q_isnan( valuef ) ) {
 		if ( warn ) {
 			Com_Printf( "WARNING: cvar '%s' must be numeric\n", cvar->s.name );
 		}
-		if ( cvar->s.resetString ) {
+		if ( cvar->s.resetString && Q_isanumber( cvar->s.resetString ) ) {
 			valuef = atof( cvar->s.resetString );
+			valuei = atoi( cvar->s.resetString );
+			if ( Q_isnan( valuef ) ) {
+				valuef = 0.0f;
+				valuei = 0;
+			}
 		} else {
 			valuef = 0.0f;
+			valuei = 0;
 		}
 		changed = qtrue;
 	}
 
-	if ( valuef < cvar->min ) {
+	if ( valuef < cvar->min || ( cvar->integral && valuei < (int)cvar->min ) ) {
 		if ( warn ) {
 			Com_Printf( "WARNING: cvar '%s' out of range (min %f)\n", cvar->s.name, cvar->min );
 		}
@@ -329,7 +337,7 @@ static void Cvar_CheckRange2( localCvar_t *cvar, char **string, qboolean warn ) 
 		changed = qtrue;
 	}
 
-	if ( valuef > cvar->max ) {
+	if ( valuef > cvar->max || ( cvar->integral && valuei > (int)cvar->max ) ) {
 		if ( warn ) {
 			Com_Printf( "WARNING: cvar '%s' out of range (max %f)\n", cvar->s.name, cvar->max );
 		}
@@ -375,9 +383,22 @@ May return NULL even if create is specified, if name fails to validate.
 =================
 */
 static localCvar_t *Cvar_FindOrCreate( const char *name, qboolean create ) {
-	int hash = Cvar_HashValue( name );
-	int hash_index = hash % CVAR_TABLE_SIZE;
-	localCvar_t *current = cvar_table[hash_index];
+	unsigned int hash;
+	unsigned int hash_index;
+	localCvar_t *current;
+
+	if ( !name ) {
+		static qboolean warned;
+		if ( !warned ) {
+			Com_Printf( "null cvar name string (future warnings will be skipped)\n" );
+			warned = qtrue;
+		}
+		return NULL;
+	}
+
+	hash = Cvar_HashValue( name );
+	hash_index = hash % CVAR_TABLE_SIZE;
+	current = cvar_table[hash_index];
 	while ( current ) {
 		if ( current->hash == hash && !Q_stricmp( name, current->s.name ) ) {
 			return current;
@@ -865,6 +886,13 @@ static void Cvar_GameCvarSet( const char *name, const char *value, int flags, in
 		return;
 	}
 
+	// If a temporary override or untrusted current value exists, keep new value temporary and
+	// untrusted as well, to prevent abuse of trusted UI cvar copying behavior.
+	if ( cvar->temporary_value.string ||
+			( cvar->current_value.string && !( cvar->current_value.flags & CVAR_TRUSTED_CREATED ) ) ) {
+		valueFlags &= ~CVAR_TRUSTED_CREATED;
+	}
+
 	if ( !( valueFlags & CVAR_TRUSTED_CREATED ) || !( cvar->engine_flags & CVAR_VM_PERSISTENT ) ) {
 		Cvar_SetValueObject( &cvar->temporary_value, value, valueFlags );
 		cvar->temporary_flags |= flags;
@@ -1079,6 +1107,16 @@ void Cvar_Reset( const char *var_name ) {
 	}
 	if ( !trusted && !Cvar_RestrictedModifiable( cvar ) ) {
 		return;
+	}
+	// Special case for UI Controls_InitCvars reset/restore sequence.
+	// If a temporary override or untrusted current value exists, or reset would
+	// expose an untrusted default, store the reset value temporarily, preserving main_value.
+	// The check in Cvar_GameCvarSet will keep subsequent UI restore operations temporary as well.
+	if ( cvar->temporary_value.string ||
+			( cvar->current_value.string && !( cvar->current_value.flags & CVAR_TRUSTED_CREATED ) ) ||
+			( cvar->game_default.string && !( cvar->game_default.flags & CVAR_TRUSTED_CREATED ) &&
+			( !cvar->engine_default.string || ( cvar->engine_flags & CVAR_DEFER_TO_VM_DEFAULT ) ) ) ) {
+		trusted = qfalse;
 	}
 	if ( !trusted || !( cvar->engine_flags & CVAR_VM_PERSISTENT ) ) {
 		Cvar_CopyDefaultToValueObject( cvar, &cvar->temporary_value );
@@ -1320,6 +1358,7 @@ VM Access
 */
 
 #define CVAR_MAX_VM_HANDLES 2048
+#define CVAR_VM_HANDLE_REJECTED -1
 static localCvar_t *cvar_handles[CVAR_MAX_VM_HANDLES];
 static int cvar_handle_count = 0;
 
@@ -1332,6 +1371,9 @@ void Cvar_Update( vmCvar_t *vmCvar ) {
 	int index = vmCvar->handle - 1;
 	localCvar_t *cvar;
 
+	if ( vmCvar->handle == CVAR_VM_HANDLE_REJECTED ) {
+		return;
+	}
 	if ( index < 0 || index >= cvar_handle_count ) {
 		Com_Error( ERR_DROP, "Cvar_Update on invalid handle" );
 	}
@@ -1359,7 +1401,13 @@ Cvar_Register
 void Cvar_Register( vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags, qboolean trusted ) {
 	int trustedFlag = trusted ? CVAR_TRUSTED_CREATED : 0;
 	localCvar_t *cvar = Cvar_GameCvarRegister( varName, defaultValue, flags, CVAR_VM_CREATED | trustedFlag );
-	if ( !cvar || !vmCvar ) {
+	if ( !vmCvar ) {
+		return;
+	}
+	if ( !cvar ) {
+		// Leave an empty result that subsequent updates can safely ignore.
+		Com_Memset( vmCvar, 0, sizeof( *vmCvar ) );
+		vmCvar->handle = CVAR_VM_HANDLE_REJECTED;
 		return;
 	}
 
@@ -1829,6 +1877,9 @@ typedef struct {
 // Allows untrusted VMs to modify the setting temporarily, and trusted VMs to modify it persistently
 #define FLAGS_PERSISTENT ( CVAR_OVERRIDE_ENGINE_DEFAULT | CVAR_RESTRICTED_MODIFIABLE | CVAR_VM_PERSISTENT | CVAR_ARCHIVE )
 
+// Allow trusted VMs to modify the setting persistently, but block untrusted VMs from modifying it at all
+#define FLAGS_PERSISTENT_RESTRICTED ( CVAR_OVERRIDE_ENGINE_DEFAULT | CVAR_VM_PERSISTENT | CVAR_ARCHIVE )
+
 // Allows untrusted and trusted VMs to modify the setting temporarily
 #define FLAGS_NORMAL ( CVAR_OVERRIDE_ENGINE_DEFAULT | CVAR_RESTRICTED_MODIFIABLE )
 
@@ -1855,12 +1906,14 @@ const special_cvar_t specials[] = {
 	{ "dedicated", "1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_NOARCHIVE },
 #else
 	{ "dedicated", "0", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_NOARCHIVE },
+	{ "g_allowVote", "0", CVARTYPE_NONE, FLAGS_RESTRICTED },
 #endif
 	{ "fs_game", "", CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "fs_download_mode", "1", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "sv_killserver", "", CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "cmod_crosshair_enable", "1", CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "cl_serverStatusResendTime", "500", CVARTYPE_NONE, FLAGS_RESTRICTED },
+	{ "cl_currentServerAddress", "", CVARTYPE_NONE, FLAGS_RESTRICTED },
 	{ "cg_aspectCorrectGunPos", "-1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_ARCHIVE },
 	{ "ui_aspectCorrect", "-1", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_ARCHIVE },
 	{ "cg_gunX", NULL, CVARTYPE_NONE, FLAGS_NORMAL | CVAR_IGNORE_VM_CHEAT_PROTECT },
@@ -1869,7 +1922,6 @@ const special_cvar_t specials[] = {
 	{ "cg_viewsize", NULL, CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "fraglimit", NULL, CVARTYPE_NONE, FLAGS_NORMAL | CVAR_DEFER_TO_VM_DEFAULT },
 	{ "g_gametype", NULL, CVARTYPE_NONE, FLAGS_NORMAL | CVAR_DEFER_TO_VM_DEFAULT },
-	{ "rconPassword", "", CVARTYPE_NONE, FLAGS_NORMAL | CVAR_PRIVATE | CVAR_IMPORT_ALLOWED },
 	{ "rconPassword", "", CVARTYPE_NONE, CVAR_PRIVATE | CVAR_IMPORT_ALLOWED },
 	{ "fs_homepath", NULL, CVARTYPE_NONE, CVAR_PRIVATE },
 	{ "fs_basepath", NULL, CVARTYPE_NONE, CVAR_PRIVATE },
@@ -1879,10 +1931,10 @@ const special_cvar_t specials[] = {
 	// Server settings
 	{ "nextmap", NULL, CVARTYPE_NONE, FLAGS_NORMAL },
 	{ "sv_pure", "0", CVARTYPE_SERVER, FLAGS_NORMAL | CVAR_SERVERINFO },
-	{ "sv_minRate", "25000", CVARTYPE_SERVER, FLAGS_NORMAL },
-	{ "sv_fps", "30", CVARTYPE_SERVER, FLAGS_NORMAL },
+	{ "sv_minRate", "25000", CVARTYPE_SERVER, FLAGS_RESTRICTED },
+	{ "sv_fps", "30", CVARTYPE_SERVER, FLAGS_RESTRICTED },
 	{ "sv_voip", "0", CVARTYPE_SERVER, FLAGS_NORMAL },
-	{ "sv_maxclients", "32", CVARTYPE_SERVER, FLAGS_NORMAL },
+	{ "sv_maxclients", "32", CVARTYPE_SERVER, FLAGS_RESTRICTED },
 	{ "g_teamForceBalance", "0", CVARTYPE_SERVER, FLAGS_NORMAL },
 	{ "g_holoIntro", "1", CVARTYPE_SERVER, FLAGS_PERSISTENT },
 	{ "sv_hostname", "noname", CVARTYPE_SERVER, FLAGS_PERSISTENT },
@@ -1892,7 +1944,7 @@ const special_cvar_t specials[] = {
 	// Preferences
 	{ "name", "RedShirt", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT | CVAR_IMPORT_ALLOWED },
 	{ "model", "munro/red", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT | CVAR_IMPORT_ALLOWED },
-	{ "cl_allowDownload", "1", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT },
+	{ "cl_allowDownload", "1", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT_RESTRICTED },
 	{ "sensitivity", "5", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT | CVAR_IMPORT_ALLOWED | CVAR_NUMERIC },
 	{ "in_mouse_warping", "0", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT },
 	{ "g_language", "ENGLISH", CVARTYPE_PREFERENCES, FLAGS_PERSISTENT | CVAR_IMPORT_ALLOWED },
@@ -1927,9 +1979,9 @@ const special_cvar_t specials[] = {
 	{ "snaps", "100", CVARTYPE_NETWORK, FLAGS_NORMAL },
 	{ "cl_maxPackets", "125", CVARTYPE_NETWORK, FLAGS_NORMAL },
 
-// Graphics settings
+	// Graphics settings
 #ifdef USE_RENDERER_DLOPEN
-	{ "cl_renderer", "opengl1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
+	{ "cl_renderer", "opengl1", CVARTYPE_GRAPHICS, CVAR_OVERRIDE_ENGINE_DEFAULT | CVAR_VM_PERSISTENT | CVAR_ARCHIVE },
 #endif
 	{ "com_maxfps", "125", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
 	{ "r_fullscreen", "1", CVARTYPE_GRAPHICS, FLAGS_PERSISTENT },
@@ -2046,7 +2098,7 @@ static void Cvar_RegisterSpecialCvars( void ) {
 
 	// Favorite server list
 	for ( i = 0; i < 16; ++i ) {
-		localCvar_t *cvar = Cvar_EngineRegister( va( "server%i", i + 1 ), "", FLAGS_PERSISTENT );
+		localCvar_t *cvar = Cvar_EngineRegister( va( "server%i", i + 1 ), "", FLAGS_PERSISTENT_RESTRICTED );
 		if ( cvar ) {
 			cvar->category = CVARTYPE_MENU;
 		}
@@ -2065,13 +2117,27 @@ Config File Writing
 =================
 Cvar_StringRequiresQuoting
 
-Returns qtrue if string needs quotes to avoid config file parsing issues.
+Returns qtrue if string may need quotes to avoid config file parsing issues.
+
+Note that quoting does not make double quotes, newlines, or carriage returns safe; the
+caller must reject strings containing those characters.
 =================
 */
 static qboolean Cvar_StringRequiresQuoting( const char *string ) {
-	if ( !*string || strchr( string, ' ' ) || strchr( string, ';' ) || Q_stristr( string, "//" ) || Q_stristr( string, "/*" ) ) {
+	const unsigned char *s = (const unsigned char *)string;
+
+	if ( !*s ) {
 		return qtrue;
 	}
+
+	for ( ; *s; ++s ) {
+		if ( ( *s >= 'a' && *s <= 'z' ) || ( *s >= 'A' && *s <= 'Z' ) || ( *s >= '0' && *s <= '9' ) ||
+				*s == '_' || *s == '-' || *s == '.' ) {
+			continue;
+		}
+		return qtrue;
+	}
+
 	return qfalse;
 }
 
@@ -2126,7 +2192,9 @@ static void Cvar_WriteCvarsByCategory( cvar_stream_t *stream, int category, char
 
 		// Don't write if value is excessively long or contains characters that could
 		// cause problems parsing the config file
-		if ( strlen( cvar->s.name ) > 256 || strlen( cvar->main_value.string ) > 512 || strchr( cvar->main_value.string, '\n' ) ||
+		if ( strlen( cvar->s.name ) > 256 || strchr( cvar->s.name, '\n' ) ||
+				strchr( cvar->s.name, '\r' ) || strchr( cvar->s.name, '\"' ) ||
+				strlen( cvar->main_value.string ) > 512 || strchr( cvar->main_value.string, '\n' ) ||
 				strchr( cvar->main_value.string, '\r' ) || strchr( cvar->main_value.string, '\"' ) ) {
 			Com_Printf( "WARNING: Skipping write for cvar '%s' due to invalid string\n", cvar->s.name );
 			continue;
@@ -2208,6 +2276,10 @@ void Cvar_Init( void ) {
 	sv_cheats = Cvar_Get( "sv_cheats", "1", CVAR_ROM | CVAR_SYSTEMINFO );
 
 	Cvar_RegisterSpecialCvars();
+
+	// Use validation instead of runtime clamps that would persist temporary values.
+	Cvar_CheckRange( Cvar_Get( "r_gamma", NULL, 0 ), 0.5f, 3.0f, qfalse );
+	Cvar_CheckRange( Cvar_Get( "cl_maxpackets", NULL, 0 ), 15, 125, qtrue );
 
 	for ( i = 0; i < ARRAY_LEN( set_aliases ); ++i ) {
 		Cmd_AddProtectableCommand( set_aliases[i], Cvar_Set_f );

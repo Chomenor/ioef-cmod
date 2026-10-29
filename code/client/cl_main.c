@@ -1252,8 +1252,17 @@ void CL_NextDemo( void ) {
 		return;
 	}
 
+#ifdef CMOD_COMMAND_INTERPRETER
+#ifdef CMOD_CVAR_HANDLING
+	Cbuf_AddTextByMode (v, Cvar_Flags("nextdemo") & CVAR_TRUSTED_CREATED ? CMD_NORMAL : CMD_PROTECTED);
+#else
+	Cbuf_AddTextByMode (v, CMD_PROTECTED);
+#endif
+	Cvar_Set ("nextdemo","");
+#else
 	Cvar_Set ("nextdemo","");
 	Cbuf_AddText (v);
+#endif
 	Cbuf_AddText ("\n");
 	Cbuf_Execute();
 }
@@ -1781,7 +1790,11 @@ void CL_Reconnect_f( void ) {
 	if ( !strlen( cl_reconnectArgs ) )
 		return;
 	Cvar_Set("ui_singlePlayerActive", "0");
+#ifdef CMOD_COMMAND_INTERPRETER
+	Cbuf_AddTextByMode( va("connect %s\n", cl_reconnectArgs ), CMD_PROTECTED );
+#else
 	Cbuf_AddText( va("connect %s\n", cl_reconnectArgs ) );
+#endif
 }
 
 /*
@@ -1876,7 +1889,11 @@ void CL_Connect_f( void ) {
 	clc.connectPacketCount = 0;
 
 	// server connection string
+#ifdef CMOD_CVAR_HANDLING
+	Cvar_SetSafe( "cl_currentServerAddress", server, qfalse );
+#else
 	Cvar_Set( "cl_currentServerAddress", server );
+#endif
 }
 
 #define MAX_RCON_MESSAGE 1024
@@ -4719,7 +4736,11 @@ void CL_GlobalServers_f( void ) {
 			numAddress++;
 
 			Com_sprintf(command, sizeof(command), "globalservers %d %s %s\n", i, Cmd_Argv(2), Cmd_ArgsFrom(3));
+#ifdef CMOD_COMMAND_INTERPRETER
+			Cbuf_AddTextByMode(command, CMD_PROTECTED);
+#else
 			Cbuf_AddText(command);
+#endif
 		}
 
 		if ( !numAddress ) {

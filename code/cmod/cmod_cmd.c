@@ -133,16 +133,16 @@ static void Cmd_TokenizeString2( const char *text_in, qboolean ignoreQuotes ) {
 
 	// Com_DPrintf("Cmd_TokenizeString: %s\n", text_in);
 
-	// Rough sanity check...
-	if(strlen(text_in) > sizeof(cmd_tokenized) - 10) text_in = "";
-
 	// clear previous args
 	cmd_argc = 0;
 
 	if ( !text_in ) {
 		return;
 	}
-	
+
+	// Rough sanity check...
+	if(strlen(text_in) > sizeof(cmd_tokenized) - 10) text_in = "";
+
 	Q_strncpyz( cmd_cmd, text_in, sizeof(cmd_cmd) );
 
 	text = text_in;
@@ -272,8 +272,9 @@ static cmd_function_t *Cmd_FindOrCreateCommand(const char *cmd_name) {
 
 void Cmd_AddCommand( const char *cmd_name, xcommand_t function ) {
 	cmd_function_t *cmd = Cmd_FindOrCreateCommand(cmd_name);
-	if(cmd->function && function) {
-		Com_Printf( "Cmd_AddCommandCommon: %s already defined\n", cmd_name );
+	if(cmd->function) {
+		if(function) {
+			Com_Printf( "Cmd_AddCommandCommon: %s already defined\n", cmd_name ); }
 		return; }
 	cmd->function = function; }
 
@@ -460,12 +461,28 @@ void cbuf_initialize(cbuf_t *cbuf) {
 	memset(cbuf, 0, sizeof(*cbuf)); }
 
 cbuf_block_t *cbuf_build_block(const char *text, qboolean add_newline, cmd_mode_t mode) {
-	cbuf_block_t *block = Z_Malloc(sizeof(cbuf_block_t));
-	int size = strlen(text);
-	block->size = size + (add_newline ? 1 : 0);
+	cbuf_block_t *block;
+	size_t size;
+	size_t total;
+
+	if(!text) {
+		Com_Error(ERR_DROP, "cbuf_build_block: NULL text");
+	}
+
+	size = strlen(text);
+	total = size + (add_newline ? 1 : 0);
+	if(total > 16 * 1024 * 1024 || total < size) {
+		Com_Error(ERR_DROP, "cbuf_build_block: command text too long");
+	}
+
+	block = Z_Malloc(sizeof(cbuf_block_t));
+	block->size = (int)total;
 	block->data = Z_Malloc(block->size);
 	block->position = 0;
+#ifndef DEDICATED
+	// Ignore protections and modes on dedicated server builds
 	block->mode = mode;
+#endif
 	memcpy(block->data, text, size);
 	if(add_newline) block->data[size] = '\n';
 	return block; }
@@ -622,6 +639,33 @@ qboolean Cbuf_IsEmpty(void) {
 	return main_cbuf.first ? qfalse : qtrue; }
 #endif
 
+// Returns true for known VM commands that may need to be run in non-protected mode.
+// Other commands should stay in protected mode, even for trusted VMs, because
+// there are various ways trusted VMs can interpolate untrusted data into commands.
+qboolean Cbuf_IsSpecialVMCommand( const char *cmd ) {
+#ifdef DEDICATED
+	return qtrue;
+#else
+	int i;
+	const char *trustedList[] = {
+		"exec default.cfg\n",
+		"cvar_restart\n",
+		"in_restart\n",
+		"screenshot\n",
+		"screenshotJPEG\n",
+		"wait; wait; wait; wait; screenshot\n",
+		"wait; wait; wait; wait; screenshotJPEG\n",
+		"vstr nextmap\n",
+	};
+	for ( i = 0; i < ARRAY_LEN( trustedList ); ++i ) {
+		if ( !strcmp( trustedList[i], cmd ) ) {
+			return qtrue;
+		}
+	}
+	return qfalse;
+#endif
+}
+
 /* ******************************************************************************** */
 // Misc Commands
 /* ******************************************************************************** */
@@ -695,10 +739,11 @@ static const char *base_protectable_commands[] = {
 	"cmd",
 	"vid_restart",
 	"snd_restart",
+	"play",
+	"music",
 	"connect",
 	"disconnect",
 	"kick",
-	"rcon",
 	"localservers",
 	"globalservers",
 	"ping",
@@ -710,7 +755,7 @@ static const char *base_protectable_commands[] = {
 	"devmap",
 	"spmap",
 	"spdevmap",
-	"killserver"
+	"killserver",
 	"centerview",
 	"+moveup",
 	"-moveup",

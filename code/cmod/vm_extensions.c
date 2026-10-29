@@ -141,12 +141,6 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 
 			// Indicates that the UI can use more modern settings for the "video options" templates in the video data menu.
 			{ "ui_modern_video_templates", "1" },
-
-#ifdef USE_RENDERER_DLOPEN
-			// Indicate support for renderers which can be selected via "set cl_renderer opengl1" and "set cl_renderer opengl2".
-			{ "ui_support_cl_renderer_opengl1", "1" },
-			{ "ui_support_cl_renderer_opengl2", "1" },
-#endif
 		};
 
 		for ( i = 0; i < ARRAY_LEN( keys ); ++i ) {
@@ -156,6 +150,15 @@ static qboolean VMExt_CheckGetString( const char *command, char *buffer, unsigne
 			}
 		}
 	}
+
+#ifdef USE_RENDERER_DLOPEN
+	// Only trusted VM can set cl_renderer, so only display UI renderer option when actually supported
+	if ( ( !Q_stricmp( command, "ui_support_cl_renderer_opengl1" ) ||
+			!Q_stricmp( command, "ui_support_cl_renderer_opengl2" ) ) && VMPermissions_CheckTrusted( vm_type ) ) {
+		Q_strncpyz( buffer, "1", size );
+		return qtrue;
+	}
+#endif
 
 	if ( !Q_stricmp( command, "ui_using_global_s_volume" ) ) {
 		// Indicate whether s_volume scales everything including music, and that the UI should label it as something like

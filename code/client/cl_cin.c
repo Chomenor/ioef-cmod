@@ -1290,7 +1290,11 @@ static void RoQShutdown( void ) {
 		// the time it was referenced
 		s = Cvar_VariableString( "nextmap" );
 		if ( s[0] ) {
+#ifdef CMOD_COMMAND_INTERPRETER
+			Cbuf_ExecuteTextByMode( EXEC_APPEND, va("%s\n", s), CMD_PROTECTED );
+#else
 			Cbuf_ExecuteText( EXEC_APPEND, va("%s\n", s) );
+#endif
 			Cvar_Set( "nextmap", "" );
 		}
 		CL_handle = -1;

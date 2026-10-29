@@ -933,7 +933,7 @@ Key_SetBinding
 ===================
 */
 #ifdef CMOD_BIND_PROTECTION
-void Key_SetBinding( int keynum, const char *binding, qboolean trusted ) {
+void Key_SetBinding( int keynum, const char *binding, qboolean trusted, qboolean fromVM ) {
 #else
 void Key_SetBinding( int keynum, const char *binding ) {
 #endif
@@ -942,6 +942,12 @@ void Key_SetBinding( int keynum, const char *binding ) {
 	}
 
 #ifdef CMOD_BIND_PROTECTION
+	// keep VM writes temporary when a restricted override exists, even for trusted
+	// VMs, to prevent abuse of trusted UI bind copying behavior
+	if ( fromVM && keys[ keynum ].restricted_binding ) {
+		trusted = qfalse;
+	}
+
 	// free old restricted binding
 	if ( keys[ keynum ].restricted_binding ) {
 		Z_Free( keys[ keynum ].restricted_binding );
@@ -1038,7 +1044,7 @@ void Key_Unbind_f (void)
 	}
 
 #ifdef CMOD_BIND_PROTECTION
-	Key_SetBinding (b, "", ( cmdMode & CMD_PROTECTED ) ? qfalse : qtrue);
+	Key_SetBinding (b, "", ( cmdMode & CMD_PROTECTED ) ? qfalse : qtrue, qfalse);
 #else
 	Key_SetBinding (b, "");
 #endif
@@ -1056,7 +1062,7 @@ void Key_Unbindall_f (void)
 	for (i=0 ; i < MAX_KEYS; i++)
 		if (keys[i].binding)
 #ifdef CMOD_BIND_PROTECTION
-			Key_SetBinding (i, "", qtrue);
+			Key_SetBinding (i, "", qtrue, qfalse);
 #else
 			Key_SetBinding (i, "");
 #endif
@@ -1120,7 +1126,7 @@ void Key_Bind_f (void)
 #endif
 
 #ifdef CMOD_BIND_PROTECTION
-	Key_SetBinding (b, cmd, ( cmdMode & CMD_PROTECTED ) ? qfalse : qtrue);
+	Key_SetBinding (b, cmd, ( cmdMode & CMD_PROTECTED ) ? qfalse : qtrue, qfalse);
 #else
 	Key_SetBinding (b, cmd);
 #endif
@@ -1819,7 +1825,7 @@ void Key_LoadDefaultBinds( qboolean trusted ) {
 
 		keys[keynum].default_binding = default_binds[i].binding;
 #ifdef CMOD_BIND_PROTECTION
-		Key_SetBinding(keynum, keys[keynum].default_binding, trusted);
+		Key_SetBinding(keynum, keys[keynum].default_binding, trusted, qfalse);
 #else
 		Key_SetBinding(keynum, keys[keynum].default_binding);
 #endif

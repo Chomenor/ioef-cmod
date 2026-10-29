@@ -842,7 +842,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		}
 #endif
 #ifdef CMOD_COMMAND_INTERPRETER
-		Cbuf_ExecuteTextByMode( args[1], VMA(2), VMPermissions_CheckTrusted( VM_UI ) ? 0 : CMD_PROTECTED );
+		Cbuf_ExecuteTextByMode( args[1], VMA(2),
+			Cbuf_IsSpecialVMCommand( VMA(2) ) && VMPermissions_CheckTrusted( VM_UI ) ?
+			CMD_NORMAL : CMD_PROTECTED );
 #else
 		Cbuf_ExecuteText( args[1], VMA(2) );
 #endif
@@ -966,7 +968,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 
 	case UI_KEY_SETBINDING:
 #ifdef CMOD_BIND_PROTECTION
-		Key_SetBinding( args[1], VMA(2), VMPermissions_CheckTrusted( VM_UI ) );
+		Key_SetBinding( args[1], VMA(2), VMPermissions_CheckTrusted( VM_UI ), qtrue );
 #else
 		Key_SetBinding( args[1], VMA(2) );
 #endif

@@ -737,12 +737,16 @@ qboolean CL_ReadyToSendPacket( void ) {
 		return qtrue;
 	}
 
+#ifdef CMOD_CVAR_HANDLING
+	// range check handled in cvar system instead
+#else
 	// check for exceeding cl_maxpackets
 	if ( cl_maxpackets->integer < 15 ) {
 		Cvar_Set( "cl_maxpackets", "15" );
 	} else if ( cl_maxpackets->integer > 125 ) {
 		Cvar_Set( "cl_maxpackets", "125" );
 	}
+#endif
 	oldPacketNum = (clc.netchan.outgoingSequence - 1) & PACKET_MASK;
 	delta = cls.realtime -  cl.outPackets[ oldPacketNum ].p_realtime;
 	if ( delta < 1000 / cl_maxpackets->integer ) {

@@ -3152,11 +3152,15 @@ void R_SetColorMappings( void ) {
 		ri.Cvar_Set( "r_intensity", "1" );
 	}
 
+#ifdef CMOD_CVAR_HANDLING
+	// range check handled in cvar system instead
+#else
 	if ( r_gamma->value < 0.5f ) {
 		ri.Cvar_Set( "r_gamma", "0.5" );
 	} else if ( r_gamma->value > 3.0f ) {
 		ri.Cvar_Set( "r_gamma", "3.0" );
 	}
+#endif
 
 	g = r_gamma->value;
 
