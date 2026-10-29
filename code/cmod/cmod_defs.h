@@ -281,19 +281,29 @@
 /* ******************************************************************************** */
 
 // [FEATURE] Server-side game recording and admin spectator support
+#if defined(DEDICATED)
 #define CMOD_RECORD
+#endif
 
 // [FEATURE] Allow scripts to override map command behavior via "sv_mapscript" cvar
+#if defined(DEDICATED)
 #define CMOD_MAP_SCRIPT
+#endif
 
 // [FEATURE] Additional console commands to enhance server script capabilities
+#if defined(DEDICATED)
 #define CMOD_SERVER_CMD_TOOLS
+#endif
 
 // [FEATURE] Console command event trigger support (requires CMOD_SERVER_CMD_TOOLS)
+#if defined(DEDICATED)
 #define CMOD_SERVER_CMD_TRIGGERS
+#endif
 
 // [FEATURE] Support for map index system
+#if defined(DEDICATED)
 #define CMOD_MAPTABLE
+#endif
 
 // [FEATURE] Support minimium snaps value. This prevents older clients with low snaps
 // defaults from having impaired connections on servers with higher sv_fps settings.
@@ -301,7 +311,9 @@
 
 // [FEATURE] Support cvars to specify custom server bsp file, server aas file,
 // and server entity file (replaces the normal entities from the bsp)
+#if defined(DEDICATED)
 #define CMOD_MAP_SOURCE_OVERRIDE
+#endif
 
 // [FEATURE] Support cvars to override client map name and mod directory
 // Requires CMOD_COMMON_SERVER_INFOSTRING_HOOKS
