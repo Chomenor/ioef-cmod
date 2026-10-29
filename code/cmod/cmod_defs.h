@@ -93,6 +93,22 @@
 #define CMOD_VM_DISABLE_JTRG
 #endif
 
+// [SECURITY] Disable pvr images to reduce attack surface. They appear to be
+// unused on EF.
+#define CMOD_DISABLE_PVR
+
+// [SECURITY] Disable botlib .rcd routing cache files on client builds to reduce
+// attack surface. This should not normally be used on client builds.
+#if !defined( DEDICATED )
+#define CMOD_DISABLE_RCD
+#endif
+
+// [SECURITY] Disable unused botlib aas optimization on client builds to reduce attack
+// surface. Normally disabled by cvar anyway.
+#if !defined( DEDICATED )
+#define CMOD_DISABLE_AAS_OPTIMIZE
+#endif
+
 /* ******************************************************************************** */
 // Graphics
 /* ******************************************************************************** */

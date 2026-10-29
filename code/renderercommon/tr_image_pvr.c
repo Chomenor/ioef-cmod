@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+#ifndef CMOD_DISABLE_PVR
 #include "tr_common.h"
 
 typedef struct gbix {
@@ -386,3 +387,4 @@ void R_LoadPVR(const char *name, byte **pic, int *width, int *height)
 	if (height)
 		*height = pvr->height;
 }
+#endif

@@ -1053,6 +1053,9 @@ aas_routingcache_t *AAS_ReadCache(fileHandle_t fp)
 //===========================================================================
 int AAS_ReadRouteCache(void)
 {
+#ifdef CMOD_DISABLE_RCD
+	return qfalse;
+#else
 	int i, clusterareanum;//, size;
 	fileHandle_t fp;
 	char filename[MAX_QPATH];
@@ -1135,6 +1138,7 @@ int AAS_ReadRouteCache(void)
 	//
 	botimport.FS_FCloseFile(fp);
 	return qtrue;
+#endif
 } //end of the function AAS_ReadRouteCache
 //===========================================================================
 //

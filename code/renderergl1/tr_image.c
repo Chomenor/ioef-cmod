@@ -1004,7 +1004,9 @@ static imageExtToLoaderMap_t imageLoaders[ ] =
 	{ "png",  R_LoadPNG },
 	{ "pcx",  R_LoadPCX },
 	{ "bmp",  R_LoadBMP },
+#ifndef CMOD_DISABLE_PVR
 	{ "pvr",  R_LoadPVR }
+#endif
 };
 
 static int numImageLoaders = ARRAY_LEN( imageLoaders );
