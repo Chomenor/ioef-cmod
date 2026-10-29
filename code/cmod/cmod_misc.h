@@ -169,3 +169,10 @@ int SV_StatusScoresOverride_AdjustScore( int defaultScore, int clientNum );
 #ifdef CMOD_URI_REGISTER_COMMAND
 void Stef_UriCmd( void );
 #endif
+
+#ifdef CMOD_ASSET_CHECKS
+// Note: Non-NULL BSP data must include a trailing NUL at data[size], as supplied by FS_ReadData.
+qboolean AssetCheck_VerifyFileData( const char *qpath, const fsc_file_t *file, char *data, unsigned int size );
+qboolean AssetCheck_VerifyFile( const char *qpath, const fsc_file_t *file );
+void AssetCheck_RegisterCommands( void );
+#endif

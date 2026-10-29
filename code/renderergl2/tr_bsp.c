@@ -2887,6 +2887,15 @@ void R_LoadCubemaps(void)
 
 		Com_sprintf(filename, MAX_QPATH, "cubemaps/%s/%03d.dds", tr.world->baseName, i);
 
+#ifdef CMOD_ASSET_CHECKS
+		// Make sure filename truncation can't lead to verifier bypass
+		if ( Q_stricmp( COM_GetExtension( filename ), "dds" ) ) {
+			ri.Printf( PRINT_WARNING, "R_LoadCubemaps: Skipping '%s' due to missing 'dds' extension\n", filename );
+			continue;
+		}
+		if (!R_CubemapDDSIsSafe(filename))
+			continue;
+#endif
 		cubemap->image = R_FindImageFile(filename, IMGTYPE_COLORALPHA, flags);
 	}
 }
@@ -2994,6 +3003,12 @@ void RE_LoadWorldMap( const char *name ) {
 	tr.worldMapLoaded = qtrue;
 
 	// load it
+#ifdef CMOD_ASSET_CHECKS
+	// make sure extension matches what verifier expects
+	if ( Q_stricmp( COM_GetExtension( name ), "bsp" ) ) {
+		ri.Error( ERR_DROP, "RE_LoadWorldMap: %s does not have .bsp extension", name );
+	}
+#endif
     ri.FS_ReadFile( name, &buffer.v );
 	if ( !buffer.b ) {
 		ri.Error (ERR_DROP, "RE_LoadWorldMap: %s not found", name);

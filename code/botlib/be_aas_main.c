@@ -240,6 +240,12 @@ int AAS_LoadFiles(const char *mapname)
 	else
 #endif
 	Com_sprintf(aasfile, sizeof(aasfile), "maps/%s.aas", mapname);
+#ifdef CMOD_ASSET_CHECKS
+		// Make sure filename truncation can't lead to verifier bypass
+		if( Q_stricmp( COM_GetExtension( aasfile ), "aas" ) ) {
+			return BLERR_CANNOTOPENAASFILE;
+		}
+#endif
 	errnum = AAS_LoadAASFile(aasfile);
 	if (errnum != BLERR_NOERROR)
 		return errnum;

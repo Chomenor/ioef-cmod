@@ -99,6 +99,15 @@
 #define CMOD_MISC_SECURITY
 #endif
 
+// [SECURITY] Run a verification pre-pass on certain asset files before loading.
+// This is complementary to CMOD_MISC_SECURITY and is used for some checks to make
+// compatibility testing easier and/or reduce intrusive code changes, until more
+// permanent hardening measures can be implemented.
+// AI USE: Mostly AI generated (90%+).
+#if defined( ENABLE_AI_FEATURES ) && !defined( DEDICATED ) && !defined( __EMSCRIPTEN__ ) && defined( NEW_FILESYSTEM )
+#define CMOD_ASSET_CHECKS
+#endif
+
 // [SECURITY] Disable pvr images to reduce attack surface. They appear to be
 // unused on EF.
 #define CMOD_DISABLE_PVR

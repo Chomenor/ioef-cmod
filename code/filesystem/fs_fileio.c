@@ -2249,6 +2249,12 @@ static int FS_FOpenFile_ReadHandleOpen( const char *filename, fileHandle_t *hand
 		goto finish;
 	}
 
+#ifdef CMOD_ASSET_CHECKS
+	if ( handle_out && !AssetCheck_VerifyFile( filename, fscfile ) ) {
+		goto finish;
+	}
+#endif
+
 	// For most size-check cases we can just return the fsc filesize without trying to open the file
 	if ( !handle_out && !( allow_direct_handle && fscfile->sourcetype == FSC_SOURCETYPE_DIRECT ) ) {
 		size = (int)( fscfile->filesize );
@@ -2753,6 +2759,13 @@ long FS_ReadFile( const char *qpath, void **buffer ) {
 	if ( !*buffer ) {
 		return -1;
 	}
+#ifdef CMOD_ASSET_CHECKS
+	if ( !AssetCheck_VerifyFileData( qpath, file, *buffer, len ) ) {
+		FS_FreeData( *buffer );
+		*buffer = 0;
+		return -1;
+	}
+#endif
 	return (long)len;
 }
 

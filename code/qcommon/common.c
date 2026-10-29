@@ -2968,6 +2968,10 @@ void Com_Init( char *commandLine ) {
 	Cmd_AddCommand("uri", Stef_UriCmd);
 #endif
 
+#ifdef CMOD_ASSET_CHECKS
+	AssetCheck_RegisterCommands();
+#endif
+
 #ifdef CMOD_SETTINGS
 #ifndef DEDICATED
 	Key_LoadDefaultBinds( qtrue );

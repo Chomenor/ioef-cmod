@@ -28,6 +28,7 @@ find_package(Threads REQUIRED)
 list(APPEND CLIENT_LIBRARIES Threads::Threads)
 
 set(ELITEFORCE_COMMON_SOURCES
+    ${SOURCE_DIR}/cmod/cmod_asset_checks.c
     ${SOURCE_DIR}/cmod/cmod_cmd.c
     ${SOURCE_DIR}/cmod/cmod_cvar.c
     ${SOURCE_DIR}/cmod/cmod_logging.c

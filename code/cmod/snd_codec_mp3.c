@@ -344,6 +344,16 @@ long triangular_dither_noise(int nbits) {
 
 #endif // MP3_DITHERING
 
+#ifdef CMOD_ASSET_CHECKS
+void S_MP3_CodecResetDither( void )
+{
+#ifdef MP3_DITHERING
+	/* Keep diagnostic decodes reproducible when their PCM bytes are hashed. */
+	sgenrand(4357);
+#endif
+}
+#endif
+
 /************************ decoder functions ***************************/
 
 /*

@@ -392,6 +392,14 @@ qhandle_t RE_RegisterModel( const char *name ) {
 
 		Com_sprintf( altName, sizeof (altName), "%s.%s", localName, modelLoaders[ i ].ext );
 
+#ifdef CMOD_ASSET_CHECKS
+		// Make sure filename truncation can't lead to verifier bypass
+		if( Q_stricmp( COM_GetExtension( altName ), modelLoaders[i].ext ) ) {
+			Com_Printf( "RE_RegisterModel: Skipping '%s' due to missing '%s' extension\n", altName, modelLoaders[i].ext );
+			return 0;
+		}
+#endif
+
 		// Load
 		hModel = modelLoaders[ i ].ModelLoader( altName, mod );
 

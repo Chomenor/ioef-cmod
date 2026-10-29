@@ -659,6 +659,12 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
 	// load the file
 	//
 #ifndef BSPC
+#ifdef CMOD_ASSET_CHECKS
+	// make sure extension matches what verifier expects
+	if ( Q_stricmp( COM_GetExtension( name ), "bsp" ) ) {
+		Com_Error( ERR_DROP, "CM_LoadMap: %s does not have .bsp extension", name );
+	}
+#endif
 	length = FS_ReadFile( name, &buf.v );
 #else
 	length = LoadQuakeFile((quakefile_t *) name, &buf.v);
