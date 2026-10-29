@@ -44,11 +44,23 @@ typedef struct {
 	int			cluster;
 	int			area;
 
+#ifdef CMOD_NEW_MEMORY_ALLOC
+	// Inline models store offsets between separate hunk allocations.
+	// Preserve the full pointer difference to avoid truncation on 64-bit builds.
+	// Cross-allocation pointer arithmetic is technically undefined behavior
+	// but should work in practice in this context.
+	ptrdiff_t	firstLeafBrush;
+	int			numLeafBrushes;
+
+	ptrdiff_t	firstLeafSurface;
+	int			numLeafSurfaces;
+#else
 	int			firstLeafBrush;
 	int			numLeafBrushes;
 
 	int			firstLeafSurface;
 	int			numLeafSurfaces;
+#endif
 } cLeaf_t;
 
 typedef struct cmodel_s {

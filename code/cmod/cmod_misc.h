@@ -176,3 +176,7 @@ qboolean AssetCheck_VerifyFileData( const char *qpath, const fsc_file_t *file, c
 qboolean AssetCheck_VerifyFile( const char *qpath, const fsc_file_t *file );
 void AssetCheck_RegisterCommands( void );
 #endif
+
+#ifdef CMOD_NEW_MEMORY_ALLOC
+void *Hunk_AllocSensitive( int size, char *label, char *file, int line );
+#endif

@@ -2073,6 +2073,26 @@ void CL_Vid_Restart_f( void ) {
 
 	if(!FS_ConditionalRestart(clc.checksumFeed, qtrue))
 	{
+#ifdef CMOD_NEW_MEMORY_ALLOC
+		// shutdown the UI
+		CL_ShutdownUI();
+		// shutdown the CGame
+		CL_ShutdownCGame();
+		// shutdown the renderer and clear the renderer interface
+		CL_ShutdownRef();
+
+		// if not running a server clear the whole hunk
+		if(com_sv_running->integer)
+		{
+			// clear all the client data on the hunk
+			Hunk_ClearToMark();
+		}
+		else
+		{
+			// clear the whole hunk
+			Hunk_Clear();
+		}
+#else
 		// if not running a server clear the whole hunk
 		if(com_sv_running->integer)
 		{
@@ -2091,6 +2111,7 @@ void CL_Vid_Restart_f( void ) {
 		CL_ShutdownCGame();
 		// shutdown the renderer and clear the renderer interface
 		CL_ShutdownRef();
+#endif
 		// client is no longer pure until new checksums are sent
 		CL_ResetPureClientAtServer();
 #ifdef NEW_FILESYSTEM

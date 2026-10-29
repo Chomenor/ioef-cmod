@@ -108,6 +108,13 @@
 #define CMOD_ASSET_CHECKS
 #endif
 
+// [SECURITY] New memory allocator with improved security. Also gets rid of
+// com_hunkmegs and com_zonemegs limits.
+// AI USE: Mostly human authored with some AI assistance (20%).
+#if defined( ENABLE_AI_FEATURES )
+#define CMOD_NEW_MEMORY_ALLOC
+#endif
+
 // [SECURITY] Disable pvr images to reduce attack surface. They appear to be
 // unused on EF.
 #define CMOD_DISABLE_PVR

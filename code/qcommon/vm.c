@@ -35,6 +35,11 @@ and one exported function: Perform
 
 #include "vm_local.h"
 
+#ifdef CMOD_NEW_MEMORY_ALLOC
+#undef Hunk_Alloc
+#define Hunk_Alloc( size, preference ) Hunk_AllocSensitive( size, #size, __FILE__, __LINE__ )
+#endif
+
 
 vm_t	*currentVM = NULL;
 vm_t	*lastVM    = NULL;

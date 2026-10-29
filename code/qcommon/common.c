@@ -831,6 +831,41 @@ int Com_RealTime(qtime_t *qtime) {
 }
 
 
+#ifdef CMOD_NEW_MEMORY_ALLOC
+void Com_InitHunkMemory( void );
+void Hunk_ClearMem( void );
+void Com_InitSmallZoneMemory( void );
+void Com_InitZoneMemory( void );
+
+void CL_ShutdownCGame( void );
+void CL_ShutdownUI( void );
+void SV_ShutdownGameProgs( void );
+
+
+/*
+=================
+Hunk_Clear
+
+The server calls this before shutting down or loading a new map
+=================
+*/
+void Hunk_Clear( void ) {
+
+#ifndef DEDICATED
+	CL_ShutdownCGame();
+	CL_ShutdownUI();
+#endif
+	SV_ShutdownGameProgs();
+#ifndef DEDICATED
+	CIN_CloseAllVideos();
+#endif
+
+	Hunk_ClearMem();
+
+	Com_Printf( "Hunk_Clear: reset the hunk ok\n" );
+	VM_Clear();
+}
+#else
 /*
 ==============================================================================
 
@@ -1975,6 +2010,7 @@ void Hunk_ClearTempMemory( void ) {
 		hunk_temp->temp = hunk_temp->permanent;
 	}
 }
+#endif
 
 /*
 ===================================================================

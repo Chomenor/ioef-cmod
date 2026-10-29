@@ -32,6 +32,7 @@ set(ELITEFORCE_COMMON_SOURCES
     ${SOURCE_DIR}/cmod/cmod_cmd.c
     ${SOURCE_DIR}/cmod/cmod_cvar.c
     ${SOURCE_DIR}/cmod/cmod_logging.c
+    ${SOURCE_DIR}/cmod/cmod_mem.c
     ${SOURCE_DIR}/cmod/cmod_misc.c
     ${SOURCE_DIR}/cmod/vm_extensions.c
     ${SOURCE_DIR}/cmod/server/sv_cmd_tools.c
