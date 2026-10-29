@@ -74,6 +74,10 @@ int GeneticSelection(int numranks, float *rankings)
 	} //end if
 	//select a bot randomly
 	index = random() * numranks;
+#ifdef CMOD_MISC_SECURITY
+	// random() can return exactly 1.0, which would index one past the rankings array.
+	if (index >= numranks) index = numranks - 1;
+#endif
 	for (i = 0; i < numranks; i++)
 	{
 		if (rankings[index] >= 0) return index;

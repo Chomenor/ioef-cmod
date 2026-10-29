@@ -537,6 +537,13 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks )
 			if (c=='\"' || !c)
 			{
 				com_token[len] = 0;
+#ifdef CMOD_MISC_SECURITY
+				if ( !c )
+				{
+					*data_p = NULL;
+					return com_token;
+				}
+#endif
 				*data_p = ( char * ) data;
 				return com_token;
 			}

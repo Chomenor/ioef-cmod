@@ -327,6 +327,12 @@ void Huff_transmit (huff_t *huff, int ch, byte *fout, int maxoffset) {
 		/* node_t hasn't been transmitted, send a NYT, then the symbol */
 		Huff_transmit(huff, NYT, fout, maxoffset);
 		for (i = 7; i >= 0; i--) {
+#ifdef CMOD_MISC_SECURITY
+			if (bloc >= maxoffset) {
+				bloc = maxoffset + 1;
+				return;
+			}
+#endif
 			add_bit((char)((ch >> i) & 0x1), fout);
 		}
 	} else {
@@ -346,6 +352,67 @@ void Huff_Decompress(msg_t *mbuf, int offset) {
 	byte*		buffer;
 	huff_t		huff;
 
+#ifdef CMOD_MISC_SECURITY
+	int maxoffset;
+
+	if ( !mbuf || !mbuf->data || offset < 0 || mbuf->cursize < offset ||
+			mbuf->maxsize < mbuf->cursize ||
+			mbuf->cursize - offset > 0x0fffffff ) {
+		return;
+	}
+
+	size = mbuf->cursize - offset;
+	buffer = mbuf->data + offset;
+
+	if ( size < 2 ) {
+		if ( size >= 0 ) {
+			mbuf->cursize = offset;
+		}
+		return;
+	}
+
+	Com_Memset(&huff, 0, sizeof(huff_t));
+	// Initialize the tree & list with the NYT node
+	huff.tree = huff.lhead = huff.ltail = huff.loc[NYT] = &(huff.nodeList[huff.blocNode++]);
+	huff.tree->symbol = NYT;
+	huff.tree->weight = 0;
+	huff.lhead->next = huff.lhead->prev = NULL;
+	huff.tree->parent = huff.tree->left = huff.tree->right = NULL;
+
+	cch = buffer[0]*256 + buffer[1];
+	// don't overflow with bad messages
+	if ( cch > mbuf->maxsize - offset ) {
+		cch = mbuf->maxsize - offset;
+	}
+	if ( cch > (int)sizeof( seq ) ) {
+		cch = sizeof( seq );
+	}
+	bloc = 16;
+	maxoffset = size << 3;
+
+	for ( j = 0; j < cch; j++ ) {
+		ch = 0;
+		Huff_offsetReceive(huff.tree, &ch, buffer, &bloc, maxoffset);				/* Get a character */
+		if ( bloc > maxoffset ) {
+			break;
+		}
+		if ( ch == NYT ) {								/* We got a NYT, get the symbol associated with it */
+			if ( bloc + 8 > maxoffset ) {
+				break;
+			}
+			ch = 0;
+			for ( i = 0; i < 8; i++ ) {
+				ch = (ch<<1) + get_bit(buffer);
+			}
+		}
+
+		seq[j] = ch;									/* Write symbol */
+
+		Huff_addRef(&huff, (byte)ch);								/* Increment node */
+	}
+	mbuf->cursize = j + offset;
+	Com_Memcpy(mbuf->data + offset, seq, j);
+#else
 	size = mbuf->cursize - offset;
 	buffer = mbuf->data + offset;
 
@@ -390,6 +457,7 @@ void Huff_Decompress(msg_t *mbuf, int offset) {
 	}
 	mbuf->cursize = cch + offset;
 	Com_Memcpy(mbuf->data + offset, seq, cch);
+#endif
 }
 
 extern 	int oldsize;
@@ -399,6 +467,14 @@ void Huff_Compress(msg_t *mbuf, int offset) {
 	byte		seq[65536];
 	byte*		buffer;
 	huff_t		huff;
+#ifdef CMOD_MISC_SECURITY
+	int			maxsize, maxoffset, outsize;
+
+	if ( !mbuf || !mbuf->data || offset < 0 || mbuf->cursize < offset ||
+			mbuf->maxsize < mbuf->cursize ) {
+		return;
+	}
+#endif
 
 	size = mbuf->cursize - offset;
 	buffer = mbuf->data + offset;
@@ -406,6 +482,20 @@ void Huff_Compress(msg_t *mbuf, int offset) {
 	if (size<=0) {
 		return;
 	}
+
+#ifdef CMOD_MISC_SECURITY
+	if ( size > 0xffff ) {
+		return;
+	}
+	maxsize = mbuf->maxsize - offset;
+	if ( maxsize > (int)sizeof( seq ) ) {
+		maxsize = sizeof( seq );
+	}
+	maxoffset = ( maxsize << 3 ) - 8;	// reserve the final padding byte
+	if ( maxoffset <= 16 ) {
+		return;
+	}
+#endif
 
 	Com_Memset(&huff, 0, sizeof(huff_t));
 	// Add the NYT (not yet transmitted) node into the tree/list */
@@ -422,11 +512,33 @@ void Huff_Compress(msg_t *mbuf, int offset) {
 
 	for (i=0; i<size; i++ ) {
 		ch = buffer[i];
+#ifdef CMOD_MISC_SECURITY
+		Huff_transmit(&huff, ch, seq, maxoffset);						/* Transmit symbol */
+		if ( bloc > maxoffset ) {
+			return;
+		}
+#else
 		Huff_transmit(&huff, ch, seq, size<<3);						/* Transmit symbol */
+#endif
 		Huff_addRef(&huff, (byte)ch);								/* Do update */
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	if ( bloc + 8 > ( maxsize << 3 ) ) {
+		return;
+	}
+	if ( !( bloc & 7 ) ) {
+		seq[bloc >> 3] = 0;
+	}
 	bloc += 8;												// next byte
+
+	outsize = bloc >> 3;
+	if ( outsize > maxsize ) {
+		return;
+	}
+#else
+	bloc += 8;												// next byte
+#endif
 
 	mbuf->cursize = (bloc>>3) + offset;
 	Com_Memcpy(mbuf->data+offset, seq, (bloc>>3));

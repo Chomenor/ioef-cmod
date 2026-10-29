@@ -136,7 +136,12 @@ static weaponconfig_t *weaponconfig;
 //========================================================================
 int BotValidWeaponNumber(int weaponnum)
 {
+#ifdef CMOD_MISC_SECURITY
+	// weaponinfo has numweapons entries, so numweapons itself is out of range.
+	if (!weaponconfig || weaponnum <= 0 || weaponnum >= weaponconfig->numweapons)
+#else
 	if (weaponnum <= 0 || weaponnum > weaponconfig->numweapons)
+#endif
 	{
 		botimport.Print(PRT_ERROR, "weapon number out of range\n");
 		return qfalse;

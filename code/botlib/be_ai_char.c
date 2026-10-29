@@ -218,6 +218,13 @@ bot_character_t *BotLoadCharacterFromFile(char *charfile, int skill)
 
 	foundcharacter = qfalse;
 	//a bot character is parsed in two phases
+#ifdef CMOD_MISC_SECURITY
+	if (!charfile || strlen(charfile) >= MAX_QPATH)
+	{
+		botimport.Print(PRT_ERROR, "invalid character filename\n");
+		return NULL;
+	} //end if
+#endif
 	PC_SetBaseFolder(BOTFILESBASEFOLDER);
 	source = LoadSourceFile(charfile);
 	if (!source)
@@ -263,6 +270,16 @@ bot_character_t *BotLoadCharacterFromFile(char *charfile, int skill)
 						return NULL;
 					} //end if
 					index = token.intvalue;
+#ifdef CMOD_MISC_SECURITY
+					if (index == MAX_CHARACTERISTICS)
+					{
+						SourceError(source, "characteristic index out of range [0, %d]", MAX_CHARACTERISTICS);
+						FreeSource(source);
+						BotFreeCharacterStrings(ch);
+						FreeMemory(ch);
+						return NULL;
+					} //end if
+#endif
 					if (index < 0 || index > MAX_CHARACTERISTICS)
 					{
 						SourceError(source, "characteristic index out of range [0, %d]", MAX_CHARACTERISTICS);

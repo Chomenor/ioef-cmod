@@ -361,6 +361,11 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 	// XOR unscramble all data in the packet after the header
 //	Netchan_UnScramblePacket( msg );
 #ifdef ELITEFORCE
+#ifdef CMOD_MISC_SECURITY
+	if ( chan->compat && msg->cursize > MAX_PACKETLEN ) {
+		return qfalse;
+	}
+#endif
 	if(chan->compat)
 		Netchan_UnScramblePacket( msg );
 #endif
@@ -490,7 +495,11 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 			return qfalse;
 		}
 
+#ifdef CMOD_MISC_SECURITY
+		if ( chan->fragmentLength + 4 > msg->maxsize ) {
+#else
 		if ( chan->fragmentLength > msg->maxsize ) {
+#endif
 			Com_Printf( "%s:fragmentLength %i > msg->maxsize\n"
 				, NET_AdrToString (chan->remoteAddress ),
 				chan->fragmentLength );
@@ -586,6 +595,13 @@ void NET_SendLoopPacket (netsrc_t sock, int length, const void *data, netadr_t t
 	loopback_t	*loop;
 
 	loop = &loopbacks[sock^1];
+
+#ifdef CMOD_MISC_SECURITY
+	if ( length < 0 || length > MAX_PACKETLEN ) {
+		Com_Printf( "NET_SendLoopPacket: bad packet length %i\n", length );
+		return;
+	}
+#endif
 
 	i = loop->send & (MAX_LOOPBACK-1);
 	loop->send++;
@@ -719,6 +735,13 @@ void QDECL NET_OutOfBandData( netsrc_t sock, netadr_t adr, byte *format, int len
 	byte		string[MAX_MSGLEN*2];
 	int			i;
 	msg_t		mbuf;
+
+#ifdef CMOD_MISC_SECURITY
+	if ( len < 0 || len > (int)sizeof( string ) - 4 ) {
+		return;
+	}
+	mbuf.maxsize = sizeof( string );
+#endif
 
 	// set the header
 	string[0] = 0xff;

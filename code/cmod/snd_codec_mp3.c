@@ -85,12 +85,31 @@ int S_MP3_ReadData(snd_stream_t *stream, struct mad_stream *madstream, byte *enc
 	int retval;
 	int leftover;
 
+#ifdef CMOD_MISC_SECURITY
+	if(!stream || !madstream || !encbuf || encbufsize <= 0)
+		return -1;
+
+	leftover = 0;
+	if(madstream->next_frame)
+	{
+		if(!madstream->bufend || madstream->next_frame > madstream->bufend)
+			return -1;
+
+		leftover = madstream->bufend - madstream->next_frame;
+		if(leftover > encbufsize)
+			return -1;
+	}
+
+	if(leftover > 0)
+		memmove(encbuf, madstream->next_frame, leftover);
+#else
 	if(!stream)
 		return -1;
 
 	leftover =  madstream->bufend - madstream->next_frame;
 	if(leftover > 0)
 		memmove(encbuf, madstream->this_frame, leftover);
+#endif
 
 
 	// Fill the buffer right to the end
@@ -126,6 +145,9 @@ int S_MP3_Scanfile(snd_stream_t *stream)
 	struct mad_header madheader;
 	int retval;
 	int samplecount;
+#ifdef CMOD_MISC_SECURITY
+	long long samplebytes;
+#endif
 	byte encbuf[MP3_DATA_BUFSIZ];
 
 	// error out on invalid input.
@@ -199,10 +221,27 @@ int S_MP3_Scanfile(snd_stream_t *stream)
 
 			// Update the counters
 			samplecount = MAD_NSBSAMPLES(&madheader) * MP3_PCMSAMPLES_PERSLICE;
+#ifdef CMOD_MISC_SECURITY
+			samplebytes = (long long)samplecount * stream->info.channels * stream->info.width;
+			if(samplebytes > MAX_QINT ||
+					stream->info.samples > MAX_QINT - samplecount ||
+					stream->info.size > MAX_QINT - samplebytes)
+				return -1;
+
+			stream->info.samples += samplecount;
+			stream->info.size += (int)samplebytes;
+
+#else
 			stream->info.samples += samplecount;
 			stream->info.size += samplecount * stream->info.channels * stream->info.width;
+#endif
 		}
 	}
+
+#ifdef CMOD_MISC_SECURITY
+	if(stream->info.samples <= 0 || stream->info.size <= 0)
+		return -1;
+#endif
 
 	// Reset the file pointer so we can do the real decoding.
 	FS_Seek(stream->file, 0, FS_SEEK_SET);
@@ -623,6 +662,11 @@ int S_MP3_CodecReadStream(snd_stream_t *stream, int bytes, void *buffer)
 
 	mp3info = stream->ptr;
 
+#ifdef CMOD_MISC_SECURITY
+	if(!buffer || bytes <= 0 || stream->info.channels <= 0 || stream->info.width <= 0)
+		return 0;
+#endif
+
 	// Make sure we get complete frames all the way through.
 	bytes -= bytes % (stream->info.channels * stream->info.width);
 
@@ -685,6 +729,14 @@ void *S_MP3_CodecLoad(const char *filename, snd_info_t *info)
 
 	if(!stream)
 		return NULL;
+
+#ifdef CMOD_MISC_SECURITY
+	if(stream->info.samples <= 0 || stream->info.size <= 0)
+	{
+		S_MP3_CodecCloseStream(stream);
+		return NULL;
+	}
+#endif
 
         // copy over the info
         info->rate = stream->info.rate;

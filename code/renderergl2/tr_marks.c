@@ -240,6 +240,12 @@ void R_AddMarkFragments(int numClipPoints, vec3_t clipPoints[2][MAX_VERTS_ON_POL
 	if (i < numClipPoints) return;
 	*/
 
+#ifdef CMOD_MISC_SECURITY
+	if ( *returnedFragments >= maxFragments ) {
+		return;
+	}
+#endif
+
 	mf = fragmentBuffer + (*returnedFragments);
 	mf->firstPoint = (*returnedPoints);
 	mf->numPoints = numClipPoints;

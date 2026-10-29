@@ -212,8 +212,12 @@ void CL_ParseSnapshot( msg_t *msg ) {
 	// NOTE: now sent with all server to client messages
 	//clc.reliableAcknowledge = MSG_ReadLong( msg );
 #ifdef ELITEFORCE
-	if(msg->compat)
+	if(msg->compat) {
 		clc.reliableAcknowledge = MSG_ReadLong( msg );
+		if ( clc.reliableAcknowledge < clc.reliableSequence - MAX_RELIABLE_COMMANDS ) {
+			clc.reliableAcknowledge = clc.reliableSequence;
+		}
+	}
 #endif
 
 	// read in the new snapshot to a temporary buffer
@@ -271,7 +275,11 @@ void CL_ParseSnapshot( msg_t *msg ) {
 	// read areamask
 	len = MSG_ReadByte( msg );
 	
+#ifdef CMOD_MISC_SECURITY
+	if(len < 0 || len > sizeof(newSnap.areamask))
+#else
 	if(len > sizeof(newSnap.areamask))
+#endif
 	{
 		Com_Error (ERR_DROP,"CL_ParseSnapshot: Invalid size %d for areamask", len);
 		return;
@@ -818,6 +826,17 @@ void CL_ParseVoip ( msg_t *msg, qboolean ignoreData ) {
 
 	Com_DPrintf("VoIP: packet accepted!\n");
 
+#ifdef CMOD_MISC_SECURITY
+	if (frames > INT_MAX - sequence) {
+		Com_DPrintf("VoIP: sequence overflow from client #%d\n", sender);
+		opus_decoder_ctl(clc.opusDecoder[sender], OPUS_RESET_STATE);
+		return;
+	}
+	if (clc.voipIncomingSequence[sender] < 0) {
+		clc.voipIncomingSequence[sender] = sequence;
+	}
+#endif
+
 	seqdiff = sequence - clc.voipIncomingSequence[sender];
 
 	// This is a new "generation" ... a new recording started, reset the bits.
@@ -833,7 +852,11 @@ void CL_ParseVoip ( msg_t *msg, qboolean ignoreData ) {
 		// reset the decoder just in case.
 		opus_decoder_ctl(clc.opusDecoder[sender], OPUS_RESET_STATE);
 		seqdiff = 0;
+#ifdef CMOD_MISC_SECURITY
+	} else if (seqdiff >= (int)(sizeof (decoded) / (VOIP_MAX_PACKET_SAMPLES*2))) { // dropped more than we can handle?
+#else
 	} else if (seqdiff * VOIP_MAX_PACKET_SAMPLES*2 >= sizeof (decoded)) { // dropped more than we can handle?
+#endif
 		// just start over.
 		Com_DPrintf("VoIP: Dropped way too many (%d) frames from client #%d\n",
 		            seqdiff, sender);

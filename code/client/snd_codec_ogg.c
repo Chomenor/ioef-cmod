@@ -82,6 +82,26 @@ size_t S_OGG_Callback_read(void *ptr, size_t size, size_t nmemb, void *datasourc
 	// we use a snd_stream_t in the generic pointer to pass around
 	stream = (snd_stream_t *) datasource;
 
+#ifdef CMOD_MISC_SECURITY
+	if(nmemb > (size_t)INT_MAX / size)
+	{
+		errno = EINVAL;
+		return 0;
+	}
+
+	byteSize = nmemb * size;
+	bytesRead = FS_Read(ptr, byteSize, stream->file);
+	if(bytesRead < 0)
+	{
+		errno = EIO;
+		return 0;
+	}
+
+	stream->pos += bytesRead;
+	nMembRead = bytesRead / size;
+	return nMembRead;
+#else
+
 	// FS_Read does not support multi-byte elements
 	byteSize = nmemb * size;
 
@@ -102,6 +122,7 @@ size_t S_OGG_Callback_read(void *ptr, size_t size, size_t nmemb, void *datasourc
 	}
 	
 	return nMembRead;
+#endif
 }
 
 // fseek() replacement
@@ -119,6 +140,35 @@ int S_OGG_Callback_seek(void *datasource, ogg_int64_t offset, int whence)
 
 	// snd_stream_t in the generic pointer
 	stream = (snd_stream_t *) datasource;
+
+#ifdef CMOD_MISC_SECURITY
+	switch(whence)
+	{
+		case SEEK_SET:
+			if(offset < 0 || offset > stream->length)
+			{
+				errno = EINVAL;
+				return -1;
+			}
+			break;
+
+		case SEEK_CUR:
+			if(offset < -stream->pos || offset > stream->length - stream->pos)
+			{
+				errno = EINVAL;
+				return -1;
+			}
+			break;
+
+		case SEEK_END:
+			if(offset < -stream->length || offset > 0)
+			{
+				errno = EINVAL;
+				return -1;
+			}
+			break;
+	}
+#endif
 
 	// we must map the whence to its Q3 counterpart
 	switch(whence)
@@ -308,6 +358,22 @@ snd_stream_t *S_OGG_CodecOpenStream(const char *filename)
 	// get the number of sample-frames in the OGG
 	numSamples = ov_pcm_total(vf, 0);
 
+#ifdef CMOD_MISC_SECURITY
+	if(OGGInfo->rate <= 0 || OGGInfo->rate > MAX_QINT / 16384 ||
+		(OGGInfo->channels != 1 && OGGInfo->channels != 2) ||
+		numSamples < 0 ||
+		numSamples > INT_MAX / OGGInfo->channels / OGG_SAMPLEWIDTH)
+	{
+		ov_clear(vf);
+
+		Z_Free(vf);
+
+		S_CodecUtilClose(&stream);
+
+		return NULL;
+	}
+#endif
+
 	// fill in the info-structure in the stream
 	stream->info.rate = OGGInfo->rate;
 	stream->info.width = OGG_SAMPLEWIDTH;
@@ -458,6 +524,15 @@ void *S_OGG_CodecLoad(const char *filename, snd_info_t *info)
 	// fill the buffer
 	bytesRead = S_OGG_CodecReadStream(stream, info->size, buffer);
 	
+#ifdef CMOD_MISC_SECURITY
+	if(bytesRead != info->size)
+	{
+		Hunk_FreeTempMemory(buffer);
+		S_OGG_CodecCloseStream(stream);
+
+		return NULL;
+	}
+#endif
 	// we don't even have read a single byte
 	if(bytesRead <= 0)
 	{

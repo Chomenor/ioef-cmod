@@ -595,9 +595,16 @@ enum mad_error III_sideinfo(struct mad_bitptr *ptr, unsigned int nch,
  * DESCRIPTION:	decode channel scalefactors for LSF from a bitstream
  */
 static
+#ifdef CMOD_MISC_SECURITY
+enum mad_error III_scalefactors_lsf(struct mad_bitptr *ptr,
+				    struct channel *channel,
+				    struct channel *gr1ch, int mode_extension,
+				    unsigned int bits_left, unsigned int *part2_length)
+#else
 unsigned int III_scalefactors_lsf(struct mad_bitptr *ptr,
 				  struct channel *channel,
 				  struct channel *gr1ch, int mode_extension)
+#endif
 {
   struct mad_bitptr start;
   unsigned int scalefac_compress, index, slen[4], part, n, i;
@@ -643,8 +650,17 @@ unsigned int III_scalefactors_lsf(struct mad_bitptr *ptr,
 
     n = 0;
     for (part = 0; part < 4; ++part) {
+#ifdef CMOD_MISC_SECURITY
+      for (i = 0; i < nsfb[part]; ++i) {
+	if (bits_left < slen[part])
+	  return MAD_ERROR_BADSCFSI;
+	channel->scalefac[n++] = mad_bit_read(ptr, slen[part]);
+	bits_left -= slen[part];
+      }
+#else
       for (i = 0; i < nsfb[part]; ++i)
 	channel->scalefac[n++] = mad_bit_read(ptr, slen[part]);
+#endif
     }
 
     while (n < 39)
@@ -689,7 +705,14 @@ unsigned int III_scalefactors_lsf(struct mad_bitptr *ptr,
       max = (1 << slen[part]) - 1;
 
       for (i = 0; i < nsfb[part]; ++i) {
+#ifdef CMOD_MISC_SECURITY
+	if (bits_left < slen[part])
+	  return MAD_ERROR_BADSCFSI;
+#endif
 	is_pos = mad_bit_read(ptr, slen[part]);
+#ifdef CMOD_MISC_SECURITY
+	bits_left -= slen[part];
+#endif
 
 	channel->scalefac[n] = is_pos;
 	gr1ch->scalefac[n++] = (is_pos == max);
@@ -702,7 +725,12 @@ unsigned int III_scalefactors_lsf(struct mad_bitptr *ptr,
     }
   }
 
+#ifdef CMOD_MISC_SECURITY
+  *part2_length = mad_bit_length(&start, ptr);
+  return MAD_ERROR_NONE;
+#else
   return mad_bit_length(&start, ptr);
+#endif
 }
 
 /*
@@ -710,8 +738,14 @@ unsigned int III_scalefactors_lsf(struct mad_bitptr *ptr,
  * DESCRIPTION:	decode channel scalefactors of one granule from a bitstream
  */
 static
+#ifdef CMOD_MISC_SECURITY
+enum mad_error III_scalefactors(struct mad_bitptr *ptr, struct channel *channel,
+				struct channel const *gr0ch, unsigned int scfsi,
+				unsigned int bits_left, unsigned int *part2_length)
+#else
 unsigned int III_scalefactors(struct mad_bitptr *ptr, struct channel *channel,
 			      struct channel const *gr0ch, unsigned int scfsi)
+#endif
 {
   struct mad_bitptr start;
   unsigned int slen1, slen2, sfbi;
@@ -727,12 +761,30 @@ unsigned int III_scalefactors(struct mad_bitptr *ptr, struct channel *channel,
     sfbi = 0;
 
     nsfb = (channel->flags & mixed_block_flag) ? 8 + 3 * 3 : 6 * 3;
+#ifdef CMOD_MISC_SECURITY
+    while (nsfb--) {
+      if (bits_left < slen1)
+	return MAD_ERROR_BADSCFSI;
+      channel->scalefac[sfbi++] = mad_bit_read(ptr, slen1);
+      bits_left -= slen1;
+    }
+#else
     while (nsfb--)
       channel->scalefac[sfbi++] = mad_bit_read(ptr, slen1);
+#endif
 
     nsfb = 6 * 3;
+#ifdef CMOD_MISC_SECURITY
+    while (nsfb--) {
+      if (bits_left < slen2)
+	return MAD_ERROR_BADSCFSI;
+      channel->scalefac[sfbi++] = mad_bit_read(ptr, slen2);
+      bits_left -= slen2;
+    }
+#else
     while (nsfb--)
       channel->scalefac[sfbi++] = mad_bit_read(ptr, slen2);
+#endif
 
     nsfb = 1 * 3;
     while (nsfb--)
@@ -744,8 +796,17 @@ unsigned int III_scalefactors(struct mad_bitptr *ptr, struct channel *channel,
 	channel->scalefac[sfbi] = gr0ch->scalefac[sfbi];
     }
     else {
+#ifdef CMOD_MISC_SECURITY
+      for (sfbi = 0; sfbi < 6; ++sfbi) {
+	if (bits_left < slen1)
+	  return MAD_ERROR_BADSCFSI;
+	channel->scalefac[sfbi] = mad_bit_read(ptr, slen1);
+	bits_left -= slen1;
+      }
+#else
       for (sfbi = 0; sfbi < 6; ++sfbi)
 	channel->scalefac[sfbi] = mad_bit_read(ptr, slen1);
+#endif
     }
 
     if (scfsi & 0x4) {
@@ -753,8 +814,17 @@ unsigned int III_scalefactors(struct mad_bitptr *ptr, struct channel *channel,
 	channel->scalefac[sfbi] = gr0ch->scalefac[sfbi];
     }
     else {
+#ifdef CMOD_MISC_SECURITY
+      for (sfbi = 6; sfbi < 11; ++sfbi) {
+	if (bits_left < slen1)
+	  return MAD_ERROR_BADSCFSI;
+	channel->scalefac[sfbi] = mad_bit_read(ptr, slen1);
+	bits_left -= slen1;
+      }
+#else
       for (sfbi = 6; sfbi < 11; ++sfbi)
 	channel->scalefac[sfbi] = mad_bit_read(ptr, slen1);
+#endif
     }
 
     if (scfsi & 0x2) {
@@ -762,8 +832,17 @@ unsigned int III_scalefactors(struct mad_bitptr *ptr, struct channel *channel,
 	channel->scalefac[sfbi] = gr0ch->scalefac[sfbi];
     }
     else {
+#ifdef CMOD_MISC_SECURITY
+      for (sfbi = 11; sfbi < 16; ++sfbi) {
+	if (bits_left < slen2)
+	  return MAD_ERROR_BADSCFSI;
+	channel->scalefac[sfbi] = mad_bit_read(ptr, slen2);
+	bits_left -= slen2;
+      }
+#else
       for (sfbi = 11; sfbi < 16; ++sfbi)
 	channel->scalefac[sfbi] = mad_bit_read(ptr, slen2);
+#endif
     }
 
     if (scfsi & 0x1) {
@@ -771,14 +850,28 @@ unsigned int III_scalefactors(struct mad_bitptr *ptr, struct channel *channel,
 	channel->scalefac[sfbi] = gr0ch->scalefac[sfbi];
     }
     else {
+#ifdef CMOD_MISC_SECURITY
+      for (sfbi = 16; sfbi < 21; ++sfbi) {
+	if (bits_left < slen2)
+	  return MAD_ERROR_BADSCFSI;
+	channel->scalefac[sfbi] = mad_bit_read(ptr, slen2);
+	bits_left -= slen2;
+      }
+#else
       for (sfbi = 16; sfbi < 21; ++sfbi)
 	channel->scalefac[sfbi] = mad_bit_read(ptr, slen2);
+#endif
     }
 
     channel->scalefac[21] = 0;
   }
 
+#ifdef CMOD_MISC_SECURITY
+  *part2_length = mad_bit_length(&start, ptr);
+  return MAD_ERROR_NONE;
+#else
   return mad_bit_length(&start, ptr);
+#endif
 }
 
 /*
@@ -932,19 +1025,34 @@ static
 enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 			      struct channel *channel,
 			      unsigned char const *sfbwidth,
+#ifdef CMOD_MISC_SECURITY
+			      signed int part3_length)
+#else
 			      unsigned int part2_length)
+#endif
 {
   signed int exponents[39], exp;
   signed int const *expptr;
   struct mad_bitptr peek;
+#ifdef CMOD_MISC_SECURITY
+  signed int bits_left, cachesz, fakebits;
+#else
   signed int bits_left, cachesz;
+#endif
   register mad_fixed_t *xrptr;
   mad_fixed_t const *sfbound;
   register unsigned long bitcache;
 
+#ifdef CMOD_MISC_SECURITY
+  if (part3_length < 0)
+    return MAD_ERROR_BADPART3LEN;
+
+  bits_left = part3_length;
+#else
   bits_left = (signed) channel->part2_3_length - (signed) part2_length;
   if (bits_left < 0)
     return MAD_ERROR_BADPART3LEN;
+#endif
 
   III_exponents(channel, sfbwidth, exponents);
 
@@ -954,9 +1062,16 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
   /* align bit reads to byte boundaries */
   cachesz  = mad_bit_bitsleft(&peek);
   cachesz += ((32 - 1 - 24) + (24 - cachesz)) & ~7;
+#ifdef CMOD_MISC_SECURITY
+  if (bits_left < cachesz)
+    cachesz = bits_left;
+#endif
 
   bitcache   = mad_bit_read(&peek, cachesz);
   bits_left -= cachesz;
+#ifdef CMOD_MISC_SECURITY
+  fakebits = 0;
+#endif
 
   xrptr = &xr[0];
 
@@ -985,7 +1100,11 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 
     big_values = channel->big_values;
 
+#ifdef CMOD_MISC_SECURITY
+    while (big_values-- && cachesz + bits_left - fakebits > 0) {
+#else
     while (big_values-- && cachesz + bits_left > 0) {
+#endif
       union huffpair const *pair;
       unsigned int clumpsz, value;
       register mad_fixed_t requantized;
@@ -1022,24 +1141,55 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 	unsigned int bits;
 
 	bits       = ((32 - 1 - 21) + (21 - cachesz)) & ~7;
+#ifdef CMOD_MISC_SECURITY
+	if (bits_left <= 0)
+	  bits = 0;
+	else if (bits_left < (signed int)bits)
+	  bits = bits_left;
+#endif
 	bitcache   = (bitcache << bits) | mad_bit_read(&peek, bits);
 	cachesz   += bits;
 	bits_left -= bits;
       }
+#ifdef CMOD_MISC_SECURITY
+      if (cachesz < 21) {
+	unsigned int bits = 21 - cachesz;
+
+	bitcache <<= bits;
+	cachesz += bits;
+	fakebits += bits;
+      }
+#endif
 
       /* hcod (0..19) */
 
       clumpsz = startbits;
+#ifdef CMOD_MISC_SECURITY
+      if (cachesz < (signed int) clumpsz)
+	return MAD_ERROR_BADHUFFDATA;
+#endif
       pair    = &table[MASK(bitcache, cachesz, clumpsz)];
 
       while (!pair->final) {
 	cachesz -= clumpsz;
 
 	clumpsz = pair->ptr.bits;
+#ifdef CMOD_MISC_SECURITY
+	if (cachesz < (signed int) clumpsz)
+	  return MAD_ERROR_BADHUFFDATA;
+#endif
 	pair    = &table[pair->ptr.offset + MASK(bitcache, cachesz, clumpsz)];
       }
 
+#ifdef CMOD_MISC_SECURITY
+      if (cachesz < (signed int) pair->value.hlen)
+	return MAD_ERROR_BADHUFFDATA;
+#endif
       cachesz -= pair->value.hlen;
+#ifdef CMOD_MISC_SECURITY
+      if (cachesz < fakebits)
+	goto huffdone;
+#endif
 
       if (linbits) {
 	/* x (0..14) */
@@ -1053,10 +1203,26 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 
 	case 15:
 	  if (cachesz < linbits + 2) {
+#ifdef CMOD_MISC_SECURITY
+	    unsigned int bits = 16;
+
+	    if (bits_left <= 0)
+	      bits = 0;
+	    else if (bits_left < 16)
+	      bits = bits_left;
+	    bitcache   = (bitcache << bits) | mad_bit_read(&peek, bits);
+	    cachesz   += bits;
+	    bits_left -= bits;
+#else
 	    bitcache   = (bitcache << 16) | mad_bit_read(&peek, 16);
 	    cachesz   += 16;
 	    bits_left -= 16;
+#endif
 	  }
+#ifdef CMOD_MISC_SECURITY
+	  if (cachesz - fakebits < (signed int)linbits)
+	    goto huffdone;
+#endif
 
 	  value += MASK(bitcache, cachesz, linbits);
 	  cachesz -= linbits;
@@ -1073,6 +1239,10 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 	  }
 
 	x_final:
+#ifdef CMOD_MISC_SECURITY
+	  if (cachesz - fakebits < 1)
+	    goto huffdone;
+#endif
 	  xrptr[0] = MASK1BIT(bitcache, cachesz--) ?
 	    -requantized : requantized;
 	}
@@ -1088,10 +1258,26 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 
 	case 15:
 	  if (cachesz < linbits + 1) {
+#ifdef CMOD_MISC_SECURITY
+	    unsigned int bits = 16;
+
+	    if (bits_left <= 0)
+	      bits = 0;
+	    else if (bits_left < 16)
+	      bits = bits_left;
+	    bitcache   = (bitcache << bits) | mad_bit_read(&peek, bits);
+	    cachesz   += bits;
+	    bits_left -= bits;
+#else
 	    bitcache   = (bitcache << 16) | mad_bit_read(&peek, 16);
 	    cachesz   += 16;
 	    bits_left -= 16;
+#endif
 	  }
+#ifdef CMOD_MISC_SECURITY
+	  if (cachesz - fakebits < (signed int)linbits)
+	    goto huffdone;
+#endif
 
 	  value += MASK(bitcache, cachesz, linbits);
 	  cachesz -= linbits;
@@ -1108,6 +1294,10 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 	  }
 
 	y_final:
+#ifdef CMOD_MISC_SECURITY
+	  if (cachesz - fakebits < 1)
+	    goto huffdone;
+#endif
 	  xrptr[1] = MASK1BIT(bitcache, cachesz--) ?
 	    -requantized : requantized;
 	}
@@ -1127,6 +1317,10 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 	    requantized = reqcache[value] = III_requantize(value, exp);
 	  }
 
+#ifdef CMOD_MISC_SECURITY
+	  if (cachesz - fakebits < 1)
+	    goto huffdone;
+#endif
 	  xrptr[0] = MASK1BIT(bitcache, cachesz--) ?
 	    -requantized : requantized;
 	}
@@ -1145,6 +1339,10 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 	    requantized = reqcache[value] = III_requantize(value, exp);
 	  }
 
+#ifdef CMOD_MISC_SECURITY
+	  if (cachesz - fakebits < 1)
+	    goto huffdone;
+#endif
 	  xrptr[1] = MASK1BIT(bitcache, cachesz--) ?
 	    -requantized : requantized;
 	}
@@ -1154,9 +1352,11 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
     }
   }
 
+#ifndef CMOD_MISC_SECURITY
   if (cachesz + bits_left < 0)
     return MAD_ERROR_BADHUFFDATA;  /* big_values overrun */
 
+#endif
   /* count1 */
   {
     union huffquad const *table;
@@ -1166,27 +1366,69 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 
     requantized = III_requantize(1, exp);
 
+#ifdef CMOD_MISC_SECURITY
+    while (cachesz + bits_left - fakebits > 0 && xrptr <= &xr[572]) {
+#else
     while (cachesz + bits_left > 0 && xrptr <= &xr[572]) {
+#endif
       union huffquad const *quad;
 
       /* hcod (1..6) */
 
       if (cachesz < 10) {
+#ifdef CMOD_MISC_SECURITY
+	unsigned int bits = 16;
+
+	if (bits_left <= 0)
+	  bits = 0;
+	else if (bits_left < 16)
+	  bits = bits_left;
+	bitcache   = (bitcache << bits) | mad_bit_read(&peek, bits);
+	cachesz   += bits;
+	bits_left -= bits;
+#else
 	bitcache   = (bitcache << 16) | mad_bit_read(&peek, 16);
 	cachesz   += 16;
 	bits_left -= 16;
+#endif
+      }
+#ifdef CMOD_MISC_SECURITY
+      if (cachesz < 10) {
+	unsigned int bits = 10 - cachesz;
+
+	bitcache <<= bits;
+	cachesz += bits;
+	fakebits += bits;
       }
 
+      if (cachesz < 4)
+	return MAD_ERROR_BADHUFFDATA;
+#else
+
+#endif
       quad = &table[MASK(bitcache, cachesz, 4)];
 
       /* quad tables guaranteed to have at most one extra lookup */
       if (!quad->final) {
 	cachesz -= 4;
 
+#ifdef CMOD_MISC_SECURITY
+	if (cachesz < (signed int) quad->ptr.bits)
+	  return MAD_ERROR_BADHUFFDATA;
+#endif
 	quad = &table[quad->ptr.offset +
 		      MASK(bitcache, cachesz, quad->ptr.bits)];
       }
 
+#ifdef CMOD_MISC_SECURITY
+      {
+	signed int need = quad->value.hlen + quad->value.v +
+	  quad->value.w + quad->value.x + quad->value.y;
+
+	if (cachesz - fakebits < need)
+	  break;
+      }
+#endif
       cachesz -= quad->value.hlen;
 
       if (xrptr == sfbound) {
@@ -1236,6 +1478,7 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
       xrptr += 2;
     }
 
+#ifndef CMOD_MISC_SECURITY
     if (cachesz + bits_left < 0) {
 # if 0 && defined(DEBUG)
       fprintf(stderr, "huffman count1 overrun (%d bits)\n",
@@ -1247,10 +1490,13 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 
       xrptr -= 4;
     }
+#endif
   }
 
+#ifndef CMOD_MISC_SECURITY
   assert(-bits_left <= MAD_BUFFER_GUARD * CHAR_BIT);
 
+#endif
 # if 0 && defined(DEBUG)
   if (bits_left < 0)
     fprintf(stderr, "read %d bits too many\n", -bits_left);
@@ -1259,6 +1505,9 @@ enum mad_error III_huffdecode(struct mad_bitptr *ptr, mad_fixed_t xr[576],
 # endif
 
   /* rzero */
+#ifdef CMOD_MISC_SECURITY
+huffdone:
+#endif
   while (xrptr < &xr[576]) {
     xrptr[0] = 0;
     xrptr[1] = 0;
@@ -2347,10 +2596,17 @@ void III_freqinver(mad_fixed_t sample[18][32], unsigned int sb)
  */
 static
 enum mad_error III_decode(struct mad_bitptr *ptr, struct mad_frame *frame,
+#ifdef CMOD_MISC_SECURITY
+			  struct sideinfo *si, unsigned int nch, unsigned int md_len)
+#else
 			  struct sideinfo *si, unsigned int nch)
+#endif
 {
   struct mad_header *header = &frame->header;
   unsigned int sfreqi, ngr, gr;
+#ifdef CMOD_MISC_SECURITY
+  int bits_left = md_len * CHAR_BIT;
+#endif
 
   {
     unsigned int sfreq;
@@ -2382,6 +2638,9 @@ enum mad_error III_decode(struct mad_bitptr *ptr, struct mad_frame *frame,
     for (ch = 0; ch < nch; ++ch) {
       struct channel *channel = &granule->ch[ch];
       unsigned int part2_length;
+#ifdef CMOD_MISC_SECURITY
+      unsigned int part3_length;
+#endif
 
       sfbwidth[ch] = sfbwidth_table[sfreqi].l;
       if (channel->block_type == 2) {
@@ -2390,18 +2649,50 @@ enum mad_error III_decode(struct mad_bitptr *ptr, struct mad_frame *frame,
       }
 
       if (header->flags & MAD_FLAG_LSF_EXT) {
+#ifdef CMOD_MISC_SECURITY
+	error = III_scalefactors_lsf(ptr, channel,
+				     ch == 0 ? 0 : &si->gr[1].ch[1],
+				     header->mode_extension, bits_left,
+				     &part2_length);
+#else
 	part2_length = III_scalefactors_lsf(ptr, channel,
 					    ch == 0 ? 0 : &si->gr[1].ch[1],
 					    header->mode_extension);
+#endif
       }
       else {
+#ifdef CMOD_MISC_SECURITY
+	error = III_scalefactors(ptr, channel, &si->gr[0].ch[ch],
+				 gr == 0 ? 0 : si->scfsi[ch],
+				 bits_left, &part2_length);
+#else
 	part2_length = III_scalefactors(ptr, channel, &si->gr[0].ch[ch],
 					gr == 0 ? 0 : si->scfsi[ch]);
+#endif
       }
-
-      error = III_huffdecode(ptr, xr[ch], channel, sfbwidth[ch], part2_length);
+#ifdef CMOD_MISC_SECURITY
       if (error)
 	return error;
+
+      bits_left -= part2_length;
+
+      if (part2_length > channel->part2_3_length)
+	return MAD_ERROR_BADPART3LEN;
+
+      part3_length = channel->part2_3_length - part2_length;
+      if (bits_left < 0 || part3_length > (unsigned int)bits_left)
+	return MAD_ERROR_BADPART3LEN;
+
+      error = III_huffdecode(ptr, xr[ch], channel, sfbwidth[ch], part3_length);
+#else
+
+      error = III_huffdecode(ptr, xr[ch], channel, sfbwidth[ch], part2_length);
+#endif
+      if (error)
+	return error;
+#ifdef CMOD_MISC_SECURITY
+      bits_left -= part3_length;
+#endif
     }
 
     /* joint stereo processing */
@@ -2518,10 +2809,18 @@ int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
   unsigned int nch, priv_bitlen, next_md_begin = 0;
   unsigned int si_len, data_bitlen, md_len;
   unsigned int frame_space, frame_used, frame_free;
+#ifdef CMOD_MISC_SECURITY
+  struct mad_bitptr ptr, bufend_ptr;
+#else
   struct mad_bitptr ptr;
+#endif
   struct sideinfo si;
   enum mad_error error;
   int result = 0;
+
+#ifdef CMOD_MISC_SECURITY
+  mad_bit_init(&bufend_ptr, stream->bufend);
+#endif
 
   /* allocate Layer III dynamic structures */
 
@@ -2587,6 +2886,18 @@ int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
 
     mad_bit_init(&peek, stream->next_frame);
 
+#ifdef CMOD_MISC_SECURITY
+    if (mad_bit_length(&peek, &bufend_ptr) >= 57) {
+      header = mad_bit_read(&peek, 32);
+      if ((header & 0xffe60000L) /* syncword | layer */ == 0xffe20000L) {
+	if (!(header & 0x00010000L))  /* protection_bit */
+	  mad_bit_skip(&peek, 16);  /* crc_check */
+
+	next_md_begin =
+	  mad_bit_read(&peek, (header & 0x00080000L) /* ID */ ? 9 : 8);
+      }
+    }
+#else
     header = mad_bit_read(&peek, 32);
     if ((header & 0xffe60000L) /* syncword | layer */ == 0xffe20000L) {
       if (!(header & 0x00010000L))  /* protection_bit */
@@ -2595,6 +2906,7 @@ int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
       next_md_begin =
 	mad_bit_read(&peek, (header & 0x00080000L) /* ID */ ? 9 : 8);
     }
+#endif
 
     mad_bit_finish(&peek);
   }
@@ -2607,6 +2919,17 @@ int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
     next_md_begin = 0;
 
   md_len = si.main_data_begin + frame_space - next_md_begin;
+#ifdef CMOD_MISC_SECURITY
+  if (md_len + MAD_BUFFER_GUARD > MAD_BUFFER_MDLEN) {
+    stream->error = MAD_ERROR_LOSTSYNC;
+    stream->sync = 0;
+    return -1;
+  }
+  if (data_bitlen > md_len * CHAR_BIT && result == 0) {
+    stream->error = MAD_ERROR_BADPART3LEN;
+    result = -1;
+  }
+#endif
 
   frame_used = 0;
 
@@ -2624,8 +2947,16 @@ int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
       }
     }
     else {
+#ifdef CMOD_MISC_SECURITY
+      memmove(*stream->main_data,
+	      *stream->main_data + stream->md_len - si.main_data_begin,
+	      si.main_data_begin);
+      stream->md_len = si.main_data_begin;
+      mad_bit_init(&ptr, *stream->main_data);
+#else
       mad_bit_init(&ptr,
 		   *stream->main_data + stream->md_len - si.main_data_begin);
+#endif
 
       if (md_len > si.main_data_begin) {
 	assert(stream->md_len + md_len -
@@ -2644,7 +2975,11 @@ int mad_layer_III(struct mad_stream *stream, struct mad_frame *frame)
   /* decode main_data */
 
   if (result == 0) {
+#ifdef CMOD_MISC_SECURITY
+    error = III_decode(&ptr, frame, &si, nch, md_len);
+#else
     error = III_decode(&ptr, frame, &si, nch);
+#endif
     if (error) {
       stream->error = error;
       result = -1;

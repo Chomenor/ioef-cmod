@@ -467,9 +467,18 @@ void CMod_LoadEntityString( lump_t *l ) {
 			Com_Printf("Loaded %i bytes from entity override file\n", length);
 			return; } }
 #endif
+#ifdef CMOD_MISC_SECURITY
+	if ( l->filelen < 0 || l->filelen >= MAX_QINT ) {
+		Com_Error( ERR_DROP, "CMod_LoadEntityString: invalid entity string length" );
+	}
+	cm.entityString = Hunk_Alloc( l->filelen + 1, h_high );
+	Q_strncpyz( cm.entityString, (const char *)cmod_base + l->fileofs, l->filelen + 1 );
+	cm.numEntityChars = strlen( cm.entityString ) + 1;
+#else
 	cm.entityString = Hunk_Alloc( l->filelen, h_high );
 	cm.numEntityChars = l->filelen;
 	Com_Memcpy (cm.entityString, cmod_base + l->fileofs, l->filelen);
+#endif
 }
 
 /*
@@ -541,6 +550,11 @@ void CMod_LoadPatches( lump_t *surfs, lump_t *verts ) {
 		// load the full drawverts onto the stack
 		width = LittleLong( in->patchWidth );
 		height = LittleLong( in->patchHeight );
+#ifdef CMOD_MISC_SECURITY
+		if ( width <= 0 || height <= 0 || width > MAX_PATCH_VERTS / height ) {
+			Com_Error( ERR_DROP, "ParseMesh: invalid patch size" );
+		}
+#endif
 		c = width * height;
 		if ( c > MAX_PATCH_VERTS ) {
 			Com_Error( ERR_DROP, "ParseMesh: MAX_PATCH_VERTS" );

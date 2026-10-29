@@ -537,6 +537,12 @@ void SV_ClipToEntity( trace_t *trace, const vec3_t start, const vec3_t mins, con
 	clipHandle_t	clipHandle;
 	float			*origin, *angles;
 
+#ifdef CMOD_MISC_SECURITY
+	if ( (unsigned)entityNum >= MAX_GENTITIES ) {
+		entityNum = ENTITYNUM_NONE;
+	}
+#endif
+
 	touch = SV_GentityNum( entityNum );
 
 	Com_Memset(trace, 0, sizeof(trace_t));
@@ -586,7 +592,12 @@ static void SV_ClipMoveToEntities( moveclip_t *clip ) {
 	num = SV_AreaEntities( clip->boxmins, clip->boxmaxs, touchlist, MAX_GENTITIES);
 
 	if ( clip->passEntityNum != ENTITYNUM_NONE ) {
+#ifdef CMOD_MISC_SECURITY
+		passOwnerNum = (unsigned)clip->passEntityNum < MAX_GENTITIES ?
+			( SV_GentityNum( clip->passEntityNum ) )->r.ownerNum : ENTITYNUM_NONE;
+#else
 		passOwnerNum = ( SV_GentityNum( clip->passEntityNum ) )->r.ownerNum;
+#endif
 		if ( passOwnerNum == ENTITYNUM_NONE ) {
 			passOwnerNum = -1;
 		}

@@ -88,6 +88,23 @@ int						s_rawend[MAX_RAW_STREAMS];
 portable_samplepair_t s_rawsamples[MAX_RAW_STREAMS][MAX_RAW_SAMPLES];
 
 
+#ifdef CMOD_MISC_SECURITY
+static qboolean S_Base_CheckEntityNum( const char *function, int entityNum ) {
+	static qboolean warned = qfalse;
+
+	if ( entityNum < 0 || entityNum >= MAX_GENTITIES ) {
+		if ( warned ) {
+			Com_DPrintf( S_COLOR_YELLOW "%s: bad entitynum %i\n", function, entityNum );
+		} else {
+			Com_Printf( S_COLOR_YELLOW "%s: bad entitynum %i\n", function, entityNum );
+			warned = qtrue;
+		}
+		return qfalse;
+	}
+	return qtrue;
+}
+#endif
+
 // ====================================================================
 // User-setable variables
 // ====================================================================
@@ -840,6 +857,11 @@ continuous looping sounds are added each frame
 */
 
 void S_Base_StopLoopingSound(int entityNum) {
+#ifdef CMOD_MISC_SECURITY
+	if ( !S_Base_CheckEntityNum( "S_StopLoopingSound", entityNum ) ) {
+		return;
+	}
+#endif
 	loopSounds[entityNum].active = qfalse;
 //	loopSounds[entityNum].sfx = 0;
 	loopSounds[entityNum].kill = qfalse;
@@ -875,6 +897,12 @@ void S_Base_AddLoopingSound( int entityNum, const vec3_t origin, const vec3_t ve
 	if ( !s_soundStarted || s_soundMuted ) {
 		return;
 	}
+
+#ifdef CMOD_MISC_SECURITY
+	if ( !S_Base_CheckEntityNum( "S_AddLoopingSound", entityNum ) ) {
+		return;
+	}
+#endif
 
 	if ( sfxHandle < 0 || sfxHandle >= s_numSfx ) {
 		Com_Printf( S_COLOR_YELLOW "S_AddLoopingSound: handle %i out of range\n", sfxHandle );
@@ -938,6 +966,12 @@ void S_Base_AddRealLoopingSound( int entityNum, const vec3_t origin, const vec3_
 	if ( !s_soundStarted || s_soundMuted ) {
 		return;
 	}
+
+#ifdef CMOD_MISC_SECURITY
+	if ( !S_Base_CheckEntityNum( "S_AddRealLoopingSound", entityNum ) ) {
+		return;
+	}
+#endif
 
 	if ( sfxHandle < 0 || sfxHandle >= s_numSfx ) {
 		Com_Printf( S_COLOR_YELLOW "S_AddRealLoopingSound: handle %i out of range\n", sfxHandle );
@@ -1231,6 +1265,12 @@ void S_Base_Respatialize( int entityNum, const vec3_t head, vec3_t axis[3], int 
 	if ( !s_soundStarted || s_soundMuted ) {
 		return;
 	}
+
+#ifdef CMOD_MISC_SECURITY
+	if ( !S_Base_CheckEntityNum( "S_Respatialize", entityNum ) ) {
+		return;
+	}
+#endif
 
 	listener_number = entityNum;
 	VectorCopy(head, listener_origin);
@@ -1574,11 +1614,33 @@ void S_UpdateBackgroundTrack( void ) {
 			return;
 
 		// our max buffer size
+#ifdef CMOD_MISC_SECURITY
+		{
+			int frameBytes;
+
+			if ( fileSamples < 0 ||
+				 s_backgroundStream->info.width <= 0 ||
+				 s_backgroundStream->info.channels <= 0 ||
+				 s_backgroundStream->info.width > MAX_QINT / s_backgroundStream->info.channels ) {
+				S_Base_StopBackgroundTrack();
+				return;
+			}
+
+			frameBytes = s_backgroundStream->info.width * s_backgroundStream->info.channels;
+			if ( fileSamples > sizeof(raw) / frameBytes ) {
+				fileBytes = sizeof(raw);
+				fileSamples = fileBytes / frameBytes;
+			} else {
+				fileBytes = fileSamples * frameBytes;
+			}
+		}
+#else
 		fileBytes = fileSamples * (s_backgroundStream->info.width * s_backgroundStream->info.channels);
 		if ( fileBytes > sizeof(raw) ) {
 			fileBytes = sizeof(raw);
 			fileSamples = fileBytes / (s_backgroundStream->info.width * s_backgroundStream->info.channels);
 		}
+#endif
 
 		// Read
 		r = S_CodecReadStream(s_backgroundStream, fileBytes, raw);

@@ -101,10 +101,16 @@ void R_LoadPCX ( const char *filename, byte **pic, int *width, int *height)
 		|| pcx->encoding != 1
 		|| pcx->color_planes != 1
 		|| pcx->bits_per_pixel != 8
+#ifdef CMOD_MISC_SECURITY
+		|| !w || !h
+#endif
 		|| w >= 1024
 		|| h >= 1024)
 	{
 		ri.Printf (PRINT_ALL, "Bad or unsupported pcx file %s (%dx%d@%d)\n", filename, w, h, pcx->bits_per_pixel);
+#ifdef CMOD_MISC_SECURITY
+		ri.FS_FreeFile (pcx);
+#endif
 		return;
 	}
 
@@ -140,9 +146,16 @@ void R_LoadPCX ( const char *filename, byte **pic, int *width, int *height)
 		ri.Printf (PRINT_ALL, "PCX file truncated: %s\n", filename);
 		ri.FS_FreeFile (pcx);
 		ri.Free (pic8);
+#ifdef CMOD_MISC_SECURITY
+		return;
+#endif
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	if ((unsigned)len < 769 || raw.b > end - 769 || end[-769] != 0x0c)
+#else
 	if (raw.b-(byte*)pcx >= end - (byte*)769 || end[-769] != 0x0c)
+#endif
 	{
 		ri.Printf (PRINT_ALL, "PCX missing palette: %s\n", filename);
 		ri.FS_FreeFile (pcx);

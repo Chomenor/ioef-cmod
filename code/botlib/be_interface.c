@@ -103,7 +103,11 @@ qboolean ValidClientNumber(int num, char *str)
 //===========================================================================
 qboolean ValidEntityNumber(int num, char *str)
 {
+#ifdef CMOD_MISC_SECURITY
+	if (num < 0 || num >= botlibglobals.maxentities)
+#else
 	if (num < 0 || num > botlibglobals.maxentities)
+#endif
 	{
 		botimport.Print(PRT_ERROR, "%s: invalid entity number %d, [0, %d]\n",
 										str, num, botlibglobals.maxentities);
@@ -137,6 +141,16 @@ int Export_BotLibSetup(void)
 {
 	int		errnum;
 	
+#ifdef CMOD_MISC_SECURITY
+	// Remember setup attempts so shutdown also cleans up partial initialization.
+	botlibsetup = qtrue;
+	// Movement states must not retain client indexes from a larger EA allocation.
+	BotShutdownMoveAI();
+	// Other bot states must not outlive the configs and heaps their indexes refer to.
+	BotShutdownChatAI();
+	BotShutdownGoalAI();
+	BotShutdownWeaponAI();
+#endif
 	botDeveloper = LibVarGetValue("bot_developer");
  	memset( &botlibglobals, 0, sizeof(botlibglobals) );
 	//initialize byte swapping (litte endian etc.)
@@ -178,7 +192,12 @@ int Export_BotLibSetup(void)
 //===========================================================================
 int Export_BotLibShutdown(void)
 {
+#ifdef CMOD_MISC_SECURITY
+	if (!botlibsetup) return BLERR_LIBRARYNOTSETUP;
+	botlibglobals.botlibsetup = qfalse;
+#else
 	if (!BotLibSetup("BotLibShutdown")) return BLERR_LIBRARYNOTSETUP;
+#endif
 #ifndef DEMO
 	//DumpFileCRCs();
 #endif //DEMO

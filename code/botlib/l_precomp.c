@@ -482,6 +482,12 @@ int PC_StringizeTokens(token_t *tokens, token_t *token)
 //============================================================================
 int PC_MergeTokens(token_t *t1, token_t *t2)
 {
+#ifdef CMOD_MISC_SECURITY
+	if (t1->type == TT_NAME && (t2->type == TT_NAME || t2->type == TT_NUMBER) &&
+			strlen(t1->string) + strlen(t2->string) >= MAX_TOKEN) return qfalse;
+	if (t1->type == TT_STRING && t2->type == TT_STRING &&
+			strlen(t1->string) + strlen(t2->string) > MAX_TOKEN + 1) return qfalse;
+#endif
 	//merging of a name with a name or number
 	if (t1->type == TT_NAME && (t2->type == TT_NAME || t2->type == TT_NUMBER))
 	{

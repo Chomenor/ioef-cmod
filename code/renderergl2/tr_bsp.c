@@ -27,6 +27,95 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/json.h"
 #undef JSON_IMPLEMENTATION
 
+#ifdef CMOD_MISC_SECURITY
+#define R_CUBEMAP_MAX_ALLOC_COUNT ( ( MAX_QINT - 31 ) / (int)sizeof( cubemap_t ) )
+#define R_DDS_MAGIC ( (unsigned int)'D' | ( (unsigned int)'D' << 8 ) | ( (unsigned int)'S' << 16 ) | ( (unsigned int)' ' << 24 ) )
+#define R_DDSCAPS2_CUBEMAP 0x200u
+
+typedef struct {
+	unsigned int	headerSize;
+	unsigned int	flags;
+	unsigned int	height;
+	unsigned int	width;
+	unsigned int	pitchOrFirstMipSize;
+	unsigned int	volumeDepth;
+	unsigned int	numMips;
+	unsigned int	reserved1[11];
+	unsigned int	always_0x00000020;
+	unsigned int	pixelFormatFlags;
+	unsigned int	fourCC;
+	unsigned int	rgbBitCount;
+	unsigned int	rBitMask;
+	unsigned int	gBitMask;
+	unsigned int	bBitMask;
+	unsigned int	aBitMask;
+	unsigned int	caps;
+	unsigned int	caps2;
+	unsigned int	caps3;
+	unsigned int	caps4;
+	unsigned int	reserved2;
+} r_cubemapDdsHeader_t;
+
+static unsigned int R_DDSReadUInt32( const void *ptr ) {
+	const byte *p = (const byte *)ptr;
+
+	return (unsigned int)p[0] |
+			( (unsigned int)p[1] << 8 ) |
+			( (unsigned int)p[2] << 16 ) |
+			( (unsigned int)p[3] << 24 );
+}
+
+static qboolean R_CubemapCountIsSafe( unsigned int numCubemaps, const char *source ) {
+	if ( numCubemaps > R_CUBEMAP_MAX_ALLOC_COUNT ) {
+		ri.Printf( PRINT_ALL, "Bad %s: too many cubemaps\n", source );
+		return qfalse;
+	}
+	return qtrue;
+}
+
+static qboolean R_CubemapFillIndexIsSafe( int index, int count, const char *source ) {
+	if ( index >= count ) {
+		ri.Printf( PRINT_ALL, "Bad %s: cubemap count changed while parsing\n", source );
+		return qfalse;
+	}
+	return qtrue;
+}
+
+static qboolean R_CubemapDDSIsSafe( const char *filename ) {
+	union {
+		byte *b;
+		void *v;
+	} buffer;
+	long fileSize;
+	const r_cubemapDdsHeader_t *header;
+	qboolean safe = qtrue;
+
+	fileSize = ri.FS_ReadFile( filename, NULL );
+	if ( fileSize <= 0 ) {
+		return qtrue;
+	}
+
+	fileSize = ri.FS_ReadFile( filename, &buffer.v );
+	if ( !buffer.b || fileSize < 0 ) {
+		return qfalse;
+	}
+
+	if ( fileSize < 4 + sizeof( *header ) || R_DDSReadUInt32( buffer.b ) != R_DDS_MAGIC ) {
+		ri.Printf( PRINT_ALL, "Bad %s: not a DDS cubemap\n", filename );
+		safe = qfalse;
+	} else {
+		header = (const r_cubemapDdsHeader_t *)( buffer.b + 4 );
+		if ( !( R_DDSReadUInt32( &header->caps2 ) & R_DDSCAPS2_CUBEMAP ) ) {
+			ri.Printf( PRINT_ALL, "Bad %s: DDS is not a cubemap\n", filename );
+			safe = qfalse;
+		}
+	}
+
+	ri.FS_FreeFile( buffer.v );
+	return safe;
+}
+#endif
+
 /*
 
 Loads and prepares a map file for scene rendering.
@@ -909,6 +998,9 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, 
 	{
 		srfVert_t      *dv[3];
 
+#ifdef CMOD_MISC_SECURITY
+		numIndexes = cv->numIndexes;
+#endif
 		for(i = 0, tri = cv->indexes; i < numIndexes; i += 3, tri += 3)
 		{
 			dv[0] = &cv->verts[tri[0]];
@@ -2277,10 +2369,23 @@ static	void R_LoadFogs( lump_t *l, lump_t *brushesLump, lump_t *sidesLump ) {
 		if ( sideNum == -1 ) {
 			out->hasSurface = qfalse;
 		} else {
+#ifdef CMOD_FOGSIDE_FIX
+			int sideOffset = firstSide + sideNum;
+			if ( sideNum < 0 || (unsigned)sideOffset >= sidesCount ) {
+				ri.Printf( PRINT_DEVELOPER, "bad fog side offset %i\n", sideOffset );
+				out->hasSurface = qfalse;
+			} else {
+				out->hasSurface = qtrue;
+				planeNum = LittleLong( sides[ sideOffset ].planeNum );
+				VectorSubtract( vec3_origin, s_worldData.planes[ planeNum ].normal, out->surface );
+				out->surface[3] = -s_worldData.planes[ planeNum ].dist;
+			}
+#else
 			out->hasSurface = qtrue;
 			planeNum = LittleLong( sides[ firstSide + sideNum ].planeNum );
 			VectorSubtract( vec3_origin, s_worldData.planes[ planeNum ].normal, out->surface );
 			out->surface[3] = -s_worldData.planes[ planeNum ].dist;
+#endif
 		}
 
 		out++;
@@ -2618,6 +2723,13 @@ void R_LoadEnvironmentJson(const char *baseName)
 		ri.FS_FreeFile(buffer.v);
 		return;
 	}
+#ifdef CMOD_MISC_SECURITY
+	if (!R_CubemapCountIsSafe(JSON_ArrayGetIndex(cubemapArrayJson, bufferEnd, NULL, 0), filename))
+	{
+		ri.FS_FreeFile(buffer.v);
+		return;
+	}
+#endif
 
 	tr.numCubemaps = JSON_ArrayGetIndex(cubemapArrayJson, bufferEnd, NULL, 0);
 	tr.cubemaps = ri.Hunk_Alloc(tr.numCubemaps * sizeof(*tr.cubemaps), h_low);
@@ -2636,6 +2748,9 @@ void R_LoadEnvironmentJson(const char *baseName)
 			cubemap->name[0] = '\0';
 
 		keyValueJson = JSON_ObjectGetNamedValue(cubemapJson, bufferEnd, "Position");
+#ifdef CMOD_MISC_SECURITY
+		indexes[0] = indexes[1] = indexes[2] = NULL;
+#endif
 		JSON_ArrayGetIndex(keyValueJson, bufferEnd, indexes, 3);
 		for (j = 0; j < 3; j++)
 			cubemap->origin[j] = JSON_ValueGetFloat(indexes[j], bufferEnd);
@@ -2664,6 +2779,11 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 
 		for (i = 0; i < numSpawnVars; i++)
 		{
+#ifdef CMOD_MISC_SECURITY
+			if (!Q_stricmp(spawnVars[i][0], "classname") && !Q_stricmp(spawnVars[i][1], cubemapEntityName) &&
+				!R_CubemapCountIsSafe((unsigned int)numCubemaps + 1, cubemapEntityName))
+				return;
+#endif
 			if (!Q_stricmp(spawnVars[i][0], "classname") && !Q_stricmp(spawnVars[i][1], cubemapEntityName))
 				numCubemaps++;
 		}
@@ -2708,6 +2828,10 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 
 		if (isCubemap && originSet)
 		{
+#ifdef CMOD_MISC_SECURITY
+			if (!R_CubemapFillIndexIsSafe(numCubemaps, tr.numCubemaps, cubemapEntityName))
+				return;
+#endif
 			cubemap_t *cubemap = &tr.cubemaps[numCubemaps];
 			Q_strncpyz(cubemap->name, name, MAX_QPATH);
 			VectorCopy(origin, cubemap->origin);

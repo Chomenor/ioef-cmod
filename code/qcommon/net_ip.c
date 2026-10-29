@@ -674,6 +674,12 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 	NetadrToSockadr( &to, (struct sockaddr *) &addr );
 
 	if( usingSocks && to.type == NA_IP ) {
+#ifdef CMOD_MISC_SECURITY
+		if( length < 0 || length > (int)sizeof(socksBuf) - 10 ) {
+			Com_Printf( "Sys_SendPacket: packet too large for SOCKS relay\n" );
+			return;
+		}
+#endif
 		socksBuf[0] = 0;	// reserved
 		socksBuf[1] = 0;
 		socksBuf[2] = 0;	// fragment (not fragmented)
@@ -1131,6 +1137,12 @@ void NET_OpenSocks( int port ) {
 	if ( rfc1929 ) {
 		buf[2] = 2;		// method #2 - method id #02: username/password
 	}
+#ifdef CMOD_MISC_SECURITY
+	if ( rfc1929 ) {
+		buf[2] = 0;		// method #1 - method id #00: no authentication
+		buf[3] = 2;		// method #2 - method id #02: username/password
+	}
+#endif
 	if ( send( socks_socket, (void *)buf, len, 0 ) == SOCKET_ERROR ) {
 		Com_Printf( "NET_OpenSocks: send: %s\n", NET_ErrorString() );
 		return;
@@ -1164,6 +1176,12 @@ void NET_OpenSocks( int port ) {
 		// build the request
 		ulen = strlen( net_socksUsername->string );
 		plen = strlen( net_socksPassword->string );
+#ifdef CMOD_MISC_SECURITY
+		if ( ulen < 0 || plen < 0 || ulen > (int)sizeof(buf) - 3 || plen > (int)sizeof(buf) - 3 - ulen ) {
+			Com_Printf( "NET_OpenSocks: username/password too long\n" );
+			return;
+		}
+#endif
 
 		buf[0] = 1;		// username/password authentication version
 		buf[1] = ulen;
@@ -1215,7 +1233,11 @@ void NET_OpenSocks( int port ) {
 		Com_Printf( "NET_OpenSocks: recv: %s\n", NET_ErrorString() );
 		return;
 	}
+#ifdef CMOD_MISC_SECURITY
+	if( len < 10 || buf[0] != 5 ) {
+#else
 	if( len < 2 || buf[0] != 5 ) {
+#endif
 		Com_Printf( "NET_OpenSocks: bad response\n" );
 		return;
 	}

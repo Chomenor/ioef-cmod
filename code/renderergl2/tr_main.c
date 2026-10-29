@@ -1469,9 +1469,22 @@ void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 				   int fogIndex, int dlightMap, int pshadowMap, int cubemap ) {
 	int			index;
 
+#ifdef CMOD_MISC_SECURITY
+	// Keep the count bounded because shadow passes use it directly for sorting.
+	if ( tr.refdef.numDrawSurfs >= MAX_DRAWSURFS ) {
+		static qboolean warned = qfalse;
+		if ( !warned ) {
+			warned = qtrue;
+			ri.Printf( PRINT_WARNING, "R_AddDrawSurf: MAX_DRAWSURFS exceeded, dropping excess surfaces\n" );
+		}
+		return;
+	}
+	index = tr.refdef.numDrawSurfs;
+#else
 	// instead of checking for overflow, we just mask the index
 	// so it wraps around
 	index = tr.refdef.numDrawSurfs & DRAWSURF_MASK;
+#endif
 	// the sort data is packed into a single 32 bit value so it can be
 	// compared quickly during the qsorting process
 	tr.refdef.drawSurfs[index].sort = (shader->sortedIndex << QSORT_SHADERNUM_SHIFT) 

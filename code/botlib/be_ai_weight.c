@@ -148,6 +148,14 @@ void FreeWeightConfig2(weightconfig_t *config)
 //===========================================================================
 void FreeWeightConfig(weightconfig_t *config)
 {
+#ifdef CMOD_MISC_SECURITY
+	int i;
+	// Shared cached weights remain owned by the cache until BotShutdownWeights.
+	for (i = 0; i < MAX_WEIGHT_FILES; i++)
+	{
+		if (weightFileList[i] == config) return;
+	}
+#endif
 	if (!LibVarGetValue("bot_reloadcharacters")) return;
 	FreeWeightConfig2(config);
 } //end of the function FreeWeightConfig
@@ -674,6 +682,9 @@ float FuzzyWeightUndecided_r(int *inventory, fuzzyseperator_t *fs)
 //===========================================================================
 float FuzzyWeight(int *inventory, weightconfig_t *wc, int weightnum)
 {
+#ifdef CMOD_MISC_SECURITY
+	if (!wc || weightnum < 0 || weightnum >= wc->numweights) return 0;
+#endif
 #ifdef EVALUATERECURSIVELY
 	return FuzzyWeight_r(inventory, wc->weights[weightnum].firstseperator);
 #else
@@ -708,6 +719,9 @@ float FuzzyWeight(int *inventory, weightconfig_t *wc, int weightnum)
 //===========================================================================
 float FuzzyWeightUndecided(int *inventory, weightconfig_t *wc, int weightnum)
 {
+#ifdef CMOD_MISC_SECURITY
+	if (!wc || weightnum < 0 || weightnum >= wc->numweights) return 0;
+#endif
 #ifdef EVALUATERECURSIVELY
 	return FuzzyWeightUndecided_r(inventory, wc->weights[weightnum].firstseperator);
 #else

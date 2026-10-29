@@ -189,6 +189,9 @@ void BotInitMoveState(int handle, bot_initmove_t *initmove)
 
 	ms = BotMoveStateFromHandle(handle);
 	if (!ms) return;
+#ifdef CMOD_MISC_SECURITY
+	if (initmove->client < 0 || initmove->client >= botlibglobals.maxclients) return;
+#endif
 	VectorCopy(initmove->origin, ms->origin);
 	VectorCopy(initmove->velocity, ms->velocity);
 	VectorCopy(initmove->viewoffset, ms->viewoffset);

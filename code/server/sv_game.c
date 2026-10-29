@@ -31,6 +31,97 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 botlib_export_t	*botlib_export;
 
+#ifdef CMOD_MISC_SECURITY
+#include "../botlib/be_interface.h"
+#ifndef CMOD_VM_BOUNDS_CHECKS
+#include "../qcommon/vm_local.h"
+#endif
+
+typedef struct {
+	const char *name;
+	int defaultValue;
+	int minValue;
+	int maxValue;
+} botlibVarRange_t;
+
+static const botlibVarRange_t botlibVarRanges[] = {
+	{ "maxclients", 128, 0, MAX_CLIENTS },
+	{ "maxentities", 1024, 0, MAX_GENTITIES },
+	{ "max_routingcache", 4096, 0, 65536 },
+	{ "max_aaslinks", 6144, 2, 65536 },
+	{ "max_messages", 1024, 2, 65536 },
+	{ "max_iteminfo", 256, 0, 4096 },
+	{ "max_levelitems", 1024, 1, 4096 },
+	{ "max_weaponinfo", 32, 0, 4096 },
+	{ "max_projectileinfo", 32, 0, 4096 }
+};
+
+static const botlibVarRange_t *SV_BotLibVarRange( const char *var_name ) {
+	int i;
+
+	if ( !var_name ) {
+		return NULL;
+	}
+
+	for ( i = 0; i < (int)( sizeof( botlibVarRanges ) / sizeof( botlibVarRanges[0] ) ); i++ ) {
+		if ( !Q_stricmp( var_name, botlibVarRanges[i].name ) ) {
+			return &botlibVarRanges[i];
+		}
+	}
+
+	return NULL;
+}
+
+static int SV_BotLibVarIntegerValue( const char *string, const botlibVarRange_t *range ) {
+	float value = 0;
+
+	if ( string && Q_isanumber( string ) ) {
+		value = atof( string );
+		if ( Q_isnan( value ) ) {
+			value = 0;
+		}
+	}
+
+	if ( value < range->minValue ) {
+		return range->defaultValue;
+	}
+	if ( value > range->maxValue ) {
+		return range->maxValue;
+	}
+
+	return (int)value;
+}
+
+static int SV_BotLibVarSet( const char *var_name, const char *value ) {
+	char clampedValue[16];
+	int integerValue;
+	const botlibVarRange_t *range = SV_BotLibVarRange( var_name );
+
+	if ( range ) {
+		integerValue = SV_BotLibVarIntegerValue( value, range );
+		if ( !Q_stricmp( var_name, "maxclients" ) && integerValue < sv_maxclients->integer ) {
+			integerValue = sv_maxclients->integer;
+		}
+		Com_sprintf( clampedValue, sizeof( clampedValue ), "%d", integerValue );
+		value = clampedValue;
+	}
+
+	return botlib_export->BotLibVarSet( var_name, value );
+}
+
+static qboolean SV_BotLibValidClient( int client ) {
+	return client >= 0 && client < sv_maxclients->integer;
+}
+
+static qboolean SV_BotLibEAClientSyscall( intptr_t callnum ) {
+	return ( callnum >= BOTLIB_EA_SAY && callnum <= BOTLIB_EA_RESET_INPUT )
+#ifdef ELITEFORCE
+		|| callnum == BOTLIB_EA_ALT_ATTACK
+#endif
+		;
+}
+#endif
+
 // these functions must be used instead of pointer arithmetic, because
 // the game allocates gentities with private information after the server shared part
 int	SV_NumForGentity( sharedEntity_t *ent ) {
@@ -326,6 +417,28 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return retval;
 	}
 #endif
+#ifdef CMOD_MISC_SECURITY
+	// BotClientCommand callbacks can resume movement/chat code using this state.
+	if ( gvm->callLevel > 1 &&
+		( args[0] == BOTLIB_SETUP || args[0] == BOTLIB_SHUTDOWN ||
+		  args[0] == BOTLIB_LOAD_MAP || args[0] == BOTLIB_AI_FREE_MOVE_STATE ||
+		  args[0] == BOTLIB_AI_FREE_CHAT_STATE ) ) {
+		return 0;
+	}
+	// AAS/EA/AI traps bypass the botlib entry-point setup checks.
+	if ( !botlibglobals.botlibsetup && args[0] > BOTLIB_USER_COMMAND &&
+#ifdef ELITEFORCE
+		args[0] <= BOTLIB_AI_PREDICT_VISIBLE_POSITION
+#else
+		args[0] < BOTLIB_PC_LOAD_SOURCE
+#endif
+		) {
+		return 0;
+	}
+	if ( SV_BotLibEAClientSyscall( args[0] ) && !SV_BotLibValidClient( args[1] ) ) {
+		return 0;
+	}
+#endif
 	switch( args[0] ) {
 	case G_PRINT:
 		Com_Printf( "%s", (const char*)VMA(1) );
@@ -587,7 +700,11 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	case BOTLIB_SHUTDOWN:
 		return SV_BotLibShutdown();
 	case BOTLIB_LIBVAR_SET:
+#ifdef CMOD_MISC_SECURITY
+		return SV_BotLibVarSet( VMA(1), VMA(2) );
+#else
 		return botlib_export->BotLibVarSet( VMA(1), VMA(2) );
+#endif
 	case BOTLIB_LIBVAR_GET:
 #ifdef CMOD_VM_BOUNDS_CHECKS
 		VM_CHECKBOUNDS( gvm, args[2], args[3] );
@@ -623,8 +740,18 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return botlib_export->Test( args[1], VMA(2), VMA(3), VMA(4) );
 
 	case BOTLIB_GET_SNAPSHOT_ENTITY:
+#ifdef CMOD_MISC_SECURITY
+		if ( !SV_BotLibValidClient( args[1] ) ) {
+			return -1;
+		}
+#endif
 		return SV_BotGetSnapshotEntity( args[1], args[2] );
 	case BOTLIB_GET_CONSOLE_MESSAGE:
+#ifdef CMOD_MISC_SECURITY
+		if ( !SV_BotLibValidClient( args[1] ) ) {
+			return 0;
+		}
+#endif
 #ifdef CMOD_VM_BOUNDS_CHECKS
 		VM_CHECKBOUNDS( gvm, args[2], args[3] );
 #endif
@@ -1120,6 +1247,10 @@ void SV_ShutdownGameProgs( void ) {
 		return;
 	}
 	VM_Call( gvm, GAME_SHUTDOWN, qfalse );
+#ifdef CMOD_MISC_SECURITY
+	// Do not rely on the VM to release botlib's pointers before the hunk is cleared.
+	SV_BotLibShutdown();
+#endif
 #ifdef NEW_FILESYSTEM
 	FS_Handle_CloseAllOwner( FS_HANDLEOWNER_QAGAME );
 #endif

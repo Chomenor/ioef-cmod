@@ -138,10 +138,28 @@ void R_LoadTGA ( const char *name, byte **pic, int *width, int *height)
 	
 	if ( targa_header.image_type==2 || targa_header.image_type == 3 )
 	{ 
+#ifdef CMOD_MISC_SECURITY
+		{
+			size_t sourceBytes = (size_t)columns * rows;
+
+			if ( targa_header.pixel_size && sourceBytes > ((size_t)-1) / targa_header.pixel_size )
+			{
+				ri.Error (ERR_DROP, "LoadTGA: file truncated (%s)", name);
+			}
+
+			sourceBytes = sourceBytes * targa_header.pixel_size / 8;
+
+			if(sourceBytes > (size_t)(end - buf_p))
+			{
+				ri.Error (ERR_DROP, "LoadTGA: file truncated (%s)", name);
+			}
+		}
+#else
 		if(buf_p + columns*rows*targa_header.pixel_size/8 > end)
 		{
 			ri.Error (ERR_DROP, "LoadTGA: file truncated (%s)", name);
 		}
+#endif
 
 		// Uncompressed RGB or gray scale image
 		for(row=rows-1; row>=0; row--) 

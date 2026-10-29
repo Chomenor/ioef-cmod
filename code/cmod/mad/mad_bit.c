@@ -137,6 +137,11 @@ unsigned long mad_bit_read(struct mad_bitptr *bitptr, unsigned int len)
 {
   register unsigned long value;
 
+#ifdef CMOD_MISC_SECURITY
+  if (len == 0)
+    return 0;
+#endif
+
   if (bitptr->left == CHAR_BIT)
     bitptr->cache = *bitptr->byte;
 

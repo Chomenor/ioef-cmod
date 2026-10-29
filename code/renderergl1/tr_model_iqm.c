@@ -1476,6 +1476,15 @@ int R_IQMLerpTag( orientation_t *tag, iqmData_t *data,
 		return qfalse;
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	// Clamp frames, which are passed unvalidated by VM via trap_R_LerpTag
+	if ( startFrame < 0 || startFrame >= data->num_frames ) {
+		startFrame = data->num_frames > 0 ? data->num_frames - 1 : 0;
+	}
+	if ( endFrame < 0 || endFrame >= data->num_frames ) {
+		endFrame = data->num_frames > 0 ? data->num_frames - 1 : 0;
+	}
+#endif
 	ComputeJointMats( data, startFrame, endFrame, frac, jointMats );
 
 	tag->axis[0][0] = jointMats[12 * joint + 0];

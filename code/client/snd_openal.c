@@ -1441,6 +1441,10 @@ S_AL_StopLoopingSound
 static
 void S_AL_StopLoopingSound(int entityNum )
 {
+#ifdef CMOD_MISC_SECURITY
+	if ( entityNum < 0 || entityNum >= MAX_GENTITIES )
+		Com_Error( ERR_DROP, "S_StopLoopingSound: bad entitynum %i", entityNum );
+#endif
 	if(entityList[entityNum].srcAllocated)
 		S_AL_SrcKill(entityList[entityNum].srcIndex);
 }

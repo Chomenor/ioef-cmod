@@ -467,6 +467,19 @@ static qboolean FindChunk(struct BufferedFile *BF, uint32_t ChunkType)
 		Length = BigLong(CH->Length);
 		Type   = BigLong(CH->Type);
 
+#ifdef CMOD_MISC_SECURITY
+		/* Validate the body and CRC before any length addition. */
+		if(BF->BytesLeft < PNG_ChunkCRC_Size ||
+			Length > (uint32_t)(BF->BytesLeft - PNG_ChunkCRC_Size))
+		{
+			return(qfalse);
+		}
+		/* Empty chunks still have a CRC; leave matching chunks for the caller. */
+		if(!Length && Type != ChunkType)
+		{
+			BufferedFileSkip(BF, PNG_ChunkCRC_Size);
+		}
+#endif
 		/*
 		 *  We found it!
 		 */
@@ -607,6 +620,22 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 		 *  Skip to next chunk
 		 */
 
+#ifdef CMOD_MISC_SECURITY
+		/* Bound the chunk and accumulated size before either can wrap. */
+		if(BF->BytesLeft < PNG_ChunkCRC_Size ||
+			Length > (uint32_t)(BF->BytesLeft - PNG_ChunkCRC_Size) ||
+			Length > (uint32_t)INT_MAX - CompressedDataLength)
+		{
+			BufferedFileRewind(BF, BytesToRewind);
+
+			return((uint32_t)-1);
+		}
+		if(!Length)
+		{
+			BufferedFileSkip(BF, PNG_ChunkCRC_Size);
+			BytesToRewind += PNG_ChunkCRC_Size;
+		}
+#endif
 		if(Length)
 		{
 			if(!BufferedFileSkip(BF, Length + PNG_ChunkCRC_Size))
@@ -622,6 +651,13 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 	}
 
 	BufferedFileRewind(BF, BytesToRewind);
+
+#ifdef CMOD_MISC_SECURITY
+	if(CompressedDataLength <= PNG_ZlibHeader_Size + PNG_ZlibCheckValue_Size || CompressedDataLength > INT_MAX)
+	{
+		return((uint32_t)-1);
+	}
+#endif
 
 	CompressedData = ri.Malloc(CompressedDataLength);
 	if(!CompressedData)
@@ -671,6 +707,16 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 		 *  Copy the Data
 		 */
 
+#ifdef CMOD_MISC_SECURITY
+		/* Bound every copy and consume the CRC of empty IDAT chunks. */
+		if(Length > CompressedDataLength - (uint32_t)(CompressedDataPtr - CompressedData) ||
+			(!Length && !BufferedFileSkip(BF, PNG_ChunkCRC_Size)))
+		{
+			ri.Free(CompressedData);
+
+			return((uint32_t)-1);
+		}
+#endif
 		if(Length)
 		{
 			uint8_t *OrigCompressedData;
@@ -720,6 +766,15 @@ static uint32_t DecompressIDATs(struct BufferedFile *BF, uint8_t **Buffer)
 
 		return((uint32_t)-1);
 	}
+
+#ifdef CMOD_MISC_SECURITY
+	if(puffDestLen > INT_MAX)
+	{
+		ri.Free(CompressedData);
+
+		return((uint32_t)-1);
+	}
+#endif
 
 	/*
 	 *  Allocate the buffer for the uncompressed data.
@@ -1434,7 +1489,11 @@ static qboolean DecodeImageNonInterlaced(struct PNG_Chunk_IHDR *IHDR,
 	 *  Check if we have enough data for the whole image.
 	 */
 
+#ifdef CMOD_MISC_SECURITY
+	if(!((uint64_t)DecompressedDataLength == (((uint64_t)BytesPerScanline + 1) * IHDR_Height)))
+#else
 	if(!(DecompressedDataLength == ((BytesPerScanline + 1) * IHDR_Height)))
+#endif
 	{
 		return(qfalse);
 	}
@@ -1545,7 +1604,11 @@ static qboolean DecodeImageInterlaced(struct PNG_Chunk_IHDR *IHDR,
 	uint32_t w, h, p, a;
 	byte *OutPtr;
 	uint8_t *DecompPtr;
+#ifdef CMOD_MISC_SECURITY
+	uint64_t TargetLength;
+#else
 	uint32_t TargetLength;
+#endif
 
 	/*
 	 *  input verification
@@ -1785,7 +1848,11 @@ static qboolean DecodeImageInterlaced(struct PNG_Chunk_IHDR *IHDR,
 
 	for(a = 0; a < PNG_Adam7_NumPasses; a++)
 	{
+#ifdef CMOD_MISC_SECURITY
+		TargetLength += (((uint64_t)BytesPerScanline[a] + (BytesPerScanline[a] ? 1 : 0)) * PassHeight[a]);
+#else
 		TargetLength += ((BytesPerScanline[a] + (BytesPerScanline[a] ? 1 : 0)) * PassHeight[a]);
+#endif
 	}
 
 	/*
@@ -2140,6 +2207,18 @@ void R_LoadPNG(const char *name, byte **pic, int *width, int *height)
 			return; 
 		}
 
+#ifdef CMOD_MISC_SECURITY
+		/*
+		 *  Check if Length is a valid PNG palette size.
+		 */
+
+		if((ChunkHeaderLength > 256 * 3) || (ChunkHeaderLength % 3))
+		{
+			CloseBufferedFile(ThePNG);
+
+			return;
+		}
+#else
 		/*
 		 *  Check if Length is divisible by 3
 		 */
@@ -2150,6 +2229,7 @@ void R_LoadPNG(const char *name, byte **pic, int *width, int *height)
 
 			return;   
 		}
+#endif
 
 		/*
 		 *  Read the raw palette data

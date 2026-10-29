@@ -376,7 +376,12 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 			shader = tr.defaultShader;
 		} else {
 			md3Shader = (md3Shader_t *) ( (byte *)surface + surface->ofsShaders );
+#ifdef CMOD_MISC_SECURITY
+			// Use unsigned modulo so a negative skinNum from the VM can't index before the shader array
+			md3Shader += (unsigned int)ent->e.skinNum % (unsigned int)surface->numShaders;
+#else
 			md3Shader += ent->e.skinNum % surface->numShaders;
+#endif
 			shader = tr.shaders[ md3Shader->shaderIndex ];
 		}
 

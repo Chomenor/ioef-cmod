@@ -351,10 +351,25 @@ int vorbis_book_init_decode(codebook *c,const static_codebook *s){
     by sorted bitreversed codeword to allow treeless decode. */
 
     /* perform sort */
+#ifdef CMOD_MISC_SECURITY
+    ogg_uint32_t *codes, **codep;
+    /* Bound temporary memory and keep untrusted codebook sizes off the stack. */
+    if((size_t)n > (64u*1024*1024)/(sizeof(*codep)+sizeof(*sortindex)))
+      goto err_out;
+    codes=_make_words(s->lengthlist,s->entries,c->used_entries);
+    if(codes==NULL)goto err_out;
+    codep=_ogg_malloc(n*(sizeof(*codep)+sizeof(*sortindex)));
+    if(codep==NULL){
+      _ogg_free(codes);
+      goto err_out;
+    }
+    sortindex=(int *)(codep+n);
+#else
     ogg_uint32_t *codes=_make_words(s->lengthlist,s->entries,c->used_entries);
     ogg_uint32_t **codep=alloca(sizeof(*codep)*n);
 
     if(codes==NULL)goto err_out;
+#endif
 
     for(i=0;i<n;i++){
       codes[i]=bitreverse(codes[i]);
@@ -363,7 +378,9 @@ int vorbis_book_init_decode(codebook *c,const static_codebook *s){
 
     qsort(codep,n,sizeof(*codep),sort32a);
 
+#ifndef CMOD_MISC_SECURITY
     sortindex=alloca(n*sizeof(*sortindex));
+#endif
     c->codelist=_ogg_malloc(n*sizeof(*c->codelist));
     /* the index is a reverse index */
     for(i=0;i<n;i++){
@@ -390,6 +407,9 @@ int vorbis_book_init_decode(codebook *c,const static_codebook *s){
         if(s->lengthlist[i]>c->dec_maxlength)
           c->dec_maxlength=s->lengthlist[i];
       }
+#ifdef CMOD_MISC_SECURITY
+    _ogg_free(codep);
+#endif
 
     if(n==1 && c->dec_maxlength==1){
       /* special case the 'single entry codebook' with a single bit

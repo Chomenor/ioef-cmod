@@ -308,7 +308,11 @@ static void ResampleTexture( unsigned *in, int inwidth, int inheight, unsigned *
 							int outwidth, int outheight ) {
 	int		i, j;
 	unsigned	*inrow, *inrow2;
+#ifdef CMOD_MISC_SECURITY
+	uint64_t	frac, fracstep;
+#else
 	unsigned	frac, fracstep;
+#endif
 #ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
 	unsigned	p1[16384], p2[16384];
 #else
@@ -323,7 +327,11 @@ static void ResampleTexture( unsigned *in, int inwidth, int inheight, unsigned *
 #endif
 		ri.Error(ERR_DROP, "ResampleTexture: max width");
 								
+#ifdef CMOD_MISC_SECURITY
+	fracstep = ( (uint64_t)inwidth * 0x10000U ) / (unsigned)outwidth;
+#else
 	fracstep = inwidth*0x10000/outwidth;
+#endif
 
 	frac = fracstep>>2;
 	for ( i=0 ; i<outwidth ; i++ ) {
@@ -636,8 +644,13 @@ static void Upload32( unsigned *data,
 #ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
 	// avoid ResampleTexture overflow
 	while ( scaled_width > 16384 || scaled_height > 16384 ) {
+#ifdef CMOD_MISC_SECURITY
+		scaled_width = MAX( 1, scaled_width >> 1 );
+		scaled_height = MAX( 1, scaled_height >> 1 );
+#else
 		scaled_width >>= 1;
 		scaled_height >>= 1;
+#endif
 	}
 #endif
 

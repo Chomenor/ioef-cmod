@@ -380,7 +380,12 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 		} else if ( surface->numShaderIndexes <= 0 ) {
 			shader = tr.defaultShader;
 		} else {
+#ifdef CMOD_MISC_SECURITY
+			// Use unsigned modulo so a negative skinNum from the VM can't index before the shader array
+			shader = tr.shaders[ surface->shaderIndexes[ (unsigned int)ent->e.skinNum % (unsigned int)surface->numShaderIndexes ] ];
+#else
 			shader = tr.shaders[ surface->shaderIndexes[ ent->e.skinNum % surface->numShaderIndexes ] ];
+#endif
 		}
 
 		if ( model->numVaoSurfaces > 0 ) {

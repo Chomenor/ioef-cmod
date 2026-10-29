@@ -1001,7 +1001,11 @@ void CL_ReadDemoMessage( void ) {
 		return;
 	}
 	buf.cursize = LittleLong( buf.cursize );
+#ifdef CMOD_MISC_SECURITY
+	if ( buf.cursize < 0 ) {
+#else
 	if ( buf.cursize == -1 ) {
+#endif
 		CL_DemoCompleted ();
 		return;
 	}
@@ -1935,6 +1939,11 @@ static void CL_CompletePlayerName( char *args, int argNum )
 		//configstring
 		info = cl.gameState.stringData + cl.gameState.stringOffsets[CS_SERVERINFO];
 		clientCount = atoi( Info_ValueForKey( info, "sv_maxclients" ) );
+#ifdef CMOD_MISC_SECURITY
+		if ( clientCount > MAX_CLIENTS ) {
+			clientCount = MAX_CLIENTS;
+		}
+#endif
 
 		nameCount = 0;
 
@@ -3903,6 +3912,11 @@ void CL_Sayto_f( void ) {
 
 	info = cl.gameState.stringData + cl.gameState.stringOffsets[CS_SERVERINFO];
 	count = atoi( Info_ValueForKey( info, "sv_maxclients" ) );
+#ifdef CMOD_MISC_SECURITY
+	if ( count > MAX_CLIENTS ) {
+		count = MAX_CLIENTS;
+	}
+#endif
 
 	clientNum = -1;
 	for( i = 0; i < count; i++ ) {

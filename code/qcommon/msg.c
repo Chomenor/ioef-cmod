@@ -217,6 +217,11 @@ void MSG_WriteBits( msg_t *msg, int value, int bits ) {
 			}
 		}
 		msg->cursize = (msg->bit >> 3) + 1;
+#ifdef CMOD_MISC_SECURITY
+		if ( !( msg->bit & 7 ) ) {
+			msg->data[msg->cursize - 1] = 0;
+		}
+#endif
 	}
 }
 
@@ -661,6 +666,13 @@ float MSG_ReadAngle16( msg_t *msg ) {
 
 void MSG_ReadData( msg_t *msg, void *data, int len ) {
 	int		i;
+
+#ifdef CMOD_MISC_SECURITY
+	if ( len < 0 ) {
+		msg->readcount = msg->cursize + 1;
+		return;
+	}
+#endif
 
 #ifdef ELITEFORCE
 	if(msg->compat)

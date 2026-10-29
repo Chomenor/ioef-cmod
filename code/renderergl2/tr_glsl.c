@@ -512,7 +512,11 @@ static int GLSL_LoadGPUShaderText(const char *name, const char *fallback,
 		shaderText = buffer;
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	if (size >= destSize)
+#else
 	if (size > destSize)
+#endif
 	{
 		result = 0;
 	}

@@ -291,6 +291,39 @@ snd_stream_t *S_OggOpus_CodecOpenStream(const char *filename)
 	// get the number of sample-frames in the file
 	numSamples = op_pcm_total(of, -1);
 
+#ifdef CMOD_MISC_SECURITY
+	{
+		int i, links, channels;
+
+		channels = opusInfo->channel_count;
+		links = op_link_count(of);
+		for(i = 0; i < links; i++)
+		{
+			opusInfo = op_head(of, i);
+			if(!opusInfo || opusInfo->stream_count != 1 ||
+				opusInfo->channel_count != channels)
+			{
+				op_free(of);
+
+				S_CodecUtilClose(&stream);
+
+				Com_Printf("Ogg Opus file has inconsistent stream layout\n");
+				return NULL;
+			}
+		}
+	}
+
+	if(numSamples < 0 || numSamples > MAX_QINT / opusInfo->channel_count / OPUS_SAMPLEWIDTH)
+	{
+		op_free(of);
+
+		S_CodecUtilClose(&stream);
+
+		Com_Printf("Ogg Opus file has invalid sample count\n");
+		return NULL;
+	}
+#endif
+
 	// fill in the info-structure in the stream
 	stream->info.rate = 48000;
 	stream->info.width = OPUS_SAMPLEWIDTH;
@@ -432,6 +465,15 @@ void *S_OggOpus_CodecLoad(const char *filename, snd_info_t *info)
 	// fill the buffer
 	bytesRead = S_OggOpus_CodecReadStream(stream, info->size, buffer);
 	
+#ifdef CMOD_MISC_SECURITY
+	if(bytesRead != info->size)
+	{
+		Hunk_FreeTempMemory(buffer);
+		S_OggOpus_CodecCloseStream(stream);
+
+		return NULL;
+	}
+#endif
 	// we don't even have read a single byte
 	if(bytesRead <= 0)
 	{

@@ -156,6 +156,27 @@ void RB_ShadowTessEnd( void ) {
 		return;
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	/*
+	 * A shader can be remapped to tr.shadowShader after BSP verification.
+	 * Validate the completed batch before its indexes are used as offsets into
+	 * the fixed shadow work arrays.
+	 */
+	{
+		static qboolean warnedInvalidIndex;
+
+		for ( i = 0 ; i < tess.numIndexes ; i++ ) {
+			if ( tess.indexes[i] >= (glIndex_t)tess.numVertexes ) {
+				if ( !warnedInvalidIndex ) {
+					ri.Printf( PRINT_WARNING, "RB_ShadowTessEnd: ignoring surface with invalid indexes\n" );
+					warnedInvalidIndex = qtrue;
+				}
+				return;
+			}
+		}
+	}
+#endif
+
 	VectorCopy( backEnd.currentEntity->lightDir, lightDir );
 
 	// project vertexes away from light direction

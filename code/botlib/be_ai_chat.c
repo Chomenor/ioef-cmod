@@ -70,6 +70,43 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //time to ignore a chat message after using it
 #define CHATMESSAGE_RECENTTIME	20
 
+#ifdef CMOD_MISC_SECURITY
+#define BOT_CHAT_SIZE_MAX	( 2000000000u - sizeof( unsigned long int ) )
+
+static qboolean BotChatCheckSize( source_t *source, int size, size_t add )
+{
+	if ( size < 0 || add > BOT_CHAT_SIZE_MAX || (size_t) size > BOT_CHAT_SIZE_MAX - add )
+	{
+		SourceError( source, "bot chat file too large" );
+		return qfalse;
+	}
+	return qtrue;
+}
+
+static qboolean BotReplaceWordChecked(char *string, char *str, const char *synonym, const char *replacement)
+{
+	size_t stringLen = strlen(string);
+	size_t synonymLen = strlen(synonym);
+	size_t replacementLen = strlen(replacement);
+	size_t offset = str - string;
+	size_t tailLen;
+
+	// Bot chat strings are fixed-size MAX_MESSAGE_SIZE buffers, including direct trap callers.
+	if (str < string || stringLen >= MAX_MESSAGE_SIZE || offset > stringLen || synonymLen > stringLen - offset) {
+		return qfalse;
+	}
+
+	if (replacementLen > synonymLen && replacementLen - synonymLen >= MAX_MESSAGE_SIZE - stringLen) {
+		return qfalse;
+	}
+
+	tailLen = stringLen - offset - synonymLen;
+	memmove(str + replacementLen, str + synonymLen, tailLen + 1);
+	Com_Memcpy(str, replacement, replacementLen);
+	return qtrue;
+}
+#endif
+
 //the actuall chat messages
 typedef struct bot_chatmessage_s
 {
@@ -566,9 +603,15 @@ void StringReplaceWords(char *string, char *synonym, char *replacement)
 		} //end while
 		if (!str2)
 		{
+#ifdef CMOD_MISC_SECURITY
+			if (!BotReplaceWordChecked(string, str, synonym, replacement)) {
+				break;
+			}
+#else
 			memmove(str + strlen(replacement), str+strlen(synonym), strlen(str+strlen(synonym))+1);
 			//append the synonum replacement
 			Com_Memcpy(str, replacement, strlen(replacement));
+#endif
 		} //end if
 		//find the next synonym in the string
 		str = StringContainsWord(str+strlen(replacement), synonym, qfalse);
@@ -624,6 +667,9 @@ bot_synonymlist_t *BotLoadSynonyms(char *filename)
 	{
 		//
 		if (pass && size) ptr = (char *) GetClearedHunkMemory(size);
+#ifdef CMOD_MISC_SECURITY
+		if (pass) size = 0;
+#endif
 		//
 		PC_SetBaseFolder(BOTFILESBASEFOLDER);
 		source = LoadSourceFile(filename);
@@ -672,6 +718,13 @@ bot_synonymlist_t *BotLoadSynonyms(char *filename)
 				} //end if
 				else if (!strcmp(token.string, "["))
 				{
+#ifdef CMOD_MISC_SECURITY
+					if ( !BotChatCheckSize( source, size, sizeof(bot_synonymlist_t) ) )
+					{
+						FreeSource(source);
+						return NULL;
+					} //end if
+#endif
 					size += sizeof(bot_synonymlist_t);
 					if (pass && ptr)
 					{
@@ -704,6 +757,14 @@ bot_synonymlist_t *BotLoadSynonyms(char *filename)
 						} //end if
 						len = strlen(token.string) + 1;
 						len = PAD(len, sizeof(long));
+#ifdef CMOD_MISC_SECURITY
+						len = PAD(len, sizeof(uintptr_t));
+						if ( !BotChatCheckSize( source, size, sizeof(bot_synonym_t) + len ) )
+						{
+							FreeSource(source);
+							return NULL;
+						} //end if
+#endif
 						size += sizeof(bot_synonym_t) + len;
 						if (pass && ptr)
 						{
@@ -853,10 +914,16 @@ void BotReplaceReplySynonyms(char *string, unsigned long int context)
 				str2 = StringContainsWord(str1, replacement, qfalse);
 				if (str2 && str2 == str1) continue;
 				//
+#ifdef CMOD_MISC_SECURITY
+				if (!BotReplaceWordChecked(string, str1, synonym->string, replacement)) {
+					return;
+				}
+#else
 				memmove(str1 + strlen(replacement), str1+strlen(synonym->string),
 							strlen(str1+strlen(synonym->string)) + 1);
 				//append the synonum replacement
 				Com_Memcpy(str1, replacement, strlen(replacement));
+#endif
 				//
 				break;
 			} //end for
@@ -899,17 +966,38 @@ int BotLoadChatMessage(source_t *source, char *chatmessagestring)
 		//variable string
 		else if (token.type == TT_NUMBER && (token.subtype & TT_INTEGER))
 		{
+#ifdef CMOD_MISC_SECURITY
+			char encoded[32];
+
+			if (token.intvalue >= MAX_MATCHVARIABLES)
+			{
+				SourceError(source, "chat message variable out of range");
+				return qfalse;
+			} //end if
+			Com_sprintf(encoded, sizeof(encoded), "%cv%ld%c", ESCAPE_CHAR, (long) token.intvalue, ESCAPE_CHAR);
+			if (strlen(ptr) + strlen(encoded) + 1 > MAX_MESSAGE_SIZE)
+			{
+				SourceError(source, "chat message too long");
+				return qfalse;
+			} //end if
+			strcat(ptr, encoded);
+#else
 			if (strlen(ptr) + 7 > MAX_MESSAGE_SIZE)
 			{
 				SourceError(source, "chat message too long");
 				return qfalse;
 			} //end if
 			sprintf(&ptr[strlen(ptr)], "%cv%ld%c", ESCAPE_CHAR, token.intvalue, ESCAPE_CHAR);
+#endif
 		} //end if
 		//random string
 		else if (token.type == TT_NAME)
 		{
+#ifdef CMOD_MISC_SECURITY
+			if (strlen(ptr) + strlen(token.string) + 4 > MAX_MESSAGE_SIZE)
+#else
 			if (strlen(ptr) + 7 > MAX_MESSAGE_SIZE)
+#endif
 			{
 				SourceError(source, "chat message too long");
 				return qfalse;
@@ -979,6 +1067,9 @@ bot_randomlist_t *BotLoadRandomStrings(char *filename)
 	{
 		//
 		if (pass && size) ptr = (char *) GetClearedHunkMemory(size);
+#ifdef CMOD_MISC_SECURITY
+		if (pass) size = 0;
+#endif
 		//
 		PC_SetBaseFolder(BOTFILESBASEFOLDER);
 		source = LoadSourceFile(filename);
@@ -1002,6 +1093,14 @@ bot_randomlist_t *BotLoadRandomStrings(char *filename)
 			} //end if
 			len = strlen(token.string) + 1;
 			len = PAD(len, sizeof(long));
+#ifdef CMOD_MISC_SECURITY
+			len = PAD(len, sizeof(uintptr_t));
+			if ( !BotChatCheckSize( source, size, sizeof(bot_randomlist_t) + len ) )
+			{
+				FreeSource(source);
+				return NULL;
+			} //end if
+#endif
 			size += sizeof(bot_randomlist_t) + len;
 			if (pass && ptr)
 			{
@@ -1032,6 +1131,14 @@ bot_randomlist_t *BotLoadRandomStrings(char *filename)
 				} //end if
 				len = strlen(chatmessagestring) + 1;
 				len = PAD(len, sizeof(long));
+#ifdef CMOD_MISC_SECURITY
+				len = PAD(len, sizeof(uintptr_t));
+				if ( !BotChatCheckSize( source, size, sizeof(bot_randomstring_t) + len ) )
+				{
+					FreeSource(source);
+					return NULL;
+				} //end if
+#endif
 				size += sizeof(bot_randomstring_t) + len;
 				if (pass && ptr)
 				{
@@ -1918,6 +2025,15 @@ bot_replychat_t *BotLoadReplyChat(char *filename)
 						return NULL;
 					} //end if
 					StripDoubleQuotes(token.string);
+#ifdef CMOD_MISC_SECURITY
+					if (strlen(namebuffer) + (strlen(namebuffer) ? 1 : 0) + strlen(token.string) + 1 > sizeof(namebuffer))
+					{
+						SourceError(source, "reply chat bot name list too long");
+						BotFreeReplyChat(replychatlist);
+						FreeSource(source);
+						return NULL;
+					} //end if
+#endif
 					if (strlen(namebuffer)) strcat(namebuffer, "\\");
 					strcat(namebuffer, token.string);
 				} while(PC_CheckTokenString(source, ","));
@@ -2110,6 +2226,13 @@ bot_chat_t *BotLoadInitialChat(char *chatfile, char *chatname)
 							return NULL;
 						} //end if
 						StripDoubleQuotes(token.string);
+#ifdef CMOD_MISC_SECURITY
+						if ( !BotChatCheckSize( source, size, sizeof(bot_chattype_t) ) )
+						{
+							FreeSource(source);
+							return NULL;
+						} //end if
+#endif
 						if (pass && ptr)
 						{
 							chattype = (bot_chattype_t *) ptr;
@@ -2133,6 +2256,14 @@ bot_chat_t *BotLoadInitialChat(char *chatfile, char *chatname)
 							} //end if
 							len = strlen(chatmessagestring) + 1;
 							len = PAD(len, sizeof(long));
+#ifdef CMOD_MISC_SECURITY
+							len = PAD(len, sizeof(uintptr_t));
+							if ( !BotChatCheckSize( source, size, sizeof(bot_chatmessage_t) + len ) )
+							{
+								FreeSource(source);
+								return NULL;
+							} //end if
+#endif
 							if (pass && ptr)
 							{
 								chatmessage = (bot_chatmessage_t *) ptr;
@@ -2209,6 +2340,20 @@ void BotFreeChatFile(int chatstate)
 
 	cs = BotChatStateFromHandle(chatstate);
 	if (!cs) return;
+#ifdef CMOD_MISC_SECURITY
+	// Cached chats are shared and remain owned by the cache until shutdown.
+	{
+		int i;
+		for (i = 0; i < MAX_CLIENTS; i++)
+		{
+			if (ichatdata[i] && ichatdata[i]->chat == cs->chat)
+			{
+				cs->chat = NULL;
+				return;
+			}
+		}
+	}
+#endif
 	if (cs->chat) FreeMemory(cs->chat);
 	cs->chat = NULL;
 } //end of the function BotFreeChatFile
@@ -2287,6 +2432,67 @@ int BotExpandChatMessage(char *outmessage, char *message, unsigned long mcontext
 	msgptr = message;
 	outputbuf = outmessage;
 	len = 0;
+#ifdef CMOD_MISC_SECURITY
+	// Literal strings and previous expansions can also contain escapes.
+	while (*msgptr) {
+		if (*msgptr != ESCAPE_CHAR) {
+			if (len >= MAX_MESSAGE_SIZE - 1) goto failed;
+			outputbuf[len++] = *msgptr++;
+			continue;
+		}
+		msgptr++;
+		if (*msgptr == 'v') {
+			int offset, length;
+
+			msgptr++;
+			num = 0;
+			if (*msgptr < '0' || *msgptr > '9') goto failed;
+			// Bound num at each digit, before it can overflow or index variables.
+			do {
+				num = num * 10 + (*msgptr++ - '0');
+				if (num >= MAX_MATCHVARIABLES) goto failed;
+			} while (*msgptr >= '0' && *msgptr <= '9');
+			if (*msgptr != ESCAPE_CHAR) goto failed;
+			msgptr++;
+			offset = match->variables[num].offset;
+			length = match->variables[num].length;
+			if (offset < 0) continue;
+			if (offset >= MAX_MESSAGE_SIZE || length < 0 ||
+				length >= MAX_MESSAGE_SIZE - offset) goto failed;
+			Com_Memcpy(temp, &match->string[offset], length);
+			temp[length] = '\0';
+			if (reply) BotReplaceReplySynonyms(temp, vcontext);
+			else BotReplaceSynonyms(temp, vcontext);
+			ptr = temp;
+		} else if (*msgptr == 'r') {
+			msgptr++;
+			for (i = 0; *msgptr && *msgptr != ESCAPE_CHAR; i++) {
+				if (i >= MAX_MESSAGE_SIZE - 1) goto failed;
+				temp[i] = *msgptr++;
+			}
+			temp[i] = '\0';
+			if (*msgptr != ESCAPE_CHAR) goto failed;
+			msgptr++;
+			ptr = RandomString(temp);
+			if (!ptr) goto failed;
+			expansion = qtrue;
+		} else {
+			goto failed;
+		}
+		if (strlen(ptr) >= MAX_MESSAGE_SIZE - len) goto failed;
+		i = strlen(ptr);
+		Com_Memcpy(&outputbuf[len], ptr, i);
+		len += i;
+	}
+	outputbuf[len] = '\0';
+	BotReplaceWeightedSynonyms(outputbuf, mcontext);
+	return expansion;
+
+failed:
+	outputbuf[0] = '\0';
+	botimport.Print(PRT_ERROR, "BotConstructChat: invalid or oversized chat expansion\n");
+	return qfalse;
+#else
 	//
 	while(*msgptr)
 	{
@@ -2390,6 +2596,7 @@ int BotExpandChatMessage(char *outmessage, char *message, unsigned long mcontext
 	BotReplaceWeightedSynonyms(outputbuf, mcontext);
 	//return true if a random was expanded
 	return expansion;
+#endif
 } //end of the function BotExpandChatMessage
 //===========================================================================
 //
@@ -2504,6 +2711,33 @@ int BotNumInitialChats(int chatstate, char *type)
 	} //end for
 	return 0;
 } //end of the function BotNumInitialChats
+#ifdef CMOD_MISC_SECURITY
+static qboolean BotMatchCopyString(bot_match_t *match, const char *string)
+{
+	size_t length;
+
+	if (!string) return qfalse;
+	length = strlen(string);
+	if (length >= sizeof(match->string)) return qfalse;
+	Com_Memcpy(match->string, string, length + 1);
+	return qtrue;
+}
+
+static qboolean BotMatchAppendVariable(bot_match_t *match, int variable, int *index, const char *string)
+{
+	size_t length;
+
+	if (!string) return qtrue;
+	length = strlen(string);
+	if (length >= sizeof(match->string) || (size_t) *index + length >= sizeof(match->string)) return qfalse;
+	Com_Memcpy(&match->string[*index], string, length);
+	*index += length;
+	match->string[*index] = '\0';
+	match->variables[variable].offset = *index - (int) length;
+	match->variables[variable].length = (int) length;
+	return qtrue;
+}
+#endif
 //===========================================================================
 //
 // Parameter:				-
@@ -2534,6 +2768,18 @@ void BotInitialChat(int chatstate, char *type, int mcontext, char *var0, char *v
 	//
 	Com_Memset(&match, 0, sizeof(match));
 	index = 0;
+#ifdef CMOD_MISC_SECURITY
+	if (!BotMatchAppendVariable(&match, 0, &index, var0) ||
+		!BotMatchAppendVariable(&match, 1, &index, var1) ||
+		!BotMatchAppendVariable(&match, 2, &index, var2) ||
+		!BotMatchAppendVariable(&match, 3, &index, var3) ||
+		!BotMatchAppendVariable(&match, 4, &index, var4) ||
+		!BotMatchAppendVariable(&match, 5, &index, var5) ||
+		!BotMatchAppendVariable(&match, 6, &index, var6) ||
+		!BotMatchAppendVariable(&match, 7, &index, var7)) {
+		return;
+	}
+#else
 	if( var0 ) {
 		strcat(match.string, var0);
 		match.variables[0].offset = index;
@@ -2581,6 +2827,7 @@ void BotInitialChat(int chatstate, char *type, int mcontext, char *var0, char *v
 		match.variables[7].offset = index;
 		match.variables[7].length = strlen(var7);
 	}
+#endif
  	//
 	BotConstructChatMessage(cs, message, mcontext, &match, 0, qfalse);
 } //end of the function BotInitialChat
@@ -2643,7 +2890,11 @@ int BotReplyChat(int chatstate, char *message, int mcontext, int vcontext, char 
 	cs = BotChatStateFromHandle(chatstate);
 	if (!cs) return qfalse;
 	Com_Memset(&match, 0, sizeof(bot_match_t));
+#ifdef CMOD_MISC_SECURITY
+	if (!BotMatchCopyString(&match, message)) return qfalse;
+#else
 	strcpy(match.string, message);
+#endif
 	bestpriority = -1;
 	bestchatmessage = NULL;
 	bestrchat = NULL;
@@ -2716,6 +2967,18 @@ int BotReplyChat(int chatstate, char *message, int mcontext, int vcontext, char 
 	if (bestchatmessage)
 	{
 		index = strlen(bestmatch.string);
+#ifdef CMOD_MISC_SECURITY
+		if (!BotMatchAppendVariable(&bestmatch, 0, &index, var0) ||
+			!BotMatchAppendVariable(&bestmatch, 1, &index, var1) ||
+			!BotMatchAppendVariable(&bestmatch, 2, &index, var2) ||
+			!BotMatchAppendVariable(&bestmatch, 3, &index, var3) ||
+			!BotMatchAppendVariable(&bestmatch, 4, &index, var4) ||
+			!BotMatchAppendVariable(&bestmatch, 5, &index, var5) ||
+			!BotMatchAppendVariable(&bestmatch, 6, &index, var6) ||
+			!BotMatchAppendVariable(&bestmatch, 7, &index, var7)) {
+			return qfalse;
+		}
+#else
 		if( var0 ) {
 			strcat(bestmatch.string, var0);
 			bestmatch.variables[0].offset = index;
@@ -2763,6 +3026,7 @@ int BotReplyChat(int chatstate, char *message, int mcontext, int vcontext, char 
 			bestmatch.variables[7].offset = index;
 			bestmatch.variables[7].length = strlen(var7);
 		}
+#endif
 		if (LibVarGetValue("bot_testrchat"))
 		{
 			for (m = bestrchat->firstchatmessage; m; m = m->next)
@@ -3018,7 +3282,11 @@ void BotShutdownChatAI(void)
 	int i;
 
 	//free all remaining chat states
+#ifdef CMOD_MISC_SECURITY
+	for(i = 1; i <= MAX_CLIENTS; i++)
+#else
 	for(i = 0; i < MAX_CLIENTS; i++)
+#endif
 	{
 		if (botchatstates[i])
 		{
@@ -3037,6 +3305,9 @@ void BotShutdownChatAI(void)
 	} //end for
 	if (consolemessageheap) FreeMemory(consolemessageheap);
 	consolemessageheap = NULL;
+#ifdef CMOD_MISC_SECURITY
+	freeconsolemessages = NULL;
+#endif
 	if (matchtemplates) BotFreeMatchTemplates(matchtemplates);
 	matchtemplates = NULL;
 	if (randomstrings) FreeMemory(randomstrings);

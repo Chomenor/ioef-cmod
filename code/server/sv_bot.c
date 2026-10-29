@@ -340,6 +340,11 @@ int BotImport_DebugPolygonCreate(int color, int numPoints, vec3_t *points) {
 	if (!debugpolygons)
 		return 0;
 
+#ifdef CMOD_MISC_SECURITY
+	if (numPoints < 0 || numPoints > (int) ARRAY_LEN(debugpolygons[0].points))
+		return 0;
+#endif
+
 	for (i = 1; i < bot_maxdebugpolys; i++) 	{
 		if (!debugpolygons[i].inuse)
 			break;
@@ -364,6 +369,11 @@ static void BotImport_DebugPolygonShow(int id, int color, int numPoints, vec3_t 
 	bot_debugpoly_t *poly;
 
 	if (!debugpolygons) return;
+#ifdef CMOD_MISC_SECURITY
+	if (id < 0 || id >= bot_maxdebugpolys ||
+		numPoints < 0 || numPoints > (int) ARRAY_LEN(debugpolygons[0].points))
+		return;
+#endif
 	poly = &debugpolygons[id];
 	poly->inuse = qtrue;
 	poly->color = color;
@@ -379,6 +389,9 @@ BotImport_DebugPolygonDelete
 void BotImport_DebugPolygonDelete(int id)
 {
 	if (!debugpolygons) return;
+#ifdef CMOD_MISC_SECURITY
+	if (id < 0 || id >= bot_maxdebugpolys) return;
+#endif
 	debugpolygons[id].inuse = qfalse;
 }
 
@@ -440,6 +453,11 @@ SV_BotClientCommand
 ==================
 */
 static void BotClientCommand( int client, char *command ) {
+#ifdef CMOD_MISC_SECURITY
+	if ( client < 0 || client >= sv_maxclients->integer ) {
+		return;
+	}
+#endif
 	SV_ExecuteClientCommand( &svs.clients[client], command, qtrue );
 }
 
@@ -502,7 +520,11 @@ void SV_BotInitCvars(void) {
 	Cvar_Get("bot_enable", "1", 0);						//enable the bot
 	Cvar_Get("bot_developer", "0", CVAR_CHEAT);			//bot developer mode
 	Cvar_Get("bot_debug", "0", CVAR_CHEAT);				//enable bot debugging
+#ifdef CMOD_MISC_SECURITY
+	Cvar_CheckRange(Cvar_Get("bot_maxdebugpolys", "2", 0), 0, 65536, qtrue);	//maximum number of debug polys
+#else
 	Cvar_Get("bot_maxdebugpolys", "2", 0);				//maximum number of debug polys
+#endif
 	Cvar_Get("bot_groundonly", "1", 0);					//only show ground faces of areas
 	Cvar_Get("bot_reachability", "0", 0);				//show all reachabilities to other areas
 	Cvar_Get("bot_visualizejumppads", "0", CVAR_CHEAT);	//show jumppads

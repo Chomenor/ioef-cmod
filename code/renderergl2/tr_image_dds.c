@@ -213,6 +213,27 @@ typedef enum DXGI_FORMAT {
                          (((ui32_t)((x)[3])) << 24) )
 
 
+#ifdef CMOD_MISC_SECURITY
+static uint64_t R_DDSMipSize( ui32_t width, ui32_t height, GLenum picFormat )
+{
+	uint64_t numBlocks = (uint64_t)( ( width + 3 ) / 4 ) * ( ( height + 3 ) / 4 );
+
+	switch ( picFormat )
+	{
+		case GL_RGBA8:
+		case GL_SRGB8_ALPHA8_EXT:
+			return (uint64_t)width * height * 4;
+		case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
+		case GL_COMPRESSED_SRGB_S3TC_DXT1_EXT:
+		case GL_COMPRESSED_RED_RGTC1:
+		case GL_COMPRESSED_SIGNED_RED_RGTC1:
+			return numBlocks * 8;
+		default:
+			return numBlocks * 16;
+	}
+}
+#endif
+
 void R_LoadDDS ( const char *filename, byte **pic, int *width, int *height, GLenum *picFormat, int *numMips )
 {
 	union {
@@ -445,6 +466,40 @@ void R_LoadDDS ( const char *filename, byte **pic, int *width, int *height, GLen
 			return;
 		}
 	}
+
+#ifdef CMOD_MISC_SECURITY
+	{
+		ui32_t mipWidth = ddsHeader->width;
+		ui32_t mipHeight = ddsHeader->height;
+		ui32_t mipCount = ( ddsHeader->flags & _DDSFLAGS_MIPMAPCOUNT ) ? ddsHeader->numMips : 1;
+		uint64_t required = 0;
+		ui32_t i;
+
+		if ( mipWidth < 1 || mipWidth > 16384 || mipHeight < 1 || mipHeight > 16384 || mipCount > 16 )
+		{
+			ri.Printf(PRINT_ALL, "DDS File %s has invalid dimensions or mip count.\n", filename);
+			ri.FS_FreeFile(buffer.v);
+			return;
+		}
+
+		for ( i = 0; i < MAX( mipCount, 1 ); i++ )
+		{
+			required += R_DDSMipSize( mipWidth, mipHeight, *picFormat );
+			mipWidth = MAX( 1, mipWidth >> 1 );
+			mipHeight = MAX( 1, mipHeight >> 1 );
+		}
+
+		if ( ddsHeader->caps2 & DDSCAPS2_CUBEMAP )
+			required *= 6;
+
+		if ( required > (uint64_t)len )
+		{
+			ri.Printf(PRINT_ALL, "DDS File %s is truncated.\n", filename);
+			ri.FS_FreeFile(buffer.v);
+			return;
+		}
+	}
+#endif
 
 	*pic = ri.Malloc(len);
 	Com_Memcpy(*pic, data, len);

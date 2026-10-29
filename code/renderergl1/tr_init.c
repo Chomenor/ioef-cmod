@@ -1382,6 +1382,15 @@ void R_Init( void ) {
 	if (max_polyverts < MAX_POLYVERTS)
 		max_polyverts = MAX_POLYVERTS;
 
+#ifdef CMOD_MISC_SECURITY
+	// Direct polys consume one drawsurf each; cap cvar-expanded buffers before allocation sizing.
+	if (max_polys > MAX_DRAWSURFS)
+		max_polys = MAX_DRAWSURFS;
+
+	if (max_polyverts > MAX_DRAWSURFS * (MAX_POLYVERTS / MAX_POLYS))
+		max_polyverts = MAX_DRAWSURFS * (MAX_POLYVERTS / MAX_POLYS);
+#endif
+
 	ptr = ri.Hunk_Alloc( sizeof( *backEndData ) + sizeof(srfPoly_t) * max_polys + sizeof(polyVert_t) * max_polyverts, h_low);
 	backEndData = (backEndData_t *) ptr;
 	backEndData->polys = (srfPoly_t *) ((char *) ptr + sizeof( *backEndData ));

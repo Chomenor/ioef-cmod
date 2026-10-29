@@ -281,6 +281,12 @@ static void CM_SubdivideGridColumns( cGrid_t *grid ) {
 		//
 		// we need to subdivide the curve
 		//
+#ifdef CMOD_MISC_SECURITY
+		if ( grid->width > MAX_GRID_SIZE - 2 ) {
+			Com_DPrintf( "CM_SubdivideGridColumns: MAX_GRID_SIZE\n" );
+			return;
+		}
+#endif
 		for ( j = 0 ; j < grid->height ; j++ ) {
 			vec3_t	prev, mid, next;
 

@@ -180,6 +180,12 @@ qhandle_t R_RegisterMDR(const char *name, model_t *mod)
 	{
 		ri.Printf(PRINT_WARNING,"R_RegisterMDR: couldn't load mdr file %s\n", name);
 		mod->type = MOD_BAD;
+#ifdef CMOD_MISC_SECURITY
+		// R_LoadMDR may have set these before failing. Clear them so a fallback
+		// md3 load can't inherit an oversized lod count and index past mdv[].
+		mod->numLods = 0;
+		mod->modelData = NULL;
+#endif
 		return 0;
 	}
 	
@@ -1293,7 +1299,12 @@ static mdvTag_t *R_GetTag( mdvModel_t *mod, int frame, const char *_tagName ) {
 	mdvTag_t       *tag;
 	mdvTagName_t   *tagName;
 
+#ifdef CMOD_MISC_SECURITY
+	// Also reject negative frame, which can be passed by VM via trap_R_LerpTag
+	if ( frame < 0 || frame >= mod->numFrames ) {
+#else
 	if ( frame >= mod->numFrames ) {
+#endif
 		// it is possible to have a bad frame while changing models, so don't error
 		frame = mod->numFrames - 1;
 	}
@@ -1318,7 +1329,12 @@ mdvTag_t *R_GetAnimTag( mdrHeader_t *mod, int framenum, const char *tagName, mdv
 	mdrFrame_t		*frame;
 	mdrTag_t		*tag;
 
+#ifdef CMOD_MISC_SECURITY
+	// Also reject negative frame, which can be passed by VM via trap_R_LerpTag
+	if ( framenum < 0 || framenum >= mod->numFrames )
+#else
 	if ( framenum >= mod->numFrames ) 
+#endif
 	{
 		// it is possible to have a bad frame while changing models, so don't error
 		framenum = mod->numFrames - 1;

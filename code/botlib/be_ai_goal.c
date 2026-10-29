@@ -1752,6 +1752,10 @@ void BotFreeItemWeights(int goalstate)
 	if (!gs) return;
 	if (gs->itemweightconfig) FreeWeightConfig(gs->itemweightconfig);
 	if (gs->itemweightindex) FreeMemory(gs->itemweightindex);
+#ifdef CMOD_MISC_SECURITY
+	gs->itemweightconfig = NULL;
+	gs->itemweightindex = NULL;
+#endif
 } //end of the function BotFreeItemWeights
 //===========================================================================
 //

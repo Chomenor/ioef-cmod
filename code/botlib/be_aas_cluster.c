@@ -845,22 +845,50 @@ int AAS_CheckAreaForPossiblePortals(int areanum)
 			if (frontplanenum < 0 || faceplanenum == frontplanenum)
 			{
 				frontplanenum = faceplanenum;
+#ifdef CMOD_MISC_SECURITY
+				if (numfrontfaces >= MAX_PORTALAREAS)
+				{
+					AAS_Error("MAX_PORTALAREAS\n");
+					return 0;
+				} //end if
+#endif
 				frontfacenums[numfrontfaces++] = facenum;
 				for (k = 0; k < numfrontareas; k++)
 				{
 					if (frontareanums[k] == otherareanum) break;
 				} //end for
+#ifdef CMOD_MISC_SECURITY
+				if (k == numfrontareas && numfrontareas >= MAX_PORTALAREAS)
+				{
+					AAS_Error("MAX_PORTALAREAS\n");
+					return 0;
+				} //end if
+#endif
 				if (k == numfrontareas) frontareanums[numfrontareas++] = otherareanum;
 				numareafrontfaces[i]++;
 			} //end if
 			else if (backplanenum < 0 || faceplanenum == backplanenum)
 			{
 				backplanenum = faceplanenum;
+#ifdef CMOD_MISC_SECURITY
+				if (numbackfaces >= MAX_PORTALAREAS)
+				{
+					AAS_Error("MAX_PORTALAREAS\n");
+					return 0;
+				} //end if
+#endif
 				backfacenums[numbackfaces++] = facenum;
 				for (k = 0; k < numbackareas; k++)
 				{
 					if (backareanums[k] == otherareanum) break;
 				} //end for
+#ifdef CMOD_MISC_SECURITY
+				if (k == numbackareas && numbackareas >= MAX_PORTALAREAS)
+				{
+					AAS_Error("MAX_PORTALAREAS\n");
+					return 0;
+				} //end if
+#endif
 				if (k == numbackareas) backareanums[numbackareas++] = otherareanum;
 				numareabackfaces[i]++;
 			} //end else

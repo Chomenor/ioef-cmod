@@ -435,9 +435,43 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, msurface_t *surf, int 
 	}
 
 	indexes += LittleLong( ds->firstIndex );
+#ifdef CMOD_MISC_SECURITY
+	{
+		// Drop triangles that reference points beyond the clamped point count.
+		// Faces exceeding MAX_FACE_POINTS can otherwise feed out of range
+		// indexes to the backend, dlight, and mark fragment code.
+		int *outIndexes = (int *)( (byte *)cv + cv->ofsIndices );
+		int badTriangles = 0;
+
+		cv->numIndices = 0;
+		for ( i = 0 ; i + 2 < numIndexes ; i += 3 ) {
+			int tri[3];
+
+			for ( j = 0 ; j < 3 ; j++ ) {
+				tri[j] = LittleLong( indexes[ i + j ] );
+				if ( tri[j] < 0 || tri[j] >= numPoints ) {
+					break;
+				}
+			}
+			if ( j < 3 ) {
+				badTriangles++;
+				continue;
+			}
+
+			outIndexes[cv->numIndices++] = tri[0];
+			outIndexes[cv->numIndices++] = tri[1];
+			outIndexes[cv->numIndices++] = tri[2];
+		}
+
+		if ( badTriangles ) {
+			ri.Printf( PRINT_DEVELOPER, "WARNING: dropped %i face triangles with out of range indexes\n", badTriangles );
+		}
+	}
+#else
 	for ( i = 0 ; i < numIndexes ; i++ ) {
 		((int *)((byte *)cv + cv->ofsIndices ))[i] = LittleLong( indexes[ i ] );
 	}
+#endif
 
 	// take the plane information from the lightmap vector
 	for ( i = 0 ; i < 3 ; i++ ) {
@@ -1712,8 +1746,8 @@ static	void R_LoadFogs( lump_t *l, lump_t *brushesLump, lump_t *sidesLump ) {
 		} else {
 #ifdef CMOD_FOGSIDE_FIX
 			int sideOffset = firstSide + sideNum;
-			if ( (unsigned)sideOffset >= sidesCount ) {
-				ri.Printf( PRINT_WARNING, "bad fog side offset %i\n", sideOffset );
+			if ( sideNum < 0 || (unsigned)sideOffset >= sidesCount ) {
+				ri.Printf( PRINT_DEVELOPER, "bad fog side offset %i\n", sideOffset );
 				out->hasSurface = qfalse;
 			} else {
 				out->hasSurface = qtrue;

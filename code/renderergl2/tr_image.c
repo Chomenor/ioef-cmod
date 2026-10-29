@@ -333,7 +333,11 @@ static void ResampleTexture( byte *in, int inwidth, int inheight, byte *out,
 							int outwidth, int outheight ) {
 	int		i, j;
 	byte	*inrow, *inrow2;
+#ifdef CMOD_MISC_SECURITY
+	uint64_t	frac, fracstep;
+#else
 	int		frac, fracstep;
+#endif
 #ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
 	int		p1[16384], p2[16384];
 #else
@@ -348,7 +352,11 @@ static void ResampleTexture( byte *in, int inwidth, int inheight, byte *out,
 #endif
 		ri.Error(ERR_DROP, "ResampleTexture: max width");
 								
+#ifdef CMOD_MISC_SECURITY
+	fracstep = ( (uint64_t)inwidth * 0x10000U ) / (unsigned)outwidth;
+#else
 	fracstep = inwidth*0x10000/outwidth;
+#endif
 
 	frac = fracstep>>2;
 	for ( i=0 ; i<outwidth ; i++ ) {
@@ -1644,21 +1652,45 @@ static qboolean RawImage_ScaleToPower2( byte **data, int *inout_width, int *inou
 #ifdef CMOD_INCREASE_MAX_TEXTURE_SIZE
 	// avoid ResampleTexture overflow
 	while ( scaled_width > 16384 || scaled_height > 16384 ) {
+#ifdef CMOD_MISC_SECURITY
+		scaled_width = MAX( 1, scaled_width >> 1 );
+		scaled_height = MAX( 1, scaled_height >> 1 );
+#else
 		scaled_width >>= 1;
 		scaled_height >>= 1;
+#endif
 	}
 #endif
 
+#ifdef CMOD_MISC_SECURITY
+	if ( picmip && data && resampledBuffer && r_imageUpsample->integer &&
+	     scaled_width < r_imageUpsampleMaxSize->integer && scaled_height < r_imageUpsampleMaxSize->integer &&
+	     scaled_width <= glConfig.maxTextureSize && scaled_height <= glConfig.maxTextureSize )
+#else
 	if ( picmip && data && resampledBuffer && r_imageUpsample->integer && 
 	     scaled_width < r_imageUpsampleMaxSize->integer && scaled_height < r_imageUpsampleMaxSize->integer)
+#endif
 	{
 		int finalwidth, finalheight;
 		//int startTime, endTime;
 
 		//startTime = ri.Milliseconds();
 
+#ifdef CMOD_MISC_SECURITY
+		{
+			// avoid shift and allocation size overflow
+			int i;
+			finalwidth = scaled_width;
+			finalheight = scaled_height;
+			for ( i = 0; i < r_imageUpsample->integer && finalwidth <= 8192 && finalheight <= 8192; i++ ) {
+				finalwidth <<= 1;
+				finalheight <<= 1;
+			}
+		}
+#else
 		finalwidth = scaled_width << r_imageUpsample->integer;
 		finalheight = scaled_height << r_imageUpsample->integer;
+#endif
 
 		while ( finalwidth > r_imageUpsampleMaxSize->integer
 			|| finalheight > r_imageUpsampleMaxSize->integer ) {
@@ -2331,6 +2363,12 @@ image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLe
 		}
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	// resampled buffer only holds a single mip level
+	if (resampledBuffer)
+		numMips = 0;
+#endif
+
 	image->uploadWidth = width;
 	image->uploadHeight = height;
 
@@ -2552,6 +2590,10 @@ void R_LoadImage( const char *name, byte **pic, int *width, int *height, GLenum 
 		// Try DDS first
 		R_LoadDDS(ddsName, pic, width, height, picFormat, numMips);
 		if (*pic) return;
+#ifdef CMOD_MISC_SECURITY
+		*picFormat = GL_RGBA8;
+		*numMips = 0;
+#endif
 
 		// Then try explicitly requested extension (if not DDS)
 		if (ext && *ext && Q_stricmp(ext, "dds")) {

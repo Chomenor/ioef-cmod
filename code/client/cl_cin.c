@@ -980,6 +980,17 @@ static void readQuadInfo( byte *qData )
 	cinTable[currentHandle].maxsize  = qData[4]+qData[5]*256;
 	cinTable[currentHandle].minsize  = qData[6]+qData[7]*256;
 	
+#ifdef CMOD_MISC_SECURITY
+	if (!cinTable[currentHandle].xsize || !cinTable[currentHandle].ysize ||
+		cinTable[currentHandle].xsize > DEFAULT_CIN_WIDTH ||
+		cinTable[currentHandle].ysize > DEFAULT_CIN_HEIGHT) {
+		cinTable[currentHandle].xsize = 0;
+		cinTable[currentHandle].ysize = 0;
+		cinTable[currentHandle].status = FMV_EOF;
+		return;
+	}
+#endif
+
 	cinTable[currentHandle].CIN_HEIGHT = cinTable[currentHandle].ysize;
 	cinTable[currentHandle].CIN_WIDTH  = cinTable[currentHandle].xsize;
 
@@ -1125,6 +1136,15 @@ static void RoQInterrupt(void)
 // new frame is ready
 //
 redump:
+#ifdef CMOD_MISC_SECURITY
+	if ((cinTable[currentHandle].roq_id == ZA_SOUND_MONO &&
+		cinTable[currentHandle].RoQFrameSize > (sizeof(sbuf) / sizeof(sbuf[0])) / 2) ||
+		(cinTable[currentHandle].roq_id == ZA_SOUND_STEREO &&
+		cinTable[currentHandle].RoQFrameSize > sizeof(sbuf) / sizeof(sbuf[0]))) {
+		cinTable[currentHandle].status = FMV_EOF;
+		return;
+	}
+#endif
 	switch(cinTable[currentHandle].roq_id) 
 	{
 		case	ROQ_QUAD_VQ:
@@ -1208,7 +1228,11 @@ redump:
 	cinTable[currentHandle].roqF0		 = (signed char)framedata[7];
 	cinTable[currentHandle].roqF1		 = (signed char)framedata[6];
 
+#ifdef CMOD_MISC_SECURITY
+	if (cinTable[currentHandle].RoQFrameSize > sizeof(cin.file) - 8 || cinTable[currentHandle].roq_id==0x1084) {
+#else
 	if (cinTable[currentHandle].RoQFrameSize>65536||cinTable[currentHandle].roq_id==0x1084) {
+#endif
 		Com_DPrintf("roq_size>65536||roq_id==0x1084\n");
 		cinTable[currentHandle].status = FMV_EOF;
 		if (cinTable[currentHandle].looping) {
@@ -1475,6 +1499,17 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 	if (RoQID == 0x1084)
 	{
 		RoQ_init();
+#ifdef CMOD_MISC_SECURITY
+		if (cinTable[currentHandle].RoQFrameSize > sizeof(cin.file) - 8 || !cinTable[currentHandle].RoQFrameSize) {
+			Com_DPrintf("roq_size>65536||!roq_size\n");
+			if (cinTable[currentHandle].iFile) {
+				FS_FCloseFile( cinTable[currentHandle].iFile );
+				cinTable[currentHandle].iFile = 0;
+			}
+			cinTable[currentHandle].fileName[0] = 0;
+			return -1;
+		}
+#endif
 //		FS_Read (cin.file, cinTable[currentHandle].RoQFrameSize+8, cinTable[currentHandle].iFile);
 
 		cinTable[currentHandle].status = FMV_PLAY;

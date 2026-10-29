@@ -121,7 +121,11 @@ void R_LoadBMP( const char *name, byte **pic, int *width, int *height )
 		Com_Memcpy( bmpHeader.palette, buf_p, sizeof( bmpHeader.palette ) );
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	if (bmpHeader.bitmapDataOffset > length)
+#else
 	if (buffer.b + bmpHeader.bitmapDataOffset > end)
+#endif
 	{
 		ri.Error( ERR_DROP, "LoadBMP: invalid offset value in header (%s)", name );
 	}
@@ -157,6 +161,35 @@ void R_LoadBMP( const char *name, byte **pic, int *width, int *height )
 			break;
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	{
+		uint64_t	rows64;
+		uint64_t	numPixels64;
+		uint64_t	dataSize;
+
+		if ( bmpHeader.height & 0x80000000U )
+			rows64 = (uint64_t)( 0U - bmpHeader.height );
+		else
+			rows64 = bmpHeader.height;
+
+		numPixels64 = (uint64_t)bmpHeader.width * rows64;
+
+		if(bmpHeader.width == 0 || rows64 == 0 || numPixels64 > 0x1FFFFFFF) // 4*1FFFFFFF == 0x7FFFFFFC < 0x7FFFFFFF
+		{
+		  ri.Error (ERR_DROP, "LoadBMP: %s has an invalid image size", name);
+		}
+
+		columns = (int)bmpHeader.width;
+		rows = (int)rows64;
+		numPixels = (unsigned)numPixels64;
+
+		dataSize = numPixels64 * (bmpHeader.bitsPerPixel / 8);
+		if(dataSize > (uint64_t)(end - buf_p))
+		{
+		  ri.Error (ERR_DROP, "LoadBMP: file truncated (%s)", name);
+		}
+	}
+#else
 	columns = bmpHeader.width;
 	rows = bmpHeader.height;
 	if ( rows < 0 )
@@ -172,6 +205,7 @@ void R_LoadBMP( const char *name, byte **pic, int *width, int *height )
 	{
 	  ri.Error (ERR_DROP, "LoadBMP: file truncated (%s)", name);
 	}
+#endif
 
 	if ( width ) 
 		*width = columns;
@@ -202,8 +236,13 @@ void R_LoadBMP( const char *name, byte **pic, int *width, int *height )
 				*pixbuf++ = 0xff;
 				break;
 			case 16:
+#ifdef CMOD_MISC_SECURITY
+				shortPixel = (unsigned short)( buf_p[0] | ( buf_p[1] << 8 ) );
+				buf_p += 2;
+#else
 				shortPixel = * ( unsigned short * ) pixbuf;
 				pixbuf += 2;
+#endif
 				*pixbuf++ = ( shortPixel & ( 31 << 10 ) ) >> 7;
 				*pixbuf++ = ( shortPixel & ( 31 << 5 ) ) >> 2;
 				*pixbuf++ = ( shortPixel & ( 31 ) ) << 3;

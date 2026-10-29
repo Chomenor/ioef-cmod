@@ -42,6 +42,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 bot_input_t *botinputs;
 
+#ifdef CMOD_MISC_SECURITY
+static int botinputcount;
+
+static bot_input_t *EA_CheckedInputs(int client)
+{
+	if (!botinputs || client < 0 || client >= botinputcount)
+		Com_Error(ERR_DROP, "EA: invalid client number %d", client);
+	return botinputs;
+}
+
+// Check every EA array access, including calls made directly by native bot AI.
+// Limit this macro to the action functions; setup/shutdown use the raw pointer.
+#define botinputs EA_CheckedInputs(client)
+
+#endif
 //===========================================================================
 //
 // Parameter:				-
@@ -471,6 +486,11 @@ void EA_ResetInput(int client)
 //===========================================================================
 int EA_Setup(void)
 {
+#ifdef CMOD_MISC_SECURITY
+#undef botinputs
+	// Keep the allocation's capacity independent of later botlib global changes.
+	botinputcount = botlibglobals.maxclients;
+#endif
 	//initialize the bot inputs
 	botinputs = (bot_input_t *) GetClearedHunkMemory(
 									botlibglobals.maxclients * sizeof(bot_input_t));
@@ -484,6 +504,9 @@ int EA_Setup(void)
 //===========================================================================
 void EA_Shutdown(void)
 {
+#ifdef CMOD_MISC_SECURITY
+	if (!botinputs) return;
+#endif
 	FreeMemory(botinputs);
 	botinputs = NULL;
 } //end of the function EA_Shutdown

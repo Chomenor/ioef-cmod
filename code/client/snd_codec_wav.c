@@ -149,6 +149,14 @@ static qboolean S_ReadRIFFHeader(fileHandle_t file, snd_info_t *info)
 		return qfalse;
 	}
 
+#ifdef CMOD_MISC_SECURITY
+	if( fmtlen < 16 )
+	{
+		Com_Printf( S_COLOR_RED "ERROR: WAV \"fmt\" chunk too short\n" );
+		return qfalse;
+	}
+#endif
+
 	// Save the parameters
 	FGetLittleShort(file); // wav_format
 	info->channels = FGetLittleShort(file);
@@ -156,6 +164,21 @@ static qboolean S_ReadRIFFHeader(fileHandle_t file, snd_info_t *info)
 	FGetLittleLong(file);
 	FGetLittleShort(file);
 	bits = FGetLittleShort(file);
+
+#ifdef CMOD_MISC_SECURITY
+	if( info->channels < 1 || info->channels > 2 ||
+		info->rate <= 0 || info->rate > MAX_QINT / 16384 ||
+		( bits != 8 && bits != 16 ) )
+	{
+#ifdef CMOD_REDUCE_WARNINGS
+		if ( cl.warned_wavFormat )
+			Com_DPrintf( S_COLOR_RED "ERROR: Unsupported WAV format\n" );
+		else
+#endif
+		Com_Printf( S_COLOR_RED "ERROR: Unsupported WAV format\n" );
+		return qfalse;
+	}
+#endif
 
 	if( bits < 8 )
 	{
@@ -190,6 +213,17 @@ static qboolean S_ReadRIFFHeader(fileHandle_t file, snd_info_t *info)
 		return qfalse;
 	}
 	info->samples = (info->size / info->width) / info->channels;
+#ifdef CMOD_MISC_SECURITY
+	{
+		int sampleBytes = info->channels * sizeof(short) * 2;
+
+		if( info->samples > MAX_QINT / sampleBytes )
+		{
+			Com_Printf( S_COLOR_RED "ERROR: WAV \"data\" chunk too large\n" );
+			return qfalse;
+		}
+	}
+#endif
 
 	return qtrue;
 }
@@ -307,6 +341,10 @@ int S_WAV_CodecReadStream(snd_stream_t *stream, int bytes, void *buffer)
 
 	if(remaining <= 0)
 		return 0;
+#ifdef CMOD_MISC_SECURITY
+	if(bytes <= 0)
+		return 0;
+#endif
 	if(bytes > remaining)
 		bytes = remaining;
 	stream->pos += bytes;
