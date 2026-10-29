@@ -93,6 +93,12 @@
 #define CMOD_VM_DISABLE_JTRG
 #endif
 
+// [SECURITY] Miscellaneous security fixes and improvements.
+// AI USE: Mostly AI generated (90%+).
+#if defined( ENABLE_AI_FEATURES )
+#define CMOD_MISC_SECURITY
+#endif
+
 // [SECURITY] Disable pvr images to reduce attack surface. They appear to be
 // unused on EF.
 #define CMOD_DISABLE_PVR
