@@ -138,6 +138,12 @@ typedef struct vmSymbol_s {
 	char	symName[1];		// variable sized
 } vmSymbol_t;
 
+#ifdef CMOD_VM_BOUNDS_CHECKS
+// reserved space for effective LOCAL+LOAD* checks
+// also to avoid runtime range checks for many small arguments/structs in systemcalls
+#define	VM_DATA_GUARD_SIZE	1024
+#endif
+
 #define	VM_OFFSET_PROGRAM_STACK		0
 #define	VM_OFFSET_SYSTEM_CALL		4
 
@@ -171,10 +177,18 @@ struct vm_s {
 
 	intptr_t	*instructionPointers;
 	int			instructionCount;
+#ifdef CMOD_VM_HARDENING
+	byte		*callableInstructions;
+	byte		*jumpTargetOpStack;
+	byte		*instructionStarts;
+#endif
 
 	byte		*dataBase;
 	int			dataMask;
 	int			dataAlloc;			// actually allocated
+#ifdef CMOD_VM_BOUNDS_CHECKS
+	int			exactDataLength;
+#endif
 
 	int			stackBottom;		// if programStack < stackBottom, error
 

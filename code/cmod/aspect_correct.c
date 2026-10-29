@@ -307,6 +307,9 @@ qboolean AspectCorrect_OnCgameSyscall( intptr_t *args, intptr_t *retval ) {
 			case CG_GETGLCONFIG:
 			{
 				glconfig_t *glconfig = VMA(1);
+#ifdef CMOD_VM_BOUNDS_CHECKS
+				VM_CHECKBOUNDS( cgvm, args[1], sizeof( glconfig_t ) );
+#endif
 				*glconfig = cls.glconfig;
 				glconfig->vidWidth = 640;
 				glconfig->vidHeight = 480;
@@ -378,6 +381,9 @@ qboolean AspectCorrect_OnUISyscall( intptr_t *args, intptr_t *retval ) {
 			case UI_GETGLCONFIG:
 			{
 				glconfig_t *glconfig = VMA(1);
+#ifdef CMOD_VM_BOUNDS_CHECKS
+				VM_CHECKBOUNDS( uivm, args[1], sizeof( glconfig_t ) );
+#endif
 				*glconfig = cls.glconfig;
 				glconfig->vidWidth = 640;
 				glconfig->vidHeight = 480;

@@ -31,6 +31,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define	BOTLIB_API_VERSION		2
 
+#ifdef CMOD_VM_BOUNDS_CHECKS
+// Number of integers supplied to bot weight evaluators by the game VM.
+#define MAX_BOTLIB_INVENTORY		256
+#endif
+
 struct aas_clientmove_s;
 struct aas_entityinfo_s;
 struct aas_areainfo_s;

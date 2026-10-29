@@ -141,6 +141,37 @@ static ID_INLINE unsigned int __lwbrx(register void *addr,
     }
 #endif
 
+#ifdef CMOD_VM_HARDENING
+static qboolean VM_InterpretedFrameSizeValid( int frameSize ) {
+	return frameSize >= 0 && frameSize < PROGRAM_STACK_SIZE && !( frameSize & 3 );
+}
+
+static void VM_CheckInterpretedPC( const vm_t *vm, int programCounter ) {
+	if ( (unsigned)programCounter >= (unsigned)vm->codeLength ||
+			!vm->instructionStarts[ programCounter ] ) {
+		Com_Error( ERR_DROP, "VM program counter out of range" );
+	}
+}
+
+static void VM_CheckInterpretedProgramStack( const vm_t *vm, int programStack, int length ) {
+	uint64_t end;
+	// Don't enforce vm->stackBottom here: game code routinely exceeds the nominal
+	// 64KB program stack (e.g. Com_sprintf's 32KB frame), and the compiled VM only
+	// enforces this same minimum floor, letting the stack extend into the data region.
+	const int minProgramStack = 4 + 8 + 4 * MAX_VMMAIN_ARGS;
+
+	if ( length < 0 || ( programStack & 3 ) || programStack < minProgramStack ||
+			(unsigned)programStack > (unsigned)vm->dataMask ) {
+		Com_Error( ERR_DROP, "VM program stack out of range" );
+	}
+
+	end = (uint64_t)(unsigned)programStack + (uint64_t)length;
+	if ( end > (uint64_t)(unsigned)vm->dataMask + 1 ) {
+		Com_Error( ERR_DROP, "VM program stack out of range" );
+	}
+}
+#endif
+
 char *VM_Indent( vm_t *vm ) {
 	static char	*string = "                                        ";
 	if ( vm->callLevel > 20 ) {
@@ -195,6 +226,10 @@ void VM_PrepareInterpreter( vm_t *vm, vmHeader_t *header ) {
 
 	vm->codeBase = Hunk_Alloc( vm->codeLength*4, h_high );			// we're now int aligned
 //	memcpy( vm->codeBase, (byte *)header + header->codeOffset, vm->codeLength );
+#ifdef CMOD_VM_HARDENING
+	vm->instructionStarts = Hunk_Alloc( vm->codeLength + 1, h_high );
+	Com_Memset( vm->instructionStarts, 0, vm->codeLength + 1 );
+#endif
 
 	// we don't need to translate the instructions, but we still need
 	// to find each instructions starting point for jumps
@@ -208,6 +243,12 @@ void VM_PrepareInterpreter( vm_t *vm, vmHeader_t *header ) {
 		vm->instructionPointers[ instruction ] = int_pc;
 		instruction++;
 
+#ifdef CMOD_VM_HARDENING
+		if ( byte_pc >= header->codeLength || int_pc >= vm->codeLength ) {
+			Com_Error( ERR_DROP, "VM_PrepareInterpreter: pc > header->codeLength" );
+		}
+		vm->instructionStarts[ int_pc ] = 1;
+#endif
 		op = (int)code[ byte_pc ];
 		codeBase[int_pc] = op;
 		if(byte_pc > header->codeLength)
@@ -239,11 +280,30 @@ void VM_PrepareInterpreter( vm_t *vm, vmHeader_t *header ) {
 		case OP_GTF:
 		case OP_GEF:
 		case OP_BLOCK_COPY:
+#ifdef CMOD_VM_HARDENING
+			if ( byte_pc + 4 > header->codeLength || int_pc >= vm->codeLength ) {
+				Com_Error( ERR_DROP, "VM_PrepareInterpreter: pc > header->codeLength" );
+			}
+#endif
 			codeBase[int_pc] = loadWord(&code[byte_pc]);
+#ifdef CMOD_VM_HARDENING
+			if ( ( op == OP_ENTER || op == OP_LEAVE ) &&
+					!VM_InterpretedFrameSizeValid( codeBase[int_pc] ) ) {
+				Com_Error( ERR_DROP, "VM_PrepareInterpreter: bad stack frame size" );
+			}
+			if ( op == OP_BLOCK_COPY && codeBase[int_pc] < 0 ) {
+				Com_Error( ERR_DROP, "VM_PrepareInterpreter: bad block copy count" );
+			}
+#endif
 			byte_pc += 4;
 			int_pc++;
 			break;
 		case OP_ARG:
+#ifdef CMOD_VM_HARDENING
+			if ( byte_pc >= header->codeLength || int_pc >= vm->codeLength ) {
+				Com_Error( ERR_DROP, "VM_PrepareInterpreter: pc > header->codeLength" );
+			}
+#endif
 			codeBase[int_pc] = (int)code[byte_pc];
 			byte_pc++;
 			int_pc++;
@@ -281,7 +341,11 @@ void VM_PrepareInterpreter( vm_t *vm, vmHeader_t *header ) {
 		case OP_LEF:
 		case OP_GTF:
 		case OP_GEF:
+#ifdef CMOD_VM_HARDENING
+			if(codeBase[int_pc] < 0 || codeBase[int_pc] >= vm->instructionCount)
+#else
 			if(codeBase[int_pc] < 0 || codeBase[int_pc] > vm->instructionCount)
+#endif
 				Com_Error(ERR_DROP, "VM_PrepareInterpreter: Jump to invalid instruction number");
 
 			// codeBase[pc] is the instruction index. Convert that into an offset into
@@ -370,6 +434,9 @@ int	VM_CallInterpreted( vm_t *vm, int *args ) {
 
 	programStack -= ( 8 + 4 * MAX_VMMAIN_ARGS );
 
+#ifdef CMOD_VM_HARDENING
+	VM_CheckInterpretedProgramStack( vm, programStack, 8 + 4 * MAX_VMMAIN_ARGS );
+#endif
 	for ( arg = 0; arg < MAX_VMMAIN_ARGS; arg++ )
 		*(int *)&image[ programStack + 8 + arg * 4 ] = args[ arg ];
 
@@ -382,6 +449,9 @@ int	VM_CallInterpreted( vm_t *vm, int *args ) {
 	// that as long as opStack is valid, opStack-1 will
 	// not corrupt anything
 	opStack = PADP(stack, 16);
+#ifdef CMOD_VM_HARDENING
+	Com_Memset( opStack, 0, OPSTACK_SIZE );
+#endif
 	*opStack = 0xDEADBEEF;
 	opStackOfs = 0;
 
@@ -399,6 +469,10 @@ nextInstruction:
 		r0 = opStack[opStackOfs];
 		r1 = opStack[(uint8_t) (opStackOfs - 1)];
 nextInstruction2:
+#ifdef CMOD_VM_HARDENING
+		VM_CheckInterpretedPC( vm, programCounter );
+		VM_CheckInterpretedProgramStack( vm, programStack, 4 );
+#endif
 #ifdef DEBUG_VM
 		if ( (unsigned)programCounter >= vm->codeLength ) {
 			Com_Error( ERR_DROP, "VM pc out of range" );
@@ -509,6 +583,9 @@ nextInstruction2:
 #endif
 				// save the stack to allow recursive VM entry
 //				temp = vm->callLevel;
+#ifdef CMOD_VM_HARDENING
+				VM_CheckInterpretedProgramStack( vm, programStack, 4 + MAX_VMSYSCALL_ARGS * (int)sizeof( int ) );
+#endif
 				vm->programStack = programStack - 4;
 #ifdef DEBUG_VM
 				stomped = *(int *)&image[ programStack + 4 ];
@@ -574,6 +651,9 @@ nextInstruction2:
 
 			programCounter += 1;
 			programStack -= v1;
+#ifdef CMOD_VM_HARDENING
+			VM_CheckInterpretedProgramStack( vm, programStack, 8 );
+#endif
 #ifdef DEBUG_VM
 			// save old stack frame for debugging traces
 			*(int *)&image[programStack+4] = programStack + v1;
@@ -594,6 +674,9 @@ nextInstruction2:
 			v1 = r2;
 
 			programStack += v1;
+#ifdef CMOD_VM_HARDENING
+			VM_CheckInterpretedProgramStack( vm, programStack, 4 );
+#endif
 
 			// grab the saved program counter
 			programCounter = *(int *)&image[ programStack ];
@@ -607,9 +690,14 @@ nextInstruction2:
 			// check for leaving the VM
 			if ( programCounter == -1 ) {
 				goto done;
+#ifdef CMOD_VM_HARDENING
+			} else {
+				VM_CheckInterpretedPC( vm, programCounter );
+#else
 			} else if ( (unsigned)programCounter >= vm->codeLength ) {
 				Com_Error( ERR_DROP, "VM program counter out of range in OP_LEAVE" );
 				return 0;
+#endif
 			}
 			goto nextInstruction;
 

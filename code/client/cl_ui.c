@@ -791,6 +791,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return FloatAsInt( Cvar_VariableValue( VMA(1) ) );
 
 	case UI_CVAR_VARIABLESTRINGBUFFER:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		Cvar_VariableStringBuffer( VMA(1), VMA(2), args[3] );
 		return 0;
 
@@ -815,6 +818,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_CVAR_INFOSTRINGBUFFER:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		Cvar_InfoStringBuffer( args[1], VMA(2), args[3] );
 		return 0;
 
@@ -822,6 +828,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return Cmd_Argc();
 
 	case UI_ARGV:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		Cmd_ArgvBuffer( args[1], VMA(2), args[3] );
 		return 0;
 
@@ -868,6 +877,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 			return 0;
 		}
 #endif
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[1], args[2] );
+#endif
 		FS_Read( VMA(1), args[2], args[3] );
 		return 0;
 
@@ -876,6 +888,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		if ( FS_Handle_GetOwner( args[3] ) != FS_HANDLEOWNER_UI ) {
 			return 0;
 		}
+#endif
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[1], args[2] );
 #endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
@@ -890,6 +905,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_FS_GETFILELIST:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[3], args[4] );
+#endif
 		return FS_GetFileList( VMA(1), VMA(2), VMA(3), args[4] );
 
 #ifndef ELITEFORCE
@@ -959,10 +977,16 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_KEY_KEYNUMTOSTRINGBUF:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		Key_KeynumToStringBuf( args[1], VMA(2), args[3] );
 		return 0;
 
 	case UI_KEY_GETBINDINGBUF:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		Key_GetBindingBuf( args[1], VMA(2), args[3] );
 		return 0;
 
@@ -997,6 +1021,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_GETCLIPBOARDDATA:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[1], args[2] );
+#endif
 #ifdef CMOD_RESTRICT_CLIPBOARD
 		if ( !VMPermissions_CheckTrusted( VM_UI ) ) {
 			char *data = VMA(1);
@@ -1011,14 +1038,23 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_GETCLIENTSTATE:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[1], sizeof( uiClientState_t ) );
+#endif
 		GetClientState( VMA(1) );
 		return 0;		
 
 	case UI_GETGLCONFIG:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[1], sizeof( glconfig_t ) );
+#endif
 		CL_GetGlconfig( VMA(1) );
 		return 0;
 
 	case UI_GETCONFIGSTRING:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		return GetConfigString( args[1], VMA(2), args[3] );
 
 #ifndef ELITEFORCE
@@ -1046,10 +1082,16 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_LAN_GETPING:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		LAN_GetPing( args[1], VMA(2), args[3], VMA(4) );
 		return 0;
 
 	case UI_LAN_GETPINGINFO:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		LAN_GetPingInfo( args[1], VMA(2), args[3] );
 		return 0;
 
@@ -1058,12 +1100,18 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return LAN_GetServerCount(AS_LOCAL);
 
 	case UI_LAN_GETLOCALSERVERADDRESSSTRING:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		LAN_GetServerAddressString( AS_LOCAL, args[1], VMA(2), args[3] );
 		return 0;
 	case UI_LAN_GETGLOBALSERVERCOUNT:
 		return LAN_GetServerCount(AS_GLOBAL);
 
 	case UI_LAN_GETGLOBALSERVERADDRESSSTRING:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[2], args[3] );
+#endif
 		LAN_GetServerAddressString( AS_GLOBAL, args[1], VMA(2), args[3] );
 		return 0;
 #else
@@ -1071,10 +1119,16 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return LAN_GetServerCount(args[1]);
 
 	case UI_LAN_GETSERVERADDRESSSTRING:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[3], args[4] );
+#endif
 		LAN_GetServerAddressString( args[1], args[2], VMA(3), args[4] );
 		return 0;
 
 	case UI_LAN_GETSERVERINFO:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[3], args[4] );
+#endif
 		LAN_GetServerInfo( args[1], args[2], VMA(3), args[4] );
 		return 0;
 
@@ -1127,19 +1181,31 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;	
 
 	case UI_R_REGISTERFONT:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[3], sizeof( fontInfo_t ) );
+#endif
 		re.RegisterFont( VMA(1), args[2], VMA(3));
 		return 0;
 #endif
 
 	case UI_MEMSET:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[1], args[3] );
+#endif
 		Com_Memset( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_MEMCPY:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS2( uivm, args[1], args[2], args[3] );
+#endif
 		Com_Memcpy( VMA(1), VMA(2), args[3] );
 		return 0;
 
 	case UI_STRNCPY:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( uivm, args[1], args[3] );
+#endif
 #ifdef CMOD_VM_STRNCPY_FIX
 		vm_strncpy( VMA(1), VMA(2), args[3] );
 #else

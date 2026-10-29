@@ -485,14 +485,23 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 #endif
 		return 0;
 	case CG_CVAR_VARIABLESTRINGBUFFER:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[2], args[3] );
+#endif
 		Cvar_VariableStringBuffer( VMA(1), VMA(2), args[3] );
 		return 0;
 	case CG_ARGC:
 		return Cmd_Argc();
 	case CG_ARGV:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[2], args[3] );
+#endif
 		Cmd_ArgvBuffer( args[1], VMA(2), args[3] );
 		return 0;
 	case CG_ARGS:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], args[2] );
+#endif
 		Cmd_ArgsBuffer( VMA(1), args[2] );
 		return 0;
 	case CG_FS_FOPENFILE:
@@ -512,6 +521,9 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 			return 0;
 		}
 #endif
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], args[2] );
+#endif
 		FS_Read( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_FS_WRITE:
@@ -519,6 +531,9 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		if ( FS_Handle_GetOwner( args[3] ) != FS_HANDLEOWNER_CGAME ) {
 			return 0;
 		}
+#endif
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], args[2] );
 #endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
@@ -601,6 +616,11 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return 0;
 #endif
 	case CG_CM_MARKFRAGMENTS:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS3( cgvm, args[2], args[1], sizeof( vec3_t ) );
+		VM_CHECKBOUNDS3( cgvm, args[5], args[4], sizeof( vec3_t ) );
+		VM_CHECKBOUNDS3( cgvm, args[7], args[6], sizeof( markFragment_t ) );
+#endif
 		return re.MarkFragments( args[1], VMA(2), VMA(3), args[4], VMA(5), args[6], VMA(7) );
 	case CG_S_STARTSOUND:
 		S_StartSound( VMA(1), args[2], args[3], args[4] );
@@ -651,6 +671,9 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return re.RegisterShaderNoMip( VMA(1) );
 #ifndef ELITEFORCE
 	case CG_R_REGISTERFONT:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[3], sizeof( fontInfo_t ) );
+#endif
 		re.RegisterFont( VMA(1), args[2], VMA(3));
 		return 0;
 #endif
@@ -708,15 +731,24 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 	case CG_R_LERPTAG:
 		return re.LerpTag( VMA(1), args[2], args[3], args[4], VMF(5), VMA(6) );
 	case CG_GETGLCONFIG:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], sizeof( glconfig_t ) );
+#endif
 		CL_GetGlconfig( VMA(1) );
 		return 0;
 	case CG_GETGAMESTATE:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], sizeof( gameState_t ) );
+#endif
 		CL_GetGameState( VMA(1) );
 		return 0;
 	case CG_GETCURRENTSNAPSHOTNUMBER:
 		CL_GetCurrentSnapshotNumber( VMA(1), VMA(2) );
 		return 0;
 	case CG_GETSNAPSHOT:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[2], sizeof( snapshot_t ) );
+#endif
 		return CL_GetSnapshot( args[1], VMA(2) );
 	case CG_GETSERVERCOMMAND:
 		return CL_GetServerCommand( args[1] );
@@ -745,12 +777,21 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 
 
 	case CG_MEMSET:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], args[3] );
+#endif
 		Com_Memset( VMA(1), args[2], args[3] );
 		return 0;
 	case CG_MEMCPY:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS2( cgvm, args[1], args[2], args[3] );
+#endif
 		Com_Memcpy( VMA(1), VMA(2), args[3] );
 		return 0;
 	case CG_STRNCPY:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], args[3] );
+#endif
 #ifdef CMOD_VM_STRNCPY_FIX
 		vm_strncpy( VMA(1), VMA(2), args[3] );
 #else
@@ -832,6 +873,9 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return getCameraInfo(args[1], VMA(2), VMA(3));
 */
 	case CG_GET_ENTITY_TOKEN:
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( cgvm, args[1], args[2] );
+#endif
 		return re.GetEntityToken( VMA(1), args[2] );
 	case CG_R_INPVS:
 		return re.inPVS( VMA(1), VMA(2) );

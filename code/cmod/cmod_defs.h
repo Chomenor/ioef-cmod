@@ -1,3 +1,9 @@
+
+// Enable features developed using AI/LLM assistance.
+// Disabling this removes most AI code in the project, except for certain things
+// like bugfixes which are hardcoded.
+#define ENABLE_AI_FEATURES
+
 /* ******************************************************************************** */
 // Major Features
 /* ******************************************************************************** */
@@ -14,7 +20,7 @@
 #endif
 
 /* ******************************************************************************** */
-// Settings & Security
+// Settings
 /* ******************************************************************************** */
 
 // [FEATURE] New command system with various improvements
@@ -41,27 +47,50 @@
 #define CMOD_SAFE_AUTOEXEC
 #endif
 
-// [FEATURE] Support determining allowed permissions for game modules based on factors
+/* ******************************************************************************** */
+// Security
+/* ******************************************************************************** */
+
+// [SECURITY] Support determining allowed permissions for game modules based on factors
 // such as download folder status and trusted hash.
 #if !defined( DEDICATED ) && defined( NEW_FILESYSTEM )
 #define CMOD_VM_PERMISSIONS
 #endif
 
-// [FEATURE] Restrict untrusted VMs from making persistent changes to binds
+// [SECURITY] Restrict untrusted VMs from making persistent changes to binds.
 // Binds set by untrusted VMs are allowed temporarily for compatibility purposes
 // but reset when disconnecting from server.
 #if defined( CMOD_VM_PERMISSIONS ) && defined( CMOD_COMMAND_INTERPRETER )
 #define CMOD_BIND_PROTECTION
 #endif
 
-// [FEATURE] Restrict untrusted VMs from writing files to disk
+// [SECURITY] Restrict untrusted VMs from writing files to disk.
 #if defined( CMOD_VM_PERMISSIONS )
 #define CMOD_WRITE_PROTECTION
 #endif
 
-// [FEATURE] Restrict untrusted VMs from reading from the clipboard.
+// [SECURITY] Restrict untrusted VMs from reading from the clipboard.
 #if defined( CMOD_VM_PERMISSIONS )
 #define CMOD_RESTRICT_CLIPBOARD
+#endif
+
+// [SECURITY] Add some range validations on VM calls. Based on quake3e.
+// AI USE: Some AI tweaks and assistance with the integration (20%).
+#if defined( ENABLE_AI_FEATURES )
+#define CMOD_VM_BOUNDS_CHECKS
+#endif
+
+// [SECURITY] Various qvm security fixes and improvements.
+// AI USE: Mostly AI generated (90%+).
+#if defined( ENABLE_AI_FEATURES ) && !defined( DEDICATED )
+#define CMOD_VM_HARDENING
+#endif
+
+// [SECURITY] Ignore VM_MAGIC_VER2 jump-target optimization hints in x86 qvm to
+// reduce attack surface. Normally unused on EF, especially on non-server builds.
+// AI USE: Mostly AI generated (90%+).
+#if !defined( DEDICATED ) && defined( ENABLE_AI_FEATURES )
+#define CMOD_VM_DISABLE_JTRG
 #endif
 
 /* ******************************************************************************** */

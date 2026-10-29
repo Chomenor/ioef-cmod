@@ -64,6 +64,163 @@ void VM_Debug( int level ) {
 	vm_debugLevel = level;
 }
 
+#ifdef CMOD_VM_BOUNDS_CHECKS
+/*
+==============
+VM_CheckBounds
+==============
+*/
+void VM_CheckBounds( const vm_t *vm, unsigned int address, unsigned int length )
+{
+	if ( !vm->entryPoint )
+	{
+		if ( (address | length) > vm->dataMask || (address + length) > vm->dataMask )
+		{
+			Com_Error( ERR_DROP, "program tried to bypass data segment bounds" );
+		}
+	}
+}
+
+/*
+==============
+VM_CheckBounds2
+==============
+*/
+void VM_CheckBounds2( const vm_t *vm, unsigned int addr1, unsigned int addr2, unsigned int length )
+{
+	if ( !vm->entryPoint )
+	{
+		if ( (addr1 | addr2 | length) > vm->dataMask || (addr1 + length) > vm->dataMask || (addr2+length) > vm->dataMask )
+		{
+			Com_Error( ERR_DROP, "program tried to bypass data segment bounds" );
+		}
+	}
+}
+
+/*
+==============
+VM_CheckBounds3
+==============
+*/
+void VM_CheckBounds3( const vm_t *vm, unsigned int address, unsigned int count, unsigned int size )
+{
+	if ( !vm->entryPoint )
+	{
+		if ( (uint64_t)address + (uint64_t)count * size > vm->dataMask )
+		{
+			Com_Error( ERR_DROP, "program tried to bypass data segment bounds" );
+		}
+	}
+}
+#endif
+
+#ifdef CMOD_VM_HARDENING
+static void VM_SwapLongs( void *data, int length )
+{
+#ifndef Q3_LITTLE_ENDIAN
+	int32_t *ptr;
+	int i;
+	ptr = (int32_t *) data;
+	length /= sizeof( int32_t );
+	for ( i = 0; i < length; i++ ) {
+		ptr[ i ] = LittleLong( ptr[ i ] );
+	}
+#endif
+}
+
+/*
+=================
+VM_ValidateHeader
+=================
+*/
+static char *VM_ValidateHeader( vmHeader_t *header, uint32_t fileSize )
+{
+	static char errMsg[128];
+	uint32_t n;
+
+	// truncated
+	if ( fileSize < ( sizeof( vmHeader_t ) - sizeof( uint32_t ) ) ) {
+		sprintf( errMsg, "truncated image header (%i bytes long)", fileSize );
+		return errMsg;
+	}
+
+	// bad magic
+	if ( LittleLong( header->vmMagic ) != VM_MAGIC && LittleLong( header->vmMagic ) != VM_MAGIC_VER2 ) {
+		sprintf( errMsg, "bad file magic %08x", LittleLong( header->vmMagic ) );
+		return errMsg;
+	}
+
+	// truncated
+	if ( fileSize < sizeof( vmHeader_t ) && LittleLong( header->vmMagic ) == VM_MAGIC_VER2 ) {
+		sprintf( errMsg, "truncated image header (%i bytes long)", fileSize );
+		return errMsg;
+	}
+
+	if ( LittleLong( header->vmMagic ) == VM_MAGIC_VER2 )
+		n = sizeof( vmHeader_t );
+	else
+		n = ( sizeof( vmHeader_t ) - sizeof( uint32_t ) );
+
+	// byte swap the header
+	VM_SwapLongs( header, n );
+
+	// can't have more instructions than bytes of code, and must have an entrypoint
+	if ( header->instructionCount == 0 || header->instructionCount > header->codeLength ) {
+		sprintf( errMsg, "bad instruction count %u", header->instructionCount );
+		return errMsg;
+	}
+
+	// bad code offset
+	if ( header->codeOffset >= fileSize ) {
+		sprintf( errMsg, "bad code segment offset %u", header->codeOffset );
+		return errMsg;
+	}
+
+	// bad code length
+	if ( header->codeLength == 0
+		|| header->codeLength > (uint32_t)((INT_MAX - 4096) / 64)
+		|| header->codeLength > fileSize - header->codeOffset ) {
+		sprintf( errMsg, "bad code segment length %u", header->codeLength );
+		return errMsg;
+	}
+
+	// bad data offset
+	if ( header->dataOffset >= fileSize || header->dataOffset != header->codeOffset + header->codeLength ) {
+		sprintf( errMsg, "bad data segment offset %u", header->dataOffset );
+		return errMsg;
+	}
+
+	// bad data length
+	if ( header->dataLength > fileSize - header->dataOffset )  {
+		sprintf( errMsg, "bad data segment length %u", header->dataLength );
+		return errMsg;
+	}
+
+	n = fileSize - (header->dataOffset + header->dataLength);
+
+	if ( header->vmMagic == VM_MAGIC_VER2 ) {
+		// bad lit/jtrg length
+		if ( (uint64_t)header->litLength + header->jtrgLength != n ) {
+			sprintf( errMsg, "bad lit/jtrg segment length" );
+			return errMsg;
+		}
+	}
+	// bad lit length
+	else if ( header->litLength != n ) {
+		sprintf( errMsg, "bad lit segment length %u", header->litLength );
+		return errMsg;
+	}
+
+	// size of data should not exceed 2^30-1 before padding
+	if ( (uint64_t)header->bssLength + header->dataLength + header->litLength >= (1U<<30) ) {
+		sprintf( errMsg, "bad bss segment length %u", header->bssLength );
+		return errMsg;
+	}
+
+	return NULL;
+}
+#endif
+
 /*
 ==============
 VM_Init
@@ -368,6 +525,10 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	int					dataLength;
 	int					i;
 	char				filename[MAX_QPATH];
+#ifdef CMOD_VM_HARDENING
+	int					length;
+	const char			*errorMsg;
+#endif
 	union {
 		vmHeader_t	*h;
 		void				*v;
@@ -378,9 +539,17 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	Com_Printf( "Loading vm file %s...\n", filename );
 
 #ifdef NEW_FILESYSTEM
+#ifdef CMOD_VM_HARDENING
+	header.v = FS_ReadData(vm->source_file, NULL, (unsigned int *)&length, "VM_LoadQVM");
+#else
 	header.v = FS_ReadData(vm->source_file, NULL, NULL, "VM_LoadQVM");
+#endif
+#else
+#ifdef CMOD_VM_HARDENING
+	length = FS_ReadFileDir(filename, vm->searchPath, unpure, &header.v);
 #else
 	FS_ReadFileDir(filename, vm->searchPath, unpure, &header.v);
+#endif
 #endif
 
 	if ( !header.h ) {
@@ -399,6 +568,20 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	FS_Which(filename, vm->searchPath);
 #endif
 
+#ifdef CMOD_VM_HARDENING
+	// will also swap header
+	errorMsg = VM_ValidateHeader( header.h, length );
+	if ( errorMsg ) {
+		VM_Free( vm );
+		FS_FreeFile( header.v );
+		Com_Printf( S_COLOR_RED "%s\n", errorMsg );
+		return NULL;
+	}
+
+	if ( header.h->vmMagic == VM_MAGIC_VER2 ) {
+		Com_Printf( "...which has vmMagic VM_MAGIC_VER2\n" );
+	}
+#else
 	if( LittleLong( header.h->vmMagic ) == VM_MAGIC_VER2 ) {
 		Com_Printf( "...which has vmMagic VM_MAGIC_VER2\n" );
 
@@ -447,11 +630,20 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 				"magic number in its header\n", filename);
 		return NULL;
 	}
+#endif
 
 	// round up to next power of 2 so all data operations can
 	// be mask protected
 	dataLength = header.h->dataLength + header.h->litLength +
 		header.h->bssLength;
+#ifdef CMOD_VM_BOUNDS_CHECKS
+	vm->exactDataLength = dataLength;
+#endif
+#ifdef CMOD_VM_HARDENING
+	if (dataLength < PROGRAM_STACK_SIZE) {
+		dataLength = PROGRAM_STACK_SIZE;
+	}
+#endif
 	for ( i = 0 ; dataLength > ( 1 << i ) ; i++ ) {
 	}
 	dataLength = 1 << i;
@@ -460,14 +652,22 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 	{
 		// allocate zero filled space for initialized and uninitialized data
 		// leave some space beyond data mask so we can secure all mask operations
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		vm->dataAlloc = dataLength + VM_DATA_GUARD_SIZE;
+#else
 		vm->dataAlloc = dataLength + 4;
+#endif
 		vm->dataBase = Hunk_Alloc(vm->dataAlloc, h_high);
 		vm->dataMask = dataLength - 1;
 	}
 	else
 	{
 		// clear the data, but make sure we're not clearing more than allocated
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		if(vm->dataAlloc != dataLength + VM_DATA_GUARD_SIZE)
+#else
 		if(vm->dataAlloc != dataLength + 4)
+#endif
 		{
 			VM_Free(vm);
 			FS_FreeFile(header.v);
@@ -491,6 +691,10 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 
 	if(header.h->vmMagic == VM_MAGIC_VER2)
 	{
+#ifdef CMOD_VM_DISABLE_JTRG
+		vm->numJumpTableTargets = 0;
+		vm->jumpTableTargets = NULL;
+#else
 		int previousNumJumpTableTargets = vm->numJumpTableTargets;
 
 		header.h->jtrgLength &= ~0x03;
@@ -524,6 +728,7 @@ vmHeader_t *VM_LoadQVM( vm_t *vm, qboolean alloc, qboolean unpure)
 		for ( i = 0 ; i < header.h->jtrgLength ; i += 4 ) {
 			*(int *)(vm->jumpTableTargets + i) = LittleLong( *(int *)(vm->jumpTableTargets + i ) );
 		}
+#endif
 	}
 
 	return header.h;
@@ -657,6 +862,11 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 		if ( !vm->dllHandle ) {
 			return NULL;
 		}
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		vm->dataAlloc = ~0U;
+		vm->dataMask = ~0U;
+		vm->dataBase = NULL;
+#endif
 		vm->systemCall = systemCalls;
 		return vm;
 	}
@@ -678,6 +888,11 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 			
 			if(vm->dllHandle)
 			{
+#ifdef CMOD_VM_BOUNDS_CHECKS
+				vm->dataAlloc = ~0U;
+				vm->dataMask = ~0U;
+				vm->dataBase = NULL;
+#endif
 				vm->systemCall = systemCalls;
 				return vm;
 			}
@@ -704,6 +919,12 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 	// allocate space for the jump targets, which will be filled in by the compile/prep functions
 	vm->instructionCount = header->instructionCount;
 	vm->instructionPointers = Hunk_Alloc(vm->instructionCount * sizeof(*vm->instructionPointers), h_high);
+#ifdef CMOD_VM_HARDENING
+	vm->callableInstructions = Hunk_Alloc(vm->instructionCount + 2, h_high);
+	Com_Memset(vm->callableInstructions, 0, vm->instructionCount + 2);
+	vm->jumpTargetOpStack = Hunk_Alloc(vm->instructionCount + 2, h_high);
+	Com_Memset(vm->jumpTargetOpStack, 0xFF, vm->instructionCount + 2);
+#endif
 
 	// copy or compile the instructions
 	vm->codeLength = header->codeLength;
@@ -1057,6 +1278,9 @@ void VM_BlockCopy(unsigned int dest, unsigned int src, size_t n)
 
 	if ((dest & dataMask) != dest
 	|| (src & dataMask) != src
+#ifdef CMOD_VM_BOUNDS_CHECKS
+	|| dest + n < dest || src + n < src
+#endif
 	|| ((dest + n) & dataMask) != dest + n
 	|| ((src + n) & dataMask) != src + n)
 	{
@@ -1070,7 +1294,8 @@ void VM_BlockCopy(unsigned int dest, unsigned int src, size_t n)
 		dest = dest & dataMask;
 		src = src & dataMask;
 
-		if ( ( ( dest + n ) & dataMask ) != dest + n || ( ( src + n ) & dataMask ) != src + n ) {
+		if ( ( ( dest + n ) & dataMask ) != dest + n || ( ( src + n ) & dataMask ) != src + n ||
+				dest + n < dest || src + n < src ) {
 			return;
 		}
 #else

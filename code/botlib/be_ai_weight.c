@@ -169,6 +169,13 @@ fuzzyseperator_t *ReadFuzzySeperators_r(source_t *source)
 	if (!PC_ExpectTokenString(source, "(")) return NULL;
 	if (!PC_ExpectTokenType(source, TT_NUMBER, TT_INTEGER, &token)) return NULL;
 	index = token.intvalue;
+#ifdef CMOD_VM_BOUNDS_CHECKS
+	if (index < 0 || index >= MAX_BOTLIB_INVENTORY)
+	{
+		SourceError(source, "inventory index %d out of range", index);
+		return NULL;
+	}
+#endif
 	if (!PC_ExpectTokenString(source, ")")) return NULL;
 	if (!PC_ExpectTokenString(source, "{")) return NULL;
 	if (!PC_ExpectAnyToken(source, &token)) return NULL;
@@ -583,6 +590,12 @@ float FuzzyWeight_r(int *inventory, fuzzyseperator_t *fs)
 {
 	float scale, w1, w2;
 
+#ifdef CMOD_VM_BOUNDS_CHECKS
+	if (!inventory || !fs || fs->index < 0 || fs->index >= MAX_BOTLIB_INVENTORY)
+	{
+		return 0;
+	}
+#endif
 	if (inventory[fs->index] < fs->value)
 	{
 		if (fs->child) return FuzzyWeight_r(inventory, fs->child);
@@ -620,6 +633,12 @@ float FuzzyWeightUndecided_r(int *inventory, fuzzyseperator_t *fs)
 {
 	float scale, w1, w2;
 
+#ifdef CMOD_VM_BOUNDS_CHECKS
+	if (!inventory || !fs || fs->index < 0 || fs->index >= MAX_BOTLIB_INVENTORY)
+	{
+		return 0;
+	}
+#endif
 	if (inventory[fs->index] < fs->value)
 	{
 		if (fs->child) return FuzzyWeightUndecided_r(inventory, fs->child);
@@ -664,6 +683,9 @@ float FuzzyWeight(int *inventory, weightconfig_t *wc, int weightnum)
 	if (!s) return 0;
 	while(1)
 	{
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		if (s->index < 0 || s->index >= MAX_BOTLIB_INVENTORY) return 0;
+#endif
 		if (inventory[s->index] < s->value)
 		{
 			if (s->child) s = s->child;
@@ -695,6 +717,9 @@ float FuzzyWeightUndecided(int *inventory, weightconfig_t *wc, int weightnum)
 	if (!s) return 0;
 	while(1)
 	{
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		if (s->index < 0 || s->index >= MAX_BOTLIB_INVENTORY) return 0;
+#endif
 		if (inventory[s->index] < s->value)
 		{
 			if (s->child) s = s->child;

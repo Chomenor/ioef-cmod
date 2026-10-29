@@ -275,9 +275,16 @@ qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm, intp
 
 	// Handle GetValue call
 	if ( args[0] == VMEXT_TRAP_GETVALUE ) {
-		char *buffer = VMA( 1 );
 		unsigned int size = args[2];
+		char *buffer = VMA( 1 );
 		const char *command = VMA( 3 );
+
+#ifdef CMOD_VM_BOUNDS_CHECKS
+		VM_CHECKBOUNDS( vm, args[1], size );
+		if ( !size ) {
+			return qtrue;
+		}
+#endif
 
 		if ( size ) {
 			*buffer = '\0';
@@ -302,6 +309,12 @@ qboolean VMExt_HandleVMSyscall( intptr_t *args, vmType_t vm_type, vm_t *vm, intp
 
 #ifdef CMOD_SERVER_BROWSER_SUPPORT
 		if ( function_id == VMEXT_LAN_SERVERSTATUS_EXT ) {
+#ifdef CMOD_VM_BOUNDS_CHECKS
+			VM_CHECKBOUNDS( vm, args[2], args[3] );
+			if ( args[5] > 0 ) {
+				VM_CHECKBOUNDS( vm, args[4], args[5] );
+			}
+#endif
 			*retval = CL_ServerStatusExt( VMA(1), VMA(2), args[3], VMA(4), args[5] );
 			return qtrue;
 		}

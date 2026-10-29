@@ -60,9 +60,31 @@ x86_64:
 
 */
 
+#ifdef CMOD_VM_HARDENING
+typedef struct {
+	int start;
+	int end;
+	int opStack;
+} vmX86JumpRange_t;
+
+#define VMFREE_BUFFERS() do { \
+	Z_Free(buf); \
+	Z_Free(jused); \
+	Z_Free(validJumpTargets); \
+	Z_Free(jumpRanges); \
+	Z_Free(procMaxOpStack); \
+} while(0)
+#else
 #define VMFREE_BUFFERS() do {Z_Free(buf); Z_Free(jused);} while(0)
+#endif
 static	byte	*buf = NULL;
 static	byte	*jused = NULL;
+#ifdef CMOD_VM_HARDENING
+static	byte	*validJumpTargets = NULL;
+static	byte	*procMaxOpStack = NULL;
+static	vmX86JumpRange_t *jumpRanges = NULL;
+static	qboolean	useJumpTableTargets = qfalse;
+#endif
 static	int		jusedSize = 0;
 static	int		compiledOfs = 0;
 static	byte	*code = NULL;
@@ -93,10 +115,12 @@ typedef enum
 
 static	ELastCommand	LastCommand;
 
+#ifndef CMOD_VM_DISABLE_JTRG
 static int iss8(int32_t v)
 {
 	return (SCHAR_MIN <= v && v <= SCHAR_MAX);
 }
+#endif
 
 #if 0
 static int isu8(uint32_t v)
@@ -134,11 +158,13 @@ static void Emit1( int v )
 	LastCommand = LAST_COMMAND_NONE;
 }
 
+#ifndef CMOD_VM_DISABLE_JTRG
 static void Emit2(int v)
 {
 	Emit1(v & 255);
 	Emit1((v >> 8) & 255);
 }
+#endif
 
 
 static void Emit4(int v)
@@ -411,14 +437,41 @@ int *vm_opStackBase;
 uint8_t vm_opStackOfs;
 intptr_t vm_arg;
 
+#ifdef CMOD_VM_HARDENING
+static void VM_CheckCompiledSyscallStack(const vm_t *vm, int programStack)
+{
+	uint64_t argsStart;
+	uint64_t argsEnd;
+	const int minProgramStack = 4 + 8 + 4 * MAX_VMMAIN_ARGS;
+
+	if (!vm || !vm->dataBase) {
+		Com_Error(ERR_DROP, "VM syscall attempted without VM data");
+	}
+
+	if ((programStack & 3) || programStack < minProgramStack
+		|| (unsigned int)programStack > (unsigned int)vm->dataMask) {
+		Com_Error(ERR_DROP, "VM syscall programStack out of range");
+	}
+
+	argsStart = (uint64_t)(unsigned int)programStack + sizeof(int);
+	argsEnd = argsStart + (uint64_t)MAX_VMSYSCALL_ARGS * sizeof(int);
+
+	if (argsEnd > (uint64_t)(unsigned int)vm->dataAlloc) {
+		Com_Error(ERR_DROP, "VM syscall arguments out of range");
+	}
+}
+#endif
+
 static void DoSyscall(void)
 {
 	vm_t *savedVM;
 
 	// save currentVM so as to allow for recursive VM entry
 	savedVM = currentVM;
+#ifndef CMOD_VM_HARDENING
 	// modify VM stack pointer for recursive VM entry
 	currentVM->programStack = vm_programStack - 4;
+#endif
 
 	if(vm_syscallNum < 0)
 	{
@@ -428,7 +481,17 @@ static void DoSyscall(void)
 		intptr_t args[MAX_VMSYSCALL_ARGS];
 #endif
 		
+#ifdef CMOD_VM_HARDENING
+		VM_CheckCompiledSyscallStack(savedVM, vm_programStack);
+		// modify VM stack pointer for recursive VM entry
+		currentVM->programStack = vm_programStack - 4;
+#endif
 		data = (int *) (savedVM->dataBase + vm_programStack + 4);
+#ifdef CMOD_VM_HARDENING
+		if (vm_opStackOfs >= (OPSTACK_SIZE / (int)sizeof(int)) - 1) {
+			Com_Error(ERR_DROP, "VM syscall return opStack out of range");
+		}
+#endif
 		ret = &vm_opStackBase[vm_opStackOfs + 1];
 
 #if idx64
@@ -528,7 +591,18 @@ int EmitCallDoSyscall(vm_t *vm)
 			
 	// call the syscall wrapper function DoSyscall()
 
+#ifdef CMOD_VM_HARDENING
+#if defined(_WIN32) && idx64
+	// Win64 callees own 32 bytes of caller-provided shadow space.
+	EmitRexString(0x48, "83 EC 20");	// sub rsp, 0x20
+#endif
+#endif
 	EmitString("FF D2");			// call edx
+#ifdef CMOD_VM_HARDENING
+#if defined(_WIN32) && idx64
+	EmitRexString(0x48, "83 C4 20");	// add rsp, 0x20
+#endif
+#endif
 
 	// reset the stack pointer to its previous value
 	EmitRexString(0x48, "89 EC");		// mov esp, ebp
@@ -572,6 +646,9 @@ VM OP_CALL procedure for call destinations obtained at runtime
 int EmitCallProcedure(vm_t *vm, int sysCallOfs)
 {
 	int jmpSystemCall, jmpBadAddr;
+#ifdef CMOD_VM_HARDENING
+	int jmpBadProc;
+#endif
 	int retval;
 
 	EmitString("8B 04 9F");		// mov eax, dword ptr [edi + ebx * 4]
@@ -591,6 +668,15 @@ int EmitCallProcedure(vm_t *vm, int sysCallOfs)
 	EmitString("73");		// jae badAddr
 	jmpBadAddr = compiledOfs++;
 
+#ifdef CMOD_VM_HARDENING
+	EmitRexString(0x48, "BA");	// mov edx, vm->callableInstructions
+	EmitPtr(vm->callableInstructions);
+	EmitString("80 3C 02");		// cmp byte ptr [edx + eax], 0
+	Emit1(0);
+	EmitString("74");		// je badAddr
+	jmpBadProc = compiledOfs++;
+#endif
+
 #if idx64
 	EmitRexString(0x49, "FF 14 C0");	// call qword ptr [r8 + eax * 8]
 #else
@@ -602,6 +688,9 @@ int EmitCallProcedure(vm_t *vm, int sysCallOfs)
 		
 	// badAddr:
 	SET_JMPOFS(jmpBadAddr);
+#ifdef CMOD_VM_HARDENING
+	SET_JMPOFS(jmpBadProc);
+#endif
 	EmitCallErrJump(vm, sysCallOfs);
 
 	/************ System Call ************/
@@ -733,12 +822,33 @@ instead of opStack operations, which will save expensive operations on memory
 
 qboolean ConstOptimize(vm_t *vm, int callProcOfsSyscall)
 {
+#ifndef CMOD_VM_DISABLE_JTRG
 	int v;
 	int op1;
+#endif
+#ifdef CMOD_VM_HARDENING
+	if (!validJumpTargets[instruction] && !validJumpTargets[instruction + 1]
+			&& code[pc + 4] == OP_JUMP) {
+		EmitJumpIns(vm, "E9", Constant4());		// jmp 0x12345678
+
+		pc += 1;                  // OP_JUMP
+		instruction += 1;
+		return qtrue;
+	}
+#endif
+#ifdef CMOD_VM_DISABLE_JTRG
+	(void)vm;
+	(void)callProcOfsSyscall;
+	return qfalse;
+#else
 
 	// we can safely perform optimizations only in case if 
 	// we are 100% sure that next instruction is not a jump label
+#ifdef CMOD_VM_HARDENING
+	if (useJumpTableTargets && !jused[instruction] && !jused[instruction + 1])
+#else
 	if (vm->jumpTableTargets && !jused[instruction])
+#endif
 		op1 = code[pc+4];
 	else
 		return qfalse;
@@ -1064,7 +1174,521 @@ qboolean ConstOptimize(vm_t *vm, int callProcOfsSyscall)
 	}
 
 	return qfalse;
+#endif
 }
+
+#ifdef CMOD_VM_HARDENING
+typedef struct {
+	int op;
+	int value;
+	int opStack;
+	int procStart;
+	int procEnd;
+} vmX86Instruction_t;
+
+static int VM_X86OperandSize(int op)
+{
+	switch (op) {
+	case OP_ENTER:
+	case OP_CONST:
+	case OP_LOCAL:
+	case OP_LEAVE:
+	case OP_EQ:
+	case OP_NE:
+	case OP_LTI:
+	case OP_LEI:
+	case OP_GTI:
+	case OP_GEI:
+	case OP_LTU:
+	case OP_LEU:
+	case OP_GTU:
+	case OP_GEU:
+	case OP_EQF:
+	case OP_NEF:
+	case OP_LTF:
+	case OP_LEF:
+	case OP_GTF:
+	case OP_GEF:
+	case OP_BLOCK_COPY:
+		return 4;
+	case OP_ARG:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int VM_X86OpStackDelta(int op)
+{
+	switch (op) {
+	case OP_UNDEF:
+	case OP_BREAK:
+	case OP_ENTER:
+		return 0;
+	case OP_LEAVE:
+		return -1;
+	case OP_CALL:
+		return 0;
+	case OP_PUSH:
+	case OP_CONST:
+	case OP_LOCAL:
+		return 1;
+	case OP_POP:
+	case OP_JUMP:
+	case OP_ARG:
+		return -1;
+	case OP_EQ:
+	case OP_NE:
+	case OP_LTI:
+	case OP_LEI:
+	case OP_GTI:
+	case OP_GEI:
+	case OP_LTU:
+	case OP_LEU:
+	case OP_GTU:
+	case OP_GEU:
+	case OP_EQF:
+	case OP_NEF:
+	case OP_LTF:
+	case OP_LEF:
+	case OP_GTF:
+	case OP_GEF:
+	case OP_STORE1:
+	case OP_STORE2:
+	case OP_STORE4:
+	case OP_BLOCK_COPY:
+		return -2;
+	case OP_LOAD1:
+	case OP_LOAD2:
+	case OP_LOAD4:
+	case OP_SEX8:
+	case OP_SEX16:
+	case OP_NEGI:
+	case OP_BCOM:
+	case OP_NEGF:
+	case OP_CVIF:
+	case OP_CVFI:
+		return 0;
+	case OP_ADD:
+	case OP_SUB:
+	case OP_DIVI:
+	case OP_DIVU:
+	case OP_MODI:
+	case OP_MODU:
+	case OP_MULI:
+	case OP_MULU:
+	case OP_BAND:
+	case OP_BOR:
+	case OP_BXOR:
+	case OP_LSH:
+	case OP_RSHI:
+	case OP_RSHU:
+	case OP_ADDF:
+	case OP_SUBF:
+	case OP_DIVF:
+	case OP_MULF:
+		return -1;
+	default:
+		return INT_MIN;
+	}
+}
+
+static qboolean VM_X86IsConditionalJump(int op)
+{
+	switch (op) {
+	case OP_EQ:
+	case OP_NE:
+	case OP_LTI:
+	case OP_LEI:
+	case OP_GTI:
+	case OP_GEI:
+	case OP_LTU:
+	case OP_LEU:
+	case OP_GTU:
+	case OP_GEU:
+	case OP_EQF:
+	case OP_NEF:
+	case OP_LTF:
+	case OP_LEF:
+	case OP_GTF:
+	case OP_GEF:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+static qboolean VM_X86ValidIndirectTarget(const vmX86Instruction_t *ins)
+{
+	if (ins->op == OP_UNDEF || ins->op == OP_IGNORE || ins->op == OP_LEAVE) {
+		return qfalse;
+	}
+
+	/* The emitted jump checks the target's validated opStack depth at runtime. */
+	return qtrue;
+}
+
+static const char *VM_X86CheckTarget(const vmX86Instruction_t *inst, int instructionCount,
+		int target, int expectedOpStack, int procStart, int procEnd, qboolean allowEnter)
+{
+	static char errMsg[128];
+
+	if (target < 0 || target >= instructionCount) {
+		sprintf(errMsg, "jump target %i is out of range", target);
+		return errMsg;
+	}
+
+	if (target < procStart || target > procEnd) {
+		sprintf(errMsg, "jump target %i is outside current function", target);
+		return errMsg;
+	}
+
+	if (!allowEnter && inst[target].op == OP_ENTER) {
+		sprintf(errMsg, "jump target %i enters a function", target);
+		return errMsg;
+	}
+
+	if (inst[target].op == OP_UNDEF || inst[target].op == OP_IGNORE) {
+		sprintf(errMsg, "jump target %i has bad opcode %i", target, inst[target].op);
+		return errMsg;
+	}
+
+	if (inst[target].opStack != expectedOpStack) {
+		sprintf(errMsg, "jump target %i has bad opStack %i", target, inst[target].opStack);
+		return errMsg;
+	}
+
+	return NULL;
+}
+
+static const char *VM_X86ValidateBytecode(vm_t *vm, vmHeader_t *header, const byte *bytecode)
+{
+	static char errMsg[128];
+	vmX86Instruction_t *inst;
+	int i, n, bytecodeOfs, op, opStack, delta;
+	int procStart, procEnd, procFrame, procFirst, procLast;
+	int procMax, procStackAfter;
+	const int maxOpStack = OPSTACK_SIZE / (int)sizeof(int);
+	const char *targetError;
+	qboolean hasDynamicJump, hasFunction;
+
+	inst = Z_Malloc((header->instructionCount + 1) * sizeof(*inst));
+	if (!inst) {
+		return "could not allocate VM validation buffer";
+	}
+
+	bytecodeOfs = 0;
+	opStack = 0;
+	for (i = 0; i < header->instructionCount; i++) {
+		if (bytecodeOfs >= header->codeLength) {
+			Z_Free(inst);
+			return "instruction stream is truncated";
+		}
+
+		op = bytecode[bytecodeOfs++];
+		if (op < OP_UNDEF || op > OP_CVFI || op == OP_IGNORE) {
+			sprintf(errMsg, "bad opcode %i at instruction %i", op, i);
+			Z_Free(inst);
+			return errMsg;
+		}
+
+		n = VM_X86OperandSize(op);
+		if (bytecodeOfs + n > header->codeLength) {
+			sprintf(errMsg, "truncated operand at instruction %i", i);
+			Z_Free(inst);
+			return errMsg;
+		}
+
+		inst[i].op = op;
+		inst[i].opStack = opStack;
+		inst[i].procStart = -1;
+		inst[i].procEnd = -1;
+		if (n == 4) {
+			inst[i].value = (int)((unsigned int)bytecode[bytecodeOfs]
+				| ((unsigned int)bytecode[bytecodeOfs + 1] << 8)
+				| ((unsigned int)bytecode[bytecodeOfs + 2] << 16)
+				| ((unsigned int)bytecode[bytecodeOfs + 3] << 24));
+		} else if (n == 1) {
+			inst[i].value = bytecode[bytecodeOfs];
+		} else {
+			inst[i].value = 0;
+		}
+		bytecodeOfs += n;
+
+		delta = VM_X86OpStackDelta(op);
+		if (delta == INT_MIN) {
+			sprintf(errMsg, "bad opcode %i at instruction %i", op, i);
+			Z_Free(inst);
+			return errMsg;
+		}
+		if (opStack + delta < 0) {
+			sprintf(errMsg, "opStack underflow at instruction %i", i);
+			Z_Free(inst);
+			return errMsg;
+		}
+		opStack += delta;
+		if (opStack >= maxOpStack) {
+			sprintf(errMsg, "opStack overflow at instruction %i", i);
+			Z_Free(inst);
+			return errMsg;
+		}
+	}
+
+	procStart = -1;
+	procEnd = -1;
+	procFrame = 0;
+	hasFunction = qfalse;
+	for (i = 0; i < header->instructionCount; i++) {
+		op = inst[i].op;
+
+		if (op == OP_ENTER) {
+			hasFunction = qtrue;
+			if (procStart != -1) {
+				sprintf(errMsg, "missing function end before instruction %i", i);
+				Z_Free(inst);
+				return errMsg;
+			}
+			if (inst[i].opStack != 0) {
+				sprintf(errMsg, "bad function entry opStack at instruction %i", i);
+				Z_Free(inst);
+				return errMsg;
+			}
+
+			procStart = i + 1;
+			procEnd = -1;
+			/*
+			 * The frame pointer is virtual on this backend. Memory operations
+			 * mask it into VM data and host-facing syscalls validate it, so only
+			 * a matching OP_LEAVE value is required here.
+			 */
+			procFrame = inst[i].value;
+			/* The last executable instruction before the next function must return. */
+			for (n = i + 1; n < header->instructionCount && inst[n].op != OP_ENTER; n++) {
+				if (inst[n].op != OP_UNDEF) {
+					procEnd = n;
+				}
+			}
+			if (procEnd <= i || inst[procEnd].op != OP_LEAVE) {
+				sprintf(errMsg, "missing function end for instruction %i", i);
+				Z_Free(inst);
+				return errMsg;
+			}
+			/* Direct branches use procEnd + 1; indirect jump ranges exclude OP_LEAVE. */
+			procEnd--;
+
+			for (n = i; n <= procEnd + 1; n++) {
+				inst[n].procStart = procStart;
+				inst[n].procEnd = procEnd;
+			}
+
+			procMax = 0;
+			for (n = i + 1; n <= procEnd + 1; n++) {
+				procStackAfter = inst[n].opStack + VM_X86OpStackDelta(inst[n].op);
+				if (procStackAfter > procMax) {
+					procMax = procStackAfter;
+				}
+			}
+			if (procMax >= maxOpStack) {
+				sprintf(errMsg, "function opStack overflow at instruction %i", i);
+				Z_Free(inst);
+				return errMsg;
+			}
+			procMaxOpStack[i] = (byte)procMax;
+
+			validJumpTargets[i] = 1; /* function entries */
+			vm->callableInstructions[i] = 1;
+			continue;
+		}
+
+		if (procStart == -1) {
+			if (op == OP_UNDEF) {
+				continue;
+			}
+			sprintf(errMsg, "instruction %i outside function", i);
+			Z_Free(inst);
+			return errMsg;
+		}
+
+		if (VM_X86IsConditionalJump(op)) {
+			targetError = VM_X86CheckTarget(inst, header->instructionCount, inst[i].value,
+				inst[i].opStack - 2, procStart, procEnd + 1, qfalse);
+			if (targetError) {
+				Z_Free(inst);
+				return targetError;
+			}
+			if (inst[inst[i].value].op != OP_LEAVE) {
+				validJumpTargets[inst[i].value] = 1;
+			}
+			continue;
+		}
+
+		if (op == OP_JUMP) {
+			jumpRanges[i].start = procStart;
+			jumpRanges[i].end = procEnd;
+			jumpRanges[i].opStack = inst[i].opStack - 1;
+			if (i > 0 && inst[i - 1].op == OP_CONST) {
+				targetError = VM_X86CheckTarget(inst, header->instructionCount, inst[i - 1].value,
+					inst[i].opStack - 1, procStart, procEnd + 1, qfalse);
+				if (targetError) {
+					Z_Free(inst);
+					return targetError;
+				}
+				if (inst[inst[i - 1].value].op != OP_LEAVE) {
+					validJumpTargets[inst[i - 1].value] = 1;
+				}
+			}
+			continue;
+		}
+
+		if (op == OP_CALL) {
+			if (inst[i].opStack < 1) {
+				sprintf(errMsg, "bad call opStack at instruction %i", i);
+				Z_Free(inst);
+				return errMsg;
+			}
+			if (i > 0 && inst[i - 1].op == OP_CONST && inst[i - 1].value >= 0) {
+				n = inst[i - 1].value;
+				if (n >= header->instructionCount || inst[n].op != OP_ENTER) {
+					sprintf(errMsg, "call target %i is not a function entry", n);
+					Z_Free(inst);
+					return errMsg;
+				}
+				validJumpTargets[n] = 1;
+			}
+			continue;
+		}
+
+		if (op == OP_ARG) {
+			/* The emitted store masks every one-byte argument offset into VM data. */
+			continue;
+		}
+
+		if (op == OP_LEAVE) {
+			if (inst[i].opStack != 1) {
+				sprintf(errMsg, "bad return opStack at instruction %i", i);
+				Z_Free(inst);
+				return errMsg;
+			}
+			if (inst[i].value != procFrame) {
+				sprintf(errMsg, "bad return stack size %i at instruction %i", inst[i].value, i);
+				Z_Free(inst);
+				return errMsg;
+			}
+			if (i == procEnd + 1) {
+				procStart = -1;
+				procEnd = -1;
+				procFrame = 0;
+			}
+			continue;
+		}
+
+		if (op == OP_BLOCK_COPY && inst[i].value < 0) {
+			sprintf(errMsg, "bad block copy count %i at instruction %i", inst[i].value, i);
+			Z_Free(inst);
+			return errMsg;
+		}
+	}
+
+	if (!hasFunction) {
+		Z_Free(inst);
+		return "missing VM entrypoint";
+	}
+
+	if (procStart != -1) {
+		Z_Free(inst);
+		return "missing function return at end of image";
+	}
+
+#ifdef CMOD_VM_DISABLE_JTRG
+	useJumpTableTargets = qfalse;
+#else
+	if (vm->jumpTableTargets && vm->numJumpTableTargets > 0) {
+		useJumpTableTargets = qtrue;
+		for (i = 0; i < vm->numJumpTableTargets; i++) {
+			n = *(int *)(vm->jumpTableTargets + (i * sizeof(int)));
+			if (n < 0 || n >= header->instructionCount) {
+				useJumpTableTargets = qfalse;
+				break;
+			}
+			if (!VM_X86ValidIndirectTarget(&inst[n])) {
+				useJumpTableTargets = qfalse;
+				break;
+			}
+		}
+		for (i = 0; useJumpTableTargets && i < vm->numJumpTableTargets; i++) {
+			n = *(int *)(vm->jumpTableTargets + (i * sizeof(int)));
+			validJumpTargets[n] = 1;
+		}
+	} else {
+		useJumpTableTargets = qfalse;
+	}
+#endif
+
+	/*
+	 * JTRG data is an optimization hint, not a complete security policy.
+	 * Always add the conservative targets used for old-format QVMs so a
+	 * valid but incomplete JTRG segment cannot disable safe computed jumps.
+	 */
+	for (i = 0; i < header->instructionCount; i++) {
+		if (inst[i].op != OP_ENTER) {
+			continue;
+		}
+
+		hasDynamicJump = qfalse;
+		procFirst = inst[i].procStart;
+		procLast = inst[i].procEnd;
+		for (n = procFirst; n <= procLast; n++) {
+			if (inst[n].op == OP_JUMP &&
+					(n == 0 || inst[n - 1].op != OP_CONST || validJumpTargets[n])) {
+				hasDynamicJump = qtrue;
+				break;
+			}
+		}
+		if (!hasDynamicJump) {
+			continue;
+		}
+
+		for (n = procFirst; n <= procLast; n++) {
+			if (VM_X86ValidIndirectTarget(&inst[n])) {
+				validJumpTargets[n] = 1;
+			}
+		}
+	}
+
+	/*
+	 * Direct branches and computed jumps share instructionPointers. Record the
+	 * validated opStack depth for every usable target so computed jumps cannot
+	 * enter code generated for a different operand-stack state.
+	 */
+	for (i = 0; i < header->instructionCount; i++) {
+		if (validJumpTargets[i]) {
+			vm->jumpTargetOpStack[i] = (byte)inst[i].opStack;
+		}
+	}
+
+	Z_Free(inst);
+	return NULL;
+}
+
+static qboolean VM_X86CanOptimizeRange(const vm_t *vm, int first, int last)
+{
+	int i;
+
+	// Every instruction replaced by a peephole optimization must be reachable
+	// only by fallthrough, or its validated opStack state will no longer match.
+	if (first < 0 || last < first || last >= vm->instructionCount) {
+		return qfalse;
+	}
+
+	for (i = first; i <= last; i++) {
+		if (validJumpTargets[i]) {
+			return qfalse;
+		}
+	}
+
+	return qtrue;
+}
+#endif
 
 /*
 =================
@@ -1078,16 +1702,37 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 	int		v;
 	int		i;
         int		callProcOfsSyscall, callProcOfs, callDoSyscallOfs;
+#ifdef CMOD_VM_HARDENING
+	const char	*validationError;
+	int		jumpLow, jumpHigh, jumpBadTarget;
+#endif
 
 	jusedSize = header->instructionCount + 2;
 
 	// allocate a very large temp buffer, we will shrink it later
+#ifdef CMOD_VM_HARDENING
+	if (header->codeLength > (INT_MAX - 4096) / 64) {
+		Com_Error(ERR_DROP, "VM_CompileX86: code segment too large");
+	}
+	maxLength = header->codeLength * 64 + 4096;
+#else
 	maxLength = header->codeLength * 8 + 64;
+#endif
 	buf = Z_Malloc(maxLength);
 	jused = Z_Malloc(jusedSize);
+#ifdef CMOD_VM_HARDENING
+	validJumpTargets = Z_Malloc(jusedSize);
+	procMaxOpStack = Z_Malloc(jusedSize);
+	jumpRanges = Z_Malloc(jusedSize * sizeof(*jumpRanges));
+#endif
 	code = Z_Malloc(header->codeLength+32);
 	
 	Com_Memset(jused, 0, jusedSize);
+#ifdef CMOD_VM_HARDENING
+	Com_Memset(validJumpTargets, 0, jusedSize);
+	Com_Memset(procMaxOpStack, 0, jusedSize);
+	Com_Memset(jumpRanges, 0xFF, jusedSize * sizeof(*jumpRanges));
+#endif
 	Com_Memset(buf, 0, maxLength);
 
 	// copy code in larger buffer and put some zeros at the end
@@ -1096,12 +1741,32 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 	Com_Memset(code, 0, header->codeLength+32);
 	Com_Memcpy(code, (byte *)header + header->codeOffset, header->codeLength );
 
+#ifdef CMOD_VM_HARDENING
+	validationError = VM_X86ValidateBytecode(vm, header, code);
+	if (validationError) {
+		Z_Free(code);
+		code = NULL;
+		VMFREE_BUFFERS();
+		Com_Error(ERR_DROP, "VM_CompileX86: %s", validationError);
+	}
+#endif
+
 	// ensure that the optimisation pass knows about all the jump
 	// table targets
 	pc = -1; // a bogus value to be printed in out-of-bounds error messages
+#ifdef CMOD_VM_HARDENING
+	for ( i = 0; i < vm->instructionCount; i++ ) {
+		if (validJumpTargets[i]) {
+			JUSED(i);
+		}
+	}
+#else
+#ifndef CMOD_VM_DISABLE_JTRG
 	for( i = 0; i < vm->numJumpTableTargets; i++ ) {
 		JUSED( *(int *)(vm->jumpTableTargets + ( i * sizeof( int ) ) ) );
 	}
+#endif
+#endif
 
 	// Start buffer with x86-VM specific procedures
 	compiledOfs = 0;
@@ -1127,7 +1792,11 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 
 	while(instruction < header->instructionCount)
 	{
+#ifdef CMOD_VM_HARDENING
+		if(compiledOfs > maxLength - 128)
+#else
 		if(compiledOfs > maxLength - 16)
+#endif
 		{
 	        	VMFREE_BUFFERS();
 			Com_Error(ERR_DROP, "VM_CompileX86: maxLength exceeded");
@@ -1135,10 +1804,18 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 
 		vm->instructionPointers[ instruction ] = compiledOfs;
 
+#ifdef CMOD_VM_DISABLE_JTRG
+		jlabel = 1;
+#else
+#ifdef CMOD_VM_HARDENING
+		if ( !useJumpTableTargets )
+#else
 		if ( !vm->jumpTableTargets )
+#endif
 			jlabel = 1;
 		else 
 			jlabel = jused[ instruction ];
+#endif
 
 		instruction++;
 
@@ -1157,6 +1834,17 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 			EmitString("CC");				// int 3
 			break;
 		case OP_ENTER:
+#ifdef CMOD_VM_HARDENING
+			v = procMaxOpStack[instruction - 1];
+			if (v > 0) {
+				EmitString("80 FB");			// cmp bl, 0x12
+				Emit1((OPSTACK_SIZE / (int)sizeof(int) - 1) - v);
+				EmitString("76");			// jbe ok
+				jumpHigh = compiledOfs++;
+				EmitCallErrJump(vm, callDoSyscallOfs);
+				SET_JMPOFS(jumpHigh);
+			}
+#endif
 			EmitString("81 EE");				// sub esi, 0x12345678
 			Emit4(Constant4());
 			break;
@@ -1211,7 +1899,14 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 			EmitString("C3");				// ret
 			break;
 		case OP_LOAD4:
+#ifdef CMOD_VM_HARDENING
+			if (code[pc] == OP_CONST && code[pc+5] == OP_ADD && code[pc+6] == OP_STORE4 &&
+					VM_X86CanOptimizeRange(vm,
+						(oc0 == oc1 && pop0 == OP_LOCAL && pop1 == OP_LOCAL) ? instruction - 2 : instruction - 1,
+						instruction + 2))
+#else
 			if (code[pc] == OP_CONST && code[pc+5] == OP_ADD && code[pc+6] == OP_STORE4)
+#endif
 			{
 				if(oc0 == oc1 && pop0 == OP_LOCAL && pop1 == OP_LOCAL)
 				{
@@ -1273,7 +1968,14 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 				break;
 			}
 
+#ifdef CMOD_VM_HARDENING
+			if(code[pc] == OP_CONST && code[pc+5] == OP_SUB && code[pc+6] == OP_STORE4 &&
+					VM_X86CanOptimizeRange(vm,
+						(oc0 == oc1 && pop0 == OP_LOCAL && pop1 == OP_LOCAL) ? instruction - 2 : instruction - 1,
+						instruction + 2))
+#else
 			if(code[pc] == OP_CONST && code[pc+5] == OP_SUB && code[pc+6] == OP_STORE4)
+#endif
 			{
 				if(oc0 == oc1 && pop0 == OP_LOCAL && pop1 == OP_LOCAL)
 				{
@@ -1334,7 +2036,13 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 				break;
 			}
 
+#ifdef CMOD_VM_HARDENING
+			// Only remove a known store on fallthrough: an immediate can contain
+			// the same bytes, and a jump target cannot rely on the previous eax.
+			if(!jlabel && LastCommand == LAST_COMMAND_MOV_STACK_EAX)
+#else
 			if(buf[compiledOfs - 3] == 0x89 && buf[compiledOfs - 2] == 0x04 && buf[compiledOfs - 1] == 0x9F)
+#endif
 			{
 				compiledOfs -= 3;
 				vm->instructionPointers[instruction - 1] = compiledOfs;
@@ -1628,15 +2336,52 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 		case OP_JUMP:
 			EmitCommand(LAST_COMMAND_SUB_BL_1);	// sub bl, 1
 			EmitString("8B 44 9F 04");		// mov eax, dword ptr 4[edi + ebx * 4]
+#ifdef CMOD_VM_HARDENING
+			v = instruction - 1;
+			if (jumpRanges[v].start < 0 || jumpRanges[v].end < jumpRanges[v].start
+					|| jumpRanges[v].opStack < 0 || jumpRanges[v].opStack > UCHAR_MAX) {
+				VMFREE_BUFFERS();
+				Com_Error(ERR_DROP, "VM_CompileX86: missing jump range at instruction %i", v);
+			}
+			EmitString("81 F8");			// cmp eax, current function start
+			Emit4(jumpRanges[v].start);
+			EmitString("72");			// jb badAddr
+			jumpLow = compiledOfs++;
+			EmitString("81 F8");			// cmp eax, current function end
+			Emit4(jumpRanges[v].end);
+			EmitString("77");			// ja badAddr
+			jumpHigh = compiledOfs++;
+			EmitRexString(0x48, "BA");		// mov edx, vm->jumpTargetOpStack
+			EmitPtr(vm->jumpTargetOpStack);
+			EmitString("80 3C 02");		// cmp byte ptr [edx + eax], expected opStack
+			Emit1(jumpRanges[v].opStack);
+			EmitString("75");			// jne badAddr
+			jumpBadTarget = compiledOfs++;
+#else
 			EmitString("81 F8");			// cmp eax, vm->instructionCount
 			Emit4(vm->instructionCount);
+#endif
 #if idx64
+#ifdef CMOD_VM_HARDENING
+			EmitRexString(0x49, "FF 24 C0");        // jmp qword ptr [r8 + eax * 8]
+#else
 			EmitString("73 04");			// jae +4
 			EmitRexString(0x49, "FF 24 C0");        // jmp qword ptr [r8 + eax * 8]
+#endif
+#else
+#ifdef CMOD_VM_HARDENING
+			EmitString("FF 24 85");			// jmp dword ptr [instructionPointers + eax * 4]
+			Emit4((intptr_t) vm->instructionPointers);
 #else
 			EmitString("73 07");			// jae +7
 			EmitString("FF 24 85");			// jmp dword ptr [instructionPointers + eax * 4]
 			Emit4((intptr_t) vm->instructionPointers);
+#endif
+#endif
+#ifdef CMOD_VM_HARDENING
+			SET_JMPOFS(jumpLow);
+			SET_JMPOFS(jumpHigh);
+			SET_JMPOFS(jumpBadTarget);
 #endif
 			EmitCallErrJump(vm, callDoSyscallOfs);
 			break;
@@ -1690,8 +2435,22 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 
 	// offset all the instruction pointers for the new location
 	for ( i = 0 ; i < header->instructionCount ; i++ ) {
+#ifdef CMOD_VM_HARDENING
+		if ( !validJumpTargets[i] ) {
+			vm->instructionPointers[i] = (intptr_t)ErrJump;
+			continue;
+		}
+#endif
 		vm->instructionPointers[i] += (intptr_t) vm->codeBase;
 	}
+#ifdef CMOD_VM_HARDENING
+	Z_Free(validJumpTargets);
+	validJumpTargets = NULL;
+	Z_Free(procMaxOpStack);
+	procMaxOpStack = NULL;
+	Z_Free(jumpRanges);
+	jumpRanges = NULL;
+#endif
 }
 
 void VM_Destroy_Compiled(vm_t* self)
@@ -1749,6 +2508,11 @@ int VM_CallCompiled(vm_t *vm, int *args)
 	// off we go into generated code...
 	entryPoint = vm->codeBase + vm->entryOfs;
 	opStack = PADP(stack, 16);
+#ifdef CMOD_VM_HARDENING
+	// OP_PUSH exposes the existing slot contents to bytecode. Clear every slot
+	// on each entry, including recursive calls, to avoid leaking native stack data.
+	Com_Memset( opStack, 0, OPSTACK_SIZE );
+#endif
 	*opStack = 0xDEADBEEF;
 	opStackOfs = 0;
 
