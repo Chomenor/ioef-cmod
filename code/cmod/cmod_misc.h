@@ -27,6 +27,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #if defined (_WIN32) && !defined(_MSC_VER)
 #define Q_setjmp __builtin_setjmp
 #define Q_longjmp __builtin_longjmp
+#elif defined(CMOD_MSVC_X64_SETJMP)
+#define Q_setjmp Q_setjmp_c
+#define Q_longjmp Q_longjmp_c
+int Q_setjmp_c(void *);
+int Q_longjmp_c(void *, int);
 #else
 #define Q_setjmp setjmp
 #define Q_longjmp longjmp

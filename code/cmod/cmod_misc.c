@@ -29,6 +29,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/qcommon.h"
 #endif
 
+#if defined(CMOD_LONGJMP_FIX) && defined(CMOD_MSVC_X64_SETJMP)
+#include <setjmp.h>
+// Keep the buffer large enough for the private layout in setjmp_msvc_x64.asm.
+typedef char cmod_msvc_x64_jmp_buf_size_check[(sizeof(jmp_buf) >= 256) ? 1 : -1];
+#endif
+
 #if defined( CMOD_URI_REGISTER_COMMAND ) && defined( PROTOCOL_HANDLER) && defined( _WIN32 ) && !defined( UNICODE )
 #define URI_REGISTER_SUPPORTED
 #endif

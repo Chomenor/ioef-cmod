@@ -1,7 +1,7 @@
 message(STATUS "in eliteforce")
 
-# Use old binary names on Windows for now to avoid breaking links
-option(ELITEFORCE_OLD_WINDOWS_BINARY_NAMES "Use old binary names on Windows" ON)
+option(ELITEFORCE_OLD_WINDOWS_BINARY_NAMES "Use old binary names on Windows to avoid breaking links" ON)
+option(ELITEFORCE_SECURITY_HARDENING "Use extra security hardening compiler options" ON)
 
 if(EMSCRIPTEN)
     # Emscripten doesn't like dashes in names
@@ -92,3 +92,54 @@ function(set_forced_include_global HEADER_PATH)
 endfunction()
 
 set_forced_include_global(${SOURCE_DIR}/cmod/cmod_defs.h)
+
+if(MSVC)
+    include(utils/arch)
+
+    # Don't require msvcrt dll to be installed on client
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    # Fix possible crashes due to ERR_DROP during vm trap calls
+    if(ARCH STREQUAL "x86_64" AND MSVC_VERSION GREATER_EQUAL 1910)
+        set(CMOD_SETJMP_MSVC_X64_ASM ${SOURCE_DIR}/cmod/setjmp_msvc_x64.asm)
+        list(APPEND CLIENT_BINARY_SOURCES ${CMOD_SETJMP_MSVC_X64_ASM})
+        list(APPEND SERVER_BINARY_SOURCES ${CMOD_SETJMP_MSVC_X64_ASM})
+        list(APPEND CLIENT_DEFINITIONS CMOD_MSVC_X64_SETJMP)
+        list(APPEND SERVER_DEFINITIONS CMOD_MSVC_X64_SETJMP)
+    endif()
+endif()
+
+if(ELITEFORCE_SECURITY_HARDENING)
+    if(MSVC)
+        add_compile_options("$<$<COMPILE_LANGUAGE:C>:/GS>")
+        add_link_options(/DYNAMICBASE /NXCOMPAT)
+
+        if(MSVC_VERSION GREATER_EQUAL 1900)
+            add_compile_options("$<$<COMPILE_LANGUAGE:C>:/guard:cf>")
+            add_link_options(/GUARD:CF)
+        endif()
+
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            add_link_options(/HIGHENTROPYVA)
+
+            if(MSVC_VERSION GREATER_EQUAL 1927)
+                add_compile_options("$<$<COMPILE_LANGUAGE:C>:/guard:ehcont>")
+                add_link_options(/guard:ehcont)
+                add_link_options(/CETCOMPAT)
+            endif()
+        endif()
+    elseif(NOT EMSCRIPTEN AND CMAKE_C_COMPILER_ID MATCHES "^(GNU|AppleClang|Clang)$")
+        add_compile_options("$<$<COMPILE_LANGUAGE:C>:-fstack-protector-strong>")
+
+        if(WIN32)
+            add_link_options(LINKER:--dynamicbase LINKER:--nxcompat)
+
+            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                add_link_options(LINKER:--high-entropy-va)
+            endif()
+        elseif(UNIX AND NOT APPLE)
+            add_compile_definitions("$<$<AND:$<COMPILE_LANGUAGE:C>,$<NOT:$<CONFIG:Debug>>>:_FORTIFY_SOURCE=2>")
+            add_link_options(LINKER:-z,relro LINKER:-z,now LINKER:-z,noexecstack)
+        endif()
+    endif()
+endif()
