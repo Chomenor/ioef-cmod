@@ -49,9 +49,14 @@ to get a dedicated page guarded block.
 #if defined( DEDICATED ) || defined( __EMSCRIPTEN__ )
 // Less security-sensitive configuration
 #define MEM_DEFERRED_FREE_SLOTS 0
+#define MEM_ENABLE_DEBUG_COMMANDS
 #else
 #define MEM_ENABLE_PAGE_GUARD
 #define MEM_DEFERRED_FREE_SLOTS 16
+#ifndef NDEBUG
+// Enable on debug builds only, to avoid potential leak issues
+#define MEM_ENABLE_DEBUG_COMMANDS
+#endif
 #endif
 
 #define MEM_ERROR( ... ) Com_Error( ERR_FATAL, __VA_ARGS__ )
@@ -644,6 +649,7 @@ Debugging
 ==========================================================================================
 */
 
+#ifdef MEM_ENABLE_DEBUG_COMMANDS
 typedef struct {
 	fileHandle_t dumpfile;
 	qboolean print;
@@ -774,6 +780,15 @@ static void Mem_Debug_f( void ) {
 	debug_state_t debug_state = { MEM_INVALID_FILE_HANDLE, qtrue };
 	Mem_DebugZones( &debug_state );
 }
+#else
+static void Mem_Dump_f( void ) {
+	Com_Printf( "Not supported by build configuration.\n" );
+}
+
+static void Mem_Debug_f( void ) {
+	Com_Printf( "Not supported by build configuration.\n" );
+}
+#endif
 
 /*
 ==========================================================================================
