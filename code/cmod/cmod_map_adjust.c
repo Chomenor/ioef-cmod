@@ -105,6 +105,12 @@ struct {
 	{-1446728862, {1.0f, 0.0f, 0, 1.0f}},	// alamo_xmas - darken
 	{1205784165, {1.0f, 0.0f, 0, 1.2f}},	// ctf_voy1_xmas - darken
 	{-1886202170, {1.0f, 0.0f, 0, 1.2f}},	// hm_cam_xmas - darken
+	{-643854217, {1.0f, 0.0f, 0, 1.2f}},	// hm_cam_xmas_nosnow - darken
+	{-1241791087, {1.0f, 0.0f, 0, 1.0f}},	// zelda - darken
+	{-550236808, {1.0f, 0.0f, 0, 1.0f}},	// subway_station - darken
+	{74017463, {1.0f, 0.0f, 0, 1.0f}},		// ctf_subway_station2 - darken
+	{-2120537735, {1.0f, 0.0f, 0, 1.0f}},	// ctf_subway_station3 - darken
+	{2004990230, {1.0f, 0.0f, 0, 1.0f}},	// 2trains - darken
 	{1701618430, {1.0f, 0.0f, 0, 1.0f}},	// dm_ic (old version) - darken
 	{1818880400, {1.0f, 0.0f, 0, 1.0f}},	// ctf_ic (old version) - darken
 	{2108385997, {0.75f, 0.0f, 1}},			// ef_abbey2 - darken
@@ -120,6 +126,9 @@ struct {
 	{-1597710217, {2.0f, 0.0f, 1, 1.0f}},	// landsoflore - darken
 	{-482853512, {2.0f, 0.0f, 1, 1.0f}},	// life-frag1 - darken
 	{-1590487211, {2.0f, 0.0f, 1, 1.0f}},	// sonicboil - darken
+	{791976163, {2.0f, 0.0f, 1, 1.0f}},		// lsdm17 - darken
+	{286529552, {2.0f, 0.0f, 1, 1.0f}},		// rodez - darken
+	{-1996474599, {2.0f, 0.0f, 1, 1.0f}},	// poolside - darken
 	{-1026364727, {1.0f, 0.2f, 0, 1.2f}},	// sd6 - adjust
 	{-1374186326, {2.0f, 0.1f, 1}},		// ut_subway - brighten
 	{610817057, {1.0f, 0.2f, 0}},		// ctf_twilight - brighten
@@ -138,6 +147,7 @@ struct {
 	{-1267516348, QUAKE3_STANDARD},		// leaks2 (ef version) - brighten
 	{1497862741, QUAKE3_STANDARD},		// bal3dm3 (ef version) - brighten
 	{564640074, QUAKE3_STANDARD},		// monsoon (ef version) - brighten
+	{-1334246003, QUAKE3_STANDARD},		// q3_elkdm2 (ef version) - brighten
 	{998811160, {1.0f, 0.0f, 0, 0.0f, 0.2f}},	// et_battery - increase obf
 	{-1725880467, {1.0f, 0.0f, 0, 0.0f, 0.2f}},	// et_batn - increase obf
 };
