@@ -1138,6 +1138,7 @@ extern	cvar_t	*r_envMapMode;
 
 #ifdef CMOD_MAP_AUTO_ADJUST
 extern	cvar_t	*r_autoMapLightingFactor;
+extern	cvar_t	*r_autoExternalMapLightingFactor;
 extern	cvar_t	*r_autoMapLightingGammaMod;
 extern	cvar_t	*r_autoOverBrightFactorMax;
 extern	cvar_t	*r_autoOverBrightFactorShift;

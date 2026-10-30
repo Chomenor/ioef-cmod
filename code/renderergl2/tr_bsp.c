@@ -219,8 +219,9 @@ static void R_ColorShiftLighting( double colors[3] ) {
 	float map_lighting_clamp_max = r_mapLightingClampMax->value;
 #ifdef CMOD_MAP_AUTO_ADJUST
 #ifdef CMOD_EXTERNAL_LIGHTMAP_PROCESSING
-	// Don't apply Q3 shifts to external lightmaps, for consistency with Q3 behavior
-	if(!external)
+	if(external) {
+		if(*r_autoExternalMapLightingFactor->string) map_lighting_factor *= r_autoExternalMapLightingFactor->value; }
+	else
 #endif
 	if(*r_autoMapLightingFactor->string) map_lighting_factor *= r_autoMapLightingFactor->value;
 	if(*r_autoMapLightingGammaMod->string) map_lighting_gamma += r_autoMapLightingGammaMod->value;

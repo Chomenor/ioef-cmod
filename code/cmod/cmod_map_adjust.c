@@ -35,12 +35,21 @@ typedef struct {
 	int envMapMode;
 	float overbright_factor_max;
 	float overbright_factor_shift;
+
+	// For external lightmaps. If 0, map_lighting_factor is used instead.
+	float external_map_lighting_factor;
 } shift_set_t;
 
 static void apply_shift_set(shift_set_t *shift_set) {
+	float external_map_lighting_factor = shift_set->external_map_lighting_factor;
+	if(external_map_lighting_factor == 0.0f) external_map_lighting_factor = shift_set->map_lighting_factor;
+
 	if(shift_set->map_lighting_factor != 1.0f) {
 		Com_Printf("Setting r_autoMapLightingFactor %g\n", shift_set->map_lighting_factor);
 		Cvar_Set("r_autoMapLightingFactor", va("%g", shift_set->map_lighting_factor)); }
+	if(external_map_lighting_factor != 1.0f) {
+		Com_Printf("Setting r_autoExternalMapLightingFactor %g\n", external_map_lighting_factor);
+		Cvar_Set("r_autoExternalMapLightingFactor", va("%g", external_map_lighting_factor)); }
 	if(shift_set->map_lighting_gamma != 0.0f) {
 		Com_Printf("Setting r_autoMapLightingGammaMod %g\n", shift_set->map_lighting_gamma);
 		Cvar_Set("r_autoMapLightingGammaMod", va("%g", shift_set->map_lighting_gamma)); }
@@ -59,8 +68,8 @@ static void apply_shift_set(shift_set_t *shift_set) {
 // Hash checks
 /* ******************************************************************************** */
 
-#define URBAN_TERROR_STANDARD {0.5f, 0.0f, 1}
-#define QUAKE3_STANDARD {2.0f, 0.0f, 1}
+#define URBAN_TERROR_STANDARD {0.5f, 0.0f, 1, 0.0f, 0.0f, 1.0f}
+#define QUAKE3_STANDARD {2.0f, 0.0f, 1, 0.0f, 0.0f, 1.0f}
 
 struct {
 	int hash;
@@ -239,6 +248,8 @@ void cmod_map_adjust_configure(const char *mapname) {
 	cvar_t *cmod_map_adjust_enabled = Cvar_Get("cmod_map_adjust_enabled", "1", CVAR_ARCHIVE|CVAR_LATCH);
 	Cvar_Get("r_autoMapLightingFactor", "", CVAR_ROM);
 	Cvar_Set("r_autoMapLightingFactor", "");
+	Cvar_Get("r_autoExternalMapLightingFactor", "", CVAR_ROM);
+	Cvar_Set("r_autoExternalMapLightingFactor", "");
 	Cvar_Get("r_autoMapLightingGammaMod", "", CVAR_ROM);
 	Cvar_Set("r_autoMapLightingGammaMod", "");
 	Cvar_Get("r_autoEnvMapMode", "0", CVAR_ROM);
